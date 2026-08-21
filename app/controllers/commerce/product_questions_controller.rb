@@ -2,13 +2,15 @@
 
 module Commerce
   class ProductQuestionsController < ApplicationController
-    before_action :require_login, only: %i[create answer toggle_answer_helpful]
+    before_action :require_login, except: :index
     before_action :set_product
+    before_action :set_question, only: %i[update destroy answer update_answer destroy_answer toggle_answer_helpful]
+    before_action :set_answer, only: %i[update_answer destroy_answer toggle_answer_helpful]
 
     def index
-      questions = @product.questions.visible.includes(:user, :answers).recent.limit(50)
+      questions = @product.questions.visible.includes(:user, visible_answers: :user).recent.limit(50)
 
-      render json: { questions: questions.map { |q| serialize_question(q) } }
+      render json: { questions: questions.map { |question| serialize_question(question) } }
     end
 
     def create
@@ -37,31 +39,50 @@ module Commerce
       end
     end
 
-    def answer
-      question = @product.questions.visible.find(params[:question_id])
-      official = current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")
+    def update
+      result = Commerce::UpdateProductQuestion.call(
+        user: current_user,
+        question: @question,
+        body: params.dig(:question, :body)
+      )
+      redirect_with_result(result, success_key: "mcweb.flash.question_updated")
+    end
 
+    def destroy
+      result = Commerce::DeleteProductQuestion.call(user: current_user, question: @question)
+      redirect_with_result(result, success_key: "mcweb.flash.question_deleted")
+    end
+
+    def answer
       result = Commerce::AnswerProductQuestion.call(
         user: current_user,
-        question: question,
+        question: @question,
         body: params.dig(:answer, :body),
-        official: official
+        official: official_answer_permission?
       )
+      redirect_with_result(result, success_key: "mcweb.flash.answer_published")
+    end
 
-      if result.success?
-        redirect_to store_product_path(@product), notice: t("mcweb.flash.answer_published")
-      else
-        redirect_to store_product_path(@product), alert: service_error_message(result)
-      end
+    def update_answer
+      result = Commerce::UpdateProductAnswer.call(
+        user: current_user,
+        answer: @answer,
+        body: params.dig(:answer, :body)
+      )
+      redirect_with_result(result, success_key: "mcweb.flash.answer_updated")
+    end
+
+    def destroy_answer
+      result = Commerce::DeleteProductAnswer.call(user: current_user, answer: @answer)
+      redirect_with_result(result, success_key: "mcweb.flash.answer_deleted")
     end
 
     def toggle_answer_helpful
-      question = @product.questions.visible.find(params[:question_id])
-      answer = question.answers.find(params[:answer_id])
-      result = Commerce::ToggleAnswerHelpful.call(user: current_user, answer: answer)
+      result = Commerce::ToggleAnswerHelpful.call(user: current_user, answer: @answer)
 
       if result.success?
-        redirect_to store_product_path(@product), notice: result.value[:helpful] ? t("mcweb.flash.helpful_marked") : t("mcweb.flash.helpful_unmarked")
+        notice = result.value[:helpful] ? t("mcweb.flash.helpful_marked") : t("mcweb.flash.helpful_unmarked")
+        redirect_to store_product_path(@product), notice: notice
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end
@@ -74,13 +95,33 @@ module Commerce
       raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(@product)
     end
 
+    def set_question
+      @question = @product.questions.find(params[:question_id])
+    end
+
+    def set_answer
+      @answer = @question.answers.find(params[:answer_id])
+    end
+
+    def official_answer_permission?
+      current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")
+    end
+
+    def redirect_with_result(result, success_key:)
+      if result.success?
+        redirect_to store_product_path(@product), notice: t(success_key)
+      else
+        redirect_to store_product_path(@product), alert: service_error_message(result)
+      end
+    end
+
     def serialize_question(question)
       {
         id: question.id,
         body: question.body,
         author: question.user.username,
         created_at: l(question.created_at, format: :short),
-        answers: question.answers.order(created_at: :asc).map do |answer|
+        answers: question.visible_answers.sort_by(&:created_at).map do |answer|
           {
             id: answer.id,
             body: answer.body,

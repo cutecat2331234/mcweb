@@ -286,7 +286,7 @@ module Admin
       end
 
       def refund_remaining_cents(payment)
-        reserved = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+        reserved = payment.refunds.reserved.sum(:amount_cents)
         [ payment.amount_cents - reserved, 0 ].max
       end
 
@@ -295,9 +295,9 @@ module Admin
         if params[:refund_id].present?
           refund = @order.refunds.find_by(id: params[:refund_id])
           cents = refund.amount_cents if refund
-          reserved = @order.refunds.where(status: %w[pending completed]).where.not(id: refund&.id).sum(:amount_cents)
+          reserved = payment.refunds.reserved.where.not(id: refund&.id).sum(:amount_cents)
         else
-          reserved = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+          reserved = payment.refunds.reserved.sum(:amount_cents)
         end
         cents = refund_remaining_cents(payment) if cents <= 0
         remaining = payment.amount_cents - reserved

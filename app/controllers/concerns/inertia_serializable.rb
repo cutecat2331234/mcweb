@@ -767,6 +767,9 @@ module InertiaSerializable
       merchant_reply: review.merchant_reply,
       merchant_replied_at: review.merchant_replied_at ? l(review.merchant_replied_at, format: :short) : nil,
       photo_urls: review.photos.map { |photo| rails_blob_path(photo, only_path: true) },
+      photos: review.photos.attachments.includes(:blob).map do |attachment|
+        { id: attachment.id, url: rails_blob_path(attachment.blob, only_path: true) }
+      end,
       forum_post_url: review.forum_post ? "#{forum_topic_path(review.forum_post.topic)}#post-#{review.forum_post_id}" : nil,
       can_share_to_forum: current_user && current_user.id == review.user_id && review.forum_post_id.blank?,
       share_to_forum_url: current_user && current_user.id == review.user_id && review.forum_post_id.blank? ? share_to_forum_store_product_review_path(review.product.public_id, review.id) : nil
@@ -935,18 +938,23 @@ module InertiaSerializable
       refund_window_expires_label: refund_window_expires_label(order),
       max_refund_cents: max_refundable_cents(order),
       max_refund_label: format_money(max_refundable_cents(order), order.currency),
-      refund_pending: order.refunds.pending.exists?,
+      refund_pending: order.refunds.in_flight.exists?,
       can_download_receipt: %w[paid processing fulfilling fulfilled completed refunded].include?(order.status),
       refund_url: refund_store_order_path(order),
       restorations: serialize_order_restorations(order),
       refunds: order.refunds.order(created_at: :desc).map do |refund|
+        can_withdraw = refund.pending? && refund.requested_by_customer? &&
+          refund.processing_started_at.nil? && refund.provider_refund_id.blank? && refund.provider_confirmed_at.nil?
         {
+          id: refund.id,
           amount_label: format_money(refund.amount_cents, order.currency),
           status: refund.status,
           status_label: refund_status_label(refund.status),
           reason: refund.reason,
           created_at: l(refund.created_at, format: :short),
-          customer_requested: refund.requested_by_customer?
+          customer_requested: refund.requested_by_customer?,
+          can_withdraw: can_withdraw,
+          withdraw_url: can_withdraw ? withdraw_refund_store_order_path(order, refund_id: refund.id) : nil
         }
       end,
       events: order.events.chronological.map do |event|
@@ -967,7 +975,9 @@ module InertiaSerializable
         download_url = signed_download_url_for(item)
         refresh_download_url = download_url.present? ? refresh_download_store_order_path(order, order_item_id: item.id) : nil
         product = item.product
-        item_questions = Commerce::ProductQuestion.where(order_item: item).includes(:answers).order(created_at: :desc)
+        item_questions = Commerce::ProductQuestion.visible.where(order_item: item)
+          .includes(visible_answers: :user)
+          .order(created_at: :desc)
         issued_cards = Commerce::GiftCard.where(source_order_item_id: item.id).order(:id)
         {
           id: item.id,
@@ -1132,7 +1142,7 @@ module InertiaSerializable
     return false if max_refundable_cents(order) <= 0
     return false unless within_refund_window?(order)
 
-    !order.refunds.pending.exists?
+    !order.refunds.in_flight.exists?
   end
 
   def within_refund_window?(order)
@@ -1143,7 +1153,7 @@ module InertiaSerializable
     payment = succeeded_payment_for(order)
     return 0 unless payment
 
-    refunded = order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+    refunded = payment.refunds.reserved.sum(:amount_cents)
     [ payment.amount_cents - refunded, 0 ].max
   end
 
@@ -1303,7 +1313,7 @@ module InertiaSerializable
       id: question.id,
       body: question.body,
       created_at: l(question.created_at, format: :short),
-      answers: question.answers.order(created_at: :asc).map do |answer|
+      answers: question.visible_answers.sort_by(&:created_at).map do |answer|
         {
           body: answer.body,
           author: answer.user.username,

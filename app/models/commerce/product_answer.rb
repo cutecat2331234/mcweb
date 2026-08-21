@@ -6,6 +6,10 @@ module Commerce
     belongs_to :user
     has_many :helpful_votes, class_name: "Commerce::AnswerHelpfulVote", foreign_key: :store_product_answer_id, dependent: :destroy
 
-    validates :body, presence: true
+    enum :status, { published: "published", hidden: "hidden", deleted: "deleted" }, validate: true
+
+    validates :body, presence: true, length: { maximum: 2_000 }
+
+    scope :visible, -> { published }
   end
 end

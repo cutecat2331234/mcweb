@@ -206,10 +206,11 @@ module Commerce
                        {}
       end
       stock_alert_variant_ids = stock_alerts.keys
-      user_review = logged_in? ? product.reviews.published.find_by(user: current_user) : nil
+      user_review_record = logged_in? ? product.reviews.find_by(user: current_user) : nil
+      user_review = user_review_record&.published? ? user_review_record : nil
       purchased = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product)
-      can_review = logged_in? && purchased && user_review.nil?
-      can_edit_review = logged_in? && purchased && user_review.present?
+      can_review = logged_in? && purchased && (user_review_record.nil? || user_review_record.deleted?)
+      can_edit_review = logged_in? && user_review.present? && user_review.user_id == current_user.id
       can_delete_review = logged_in? && user_review.present? && user_review.user_id == current_user.id
       related = if product.store_category_id
                   Commerce::StoreFeatures.visible_products_scope(
@@ -219,7 +220,7 @@ module Commerce
                   Commerce::Product.none
       end
 
-      questions_scope = product.questions.visible.includes(:user, answers: :helpful_votes).recent
+      questions_scope = product.questions.visible.includes(:user, visible_answers: [ :helpful_votes, :user ]).recent
       if params[:question_q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:question_q].to_s.strip)}%"
         questions_scope = questions_scope.where("body ILIKE ?", q)
@@ -227,6 +228,15 @@ module Commerce
       question_page = [ params[:question_page].to_i, 1 ].max
       question_sort = params[:question_sort].to_s.presence || "newest"
       @pagy_questions, questions = pagy(:offset, questions_scope, limit: 10, page: question_page)
+      visible_answer_ids = questions.flat_map { |question| question.visible_answers.map(&:id) }
+      helpful_answer_ids = if logged_in? && visible_answer_ids.any?
+        Commerce::AnswerHelpfulVote
+          .where(user: current_user, store_product_answer_id: visible_answer_ids)
+          .pluck(:store_product_answer_id)
+          .to_h { |answer_id| [ answer_id, true ] }
+      else
+        {}
+      end
 
       price_alert = logged_in? ? Commerce::PriceAlert.find_by(user: current_user, product: product) : nil
 
@@ -241,7 +251,14 @@ module Commerce
         related_products: prepare_product_list(related).map do |related_product|
           serialize_product_list_item(related_product)
         end,
-        questions: questions.map { |q| serialize_product_question(q, current_user: current_user, sort: question_sort) },
+        questions: questions.map do |question|
+          serialize_product_question(
+            question,
+            current_user: current_user,
+            sort: question_sort,
+            helpful_answer_ids: helpful_answer_ids
+          )
+        end,
         questionsPagination: pagy_props(@pagy_questions),
         questionQuery: params[:question_q].to_s,
         questionSort: question_sort,
@@ -250,6 +267,7 @@ module Commerce
         canReview: can_review,
         canEditReview: can_edit_review,
         canDeleteReview: can_delete_review,
+        updateReviewUrl: can_edit_review ? store_product_review_path(product, user_review) : nil,
         deleteReviewUrl: can_delete_review ? store_product_review_path(product, user_review) : nil,
         userReview: user_review ? serialize_review(user_review, current_user: current_user) : nil,
         reviewSort: review_sort.presence || "newest",
@@ -267,8 +285,8 @@ module Commerce
         createDiscussionUrl: logged_in? && product.forum_topic_id.blank? ? discussion_store_product_path(product) : nil,
         askFromOrder: ask_from_order_props(params),
         reorderUrl: logged_in? && purchased ? reorder_store_product_path(product) : nil,
-        reviewUrl: store_reviews_path(product),
-        questionUrl: store_questions_path(product),
+        reviewUrl: store_product_reviews_path(product),
+        questionUrl: store_product_questions_path(product),
         canAnswerOfficially: logged_in? && (current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")),
         loggedIn: logged_in?
       }
@@ -335,8 +353,8 @@ module Commerce
       (decimal * 100).round.to_i
     end
 
-    def serialize_product_question(question, current_user: nil, sort: "newest")
-      answers = question.answers.includes(:helpful_votes, :user).to_a
+    def serialize_product_question(question, current_user: nil, sort: "newest", helpful_answer_ids: {})
+      answers = question.visible_answers.to_a
       answers.sort_by! do |answer|
         [
           answer.official? ? 0 : 1,
@@ -350,20 +368,29 @@ module Commerce
         body: question.body,
         author: question.user.username,
         created_at: l(question.created_at, format: :short),
+        edited_at: question.edited_at ? l(question.edited_at, format: :short) : nil,
         from_order: question.store_order_item_id.present?,
-        answerUrl: answer_question_store_product_path(question.product, question_id: question.id),
+        answerUrl: store_product_answer_question_path(question.product, question_id: question.id),
+        updateUrl: current_user&.id == question.user_id ? store_product_update_question_path(question.product, question_id: question.id) : nil,
+        deleteUrl: current_user&.id == question.user_id ? store_product_delete_question_path(question.product, question_id: question.id) : nil,
         answers: answers.map do |answer|
           can_helpful = current_user && current_user.id != answer.user_id
-          helpful = can_helpful && Commerce::AnswerHelpfulVote.exists?(user: current_user, answer: answer)
+          can_edit = current_user && current_user.id == answer.user_id &&
+            (!answer.official? || current_user.permission?("store.questions.answer") || current_user.permission?("admin.access"))
+          can_delete = can_edit
+          helpful = can_helpful && helpful_answer_ids.key?(answer.id)
           {
             id: answer.id,
             body: answer.body,
             author: answer.user.username,
             official: answer.official,
             created_at: l(answer.created_at, format: :short),
+            edited_at: answer.edited_at ? l(answer.edited_at, format: :short) : nil,
             helpful_count: answer.helpful_votes.size,
             helpful: helpful,
-            helpful_url: can_helpful ? helpful_answer_store_product_path(question.product, question_id: question.id, answer_id: answer.id) : nil
+            helpful_url: can_helpful ? store_product_helpful_answer_path(question.product, question_id: question.id, answer_id: answer.id) : nil,
+            update_url: can_edit ? store_product_update_answer_path(question.product, question_id: question.id, answer_id: answer.id) : nil,
+            delete_url: can_delete ? store_product_delete_answer_path(question.product, question_id: question.id, answer_id: answer.id) : nil
           }
         end
       }

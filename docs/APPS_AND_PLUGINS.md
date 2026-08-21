@@ -168,7 +168,7 @@ Mcweb::Events.publish("forum.post.created", post: post, topic: topic)
 | `forum.reaction.added` / `.removed` | `post`, `user`, `emoji`, `counts` | 反应增减 |
 | `commerce.order.paid` | `order` | 可履约订单完成付款 |
 | `commerce.payment.confirmed` / `.failed` / `.refunded` | `payment`, `order`；退款时另含 `refund` | 支付成功、终态失败、每笔退款完成 |
-| `commerce.refund.requested` / `.processed` / `.rejected` | `refund`, `payment`, `order` | 退款申请生命周期 |
+| `commerce.refund.requested` / `.processed` / `.rejected` / `.withdrawn` | `refund`, `payment`, `order` | 退款申请生命周期 |
 | `commerce.inventory.reserved` / `.released` / `.confirmed` / `.adjusted` | `inventory`, `movement`，有订单时另含 `order` | 每笔实际库存流水提交 |
 | `commerce.fulfillment.dispatched` / `.retryable_failed` / `.failed` / `.completed` / `.cancelled` | `fulfillment`, `order`，按事件可含 `attempt`, `result` | 每次权威履约状态转换 |
 | `identity.user.registered` | `user`, `ip_address` | 新用户注册完成 |

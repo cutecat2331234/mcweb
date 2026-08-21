@@ -8,13 +8,15 @@ module Commerce
     belongs_to :payment_record, class_name: "Payments::Record"
     belongs_to :requested_by, class_name: "User", optional: true
     belongs_to :approved_by, class_name: "User", optional: true
+    belongs_to :withdrawn_by, class_name: "User", optional: true
 
     enum :status, {
       pending: "pending",
       approved: "approved",
       rejected: "rejected",
       failed: "failed",
-      completed: "completed"
+      completed: "completed",
+      withdrawn: "withdrawn"
     }, validate: true
 
     enum :restoration_status, {

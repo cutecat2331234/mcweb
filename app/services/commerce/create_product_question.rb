@@ -11,6 +11,7 @@ module Commerce
 
     def call
       return ServiceResult.failure(error: :question_is_required) if @body.blank?
+      return ServiceResult.failure(error: :question_too_long) if @body.length > 2_000
 
       if @order_item
         return ServiceResult.failure(error: "order_item_mismatch") unless @order_item.store_product_id == @product.id

@@ -14,7 +14,7 @@ module Commerce
       Commerce::Refund.transaction do
         refund = Commerce::Refund.lock.find(@refund.id)
         unless refund.pending?
-          rejection_error = "Refund is not pending."
+          rejection_error = :refund_not_pending
           raise ActiveRecord::Rollback
         end
 
@@ -36,7 +36,7 @@ module Commerce
         @refund = refund
       end
 
-      return ServiceResult.failure(error: rejection_error) if rejection_error.present?
+      return ServiceResult.failure(error: rejection_error, code: rejection_error) if rejection_error.present?
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_rejected", "deliver_now", args: [ @refund.id ])
 

@@ -91,7 +91,7 @@ class Commerce::CreateReviewPhotosTest < ActiveSupport::TestCase
       filename: "test.jpg",
       content_type: "image/jpeg"
     )
-    result = Commerce::CreateReview.call(user: @user, product: @product, rating: 4, body: "Updated")
+    result = Commerce::UpdateReview.call(user: @user, review: review, rating: 4, body: "Updated")
     assert result.success?
     assert review.reload.photos.attached?
   end

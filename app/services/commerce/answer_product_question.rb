@@ -11,12 +11,15 @@ module Commerce
 
     def call
       return ServiceResult.failure(error: :answer_is_required) if @body.blank?
+      return ServiceResult.failure(error: :answer_too_long) if @body.length > 2_000
+      return ServiceResult.failure(error: :question_not_answerable) unless @question.published?
 
       answer = Commerce::ProductAnswer.create!(
         question: @question,
         user: @user,
         body: @body,
-        official: @official
+        official: @official,
+        status: :published
       )
       Commerce::NotifyProductQuestionAnswered.call(question: @question, answer: answer)
       ServiceResult.success(answer)

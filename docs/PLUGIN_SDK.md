@@ -468,6 +468,7 @@ job or an external provider can use at-least-once delivery.
 | `commerce.refund.requested` | a customer refund request is created | `refund.id` |
 | `commerce.refund.processed` | provider confirmation and all local restoration work commit | `refund.id` |
 | `commerce.refund.rejected` | a pending refund request becomes rejected | `refund.id` |
+| `commerce.refund.withdrawn` | the requesting customer withdraws a pending refund before processing starts | `refund.id` |
 | `commerce.inventory.reserved` | an order item creates a stock reservation | `movement.public_id` |
 | `commerce.inventory.released` | an active reservation is released or expires; inspect `movement.type` | `movement.public_id` |
 | `commerce.inventory.confirmed` | a reservation converts from reserved to sold | `movement.public_id` |

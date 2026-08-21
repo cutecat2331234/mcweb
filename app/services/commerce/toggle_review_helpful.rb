@@ -8,15 +8,17 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "cannot_review_own") if @user.id == @review.user_id
+      review = Commerce::Review.find(@review.id)
+      return ServiceResult.failure(error: :review_not_visible) unless review.published?
+      return ServiceResult.failure(error: "cannot_review_own") if @user.id == review.user_id
 
-      existing = Commerce::ReviewHelpfulVote.find_by(user: @user, review: @review)
+      existing = Commerce::ReviewHelpfulVote.find_by(user: @user, review: review)
       if existing
         existing.destroy!
-        ServiceResult.success(helpful: false, count: @review.helpful_votes.count)
+        ServiceResult.success(helpful: false, count: review.helpful_votes.count)
       else
-        Commerce::ReviewHelpfulVote.create!(user: @user, review: @review)
-        ServiceResult.success(helpful: true, count: @review.helpful_votes.count)
+        Commerce::ReviewHelpfulVote.create!(user: @user, review: review)
+        ServiceResult.success(helpful: true, count: review.helpful_votes.count)
       end
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

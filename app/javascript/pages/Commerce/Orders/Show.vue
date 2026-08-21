@@ -18,6 +18,7 @@ import Select from '@/components/ui/Select.vue'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 import { resolveStoreFeatures } from '@/lib/storeFeatures'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -74,12 +75,15 @@ const props = defineProps<{
     payment_providers: Array<{ value: string; label: string }>
     default_provider: string
     refunds: Array<{
+      id: number
       amount_label: string
       status: string
       status_label: string
       reason: string | null
       created_at: string
       customer_requested: boolean
+      can_withdraw?: boolean
+      withdraw_url?: string | null
     }>
     restorations?: Array<{ label: string; amount_label: string }>
     events: Array<{
@@ -156,6 +160,7 @@ function fulfillmentBadgeVariant(status: string | null | undefined) {
 
 const cancelForm = useForm({ reason: '' })
 const refundForm = useForm({ reason: '', amount_cents: 0 as number | '' })
+const withdrawingRefundId = ref<number | null>(null)
 
 const statusSubtitle = computed(() => {
   if (isFulfilling.value) {
@@ -226,6 +231,23 @@ const reorderForm = useForm({})
 
 function refreshDownload(url: string) {
   router.post(url)
+}
+
+async function withdrawRefund(refund: { id: number; withdraw_url?: string | null }) {
+  if (!refund.withdraw_url) return
+  const ok = await confirm({
+    title: t('commerce.orderShow.withdrawRefund'),
+    message: t('commerce.orderShow.withdrawRefundConfirm'),
+    confirmLabel: t('commerce.orderShow.withdrawRefund'),
+    variant: 'destructive',
+  })
+  if (!ok) return
+
+  withdrawingRefundId.value = refund.id
+  router.delete(refund.withdraw_url, {
+    preserveScroll: true,
+    onFinish: () => { withdrawingRefundId.value = null },
+  })
 }
 </script>
 
@@ -440,13 +462,23 @@ function refreshDownload(url: string) {
   <div v-if="order.refunds.length" class="mb-6 rounded-lg border p-4">
     <h2 class="mb-3 text-sm font-semibold">{{ t('commerce.orderShow.refunds') }}</h2>
     <ul class="space-y-2 text-sm">
-      <li v-for="(refund, index) in order.refunds" :key="index" class="flex justify-between gap-4">
+      <li v-for="refund in order.refunds" :key="refund.id" class="flex flex-wrap items-center justify-between gap-4">
         <span>{{ refund.amount_label }}</span>
-        <span>
+        <span class="flex flex-wrap items-center justify-end gap-2">
           <Badge>{{ refund.status_label || refund.status }}</Badge>
-          <span v-if="refund.reason" class="ml-2 text-xs text-muted-foreground">{{ refund.reason }}</span>
-          <span v-if="refund.customer_requested" class="ml-2 text-xs text-muted-foreground">{{ t('commerce.orderShow.customerRequested') }}</span>
-          <span class="ml-2 text-muted-foreground">{{ refund.created_at }}</span>
+          <span v-if="refund.reason" class="text-xs text-muted-foreground">{{ refund.reason }}</span>
+          <span v-if="refund.customer_requested" class="text-xs text-muted-foreground">{{ t('commerce.orderShow.customerRequested') }}</span>
+          <span class="text-muted-foreground">{{ refund.created_at }}</span>
+          <Button
+            v-if="refund.can_withdraw && refund.withdraw_url"
+            type="button"
+            size="sm"
+            variant="outline"
+            :disabled="withdrawingRefundId === refund.id"
+            @click="withdrawRefund(refund)"
+          >
+            {{ t('commerce.orderShow.withdrawRefund') }}
+          </Button>
         </span>
       </li>
     </ul>

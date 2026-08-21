@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3175,12 +3175,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   create_table "store_product_answers", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.datetime "edited_at"
     t.boolean "official", default: false, null: false
+    t.string "status", default: "published", null: false
     t.bigint "store_product_question_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["store_product_question_id", "status"], name: "index_store_product_answers_on_question_and_status"
     t.index ["store_product_question_id"], name: "index_store_product_answers_on_store_product_question_id"
     t.index ["user_id"], name: "index_store_product_answers_on_user_id"
+    t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_product_answers_deleted_shape"
+    t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_product_answers_status_valid"
   end
 
   create_table "store_product_availability_alerts", force: :cascade do |t|
@@ -3208,6 +3214,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   create_table "store_product_questions", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.datetime "edited_at"
     t.string "status", default: "published", null: false
     t.bigint "store_order_item_id"
     t.bigint "store_product_id", null: false
@@ -3216,6 +3224,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.index ["store_order_item_id"], name: "index_store_product_questions_on_store_order_item_id"
     t.index ["store_product_id"], name: "index_store_product_questions_on_store_product_id"
     t.index ["user_id"], name: "index_store_product_questions_on_user_id"
+    t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_product_questions_deleted_shape"
+    t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_product_questions_status_valid"
   end
 
   create_table "store_product_variants", force: :cascade do |t|
@@ -3309,6 +3319,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.string "status", default: "pending", null: false
     t.bigint "store_order_id", null: false
     t.datetime "updated_at", null: false
+    t.datetime "withdrawn_at"
+    t.bigint "withdrawn_by_id"
     t.index ["approved_by_id"], name: "index_store_refunds_on_approved_by_id"
     t.index ["payment_record_id"], name: "index_store_refunds_on_payment_record_id"
     t.index ["provider_refund_id"], name: "index_store_refunds_on_provider_refund_id", unique: true, where: "(provider_refund_id IS NOT NULL)"
@@ -3317,8 +3329,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.index ["status", "created_at", "payment_record_id", "id"], name: "idx_store_refunds_reconciliation_local"
     t.index ["status", "processing_started_at"], name: "index_store_refunds_on_status_and_processing_started_at"
     t.index ["store_order_id"], name: "index_store_refunds_on_store_order_id"
+    t.index ["withdrawn_by_id"], name: "index_store_refunds_on_withdrawn_by_id"
     t.check_constraint "amount_cents > 0", name: "store_refunds_amount_cents_positive"
     t.check_constraint "restoration_status::text = ANY (ARRAY['pending'::character varying::text, 'processing'::character varying::text, 'failed'::character varying::text, 'completed'::character varying::text])", name: "store_refunds_restoration_status_valid"
+    t.check_constraint "status::text = 'withdrawn'::text AND withdrawn_at IS NOT NULL AND withdrawn_by_id IS NOT NULL OR status::text <> 'withdrawn'::text AND withdrawn_at IS NULL AND withdrawn_by_id IS NULL", name: "store_refunds_withdrawn_shape"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying, 'failed'::character varying, 'completed'::character varying, 'withdrawn'::character varying]::text[])", name: "store_refunds_status_valid"
   end
 
   create_table "store_review_helpful_votes", force: :cascade do |t|
@@ -3332,6 +3347,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   create_table "store_reviews", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.bigint "forum_post_id"
     t.datetime "merchant_replied_at"
     t.text "merchant_reply"
@@ -3345,6 +3361,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.index ["store_product_id", "user_id"], name: "index_store_reviews_on_store_product_id_and_user_id", unique: true
     t.index ["store_product_id"], name: "index_store_reviews_on_store_product_id"
     t.index ["user_id"], name: "index_store_reviews_on_user_id"
+    t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_reviews_deleted_shape"
+    t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_reviews_status_valid"
   end
 
   create_table "store_shipping_addresses", force: :cascade do |t|
@@ -3919,6 +3937,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   add_foreign_key "store_refunds", "store_orders"
   add_foreign_key "store_refunds", "users", column: "approved_by_id"
   add_foreign_key "store_refunds", "users", column: "requested_by_id"
+  add_foreign_key "store_refunds", "users", column: "withdrawn_by_id"
   add_foreign_key "store_review_helpful_votes", "store_reviews"
   add_foreign_key "store_review_helpful_votes", "users"
   add_foreign_key "store_reviews", "forum_posts"

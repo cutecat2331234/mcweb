@@ -31,7 +31,7 @@ module Commerce
 
       if preparation[:provider_required]
         provider = Payments::Provider.for(@payment_record.provider)
-        provider_result = provider.process_refund(refund)
+        provider_result = stable_provider_result(provider.process_refund(refund))
         persist_provider_result!(refund, provider_result)
         return provider_result if provider_result.failure?
       end
@@ -52,7 +52,8 @@ module Commerce
 
       ServiceResult.success(success_refund)
     rescue Payments::Provider::UnknownProviderError => e
-      ServiceResult.failure(error: e.message)
+      Rails.logger.warn("[ProcessRefund] provider unavailable (#{e.class})")
+      refund_failure(:refund_provider_unavailable)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end
@@ -69,12 +70,12 @@ module Commerce
         lock_order_and_payment!
 
         unless refundable_payment?
-          error = "Payment is not refundable."
+          error = :payment_not_refundable
           raise ActiveRecord::Rollback
         end
 
         if @amount_cents <= 0
-          error = "Refund amount must be greater than zero."
+          error = :refund_amount_invalid
           raise ActiveRecord::Rollback
         end
 
@@ -86,9 +87,7 @@ module Commerce
         end
 
         if refund.persisted? && refund.amount_cents != @amount_cents
-          error = refund.completed? ?
-            "Completed refund amount cannot be changed." :
-            "Refund amount cannot be changed after creation."
+          error = refund.completed? ? :refund_completed_amount_immutable : :refund_amount_immutable
           raise ActiveRecord::Rollback
         end
 
@@ -99,7 +98,7 @@ module Commerce
 
         if refund.provider_confirmed?
           unless local_restoration_claimable?(refund)
-            error = "Refund restoration is already being processed."
+            error = :refund_restoration_in_progress
             raise ActiveRecord::Rollback
           end
 
@@ -115,12 +114,12 @@ module Commerce
         end
 
         if refund.approved? && !refund.processing_stale?
-          error = "Refund is already being processed."
+          error = :refund_processing_in_progress
           raise ActiveRecord::Rollback
         end
 
         unless refund.new_record? || refund.pending? || refund.failed? || refund.processing_stale?
-          error = "Refund is no longer valid."
+          error = :refund_no_longer_valid
           raise ActiveRecord::Rollback
         end
 
@@ -131,7 +130,7 @@ module Commerce
         remaining_cents = @payment_record.amount_cents - reserved_cents
 
         if @amount_cents > remaining_cents
-          error = "Refund amount exceeds remaining balance."
+          error = :refund_exceeds_balance
           raise ActiveRecord::Rollback
         end
 
@@ -150,8 +149,8 @@ module Commerce
         refund.save!
       end
 
-      return ServiceResult.failure(error: error) if error
-      return ServiceResult.failure(error: :unable_to_prepare_refund) unless refund&.persisted?
+      return refund_failure(error) if error
+      return refund_failure(:unable_to_prepare_refund) unless refund&.persisted?
 
       { refund: refund, idempotent: idempotent, provider_required: provider_required }
     end
@@ -230,7 +229,7 @@ module Commerce
         end
 
         unless locked_refund.provider_confirmed?
-          raise RestorationFailure, "Refund provider result has not been confirmed."
+          raise RestorationFailure, I18n.t("mcweb.services.errors.refund_provider_not_confirmed")
         end
 
         previous_status = @order.status
@@ -260,7 +259,7 @@ module Commerce
         )
         unless dispute_result.success?
           raise RestorationFailure,
-            dispute_result.error.presence || "Dispute exposure could not be reconciled."
+            dispute_result.error.presence || I18n.t("mcweb.services.errors.refund_dispute_reconciliation_failed")
         end
         receipt_result = Commerce::IssueFinanceRefundReceipt.call(
           refund: locked_refund,
@@ -268,7 +267,7 @@ module Commerce
         )
         unless receipt_result.success?
           raise RestorationFailure,
-            receipt_result.error.presence || "Refund receipt could not be issued."
+            receipt_result.error.presence || I18n.t("mcweb.services.errors.refund_receipt_issue_failed")
         end
         payload = Commerce::DomainEvents.refund(locked_refund)
         Commerce::DomainEvents.publish_after_commit(
@@ -342,7 +341,7 @@ module Commerce
       )
       ensure_restored!(
         Commerce::RevokeEntitlementsForOrder.call(order: @order),
-        "Digital entitlement revocation failed."
+        I18n.t("mcweb.services.errors.refund_entitlement_revoke_failed")
       )
     end
 
@@ -356,7 +355,7 @@ module Commerce
       intended_payment = @order.total_cents.to_i
 
       if intended_payment <= 0
-        raise RestorationFailure, "Order has no refundable payment basis."
+        raise RestorationFailure, I18n.t("mcweb.services.errors.refund_no_payment_basis")
       end
 
       overpayment = [ succeeded_total - intended_payment, 0 ].max
@@ -402,7 +401,7 @@ module Commerce
         "[ProcessRefund] local restoration failed " \
         "refund_id=#{refund.id} error=#{error.class}: #{error.message}"
       )
-      message = "Local refund restoration failed (#{error.class})."
+      message = I18n.t("mcweb.services.errors.refund_restoration_failed")
       record_restoration_failure!(refund, message)
       ServiceResult.failure(
         error: message,
@@ -465,7 +464,7 @@ module Commerce
       return if refund.store_order_id == @order.id &&
         refund.payment_record_id == @payment_record.id
 
-      "Refund does not belong to this order and payment."
+      :refund_binding_mismatch
     end
 
     def ensure_refund_binding!(refund)
@@ -496,6 +495,20 @@ module Commerce
         payment_record: @payment_record,
         status: "pending",
         requested_by: @requested_by
+      )
+    end
+
+    def refund_failure(code, value: nil)
+      ServiceResult.failure(error: code, code: code, value: value)
+    end
+
+    def stable_provider_result(result)
+      return result if result.success? || result.code.present?
+
+      ServiceResult.failure(
+        error: result.error.presence || :refund_provider_unavailable,
+        code: :refund_provider_unavailable,
+        value: result.value
       )
     end
 

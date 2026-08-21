@@ -3,8 +3,8 @@
 module Commerce
   class ReviewsController < ApplicationController
     before_action :require_login
-    before_action :set_product, only: %i[create destroy toggle_helpful share_to_forum]
-    before_action :set_review, only: %i[destroy toggle_helpful share_to_forum]
+    before_action :set_product, only: %i[create update destroy toggle_helpful share_to_forum]
+    before_action :set_review, only: %i[update destroy toggle_helpful share_to_forum]
 
     def create
       result = Commerce::CreateReview.call(
@@ -27,6 +27,23 @@ module Commerce
 
       if result.success?
         redirect_to forum_topic_path(result.value[:topic]), notice: t("mcweb.flash.review_shared")
+      else
+        redirect_to store_product_path(@product), alert: service_error_message(result)
+      end
+    end
+
+    def update
+      result = Commerce::UpdateReview.call(
+        user: current_user,
+        review: @review,
+        rating: review_params[:rating],
+        body: review_params[:body],
+        retained_photo_ids: review_params[:retained_photo_ids],
+        photos: review_params[:photos]
+      )
+
+      if result.success?
+        redirect_to store_product_path(@product), notice: t("mcweb.flash.review_updated")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end
@@ -64,7 +81,7 @@ module Commerce
     end
 
     def review_params
-      params.require(:review).permit(:rating, :body, photos: [])
+      params.require(:review).permit(:rating, :body, photos: [], retained_photo_ids: [])
     end
   end
 end

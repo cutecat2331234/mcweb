@@ -8,12 +8,15 @@ module Commerce
     has_many :helpful_votes, class_name: "Commerce::ReviewHelpfulVote", foreign_key: :store_review_id, dependent: :destroy
     has_many_attached :photos
 
-    enum :status, { published: "published", hidden: "hidden" }, validate: true
+    enum :status, { published: "published", hidden: "hidden", deleted: "deleted" }, validate: true
     after_commit -> { Website::HomeCache.bump! }
 
     validates :rating, presence: true, inclusion: { in: 1..5 }
+    validates :body, length: { maximum: 5_000 }, allow_blank: true
     validates :user_id, uniqueness: { scope: :store_product_id }
     validate :photos_limit
+
+    scope :visible, -> { published }
 
     private
 

@@ -163,38 +163,12 @@ module Commerce
       end
     end
 
-    def new
-      cart = Commerce::Cart.find_by(user: current_user)
-      redirect_to store_cart_path, alert: t("mcweb.services.errors.cart_empty") if cart.nil? || cart.empty?
-    end
-
-    def create
-      cart = Commerce::Cart.find_by(user: current_user)
-      return redirect_to store_cart_path, alert: t("mcweb.services.errors.cart_empty") if cart.nil? || cart.empty?
-
-      result = Commerce::CreateOrder.call(
-        cart: cart,
-        user: current_user,
-        notes: order_params[:notes]
-      )
-
-      if result.success?
-        redirect_to store_order_path(result.value), notice: t("mcweb.services.errors.order_created")
-      else
-        redirect_to new_store_order_path, alert: service_error_message(result)
-      end
-    end
-
     private
 
     def set_order
       @order = Commerce::Order.where(user: current_user)
                               .includes(:items, :fulfillments, :refunds, :events, items: { product: :forum_topic })
                               .find_by!(public_id: params[:id])
-    end
-
-    def order_params
-      params.fetch(:order, {}).permit(:notes)
     end
 
     def customer_order_status_tabs

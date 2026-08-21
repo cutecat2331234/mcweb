@@ -60,6 +60,7 @@ export interface ProductReview {
   share_to_forum_url?: string | null
   forum_post_url?: string | null
   photo_urls?: string[]
+  photos?: Array<{ id: number; url: string }>
   merchant_reply?: string | null
   merchant_replied_at?: string | null
 }
@@ -129,6 +130,7 @@ const props = defineProps<{
   canReview?: boolean
   canEditReview?: boolean
   canDeleteReview?: boolean
+  updateReviewUrl?: string | null
   deleteReviewUrl?: string | null
   reorderUrl?: string | null
   userReview?: ProductReview | null
@@ -146,16 +148,22 @@ const props = defineProps<{
     body: string
     author: string
     created_at: string
+    edited_at?: string | null
     answerUrl: string
+    updateUrl?: string | null
+    deleteUrl?: string | null
     answers: Array<{
       id: number
       body: string
       author: string
       official: boolean
       created_at: string
+      edited_at?: string | null
       helpful_count?: number
       helpful?: boolean
       helpful_url?: string | null
+      update_url?: string | null
+      delete_url?: string | null
     }>
     from_order?: boolean
   }>
@@ -165,6 +173,10 @@ const props = defineProps<{
 
 const questionForm = useForm({ question: { body: '' } })
 const answerForms = ref<Record<number, string>>({})
+const editingQuestionId = ref<number | null>(null)
+const editingQuestionBody = ref('')
+const editingAnswerId = ref<number | null>(null)
+const editingAnswerBody = ref('')
 
 const selectedVariantId = ref<number | null>(
   props.product.variants.length === 1 ? props.product.variants[0].id : (props.product.saved_variant_id ?? null)
@@ -215,16 +227,16 @@ const stockStatusLabel = computed(() => {
 const activeGalleryImage = computed(() => allImages.value[galleryIndex.value] || null)
 
 const reviewForm = useForm<{
-  review: { rating: number; body: string; photos: File[] }
+  review: { rating: number; body: string; photos: File[]; retained_photo_ids: number[] }
 }>({
-  review: { rating: 5, body: '', photos: [] },
+  review: { rating: 5, body: '', photos: [], retained_photo_ids: [] },
 })
 const editingReview = ref(false)
-const existingReviewPhotos = ref<string[]>([])
+const existingReviewPhotos = ref<Array<{ id: number; url: string }>>([])
 
 function onReviewPhotosChange(files: File | File[]) {
   const list = Array.isArray(files) ? files : [files]
-  reviewForm.review.photos = list.slice(0, 3)
+  reviewForm.review.photos = list.slice(0, Math.max(0, 3 - existingReviewPhotos.value.length))
 }
 
 const selectedVariant = computed(() =>
@@ -376,14 +388,32 @@ function startEditReview() {
   if (!props.userReview) return
   reviewForm.review.rating = props.userReview.rating
   reviewForm.review.body = props.userReview.body || ''
-  existingReviewPhotos.value = props.userReview.photo_urls || []
+  existingReviewPhotos.value = props.userReview.photos || []
+  reviewForm.review.retained_photo_ids = existingReviewPhotos.value.map((photo) => photo.id)
   editingReview.value = true
+}
+
+function removeExistingReviewPhoto(id: number) {
+  existingReviewPhotos.value = existingReviewPhotos.value.filter((photo) => photo.id !== id)
+  reviewForm.review.retained_photo_ids = existingReviewPhotos.value.map((photo) => photo.id)
+}
+
+function cancelEditReview() {
+  reviewForm.review.rating = 5
+  reviewForm.review.body = ''
+  reviewForm.review.photos = []
+  reviewForm.review.retained_photo_ids = []
+  reviewForm.clearErrors()
+  existingReviewPhotos.value = []
+  editingReview.value = false
 }
 
 async function deleteReview() {
   const ok = await confirm({
     title: t('commerce.product.deleteReview'),
-    message: t('commerce.product.deleteReviewConfirm'),
+    message: props.userReview?.forum_post_url
+      ? t('commerce.product.deleteReviewForumSnapshotConfirm')
+      : t('commerce.product.deleteReviewConfirm'),
     confirmLabel: t('common.confirm'),
     variant: 'destructive',
   })
@@ -402,16 +432,16 @@ function loadMoreReviews() {
 }
 
 function submitReview() {
-  reviewForm.post(props.reviewUrl, {
+  const options = {
     preserveScroll: true,
     forceFormData: true,
-    onSuccess: () => {
-      reviewForm.review.body = ''
-      reviewForm.review.photos = []
-      existingReviewPhotos.value = []
-      editingReview.value = false
-    },
-  })
+    onSuccess: cancelEditReview,
+  }
+  if (editingReview.value && props.updateReviewUrl) {
+    reviewForm.patch(props.updateReviewUrl, options)
+  } else {
+    reviewForm.post(props.reviewUrl, options)
+  }
 }
 
 function subscribeStockAlert() {
@@ -478,6 +508,58 @@ function submitAnswer(questionId: number, answerUrl: string) {
     preserveScroll: true,
     onSuccess: () => { answerForms.value[questionId] = '' },
   })
+}
+
+function startEditQuestion(question: { id: number; body: string }) {
+  editingQuestionId.value = question.id
+  editingQuestionBody.value = question.body
+}
+
+function saveQuestion(url: string) {
+  if (!editingQuestionBody.value.trim()) return
+  router.patch(url, { question: { body: editingQuestionBody.value } }, {
+    preserveScroll: true,
+    onSuccess: () => {
+      editingQuestionId.value = null
+      editingQuestionBody.value = ''
+    },
+  })
+}
+
+async function deleteQuestion(url: string) {
+  const ok = await confirm({
+    title: t('commerce.product.deleteQuestion'),
+    message: t('commerce.product.deleteQuestionConfirm'),
+    confirmLabel: t('common.confirm'),
+    variant: 'destructive',
+  })
+  if (ok) router.delete(url, { preserveScroll: true })
+}
+
+function startEditAnswer(answer: { id: number; body: string }) {
+  editingAnswerId.value = answer.id
+  editingAnswerBody.value = answer.body
+}
+
+function saveAnswer(url: string) {
+  if (!editingAnswerBody.value.trim()) return
+  router.patch(url, { answer: { body: editingAnswerBody.value } }, {
+    preserveScroll: true,
+    onSuccess: () => {
+      editingAnswerId.value = null
+      editingAnswerBody.value = ''
+    },
+  })
+}
+
+async function deleteAnswer(url: string) {
+  const ok = await confirm({
+    title: t('commerce.product.deleteAnswer'),
+    message: t('commerce.product.deleteAnswerConfirm'),
+    confirmLabel: t('common.confirm'),
+    variant: 'destructive',
+  })
+  if (ok) router.delete(url, { preserveScroll: true })
 }
 </script>
 
@@ -756,20 +838,58 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
     <div v-if="questions.length" class="mb-6 space-y-4">
       <article v-for="q in questions" :key="q.id" class="rounded-xl bg-muted/25 p-4 sm:p-5">
-        <p class="break-words text-sm font-medium leading-relaxed">
-          {{ t('commerce.product.questionPrefix') }}{{ q.body }}
-          <Badge v-if="q.from_order" class="ml-2 text-[10px]">{{ t('commerce.product.purchasedQuestion') }}</Badge>
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">{{ q.author }} · {{ q.created_at }}</p>
+        <div v-if="editingQuestionId === q.id" class="space-y-2">
+          <Label :for="`edit-question-${q.id}`">{{ t('commerce.product.editQuestion') }}</Label>
+          <Textarea :id="`edit-question-${q.id}`" v-model="editingQuestionBody" rows="3" maxlength="2000" />
+          <div class="flex flex-wrap gap-2">
+            <Button type="button" size="sm" @click="saveQuestion(q.updateUrl!)">{{ t('common.save') }}</Button>
+            <Button type="button" size="sm" variant="outline" @click="editingQuestionId = null">{{ t('common.cancel') }}</Button>
+          </div>
+        </div>
+        <template v-else>
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <p class="min-w-0 break-words text-sm font-medium leading-relaxed">
+              {{ t('commerce.product.questionPrefix') }}{{ q.body }}
+              <Badge v-if="q.from_order" class="ml-2 text-[10px]">{{ t('commerce.product.purchasedQuestion') }}</Badge>
+            </p>
+            <div v-if="q.updateUrl || q.deleteUrl" class="flex shrink-0 flex-wrap gap-2">
+              <Button v-if="q.updateUrl" type="button" size="sm" variant="outline" @click="startEditQuestion(q)">{{ t('commerce.product.edit') }}</Button>
+              <Button v-if="q.deleteUrl" type="button" size="sm" variant="destructive" @click="deleteQuestion(q.deleteUrl)">{{ t('common.delete') }}</Button>
+            </div>
+          </div>
+          <p class="mt-1 text-xs text-muted-foreground">
+            {{ q.author }} · {{ q.created_at }}
+            <span v-if="q.edited_at"> · {{ t('commerce.product.editedAt', { time: q.edited_at }) }}</span>
+          </p>
+        </template>
         <div v-if="q.answers.length" class="mt-4 space-y-3 border-l-2 border-primary/20 pl-3 sm:pl-4">
           <div v-for="answer in q.answers" :key="answer.id" class="text-sm">
-            <p class="break-words leading-relaxed">
-              <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">{{ t('commerce.product.official') }}</span>
-              <span class="font-medium">{{ answer.author }}{{ t('common.colon') }}</span>
-              {{ answer.body }}
-            </p>
-            <p class="mt-1 text-xs text-muted-foreground">{{ answer.created_at }}</p>
-            <div v-if="answer.helpful_url" class="mt-1">
+            <div v-if="editingAnswerId === answer.id" class="space-y-2">
+              <Label :for="`edit-answer-${answer.id}`">{{ t('commerce.product.editAnswer') }}</Label>
+              <Textarea :id="`edit-answer-${answer.id}`" v-model="editingAnswerBody" rows="3" maxlength="2000" />
+              <div class="flex flex-wrap gap-2">
+                <Button type="button" size="sm" @click="saveAnswer(answer.update_url!)">{{ t('common.save') }}</Button>
+                <Button type="button" size="sm" variant="outline" @click="editingAnswerId = null">{{ t('common.cancel') }}</Button>
+              </div>
+            </div>
+            <template v-else>
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <p class="min-w-0 break-words leading-relaxed">
+                  <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">{{ t('commerce.product.official') }}</span>
+                  <span class="font-medium">{{ answer.author }}{{ t('common.colon') }}</span>
+                  {{ answer.body }}
+                </p>
+                <div v-if="answer.update_url || answer.delete_url" class="flex shrink-0 flex-wrap gap-2">
+                  <Button v-if="answer.update_url" type="button" size="sm" variant="outline" @click="startEditAnswer(answer)">{{ t('commerce.product.edit') }}</Button>
+                  <Button v-if="answer.delete_url" type="button" size="sm" variant="destructive" @click="deleteAnswer(answer.delete_url)">{{ t('common.delete') }}</Button>
+                </div>
+              </div>
+              <p class="mt-1 text-xs text-muted-foreground">
+                {{ answer.created_at }}
+                <span v-if="answer.edited_at"> · {{ t('commerce.product.editedAt', { time: answer.edited_at }) }}</span>
+              </p>
+            </template>
+            <div v-if="answer.helpful_url && editingAnswerId !== answer.id" class="mt-1">
               <Button
                 type="button"
                 size="sm"
@@ -784,7 +904,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </div>
         <form v-if="loggedIn" class="mt-3 space-y-2" @submit.prevent="submitAnswer(q.id, q.answerUrl)">
           <label :for="`answer-${q.id}`" class="sr-only">{{ t('commerce.product.answerPlaceholder') }}</label>
-          <Textarea :id="`answer-${q.id}`" v-model="answerForms[q.id]" rows="2" :placeholder="t('commerce.product.answerPlaceholder')" />
+          <Textarea :id="`answer-${q.id}`" v-model="answerForms[q.id]" rows="2" maxlength="2000" :placeholder="t('commerce.product.answerPlaceholder')" />
           <Button type="submit" size="sm" variant="outline">{{ t('commerce.product.answer') }}</Button>
         </form>
       </article>
@@ -792,7 +912,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <p v-else class="mb-4 text-sm text-muted-foreground">{{ t('commerce.product.noQa') }}</p>
     <form v-if="loggedIn" class="max-w-2xl space-y-3 rounded-xl bg-muted/20 p-4 sm:p-5" :aria-busy="questionForm.processing" @submit.prevent="submitQuestion">
       <Label for="product-question">{{ t('commerce.product.ask') }}</Label>
-      <Textarea id="product-question" v-model="questionForm.question.body" rows="3" :placeholder="t('commerce.product.askPlaceholder')" />
+      <Textarea id="product-question" v-model="questionForm.question.body" rows="3" maxlength="2000" :placeholder="t('commerce.product.askPlaceholder')" />
       <Button type="submit" size="sm" :disabled="questionForm.processing">{{ t('commerce.product.submitQuestion') }}</Button>
     </form>
     <Pagination
@@ -888,6 +1008,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
         <span class="text-xs text-muted-foreground">{{ userReview.created_at }}</span>
       </div>
       <p v-if="userReview.body" class="break-words text-sm leading-relaxed">{{ userReview.body }}</p>
+      <p v-if="userReview.forum_post_url" class="mt-3 rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+        {{ t('commerce.product.forumSnapshotNotice') }}
+      </p>
       <div v-if="userReview.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
         <img v-for="(url, i) in userReview.photo_urls" :key="i" :src="url" :alt="t('commerce.product.reviewPhoto', { n: i + 1 })" class="h-20 w-20 rounded object-cover" />
       </div>
@@ -949,6 +1072,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
   <section v-if="loggedIn && (canReview || (canEditReview && editingReview))" class="mt-10 max-w-2xl">
     <h2 class="mb-4 text-lg font-semibold tracking-tight">{{ canEditReview ? t('commerce.product.editReview') : t('commerce.product.writeReview') }}</h2>
     <form class="space-y-4 rounded-xl bg-muted/20 p-4 sm:p-5" :aria-busy="reviewForm.processing" @submit.prevent="submitReview">
+      <p v-if="editingReview && userReview?.forum_post_url" class="rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+        {{ t('commerce.product.forumSnapshotNotice') }}
+      </p>
       <div class="space-y-2">
         <Label for="review-rating">{{ t('commerce.product.rating') }}</Label>
         <Select
@@ -961,20 +1087,25 @@ function submitAnswer(questionId: number, answerUrl: string) {
       </div>
       <div class="space-y-2">
         <Label for="review-body">{{ t('commerce.product.reviewBody') }}</Label>
-        <Textarea id="review-body" v-model="reviewForm.review.body" rows="4" :placeholder="t('commerce.product.reviewBodyPlaceholder')" />
+        <Textarea id="review-body" v-model="reviewForm.review.body" rows="4" maxlength="5000" :placeholder="t('commerce.product.reviewBodyPlaceholder')" />
       </div>
       <div v-if="existingReviewPhotos.length" class="space-y-2">
         <Label>{{ t('commerce.product.currentPhotos') }}</Label>
         <div class="flex flex-wrap gap-2">
-          <a v-for="(url, i) in existingReviewPhotos" :key="i" :href="url" target="_blank" rel="noopener" class="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <img :src="url" :alt="t('commerce.product.reviewPhoto', { n: i + 1 })" class="h-20 w-20 rounded object-cover ring-1 ring-border" />
-          </a>
+          <div v-for="(photo, i) in existingReviewPhotos" :key="photo.id" class="space-y-1">
+            <a :href="photo.url" target="_blank" rel="noopener" class="block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <img :src="photo.url" :alt="t('commerce.product.reviewPhoto', { n: i + 1 })" class="h-20 w-20 rounded object-cover ring-1 ring-border" />
+            </a>
+            <Button type="button" size="sm" variant="outline" class="w-full" @click="removeExistingReviewPhoto(photo.id)">
+              {{ t('commerce.product.removePhoto') }}
+            </Button>
+          </div>
         </div>
       </div>
       <div class="space-y-2">
         <p class="text-sm font-medium">{{ t('commerce.product.reviewPhotos') }}</p>
         <FileInput
-          accept="image/*"
+          accept="image/jpeg,image/png,image/gif,image/webp"
           multiple
           :button-label="t('commerce.product.selectPhotos')"
           @change="onReviewPhotosChange"
@@ -983,7 +1114,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
           {{ t('commerce.product.photosSelected', { n: reviewForm.review.photos.length }) }}
         </p>
       </div>
-      <Button type="submit" class="w-full sm:w-auto" :disabled="reviewForm.processing">{{ t('commerce.product.submitReview') }}</Button>
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <Button type="submit" class="w-full sm:w-auto" :disabled="reviewForm.processing">
+          {{ editingReview ? t('commerce.product.saveReview') : t('commerce.product.submitReview') }}
+        </Button>
+        <Button v-if="editingReview" type="button" class="w-full sm:w-auto" variant="outline" :disabled="reviewForm.processing" @click="cancelEditReview">
+          {{ t('common.cancel') }}
+        </Button>
+      </div>
     </form>
   </section>
 

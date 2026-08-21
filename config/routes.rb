@@ -355,6 +355,8 @@ Rails.application.routes.draw do
         member do
           patch :hide
           patch :unhide
+          patch "answers/:answer_id/hide", action: :hide_answer, as: :hide_answer
+          patch "answers/:answer_id/unhide", action: :unhide_answer, as: :unhide_answer
         end
       end
       post :uploads, to: "uploads#create"
@@ -774,16 +776,20 @@ Rails.application.routes.draw do
         post :stock_alert, to: "stock_alerts#create"
         post :availability_alert, to: "availability_alerts#create"
         get :preview
-        resources :reviews, only: %i[create destroy], controller: "reviews" do
-          member do
-            post :helpful, action: :toggle_helpful
-            post :share_to_forum
-          end
-        end
-        resources :questions, only: %i[create], controller: "product_questions"
-        post "questions/:question_id/answer", to: "product_questions#answer", as: :answer_question
-        post "questions/:question_id/answers/:answer_id/helpful", to: "product_questions#toggle_answer_helpful", as: :helpful_answer
       end
+      resources :reviews, only: %i[create update destroy], controller: "reviews" do
+        member do
+          post :helpful, action: :toggle_helpful
+          post :share_to_forum
+        end
+      end
+      resources :questions, only: %i[create], controller: "product_questions"
+      patch "questions/:question_id", to: "product_questions#update", as: :update_question
+      delete "questions/:question_id", to: "product_questions#destroy", as: :delete_question
+      post "questions/:question_id/answer", to: "product_questions#answer", as: :answer_question
+      patch "questions/:question_id/answers/:answer_id", to: "product_questions#update_answer", as: :update_answer
+      delete "questions/:question_id/answers/:answer_id", to: "product_questions#destroy_answer", as: :delete_answer
+      post "questions/:question_id/answers/:answer_id/helpful", to: "product_questions#toggle_answer_helpful", as: :helpful_answer
     end
     get "compare", to: "compare#show"
     post "compare/toggle", to: "compare#toggle", as: :toggle_compare
@@ -812,13 +818,14 @@ Rails.application.routes.draw do
       post :move_to_wishlist, on: :member
       delete :clear, on: :member
     end
-    resources :orders, only: %i[index show create] do
+    resources :orders, only: %i[index show] do
       collection do
         get :export
       end
       member do
         post :cancel
         post :refund
+        delete "refunds/:refund_id", to: "refunds#destroy", as: :withdraw_refund
         get :receipt
         get :receipt_pdf
         get :packing_slip

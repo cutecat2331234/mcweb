@@ -26,6 +26,7 @@ import DeveloperModeTools from '@/components/admin/DeveloperModeTools.vue'
 import PluginUiSlots from '@/components/plugins/PluginUiSlots.vue'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import { adminRoutes } from '@/lib/adminRoutes'
+import { useArcoLocale } from '@/lib/arcoLocale'
 import { useTheme } from '@/lib/useTheme'
 
 interface NavItem {
@@ -46,6 +47,7 @@ interface NavGroup {
 
 const page = usePage()
 const { t } = useI18n()
+const arcoLocale = useArcoLocale()
 const auth = computed(
   () => (page.props.auth ?? { user: null }) as {
     user: {
@@ -673,6 +675,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
 </script>
 
 <template>
+  <a-config-provider :locale="arcoLocale" global>
   <a href="#admin-content" class="arco-admin-skip-link">
     {{ t('common.skipToContent', 'Skip to content') }}
   </a>
@@ -855,6 +858,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   </a-drawer>
 
   <DeveloperModeTools />
+  </a-config-provider>
 </template>
 
 <style scoped>

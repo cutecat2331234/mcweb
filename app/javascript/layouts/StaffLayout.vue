@@ -33,12 +33,14 @@ import {
   IconUser,
 } from '@arco-design/web-vue/es/icon'
 import { routes } from '@/lib/routes'
+import { useArcoLocale } from '@/lib/arcoLocale'
 import { useTheme } from '@/lib/useTheme'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
 
 const page = usePage()
 const { t } = useI18n()
+const arcoLocale = useArcoLocale()
 const { isDark, toggleTheme } = useTheme()
 const mobileNavOpen = ref(false)
 const signOutVisible = ref(false)
@@ -112,7 +114,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
 </script>
 
 <template>
-  <ConfigProvider>
+  <ConfigProvider :locale="arcoLocale" global>
     <Layout
       class="mc-shell-layout"
       :style="{ minHeight: '100dvh', background: 'var(--color-bg-1)' }"

@@ -1,10 +1,16 @@
 <script setup lang="ts">
+import { ConfigProvider } from '@mcweb/ui'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import PromptDialog from '@/components/ui/PromptDialog.vue'
+import { useArcoLocale } from '@/lib/arcoLocale'
+
+const arcoLocale = useArcoLocale()
 </script>
 
 <template>
-  <ConfirmDialog />
-  <PromptDialog />
-  <slot />
+  <ConfigProvider :locale="arcoLocale" global>
+    <ConfirmDialog />
+    <PromptDialog />
+    <slot />
+  </ConfigProvider>
 </template>

@@ -8,6 +8,13 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
     sign_in_as(@user)
   end
 
+  test "security page is private and never cacheable" do
+    get identity_security_path
+
+    assert_response :success
+    assert_equal "private, no-store", response.headers["Cache-Control"]
+  end
+
   test "totp confirmation presents recovery codes once" do
     @user.setup_totp!
     code = ROTP::TOTP.new(@user.totp_secret).now

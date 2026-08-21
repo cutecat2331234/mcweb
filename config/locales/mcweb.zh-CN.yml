@@ -391,6 +391,7 @@
       data_export_revoked: 导出已撤销，下载文件已移除。
       data_export_unavailable: 此导出当前无法下载。
       password_incorrect: 密码不正确。
+      password_changed: 密码已修改，其他已登录设备均已退出。
       sign_in_required_short: 请先登录。
       operation_failed: 操作失败。
       late_payment_acknowledged: 晚到支付复核已记录。
@@ -836,6 +837,10 @@
         two_factor_code_required: 请输入两步验证码。
         invalid_two_factor_code: 两步验证码无效。
         password_incorrect: 密码不正确。
+        current_password_required: 请输入当前密码。
+        new_password_required: 请输入新密码。
+        password_unchanged: 新密码不能与当前密码相同。
+        current_session_required: 无法验证当前登录会话，请重新登录后再修改密码。
         two_factor_not_enabled: 尚未启用两步验证。
         email_required: 请输入新邮箱。
         email_unchanged: 新邮箱与当前邮箱相同。
@@ -2023,6 +2028,7 @@
         identity_register: "用户已注册"
         identity_verify_email: "邮箱地址已验证"
         identity_email_changed: "邮箱地址已更改"
+        identity_password_changed: "密码已修改"
         identity_password_reset_requested: "已申请重置密码"
         identity_password_reset_completed: "密码重置已完成"
         identity_user_profile_updated: "用户资料已更新"
@@ -3597,6 +3603,7 @@
         subjects:
           verification: "请验证您的 McWeb 邮箱"
           password_reset: "McWeb 密码重置"
+          password_changed: "您的 McWeb 密码已修改"
           totp_recovery: "McWeb 两步验证恢复"
         verification:
           intro: "请点击以下链接验证您的邮箱地址："
@@ -3604,6 +3611,16 @@
         password_reset:
           intro: "我们收到了您的密码重置请求。请点击以下链接设置新密码："
           ignore: "如果您没有请求重置密码，请忽略此邮件。"
+        password_changed:
+          intro: "您的 McWeb 登录密码已修改。"
+          changed_at: "修改时间：%{at}"
+          revoked_sessions:
+            zero: "没有其他登录会话需要撤销。"
+            one: "已撤销 1 个其他登录会话。"
+            other: "已撤销 %{count} 个其他登录会话。"
+          review_security: "检查账户安全"
+          not_you: "如果并非您本人操作，请立即重置密码并检查账户安全设置。"
+          reset_password: "重置密码"
       commerce:
         subjects:
           order_created: "订单确认 %{number}"

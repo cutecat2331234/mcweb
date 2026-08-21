@@ -445,6 +445,9 @@ function dismissRecoveryCodes() {
 
     <div class="flex gap-3">
       <Button as-child variant="outline">
+        <Link :href="routes.securityPassword">{{ t('identity.security.changePassword') }}</Link>
+      </Button>
+      <Button as-child variant="outline">
         <Link :href="routes.identityDataExports">{{ t('identity.dataExports.title') }}</Link>
       </Button>
       <Button as-child variant="outline">

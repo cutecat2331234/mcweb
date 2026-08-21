@@ -3,7 +3,7 @@
 require "test_helper"
 
 class UserFacingMailerI18nTest < ActionMailer::TestCase
-  IDENTITY_SUBJECTS = %w[verification password_reset totp_recovery].freeze
+  IDENTITY_SUBJECTS = %w[verification password_reset password_changed totp_recovery].freeze
   FORUM_SUBJECTS = %w[
     topic_reply private_message mention here section_topic tag_topic
     followed_topic followed_reply digest saved_search_digest post_edited
@@ -33,6 +33,19 @@ class UserFacingMailerI18nTest < ActionMailer::TestCase
     assert_includes decoded_body(english), "Please verify your email address"
     assert_equal "请验证您的 McWeb 邮箱", chinese.subject
     assert_includes decoded_body(chinese), "请点击以下链接验证您的邮箱地址"
+  end
+
+  test "password-change security notice is localized and includes revocation guidance" do
+    changed_at = Time.zone.parse("2026-08-21 12:30:00")
+    english = Identity::Mailer.password_changed_email(@english_user.id, changed_at.iso8601, 2)
+    chinese = Identity::Mailer.password_changed_email(@chinese_user.id, changed_at.iso8601, 1)
+
+    assert_equal "Your McWeb password was changed", english.subject
+    assert_includes decoded_body(english), "2 other signed-in sessions were revoked"
+    assert_includes decoded_body(english), "Reset password"
+    assert_equal "您的 McWeb 密码已修改", chinese.subject
+    assert_includes decoded_body(chinese), "已撤销 1 个其他登录会话"
+    assert_includes decoded_body(chinese), "重置密码"
   end
 
   test "forum mail renders subject and body in each recipient locale" do

@@ -1,6 +1,8 @@
 require "set"
 
 class User < ApplicationRecord
+  DISPLAY_NAME_MAX_LENGTH = 64
+
   include HasPublicId
   include HasAvatar
 
@@ -67,6 +69,10 @@ class User < ApplicationRecord
                     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :username, presence: true, uniqueness: { case_sensitive: false },
                        format: { with: /\A[a-zA-Z0-9_]+\z/ }, length: { minimum: 3, maximum: 32 }
+  validates :display_name,
+            length: { maximum: DISPLAY_NAME_MAX_LENGTH },
+            format: { without: /[\p{Cc}]/ },
+            allow_blank: true
   validates :locale,
             presence: true,
             inclusion: { in: ->(_) { Mcweb::LocaleResolver.available_locales } }

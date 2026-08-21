@@ -4,6 +4,7 @@ module Identity
   class SecurityController < ApplicationController
     before_action :require_login
     skip_before_action :require_totp_setup, raise: false
+    after_action :set_private_no_store
 
     def show
       render inertia: "Identity/Security/Show", props: {
@@ -140,6 +141,10 @@ module Identity
     end
 
     private
+
+    def set_private_no_store
+      response.set_header("Cache-Control", "private, no-store")
+    end
 
     def pending_totp_props
       secret = session[:pending_totp_secret].presence

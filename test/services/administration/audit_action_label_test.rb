@@ -9,11 +9,13 @@ module Administration
         en: {
           "system.developer_mode_configuration_changed" => "Developer Mode configuration changed",
           "identity.sign_in" => "User signed in",
+          "identity.password_changed" => "Password changed",
           "community.post_created" => "Forum post created"
         },
         "zh-CN": {
           "system.developer_mode_configuration_changed" => "已更新开发模式配置",
           "identity.sign_in" => "用户已登录",
+          "identity.password_changed" => "密码已修改",
           "community.post_created" => "已发布论坛帖子"
         }
       }

@@ -519,7 +519,10 @@ Rails.application.routes.draw do
       resource :email_verification, only: %i[show], path: "verify-email"
       get "resend-verification", to: "email_verification_resends#new", as: :email_verification_resend_landing
       resource :email_verification_resend, only: %i[new create], path: "resend-verification"
+      resource :profile, only: %i[show update]
       get "security", to: "security#show"
+      get "security/password", to: "passwords#edit", as: :security_password
+      patch "security/password", to: "passwords#update"
       post "security/totp/setup", to: "security#setup_totp"
       post "security/totp/confirm", to: "security#confirm_totp"
       post "security/totp/disable", to: "security#disable_totp"

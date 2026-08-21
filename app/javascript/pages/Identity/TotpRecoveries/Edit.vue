@@ -44,11 +44,12 @@ function submit() {
 
 <template>
   <PageHeader
+    density="compact"
     :title="t('identity.totpRecovery.completeTitle')"
     :subtitle="t('identity.totpRecovery.completeSubtitle')"
   />
 
-  <div class="max-w-md space-y-4">
+  <div class="w-full space-y-5">
     <Alert
       v-if="formError"
       variant="destructive"
@@ -68,11 +69,12 @@ function submit() {
           v-model="form.totp_recovery.password"
           type="password"
           autocomplete="current-password"
+          density="comfortable"
           required
         />
       </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <Button type="submit" :disabled="form.processing">
+      <div class="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+        <Button class="w-full sm:w-auto" size="comfortable" type="submit" :disabled="form.processing">
           {{ t('identity.totpRecovery.reset') }}
         </Button>
         <Link :href="routes.signIn" class="text-sm text-muted-foreground hover:text-foreground">

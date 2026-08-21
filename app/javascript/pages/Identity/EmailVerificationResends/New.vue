@@ -29,19 +29,19 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="t('identity.resendVerification.title')" :subtitle="t('identity.resendVerification.subtitle')" />
+  <PageHeader density="compact" :title="t('identity.resendVerification.title')" :subtitle="t('identity.resendVerification.subtitle')" />
 
   <Alert class="mb-4 max-w-md">
     {{ t('identity.resendVerification.hint') }}
   </Alert>
 
-  <form class="max-w-md space-y-4" @submit.prevent="submit">
+  <form class="w-full space-y-5" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="email">{{ t('auth.register.email') }}</Label>
-      <Input id="email" v-model="form.resend.email" type="email" required autocomplete="email" />
+      <Input id="email" v-model="form.resend.email" density="comfortable" type="email" required autocomplete="email" />
     </div>
-    <div class="flex flex-wrap items-center gap-3">
-      <Button type="submit" :disabled="form.processing">{{ t('identity.resendVerification.submit') }}</Button>
+    <div class="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+      <Button class="w-full sm:w-auto" size="comfortable" type="submit" :disabled="form.processing">{{ t('identity.resendVerification.submit') }}</Button>
       <Link :href="routes.signIn" class="text-sm text-muted-foreground hover:text-foreground">
         {{ t('auth.register.hasAccount') }}
       </Link>

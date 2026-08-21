@@ -83,30 +83,30 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="t('auth.register.title')" :subtitle="t('auth.register.subtitle')" />
+  <PageHeader density="compact" :title="t('auth.register.title')" :subtitle="t('auth.register.subtitle')" />
 
   <Alert v-if="formError" variant="destructive" :title="t('auth.register.failed')" class="mb-4 max-w-md">
     {{ formError }}
   </Alert>
 
-  <form class="max-w-md space-y-4" @submit.prevent="submit">
+  <form class="w-full space-y-5" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="email">{{ t('auth.register.email') }}</Label>
-      <Input id="email" v-model="form.registration.email" type="email" required autofocus autocomplete="email" />
+      <Input id="email" v-model="form.registration.email" density="comfortable" type="email" required autofocus autocomplete="email" />
       <p v-if="fieldError('email')" class="text-sm text-destructive">{{ fieldError('email') }}</p>
     </div>
     <div class="space-y-2">
       <Label for="username">{{ t('auth.register.username') }}</Label>
-      <Input id="username" v-model="form.registration.username" required autocomplete="username" />
+      <Input id="username" v-model="form.registration.username" density="comfortable" required autocomplete="username" />
       <p v-if="fieldError('username')" class="text-sm text-destructive">{{ fieldError('username') }}</p>
     </div>
     <div class="space-y-2">
       <Label for="display_name">{{ t('auth.register.displayName') }}</Label>
-      <Input id="display_name" v-model="form.registration.display_name" autocomplete="name" />
+      <Input id="display_name" v-model="form.registration.display_name" density="comfortable" autocomplete="name" />
     </div>
     <div class="space-y-2">
       <Label for="password">{{ t('auth.register.password') }}</Label>
-      <Input id="password" v-model="form.registration.password" type="password" required autocomplete="new-password" />
+      <Input id="password" v-model="form.registration.password" density="comfortable" type="password" required autocomplete="new-password" />
       <p v-if="fieldError('password')" class="text-sm text-destructive">{{ fieldError('password') }}</p>
     </div>
     <UserCustomFieldsForm
@@ -124,8 +124,8 @@ function submit() {
         </option>
       </Select>
     </div>
-    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-      <Button type="submit" :disabled="form.processing">{{ t('common.register') }}</Button>
+    <div class="flex flex-col items-stretch gap-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
+      <Button class="w-full sm:w-auto" size="comfortable" type="submit" :disabled="form.processing">{{ t('common.register') }}</Button>
       <Link :href="routes.signIn" class="text-sm text-muted-foreground hover:text-foreground">{{ t('auth.register.hasAccount') }}</Link>
     </div>
   </form>

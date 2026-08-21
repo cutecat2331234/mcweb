@@ -11,7 +11,7 @@ defineProps<{
 <template>
   <label
     :for="$props.for"
-    :class="cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', $props.class)"
+    :class="cn('block text-sm font-medium leading-5 peer-disabled:cursor-not-allowed peer-disabled:opacity-70', $props.class)"
   >
     <slot />
   </label>

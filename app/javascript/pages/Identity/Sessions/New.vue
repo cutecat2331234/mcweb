@@ -57,7 +57,7 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="t('auth.signIn.title')" :subtitle="t('auth.signIn.subtitle')" />
+  <PageHeader density="compact" :title="t('auth.signIn.title')" :subtitle="t('auth.signIn.subtitle')" />
 
   <div v-if="loginError" ref="errorSummary" class="mb-4 max-w-md" tabindex="-1">
     <Alert variant="destructive" :title="t('auth.signIn.failed')">
@@ -66,7 +66,7 @@ function submit() {
   </div>
 
   <form
-    class="max-w-md space-y-4"
+    class="w-full space-y-5"
     method="post"
     :action="routes.identitySession"
     @submit.prevent="submit"
@@ -80,12 +80,13 @@ function submit() {
         name="session[email]"
         type="email"
         autocomplete="email"
+        density="comfortable"
         required
         autofocus
         :aria-invalid="!!form.errors['session.email']"
         :aria-describedby="form.errors['session.email'] ? 'sign-in-email-error' : undefined"
       />
-      <p v-if="form.errors['session.email']" id="sign-in-email-error" class="text-sm text-destructive">{{ form.errors['session.email'] }}</p>
+      <p v-if="form.errors['session.email']" id="sign-in-email-error" class="text-sm leading-5 text-destructive" role="alert">{{ form.errors['session.email'] }}</p>
     </div>
 
     <div class="space-y-2">
@@ -96,21 +97,22 @@ function submit() {
         name="session[password]"
         type="password"
         autocomplete="current-password"
+        density="comfortable"
         required
         :aria-invalid="!!form.errors['session.password']"
         :aria-describedby="form.errors['session.password'] ? 'sign-in-password-error' : undefined"
       />
-      <p v-if="form.errors['session.password']" id="sign-in-password-error" class="text-sm text-destructive">{{ form.errors['session.password'] }}</p>
+      <p v-if="form.errors['session.password']" id="sign-in-password-error" class="text-sm leading-5 text-destructive" role="alert">{{ form.errors['session.password'] }}</p>
     </div>
 
-    <label class="flex cursor-pointer items-center gap-2 text-sm">
+    <label class="flex min-h-11 cursor-pointer items-center gap-2 text-sm leading-5">
       <Checkbox v-model="form.session.remember_me" />
       {{ t('auth.signIn.rememberMe') }}
     </label>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-      <Button type="submit" :disabled="form.processing">{{ t('common.signIn') }}</Button>
-      <div class="flex flex-col items-end gap-1 text-sm">
+    <div class="flex flex-col items-stretch gap-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
+      <Button class="w-full sm:w-auto" size="comfortable" type="submit" :disabled="form.processing">{{ t('common.signIn') }}</Button>
+      <div class="flex flex-col items-start gap-2 text-sm leading-5 sm:items-end">
         <Link :href="routes.register" class="text-muted-foreground hover:text-foreground">
           {{ t('auth.signIn.createAccount') }}
         </Link>

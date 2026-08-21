@@ -43,19 +43,19 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="t('auth.passwordReset.title')" :subtitle="t('auth.passwordReset.subtitle')" />
+  <PageHeader density="compact" :title="t('auth.passwordReset.title')" :subtitle="t('auth.passwordReset.subtitle')" />
 
   <Alert v-if="formError" variant="destructive" :title="t('auth.passwordReset.sendFailed')" class="mb-4 max-w-md">
     {{ formError }}
   </Alert>
 
-  <form class="max-w-md space-y-4" @submit.prevent="submit">
+  <form class="w-full space-y-5" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="email">{{ t('auth.passwordReset.email') }}</Label>
-      <Input id="email" v-model="form.password_reset.email" type="email" required autofocus />
+      <Input id="email" v-model="form.password_reset.email" density="comfortable" type="email" required autofocus />
     </div>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <Button type="submit" :disabled="form.processing">{{ t('auth.passwordReset.submit') }}</Button>
+    <div class="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <Button class="w-full sm:w-auto" size="comfortable" type="submit" :disabled="form.processing">{{ t('auth.passwordReset.submit') }}</Button>
       <Link :href="routes.signIn" class="text-sm text-muted-foreground hover:text-foreground">{{ t('auth.passwordReset.backToSignIn') }}</Link>
     </div>
   </form>

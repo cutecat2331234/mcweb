@@ -77,9 +77,14 @@ const developerMode = computed(
       <span v-if="developerMode.runtime_profile"> · {{ developerMode.runtime_profile }}</span>
     </div>
 
-    <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <FlashMessages />
-      <slot />
+    <main class="mx-auto flex w-full max-w-6xl justify-center px-4 py-8 sm:px-6 sm:py-12">
+      <section
+        class="w-full max-w-lg rounded-2xl border border-border/80 bg-card p-5 text-card-foreground shadow-sm sm:p-8"
+        data-testid="auth-surface"
+      >
+        <FlashMessages />
+        <slot />
+      </section>
     </main>
   </div>
 </template>

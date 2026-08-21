@@ -45,23 +45,23 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="t('auth.passwordReset.editTitle')" :subtitle="t('auth.passwordReset.editSubtitle')" />
+  <PageHeader density="compact" :title="t('auth.passwordReset.editTitle')" :subtitle="t('auth.passwordReset.editSubtitle')" />
 
   <Alert v-if="formError" variant="destructive" :title="t('auth.passwordReset.updateFailed')" class="mb-4 max-w-md">
     {{ formError }}
   </Alert>
 
-  <form class="max-w-md space-y-4" @submit.prevent="submit">
+  <form class="w-full space-y-5" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="password">{{ t('auth.passwordReset.newPassword') }}</Label>
-      <Input id="password" v-model="form.password_reset.password" type="password" required autocomplete="new-password" />
+      <Input id="password" v-model="form.password_reset.password" density="comfortable" type="password" required autocomplete="new-password" />
     </div>
     <div class="space-y-2">
       <Label for="password_confirmation">{{ t('auth.passwordReset.confirmPassword') }}</Label>
-      <Input id="password_confirmation" v-model="form.password_reset.password_confirmation" type="password" required autocomplete="new-password" />
+      <Input id="password_confirmation" v-model="form.password_reset.password_confirmation" density="comfortable" type="password" required autocomplete="new-password" />
     </div>
-    <div class="flex flex-wrap items-center gap-3">
-      <Button type="submit" :disabled="form.processing">{{ t('auth.passwordReset.updatePassword') }}</Button>
+    <div class="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+      <Button class="w-full sm:w-auto" size="comfortable" type="submit" :disabled="form.processing">{{ t('auth.passwordReset.updatePassword') }}</Button>
       <Link :href="routes.signIn" class="text-sm text-muted-foreground hover:text-foreground">{{ t('auth.passwordReset.backToSignIn') }}</Link>
     </div>
   </form>

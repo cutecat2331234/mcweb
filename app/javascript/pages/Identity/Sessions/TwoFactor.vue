@@ -44,7 +44,7 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="t('auth.twoFactor.title')" :subtitle="t('auth.twoFactor.subtitle')" />
+  <PageHeader density="compact" :title="t('auth.twoFactor.title')" :subtitle="t('auth.twoFactor.subtitle')" />
 
   <Alert
     v-if="verificationError"
@@ -56,7 +56,7 @@ function submit() {
   </Alert>
 
   <form
-    class="max-w-md space-y-4"
+    class="w-full space-y-5"
     method="post"
     :action="routes.identitySessionTwoFactor"
     @submit.prevent="submit"
@@ -72,16 +72,17 @@ function submit() {
         autocomplete="one-time-code"
         autocapitalize="characters"
         spellcheck="false"
+        density="comfortable"
         required
         autofocus
       />
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-      <Button type="submit" :disabled="form.processing">
+    <div class="flex flex-col items-stretch gap-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
+      <Button class="w-full sm:w-auto" size="comfortable" type="submit" :disabled="form.processing">
         {{ t('auth.twoFactor.verify') }}
       </Button>
-      <div class="flex flex-col items-end gap-1 text-sm">
+      <div class="flex flex-col items-start gap-2 text-sm leading-5 sm:items-end">
         <Link :href="routes.signIn" class="text-muted-foreground hover:text-foreground">
           {{ t('auth.twoFactor.backToSignIn') }}
         </Link>

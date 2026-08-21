@@ -58,6 +58,13 @@ test('admin PageHeader supporting copy keeps its accessible semantic text color'
   assert.doesNotMatch(responsiveSubtitle, /\bcolor\s*:/)
 })
 
+test('admin form help and word counts use readable supporting text', () => {
+  assert.match(
+    css,
+    /\.mcweb-admin \.arco-form-item-message,[\s\S]*?\.mcweb-admin \.arco-textarea-word-limit\s*\{[\s\S]*?color:\s*var\(--color-text-2\)/,
+  )
+})
+
 test('medium-width page headers retain a padded surface instead of collapsing into loose text', () => {
   assert.match(shell, /@media \(max-width: 1099px\)[\s\S]*?\.arco-admin-main :deep\(\.arco-page-header\)\s*\{[\s\S]*?padding:\s*var\(--mc-page-header-padding, 14px\) !important/)
   assert.doesNotMatch(shell, /padding:\s*8px 0/)

@@ -10,7 +10,27 @@ const formControlSelector = [
   'button.arco-switch',
 ].join(',')
 
+const spinbuttonAriaValueAttributes = [
+  'aria-valuemin',
+  'aria-valuemax',
+  'aria-valuenow',
+] as const
+
+export function repairArcoSpinbuttonAria(element: HTMLElement) {
+  element.querySelectorAll<HTMLElement>('[role="spinbutton"]').forEach((spinbutton) => {
+    spinbuttonAriaValueAttributes.forEach((attribute) => {
+      const value = spinbutton.getAttribute(attribute)
+      if (value === null) return
+      if (value.trim() !== '' && Number.isFinite(Number(value))) return
+
+      spinbutton.removeAttribute(attribute)
+    })
+  })
+}
+
 export function nameArcoFormControls(element: HTMLElement) {
+  repairArcoSpinbuttonAria(element)
+
   element.querySelectorAll<HTMLElement>('.arco-form-item').forEach((formItem) => {
     const label = formItem.querySelector<HTMLElement>('.arco-form-item-label')?.textContent?.trim()
     if (!label) return
@@ -35,7 +55,13 @@ function observeArcoFormControls(element: HTMLElement) {
   if (typeof MutationObserver === 'undefined' || formControlObservers.has(element)) return
 
   const observer = new MutationObserver(() => nameArcoFormControls(element))
-  observer.observe(element, { childList: true, subtree: true, characterData: true })
+  observer.observe(element, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: [...spinbuttonAriaValueAttributes],
+  })
   formControlObservers.set(element, observer)
 }
 

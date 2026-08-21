@@ -288,6 +288,12 @@ html.dark body.mcweb-admin {
   color: var(--color-text-2) !important;
 }
 
+/* Compact helper text must remain readable against both cards and controls. */
+.mcweb-admin .arco-form-item-message,
+.mcweb-admin .arco-textarea-word-limit {
+  color: var(--color-text-2);
+}
+
 .mcweb-admin .arco-alert {
   border-radius: 9px;
 }

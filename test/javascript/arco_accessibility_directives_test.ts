@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   nameArcoDialog,
   nameArcoFormControls,
+  repairArcoSpinbuttonAria,
 } from '../../app/javascript/directives/arcoAccessibility.ts'
 
 function attributeStore(initial: Record<string, string> = {}) {
@@ -12,6 +13,7 @@ function attributeStore(initial: Record<string, string> = {}) {
   return {
     getAttribute: (name: string) => values.get(name) ?? null,
     hasAttribute: (name: string) => values.has(name),
+    removeAttribute: (name: string) => values.delete(name),
     setAttribute: (name: string, value: string) => values.set(name, value),
     value: (name: string) => values.get(name),
   }
@@ -28,7 +30,7 @@ test('Arco form controls receive the visible FormItem label as an accessible nam
     closest: () => formItem,
   }
   const root = {
-    querySelectorAll: () => [formItem],
+    querySelectorAll: (selector: string) => selector === '.arco-form-item' ? [formItem] : [],
   }
 
   nameArcoFormControls(root as unknown as HTMLElement)
@@ -48,13 +50,30 @@ test('Arco form control naming preserves an explicit application-provided name',
     closest: () => formItem,
   }
   const root = {
-    querySelectorAll: () => [formItem],
+    querySelectorAll: (selector: string) => selector === '.arco-form-item' ? [formItem] : [],
   }
 
   nameArcoFormControls(root as unknown as HTMLElement)
 
   assert.equal(attributes.value('aria-label'), 'Search linked player')
   assert.equal(attributes.value('data-mcweb-form-control-name'), undefined)
+})
+
+test('Arco spinbuttons omit non-finite ARIA range bounds', () => {
+  const attributes = attributeStore({
+    'aria-valuemin': '0',
+    'aria-valuemax': 'Infinity',
+    'aria-valuenow': '3',
+  })
+  const root = {
+    querySelectorAll: () => [attributes],
+  }
+
+  repairArcoSpinbuttonAria(root as unknown as HTMLElement)
+
+  assert.equal(attributes.value('aria-valuemin'), '0')
+  assert.equal(attributes.value('aria-valuemax'), undefined)
+  assert.equal(attributes.value('aria-valuenow'), '3')
 })
 
 test('Arco modal content receives dialog semantics and a translated name', () => {

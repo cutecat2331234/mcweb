@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "digest"
 
 class Minecraft::PlayerRefTest < ActiveSupport::TestCase
   test "resolve creates profile and identity" do
@@ -191,6 +192,15 @@ class Minecraft::RefreshSkinTest < ActiveSupport::TestCase
   test "updates skin from mojang textures payload" do
     profile = Minecraft::PlayerProfile.create!
     uuid = "550e8400-e29b-41d4-a716-446655440055"
+    texture_url = "https://textures.minecraft.net/texture/abc123"
+    texture_payload = Rails.root.join("public/minecraft/default-skin.png").binread
+    texture_data = {
+      payload: texture_payload,
+      content_type: "image/png",
+      width: 64,
+      height: 64,
+      sha256: Digest::SHA256.hexdigest(texture_payload)
+    }
     Minecraft::PlayerIdentity.create!(
       player_profile: profile,
       platform: "java",
@@ -202,13 +212,16 @@ class Minecraft::RefreshSkinTest < ActiveSupport::TestCase
 
     service = Minecraft::RefreshSkin.new(uuid: uuid, platform: "java")
     service.define_singleton_method(:fetch_mojang_textures) do |_uuid|
-      { texture_url: "http://example.com/skin.png", skin_model: "slim" }
+      { texture_url: texture_url, skin_model: "slim" }
+    end
+    service.define_singleton_method(:download_texture) do |_url|
+      ServiceResult.success(texture_data)
     end
     result = service.call
     assert result.success?, result.error
 
     identity = Minecraft::PlayerIdentity.find_by!(external_uuid: uuid)
-    assert_equal "http://example.com/skin.png", identity.skin_texture_url
+    assert_equal texture_url, identity.skin_texture_url
     assert_equal "slim", identity.skin_model
   end
 end

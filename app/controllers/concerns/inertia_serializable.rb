@@ -755,6 +755,7 @@ module InertiaSerializable
     verified = Commerce::CreateReview.purchased?(user: review.user, product: review.product)
     {
       id: review.id,
+      lock_version: review.lock_version,
       author: review.user.username,
       rating: review.rating,
       body: review.body,
@@ -950,7 +951,7 @@ module InertiaSerializable
           amount_label: format_money(refund.amount_cents, order.currency),
           status: refund.status,
           status_label: refund_status_label(refund.status),
-          reason: refund.reason,
+          reason: Commerce::RefundReasonPresenter.label(refund),
           created_at: l(refund.created_at, format: :short),
           customer_requested: refund.requested_by_customer?,
           can_withdraw: can_withdraw,

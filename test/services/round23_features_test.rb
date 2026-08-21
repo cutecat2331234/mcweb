@@ -91,7 +91,13 @@ class Commerce::CreateReviewPhotosTest < ActiveSupport::TestCase
       filename: "test.jpg",
       content_type: "image/jpeg"
     )
-    result = Commerce::UpdateReview.call(user: @user, review: review, rating: 4, body: "Updated")
+    result = Commerce::UpdateReview.call(
+      user: @user,
+      review: review,
+      rating: 4,
+      body: "Updated",
+      expected_version: review.lock_version
+    )
     assert result.success?
     assert review.reload.photos.attached?
   end

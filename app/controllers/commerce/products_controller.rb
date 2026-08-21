@@ -365,6 +365,7 @@ module Commerce
 
       {
         id: question.id,
+        lock_version: question.lock_version,
         body: question.body,
         author: question.user.username,
         created_at: l(question.created_at, format: :short),
@@ -381,6 +382,7 @@ module Commerce
           helpful = can_helpful && helpful_answer_ids.key?(answer.id)
           {
             id: answer.id,
+            lock_version: answer.lock_version,
             body: answer.body,
             author: answer.user.username,
             official: answer.official,

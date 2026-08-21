@@ -355,7 +355,8 @@ module Admin
           order: @order,
           payment_record: payment,
           amount_cents: refund_amount_cents(payment),
-          reason: params[:reason].presence || t("mcweb.admin.store.orders.admin_refund_reason"),
+          reason: params[:reason].presence,
+          reason_kind: params[:reason].present? ? nil : "admin_refund",
           approved_by: current_user,
           existing_refund: find_existing_refund
         )
@@ -499,7 +500,7 @@ module Admin
           Commerce::RejectRefund.call(
             refund: refund,
             actor: current_user,
-            reason: t("mcweb.admin.store.orders.superseded_refund_reason")
+            reason_kind: "superseded_by_admin_refund"
           )
         end
       end

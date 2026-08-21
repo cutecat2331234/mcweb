@@ -25,8 +25,11 @@ test('commerce self-service actions use the established component library', () =
 })
 
 test('questions answers and pending refunds expose edit or withdrawal affordances', () => {
-  assert.match(productPage, /router\.patch\(url, \{ question: \{ body:/)
-  assert.match(productPage, /router\.patch\(url, \{ answer: \{ body:/)
+  assert.match(productPage, /question:\s*\{[\s\S]*?expected_version: editingQuestionVersion\.value/)
+  assert.match(productPage, /answer:\s*\{[\s\S]*?expected_version: editingAnswerVersion\.value/)
+  assert.match(productPage, /photo_selection_present = true/)
+  assert.match(productPage, /expected_version = props\.userReview\.lock_version/)
+  assert.match(productPage, /if \(responseHasAlert\(page\)\) return/)
   assert.match(productPage, /deleteQuestion\(q\.deleteUrl\)/)
   assert.match(productPage, /deleteAnswer\(answer\.delete_url\)/)
   assert.match(orderPage, /refund\.can_withdraw && refund\.withdraw_url/)

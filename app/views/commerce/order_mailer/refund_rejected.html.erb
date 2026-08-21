@@ -1,6 +1,7 @@
 <p><%= t("mcweb.mail.greeting_short") %></p>
 <p><%= t("mcweb.mail.commerce.refund_rejected.body", number: @order.order_number) %></p>
-<% if @refund.reason.present? %>
-  <p><%= t("mcweb.mail.commerce.reason_label", reason: @refund.reason) %></p>
+<% refund_reason = Commerce::RefundReasonPresenter.label(@refund) %>
+<% if refund_reason.present? %>
+  <p><%= t("mcweb.mail.commerce.reason_label", reason: refund_reason) %></p>
 <% end %>
 <p><%= t("mcweb.mail.commerce.contact_support") %></p>

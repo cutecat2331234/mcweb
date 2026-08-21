@@ -798,7 +798,7 @@ module Payments
       Commerce::Refund
         .joins(:payment_record)
         .where(payment_records: { provider: PROVIDER, provider_mode: @run.mode })
-        .where(status: %w[approved completed])
+        .where(status: %w[approved provider_unknown completed])
         .where(created_at: @run.window_start...@run.window_end)
         .where("store_refunds.created_at <= ?", now - LOCAL_SETTLEMENT_GRACE)
         .order(:id)
@@ -817,7 +817,7 @@ module Payments
       Commerce::Refund
         .joins(:payment_record)
         .where(payment_records: { provider: PROVIDER, provider_mode: nil })
-        .where(status: %w[approved completed])
+        .where(status: %w[approved provider_unknown completed])
         .where(created_at: @run.window_start...@run.window_end)
         .where("store_refunds.created_at <= ?", now - LOCAL_SETTLEMENT_GRACE)
         .order(:id)
@@ -1072,7 +1072,7 @@ module Payments
 
     def actionable_local_refund?(refund)
       refund.created_at <= now - LOCAL_SETTLEMENT_GRACE &&
-        (refund.approved? || refund.completed?)
+        (refund.approved? || refund.provider_unknown? || refund.completed?)
     end
 
     def reference_digest(reference)

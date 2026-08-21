@@ -4,11 +4,19 @@ module Commerce
   class ProcessRefund < ApplicationService
     class RestorationFailure < StandardError; end
 
+    DEFINITIVE_PROVIDER_FAILURE_CODES = %w[
+      environment_mismatch
+      provider_configuration_missing
+      provider_payment_missing
+    ].freeze
+    DEFINITIVE_PROVIDER_FAILURE_STATUSES = %w[failed canceled cancelled].freeze
+
     def initialize(
       order:,
       payment_record:,
       amount_cents:,
       reason: nil,
+      reason_kind: nil,
       requested_by: nil,
       approved_by: nil,
       existing_refund: nil
@@ -17,6 +25,7 @@ module Commerce
       @payment_record = payment_record
       @amount_cents = amount_cents.to_i
       @reason = reason
+      @reason_kind = reason_kind.to_s.presence
       @requested_by = requested_by
       @approved_by = approved_by
       @existing_refund = existing_refund
@@ -30,9 +39,14 @@ module Commerce
       return ServiceResult.success(refund) if preparation[:idempotent]
 
       if preparation[:provider_required]
-        provider = Payments::Provider.for(@payment_record.provider)
-        provider_result = stable_provider_result(provider.process_refund(refund))
-        persist_provider_result!(refund, provider_result)
+        provider_result = provider_result_for(refund)
+        provider_outcome = persist_provider_result!(refund, provider_result)
+        if provider_outcome == :unknown
+          return refund_failure(
+            :refund_provider_outcome_unknown,
+            value: { refund: refund.reload, provider_result: provider_result.value }
+          )
+        end
         return provider_result if provider_result.failure?
       end
 
@@ -51,9 +65,8 @@ module Commerce
       )
 
       ServiceResult.success(success_refund)
-    rescue Payments::Provider::UnknownProviderError => e
-      Rails.logger.warn("[ProcessRefund] provider unavailable (#{e.class})")
-      refund_failure(:refund_provider_unavailable)
+    rescue Commerce::FinancialLocking::BindingMismatch
+      refund_failure(:refund_binding_mismatch)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end
@@ -139,7 +152,8 @@ module Commerce
           payment_record: @payment_record,
           status: "approved",
           amount_cents: @amount_cents,
-          reason: @reason.presence || refund.reason,
+          reason: resolved_reason(refund),
+          reason_kind: resolved_reason_kind(refund),
           approved_by: @approved_by || refund.approved_by,
           provider_error_code: nil,
           restoration_status: "pending",
@@ -157,11 +171,10 @@ module Commerce
 
     def persist_provider_result!(refund, provider_result)
       details = provider_result.value.is_a?(Hash) ? provider_result.value.symbolize_keys : {}
+      persisted_outcome = nil
 
       Commerce::Refund.transaction do
-        lock_order_and_payment!
-        locked_refund = Commerce::Refund.lock.find(refund.id)
-        ensure_refund_binding!(locked_refund)
+        locked_refund = lock_order_payment_refund!(refund.id)
 
         attributes = {
           provider_refund_id: details[:provider_refund_id].presence || locked_refund.provider_refund_id,
@@ -172,7 +185,8 @@ module Commerce
           )
         }
 
-        if provider_result.success?
+        persisted_outcome = provider_outcome(provider_result, details)
+        if persisted_outcome == :confirmed
           attributes.merge!(
             status: "approved",
             provider_confirmed_at: locked_refund.provider_confirmed_at || Time.current,
@@ -182,17 +196,26 @@ module Commerce
             restoration_error: nil,
             processing_started_at: Time.current
           )
-        elsif provider_result.code == "provider_pending"
+        elsif persisted_outcome == :pending
           attributes.merge!(
             status: "approved",
             restoration_status: "pending",
             processing_started_at: Time.current
           )
-        else
+        elsif persisted_outcome == :failed
           attributes.merge!(
             status: "failed",
             restoration_status: "pending",
             processing_started_at: nil
+          )
+        else
+          attributes.merge!(
+            status: "provider_unknown",
+            restoration_status: "pending",
+            processing_started_at: locked_refund.processing_started_at || Time.current,
+            provider_metadata: attributes.fetch(:provider_metadata).merge(
+              "outcome_classification" => "unknown"
+            )
           )
         end
 
@@ -202,7 +225,7 @@ module Commerce
         Commerce::OrderEvent.create!(
           order: @order,
           actor: @approved_by,
-          event_type: provider_result.code == "provider_pending" ? "refund_provider_pending" : "refund_failed",
+          event_type: provider_event_type(persisted_outcome),
           metadata: {
             refund_id: locked_refund.id,
             provider_status: locked_refund.provider_status,
@@ -210,6 +233,8 @@ module Commerce
           }.compact
         )
       end
+
+      persisted_outcome
     end
 
     def complete_local_restoration!(refund)
@@ -218,9 +243,7 @@ module Commerce
       idempotent = false
 
       Commerce::Refund.transaction do
-        lock_order_and_payment!
-        locked_refund = Commerce::Refund.lock.find(refund.id)
-        ensure_refund_binding!(locked_refund)
+        locked_refund = lock_order_payment_refund!(refund.id)
 
         if locked_refund.completed?
           success_refund = locked_refund
@@ -372,9 +395,7 @@ module Commerce
 
     def record_restoration_failure!(refund, error)
       Commerce::Refund.transaction do
-        lock_order_and_payment!
-        locked_refund = Commerce::Refund.lock.find(refund.id)
-        ensure_refund_binding!(locked_refund)
+        locked_refund = lock_order_payment_refund!(refund.id)
         next if locked_refund.completed?
 
         locked_refund.update!(
@@ -445,8 +466,19 @@ module Commerce
     end
 
     def lock_order_and_payment!
-      @order = Commerce::Order.lock.find(@order.id)
-      @payment_record = Payments::Record.lock.find(@payment_record.id)
+      @order, @payment_record = Commerce::FinancialLocking.lock_order_payment!(
+        order_id: @order.id,
+        payment_record_id: @payment_record.id
+      )
+    end
+
+    def lock_order_payment_refund!(refund_id)
+      @order, @payment_record, refund = Commerce::FinancialLocking.lock_order_payment_refund!(
+        order_id: @order.id,
+        payment_record_id: @payment_record.id,
+        refund_id: refund_id
+      )
+      refund
     end
 
     def refundable_payment?
@@ -506,10 +538,91 @@ module Commerce
       return result if result.success? || result.code.present?
 
       ServiceResult.failure(
-        error: result.error.presence || :refund_provider_unavailable,
-        code: :refund_provider_unavailable,
-        value: result.value
+        error: result.error.presence || :refund_provider_outcome_unknown,
+        code: :refund_provider_outcome_unknown,
+        value: provider_failure_details(result)
       )
+    end
+
+    def provider_result_for(refund)
+      provider = Payments::Provider.for(@payment_record.provider)
+      stable_provider_result(provider.process_refund(refund))
+    rescue Payments::Provider::UnknownProviderError => error
+      Rails.logger.warn("[ProcessRefund] provider unavailable (#{error.class})")
+      ServiceResult.failure(
+        error: :refund_provider_unavailable,
+        code: :refund_provider_unavailable,
+        value: {
+          provider_status: "unavailable",
+          provider_error_code: "refund_provider_unavailable",
+          provider_metadata: { "provider_attempted" => false }
+        }
+      )
+    rescue StandardError => error
+      Rails.logger.error(
+        "[ProcessRefund] provider outcome unknown " \
+        "refund_id=#{refund.id} error=#{error.class}"
+      )
+      ServiceResult.failure(
+        error: :refund_provider_outcome_unknown,
+        code: :refund_provider_exception,
+        value: {
+          provider_status: "unknown",
+          provider_error_code: "refund_provider_exception",
+          provider_metadata: {
+            "provider_attempted" => true,
+            "exception_class" => error.class.name
+          }
+        }
+      )
+    end
+
+    def provider_failure_details(result)
+      details = result.value.is_a?(Hash) ? result.value.deep_symbolize_keys : {}
+      metadata = details.fetch(:provider_metadata, {}).to_h.stringify_keys
+      reported_error = result.error.to_s
+      if reported_error.match?(/\A[a-z0-9_.-]{1,120}\z/)
+        metadata["reported_error"] = reported_error
+      end
+      details.merge(provider_metadata: metadata)
+    end
+
+    def provider_outcome(provider_result, details)
+      return :confirmed if provider_result.success?
+      return :pending if provider_result.code.to_s == "provider_pending"
+      return :failed if definitive_provider_failure?(provider_result, details)
+
+      :unknown
+    end
+
+    def definitive_provider_failure?(provider_result, details)
+      status = details[:provider_status].to_s
+      return true if DEFINITIVE_PROVIDER_FAILURE_STATUSES.include?(status)
+      return true if DEFINITIVE_PROVIDER_FAILURE_CODES.include?(provider_result.code.to_s)
+
+      details.fetch(:provider_metadata, {}).to_h["provider_attempted"] == false
+    end
+
+    def provider_event_type(outcome)
+      case outcome
+      when :pending then "refund_provider_pending"
+      when :unknown then "refund_provider_unknown"
+      else "refund_failed"
+      end
+    end
+
+    def resolved_reason(refund)
+      return @reason if @reason.present?
+      return nil if @reason_kind.present?
+
+      refund.reason
+    end
+
+    def resolved_reason_kind(refund)
+      return @reason_kind if @reason_kind.present?
+      return nil if @reason.present?
+
+      refund.reason_kind
     end
 
     def format_refund_amount(cents)

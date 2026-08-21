@@ -18,16 +18,17 @@ module Commerce
       failure_error = nil
 
       Commerce::Order.transaction do
-        @order.lock!
-        @order.reload
+        @order = Commerce::Order.lock.find(@order.id)
 
         payment = succeeded_payment
         unless payment
           failure_error = :refund_payment_not_found
           raise ActiveRecord::Rollback
         end
-        payment.lock!
-        payment.reload
+        @order, payment = Commerce::FinancialLocking.lock_order_payment!(
+          order_id: @order.id,
+          payment_record_id: payment.id
+        )
 
         if Commerce::Refund.where(order: @order).in_flight.exists?
           failure_error = :refund_already_pending
@@ -55,7 +56,8 @@ module Commerce
           payment_record: payment,
           status: "pending",
           amount_cents: requested,
-          reason: @reason.presence || I18n.t("mcweb.labels.refund_reasons.customer_request"),
+          reason: @reason.presence,
+          reason_kind: @reason.present? ? nil : "customer_request",
           requested_by: @user,
           requested_by_customer: true
         )
@@ -92,6 +94,8 @@ module Commerce
       end
 
       ServiceResult.success(refund)
+    rescue Commerce::FinancialLocking::BindingMismatch
+      refund_failure(:refund_binding_mismatch)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end

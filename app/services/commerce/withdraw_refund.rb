@@ -16,14 +16,11 @@ module Commerce
       idempotent = false
 
       Commerce::Order.transaction do
-        order = Commerce::Order.lock.find(@order.id)
-        payment = Payments::Record.lock.find(@refund.payment_record_id)
-        refund = Commerce::Refund.lock.find(@refund.id)
-
-        unless refund.store_order_id == order.id && payment.store_order_id == order.id && refund.payment_record_id == payment.id
-          failure_error = :refund_binding_mismatch
-          raise ActiveRecord::Rollback
-        end
+        order, _payment, refund = Commerce::FinancialLocking.lock_order_payment_refund!(
+          order_id: @order.id,
+          payment_record_id: @refund.payment_record_id,
+          refund_id: @refund.id
+        )
         unless order.user_id == @user.id && refund.requested_by_customer?
           failure_error = :refund_withdrawal_unauthorized
           raise ActiveRecord::Rollback
@@ -67,6 +64,8 @@ module Commerce
       return refund_failure(failure_error) if failure_error
 
       ServiceResult.success(refund: withdrawn_refund, idempotent: idempotent)
+    rescue Commerce::FinancialLocking::BindingMismatch
+      refund_failure(:refund_binding_mismatch)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end

@@ -8,11 +8,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: :answer_delete_unauthorized) unless @answer.user_id == @user.id
-      if @answer.official? && !official_answer_permission?
-        return ServiceResult.failure(error: :official_answer_permission_required)
-      end
-
+      return service_failure(:answer_delete_unauthorized) unless @answer.user_id == @user.id
       deleted_answer = nil
       failure_error = nil
       idempotent = false
@@ -22,7 +18,8 @@ module Commerce
           failure_error = :answer_delete_unauthorized
           raise ActiveRecord::Rollback
         end
-        if answer.official? && !official_answer_permission?
+        authoritative_actor = ::User.lock.find(@user.id) if answer.official?
+        if answer.official? && !official_answer_permission?(authoritative_actor)
           failure_error = :official_answer_permission_required
           raise ActiveRecord::Rollback
         end
@@ -48,7 +45,7 @@ module Commerce
         deleted_answer = answer
       end
 
-      return ServiceResult.failure(error: failure_error) if failure_error
+      return service_failure(failure_error) if failure_error
 
       ServiceResult.success(answer: deleted_answer, idempotent: idempotent)
     rescue ActiveRecord::RecordInvalid => e
@@ -57,8 +54,12 @@ module Commerce
 
     private
 
-    def official_answer_permission?
-      @user.permission?("store.questions.answer") || @user.permission?("admin.access")
+    def service_failure(code)
+      ServiceResult.failure(error: code, code: code)
+    end
+
+    def official_answer_permission?(user)
+      user.permission?("store.questions.answer") || user.permission?("admin.access")
     end
   end
 end

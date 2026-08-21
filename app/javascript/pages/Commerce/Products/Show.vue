@@ -47,6 +47,7 @@ export interface ProductVariant {
 
 export interface ProductReview {
   id: number
+  lock_version: number
   author: string
   rating: number
   body: string | null
@@ -145,6 +146,7 @@ const props = defineProps<{
   canAnswerOfficially: boolean
   questions: Array<{
     id: number
+    lock_version: number
     body: string
     author: string
     created_at: string
@@ -154,6 +156,7 @@ const props = defineProps<{
     deleteUrl?: string | null
     answers: Array<{
       id: number
+      lock_version: number
       body: string
       author: string
       official: boolean
@@ -175,8 +178,10 @@ const questionForm = useForm({ question: { body: '' } })
 const answerForms = ref<Record<number, string>>({})
 const editingQuestionId = ref<number | null>(null)
 const editingQuestionBody = ref('')
+const editingQuestionVersion = ref<number | null>(null)
 const editingAnswerId = ref<number | null>(null)
 const editingAnswerBody = ref('')
+const editingAnswerVersion = ref<number | null>(null)
 
 const selectedVariantId = ref<number | null>(
   props.product.variants.length === 1 ? props.product.variants[0].id : (props.product.saved_variant_id ?? null)
@@ -227,9 +232,23 @@ const stockStatusLabel = computed(() => {
 const activeGalleryImage = computed(() => allImages.value[galleryIndex.value] || null)
 
 const reviewForm = useForm<{
-  review: { rating: number; body: string; photos: File[]; retained_photo_ids: number[] }
+  review: {
+    rating: number
+    body: string
+    photos: File[]
+    retained_photo_ids: number[]
+    photo_selection_present: boolean
+    expected_version: number | null
+  }
 }>({
-  review: { rating: 5, body: '', photos: [], retained_photo_ids: [] },
+  review: {
+    rating: 5,
+    body: '',
+    photos: [],
+    retained_photo_ids: [],
+    photo_selection_present: false,
+    expected_version: null,
+  },
 })
 const editingReview = ref(false)
 const existingReviewPhotos = ref<Array<{ id: number; url: string }>>([])
@@ -390,6 +409,8 @@ function startEditReview() {
   reviewForm.review.body = props.userReview.body || ''
   existingReviewPhotos.value = props.userReview.photos || []
   reviewForm.review.retained_photo_ids = existingReviewPhotos.value.map((photo) => photo.id)
+  reviewForm.review.photo_selection_present = true
+  reviewForm.review.expected_version = props.userReview.lock_version
   editingReview.value = true
 }
 
@@ -403,6 +424,8 @@ function cancelEditReview() {
   reviewForm.review.body = ''
   reviewForm.review.photos = []
   reviewForm.review.retained_photo_ids = []
+  reviewForm.review.photo_selection_present = false
+  reviewForm.review.expected_version = null
   reviewForm.clearErrors()
   existingReviewPhotos.value = []
   editingReview.value = false
@@ -435,7 +458,10 @@ function submitReview() {
   const options = {
     preserveScroll: true,
     forceFormData: true,
-    onSuccess: cancelEditReview,
+    onSuccess: (page: { props: Record<string, unknown> }) => {
+      if (responseHasAlert(page)) return
+      cancelEditReview()
+    },
   }
   if (editingReview.value && props.updateReviewUrl) {
     reviewForm.patch(props.updateReviewUrl, options)
@@ -510,18 +536,26 @@ function submitAnswer(questionId: number, answerUrl: string) {
   })
 }
 
-function startEditQuestion(question: { id: number; body: string }) {
+function startEditQuestion(question: { id: number; body: string; lock_version: number }) {
   editingQuestionId.value = question.id
   editingQuestionBody.value = question.body
+  editingQuestionVersion.value = question.lock_version
 }
 
 function saveQuestion(url: string) {
-  if (!editingQuestionBody.value.trim()) return
-  router.patch(url, { question: { body: editingQuestionBody.value } }, {
+  if (!editingQuestionBody.value.trim() || editingQuestionVersion.value === null) return
+  router.patch(url, {
+    question: {
+      body: editingQuestionBody.value,
+      expected_version: editingQuestionVersion.value,
+    },
+  }, {
     preserveScroll: true,
-    onSuccess: () => {
+    onSuccess: (page) => {
+      if (responseHasAlert(page)) return
       editingQuestionId.value = null
       editingQuestionBody.value = ''
+      editingQuestionVersion.value = null
     },
   })
 }
@@ -536,20 +570,33 @@ async function deleteQuestion(url: string) {
   if (ok) router.delete(url, { preserveScroll: true })
 }
 
-function startEditAnswer(answer: { id: number; body: string }) {
+function startEditAnswer(answer: { id: number; body: string; lock_version: number }) {
   editingAnswerId.value = answer.id
   editingAnswerBody.value = answer.body
+  editingAnswerVersion.value = answer.lock_version
 }
 
 function saveAnswer(url: string) {
-  if (!editingAnswerBody.value.trim()) return
-  router.patch(url, { answer: { body: editingAnswerBody.value } }, {
+  if (!editingAnswerBody.value.trim() || editingAnswerVersion.value === null) return
+  router.patch(url, {
+    answer: {
+      body: editingAnswerBody.value,
+      expected_version: editingAnswerVersion.value,
+    },
+  }, {
     preserveScroll: true,
-    onSuccess: () => {
+    onSuccess: (page) => {
+      if (responseHasAlert(page)) return
       editingAnswerId.value = null
       editingAnswerBody.value = ''
+      editingAnswerVersion.value = null
     },
   })
+}
+
+function responseHasAlert(page: { props: Record<string, unknown> }) {
+  const flash = page.props.flash as { alert?: string | null } | undefined
+  return Boolean(flash?.alert)
 }
 
 async function deleteAnswer(url: string) {

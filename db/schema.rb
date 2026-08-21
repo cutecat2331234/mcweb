@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_104000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -236,7 +236,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["status", "purge_after", "id"], name: "idx_data_lifecycle_due"
     t.index ["target_type", "target_id"], name: "idx_data_lifecycle_target", unique: true
     t.check_constraint "purge_attempts >= 0", name: "chk_data_content_lifecycle_attempts"
-    t.check_constraint "status::text = ANY (ARRAY['soft_deleted'::character varying::text, 'restored'::character varying::text, 'purged'::character varying::text])", name: "chk_data_content_lifecycle_status"
+    t.check_constraint "status::text = ANY (ARRAY['soft_deleted'::character varying, 'restored'::character varying, 'purged'::character varying]::text[])", name: "chk_data_content_lifecycle_status"
   end
 
   create_table "data_retention_holds", force: :cascade do |t|
@@ -258,7 +258,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["released_by_id"], name: "index_data_retention_holds_on_released_by_id"
     t.index ["target_type", "target_id", "status"], name: "idx_retention_holds_target_status"
     t.index ["target_type", "target_id"], name: "index_data_retention_holds_on_target"
-    t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'released'::character varying::text])", name: "chk_data_retention_holds_status"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'released'::character varying]::text[])", name: "chk_data_retention_holds_status"
   end
 
   create_table "data_retention_policies", force: :cascade do |t|
@@ -380,7 +380,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["forum_topic_id"], name: "index_forum_content_requests_on_forum_topic_id"
     t.index ["user_id", "operation", "key_digest"], name: "idx_forum_content_requests_idempotency", unique: true
     t.index ["user_id"], name: "index_forum_content_requests_on_user_id"
-    t.check_constraint "operation::text = ANY (ARRAY['topic.create'::character varying::text, 'post.create'::character varying::text])", name: "chk_forum_content_requests_operation"
+    t.check_constraint "operation::text = ANY (ARRAY['topic.create'::character varying, 'post.create'::character varying]::text[])", name: "chk_forum_content_requests_operation"
   end
 
   create_table "forum_conversation_participants", force: :cascade do |t|
@@ -523,10 +523,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["source_type", "source_id"], name: "idx_forum_moderation_cases_source", unique: true
     t.index ["status", "priority", "risk_level", "updated_at"], name: "idx_forum_moderation_cases_queue"
     t.index ["target_user_id"], name: "index_forum_moderation_cases_on_target_user_id"
-    t.check_constraint "priority::text = ANY (ARRAY['low'::character varying::text, 'normal'::character varying::text, 'high'::character varying::text, 'critical'::character varying::text])", name: "forum_moderation_cases_priority"
-    t.check_constraint "risk_level::text = ANY (ARRAY['low'::character varying::text, 'medium'::character varying::text, 'high'::character varying::text, 'critical'::character varying::text])", name: "forum_moderation_cases_risk"
-    t.check_constraint "source_kind::text = ANY (ARRAY['pending_topic'::character varying::text, 'pending_post'::character varying::text, 'report'::character varying::text, 'spam_hit'::character varying::text, 'quarantined_attachment'::character varying::text, 'user_risk'::character varying::text])", name: "forum_moderation_cases_source_kind"
-    t.check_constraint "status::text = ANY (ARRAY['open'::character varying::text, 'claimed'::character varying::text, 'resolved'::character varying::text, 'dismissed'::character varying::text, 'actioned'::character varying::text, 'stale'::character varying::text])", name: "forum_moderation_cases_status"
+    t.check_constraint "priority::text = ANY (ARRAY['low'::character varying, 'normal'::character varying, 'high'::character varying, 'critical'::character varying]::text[])", name: "forum_moderation_cases_priority"
+    t.check_constraint "risk_level::text = ANY (ARRAY['low'::character varying, 'medium'::character varying, 'high'::character varying, 'critical'::character varying]::text[])", name: "forum_moderation_cases_risk"
+    t.check_constraint "source_kind::text = ANY (ARRAY['pending_topic'::character varying, 'pending_post'::character varying, 'report'::character varying, 'spam_hit'::character varying, 'quarantined_attachment'::character varying, 'user_risk'::character varying]::text[])", name: "forum_moderation_cases_source_kind"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'claimed'::character varying, 'resolved'::character varying, 'dismissed'::character varying, 'actioned'::character varying, 'stale'::character varying]::text[])", name: "forum_moderation_cases_status"
   end
 
   create_table "forum_moderation_operations", force: :cascade do |t|
@@ -1134,12 +1134,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["user_id", "status"], name: "index_forum_uploads_on_user_id_and_status"
     t.index ["user_id"], name: "index_forum_uploads_on_user_id"
     t.check_constraint "byte_size > 0", name: "forum_uploads_positive_byte_size"
-    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying::text, 'post_attachment'::character varying::text])", name: "forum_uploads_valid_kind"
-    t.check_constraint "manual_review_status::text = ANY (ARRAY['none'::character varying::text, 'released'::character varying::text, 'revoked'::character varying::text])", name: "forum_uploads_valid_manual_review_status"
+    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying, 'post_attachment'::character varying]::text[])", name: "forum_uploads_valid_kind"
+    t.check_constraint "manual_review_status::text = ANY (ARRAY['none'::character varying, 'released'::character varying, 'revoked'::character varying]::text[])", name: "forum_uploads_valid_manual_review_status"
     t.check_constraint "manual_review_version >= 0", name: "forum_uploads_nonnegative_manual_review_version"
     t.check_constraint "scan_attempts >= 0", name: "forum_uploads_nonnegative_scan_attempts"
-    t.check_constraint "scan_status::text = ANY (ARRAY['pending'::character varying::text, 'clean'::character varying::text, 'infected'::character varying::text, 'error'::character varying::text])", name: "forum_uploads_valid_scan_status"
-    t.check_constraint "status::text = ANY (ARRAY['reserved'::character varying::text, 'stored'::character varying::text, 'linked'::character varying::text, 'cleanup_pending'::character varying::text, 'cleanup_failed'::character varying::text, 'cleaned'::character varying::text])", name: "forum_uploads_valid_status"
+    t.check_constraint "scan_status::text = ANY (ARRAY['pending'::character varying, 'clean'::character varying, 'infected'::character varying, 'error'::character varying]::text[])", name: "forum_uploads_valid_scan_status"
+    t.check_constraint "status::text = ANY (ARRAY['reserved'::character varying, 'stored'::character varying, 'linked'::character varying, 'cleanup_pending'::character varying, 'cleanup_failed'::character varying, 'cleaned'::character varying]::text[])", name: "forum_uploads_valid_status"
   end
 
   create_table "forum_user_badges", force: :cascade do |t|
@@ -1294,7 +1294,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["user_id", "idempotency_key"], name: "idx_identity_exports_idempotency", unique: true
     t.index ["user_id", "status", "requested_at"], name: "idx_identity_exports_user_status"
     t.index ["user_id"], name: "index_identity_data_exports_on_user_id"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'revoked'::character varying::text, 'expired'::character varying::text])", name: "chk_identity_data_exports_status"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'revoked'::character varying, 'expired'::character varying]::text[])", name: "chk_identity_data_exports_status"
   end
 
   create_table "installation_locks", force: :cascade do |t|
@@ -1465,7 +1465,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["delivery_id"], name: "idx_minecraft_node_batches_delivery_id", unique: true
     t.index ["minecraft_node_id", "status", "created_at"], name: "idx_minecraft_node_batches_dispatch"
     t.index ["minecraft_node_id"], name: "idx_minecraft_node_batches_node"
-    t.index ["minecraft_node_id"], name: "idx_minecraft_node_batches_one_active", unique: true, where: "((status)::text = ANY (ARRAY[('dispatched'::character varying)::text, ('running'::character varying)::text, ('result_pending_ack'::character varying)::text]))"
+    t.index ["minecraft_node_id"], name: "idx_minecraft_node_batches_one_active", unique: true, where: "((status)::text = ANY ((ARRAY['dispatched'::character varying, 'running'::character varying, 'result_pending_ack'::character varying])::text[]))"
     t.index ["minecraft_node_operation_id", "minecraft_node_id"], name: "idx_minecraft_node_batches_operation_node", unique: true
     t.index ["minecraft_node_operation_id"], name: "idx_minecraft_node_batches_operation"
     t.index ["public_id"], name: "idx_minecraft_node_batches_public_id", unique: true
@@ -1639,7 +1639,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["user_id", "idempotency_key_digest"], name: "idx_mc_primary_events_idempotency", unique: true
     t.index ["user_id"], name: "index_minecraft_primary_account_change_events_on_user_id"
     t.check_constraint "change_source::text <> 'administrator_override'::text OR btrim(COALESCE(reason, ''::text)) <> ''::text", name: "mc_primary_events_admin_reason"
-    t.check_constraint "change_source::text = ANY (ARRAY['player_immediate'::character varying::text, 'staff_approval'::character varying::text, 'administrator_override'::character varying::text, 'automatic_successor'::character varying::text])", name: "mc_primary_events_source"
+    t.check_constraint "change_source::text = ANY (ARRAY['player_immediate'::character varying, 'staff_approval'::character varying, 'administrator_override'::character varying, 'automatic_successor'::character varying]::text[])", name: "mc_primary_events_source"
     t.check_constraint "from_identity_link_id IS NULL OR from_identity_link_id <> to_identity_link_id", name: "mc_primary_events_distinct_links"
     t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "mc_primary_events_digest"
   end
@@ -1677,7 +1677,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.check_constraint "policy_snapshot::text = 'staff_approval'::text", name: "mc_primary_requests_policy"
     t.check_constraint "source_identity_link_id IS NULL OR source_identity_link_id <> target_identity_link_id", name: "mc_primary_requests_distinct_links"
     t.check_constraint "status::text = 'pending'::text AND resolved_at IS NULL AND applied_at IS NULL AND decided_by_id IS NULL OR status::text = 'approved'::text AND resolved_at IS NOT NULL AND applied_at IS NOT NULL AND decided_by_id IS NOT NULL OR status::text = 'rejected'::text AND resolved_at IS NOT NULL AND applied_at IS NULL AND decided_by_id IS NOT NULL AND btrim(COALESCE(decision_reason, ''::text)) <> ''::text OR status::text = 'expired'::text AND resolved_at IS NOT NULL AND applied_at IS NULL AND decided_by_id IS NULL OR status::text = 'cancelled'::text AND resolved_at IS NOT NULL AND applied_at IS NULL", name: "mc_primary_requests_resolution_shape"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'approved'::character varying::text, 'rejected'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text])", name: "mc_primary_requests_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying, 'expired'::character varying, 'cancelled'::character varying]::text[])", name: "mc_primary_requests_status"
   end
 
   create_table "minecraft_processed_deliveries", force: :cascade do |t|
@@ -1909,8 +1909,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["requested_by_id"], name: "index_operations_manual_task_runs_on_requested_by_id"
     t.index ["status", "requested_at"], name: "idx_operations_manual_tasks_status"
     t.index ["task_key", "idempotency_key"], name: "idx_operations_manual_tasks_idempotency", unique: true
-    t.check_constraint "(status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text])) AND finished_at IS NULL OR (status::text = ANY (ARRAY['succeeded'::character varying::text, 'failed'::character varying::text])) AND finished_at IS NOT NULL", name: "operations_manual_task_runs_finished_shape"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text, 'succeeded'::character varying::text, 'failed'::character varying::text])", name: "operations_manual_task_runs_status"
+    t.check_constraint "(status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying]::text[])) AND finished_at IS NULL OR (status::text = ANY (ARRAY['succeeded'::character varying, 'failed'::character varying]::text[])) AND finished_at IS NOT NULL", name: "operations_manual_task_runs_finished_shape"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying]::text[])", name: "operations_manual_task_runs_status"
   end
 
   create_table "operations_metric_buckets", force: :cascade do |t|
@@ -1997,10 +1997,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["provider"], name: "index_payment_provider_configs_on_provider", unique: true
     t.check_constraint "account_fingerprint IS NULL OR account_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "payment_provider_configs_account_fingerprint"
     t.check_constraint "last_connection_test_credential_revision IS NULL OR last_connection_test_credential_revision::text ~ '^[0-9a-f]{64}$'::text", name: "payment_provider_configs_test_credential_revision"
-    t.check_constraint "last_connection_test_mode IS NULL OR (last_connection_test_mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text]))", name: "payment_provider_configs_connection_test_mode"
-    t.check_constraint "last_connection_test_status IS NULL OR (last_connection_test_status::text = ANY (ARRAY['success'::character varying::text, 'failed'::character varying::text]))", name: "payment_provider_configs_connection_test_status"
+    t.check_constraint "last_connection_test_mode IS NULL OR (last_connection_test_mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_provider_configs_connection_test_mode"
+    t.check_constraint "last_connection_test_status IS NULL OR (last_connection_test_status::text = ANY (ARRAY['success'::character varying, 'failed'::character varying]::text[]))", name: "payment_provider_configs_connection_test_status"
     t.check_constraint "last_connection_test_status::text IS DISTINCT FROM 'success'::text OR account_fingerprint IS NOT NULL AND last_connection_test_credential_revision IS NOT NULL", name: "payment_provider_configs_success_identity"
-    t.check_constraint "mode IS NULL OR (mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text]))", name: "payment_provider_configs_mode"
+    t.check_constraint "mode IS NULL OR (mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_provider_configs_mode"
   end
 
   create_table "payment_reconciliation_discrepancies", force: :cascade do |t|
@@ -2042,9 +2042,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["status", "created_at"], name: "idx_payment_recon_discrepancies_status"
     t.index ["store_order_id"], name: "index_payment_reconciliation_discrepancies_on_store_order_id"
     t.check_constraint "(local_amount_cents IS NULL OR local_amount_cents >= 0) AND (provider_amount_cents IS NULL OR provider_amount_cents >= 0)", name: "payment_recon_discrepancies_amounts"
-    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text])", name: "payment_recon_discrepancies_mode"
-    t.check_constraint "status::text = ANY (ARRAY['open'::character varying::text, 'acknowledged'::character varying::text, 'ignored'::character varying::text, 'resolved'::character varying::text])", name: "payment_recon_discrepancies_status"
-    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying::text, 'refund'::character varying::text])", name: "payment_recon_discrepancies_subject"
+    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[])", name: "payment_recon_discrepancies_mode"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'acknowledged'::character varying, 'ignored'::character varying, 'resolved'::character varying]::text[])", name: "payment_recon_discrepancies_status"
+    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying, 'refund'::character varying]::text[])", name: "payment_recon_discrepancies_subject"
   end
 
   create_table "payment_reconciliation_observations", force: :cascade do |t|
@@ -2055,7 +2055,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.datetime "updated_at", null: false
     t.index ["run_id", "subject_type", "reference_digest"], name: "idx_payment_recon_observations_unique", unique: true
     t.index ["subject_type", "reference_digest", "run_id"], name: "idx_payment_recon_observations_lookup"
-    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying::text, 'refund'::character varying::text])", name: "payment_recon_observations_subject"
+    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying, 'refund'::character varying]::text[])", name: "payment_recon_observations_subject"
   end
 
   create_table "payment_reconciliation_runs", force: :cascade do |t|
@@ -2085,10 +2085,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["provider", "mode", "window_start", "window_end"], name: "idx_payment_recon_runs_window", unique: true
     t.index ["status", "last_heartbeat_at"], name: "idx_payment_recon_runs_recovery"
     t.check_constraint "attempt_count >= 0 AND payments_checked >= 0 AND refunds_checked >= 0 AND discrepancies_count >= 0", name: "payment_recon_runs_counters"
-    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text])", name: "payment_recon_runs_mode"
-    t.check_constraint "phase::text = ANY (ARRAY['payments'::character varying::text, 'refunds'::character varying::text, 'local_checks'::character varying::text, 'completed'::character varying::text])", name: "payment_recon_runs_phase"
+    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[])", name: "payment_recon_runs_mode"
+    t.check_constraint "phase::text = ANY (ARRAY['payments'::character varying, 'refunds'::character varying, 'local_checks'::character varying, 'completed'::character varying]::text[])", name: "payment_recon_runs_phase"
     t.check_constraint "refresh_count >= 0", name: "payment_recon_runs_refresh_count"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'skipped'::character varying::text])", name: "payment_recon_runs_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'skipped'::character varying]::text[])", name: "payment_recon_runs_status"
     t.check_constraint "window_end > window_start", name: "payment_recon_runs_window"
   end
 
@@ -2109,7 +2109,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["provider", "provider_payment_id"], name: "index_payment_records_on_provider_and_provider_payment_id", unique: true
     t.index ["provider", "status", "created_at", "id"], name: "idx_payment_records_reconciliation_local"
     t.index ["store_order_id"], name: "index_payment_records_on_store_order_id"
-    t.check_constraint "provider_mode IS NULL OR (provider_mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text]))", name: "payment_records_provider_mode"
+    t.check_constraint "provider_mode IS NULL OR (provider_mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_records_provider_mode"
   end
 
   create_table "payment_webhook_events", force: :cascade do |t|
@@ -2181,7 +2181,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["plugin_release_id", "path"], name: "idx_plugin_files_release_path", unique: true
     t.index ["plugin_release_id"], name: "index_plugin_files_on_plugin_release_id"
     t.check_constraint "byte_size >= 0 AND (observed_byte_size IS NULL OR observed_byte_size >= 0)", name: "plugin_files_nonnegative_sizes"
-    t.check_constraint "health::text = ANY (ARRAY['healthy'::character varying::text, 'missing'::character varying::text, 'modified'::character varying::text, 'unknown'::character varying::text, 'unavailable'::character varying::text, 'untracked'::character varying::text])", name: "plugin_files_health"
+    t.check_constraint "health::text = ANY (ARRAY['healthy'::character varying, 'missing'::character varying, 'modified'::character varying, 'unknown'::character varying, 'unavailable'::character varying, 'untracked'::character varying]::text[])", name: "plugin_files_health"
   end
 
   create_table "plugin_generations", force: :cascade do |t|
@@ -2269,7 +2269,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.check_constraint "payload_digest_version = 2", name: "plugin_job_runs_payload_digest_version"
     t.check_constraint "requested_wait_seconds >= 0 AND requested_wait_seconds <= 31536000", name: "plugin_job_runs_requested_wait_bounds"
     t.check_constraint "retry_wait_seconds >= 0 AND retry_wait_seconds <= 86400", name: "plugin_job_runs_retry_wait_bounds"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text, 'retrying'::character varying::text, 'succeeded'::character varying::text, 'failed'::character varying::text, 'paused'::character varying::text, 'cancelled'::character varying::text])", name: "plugin_job_runs_status"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'retrying'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'paused'::character varying, 'cancelled'::character varying]::text[])", name: "plugin_job_runs_status"
   end
 
   create_table "plugin_lifecycle_runs", force: :cascade do |t|
@@ -2401,11 +2401,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["health", "observed_at"], name: "index_plugin_releases_on_health_and_observed_at"
     t.index ["plugin_id", "state"], name: "index_plugin_releases_on_plugin_id_and_state"
     t.index ["plugin_installation_id", "version", "package_sha256"], name: "idx_plugin_releases_identity", unique: true
-    t.index ["plugin_installation_id"], name: "idx_plugin_releases_current", unique: true, where: "((state)::text = ANY (ARRAY[('active'::character varying)::text, ('disabled'::character varying)::text, ('uninstalled'::character varying)::text]))"
+    t.index ["plugin_installation_id"], name: "idx_plugin_releases_current", unique: true, where: "((state)::text = ANY ((ARRAY['active'::character varying, 'disabled'::character varying, 'uninstalled'::character varying])::text[]))"
     t.index ["plugin_installation_id"], name: "index_plugin_releases_on_plugin_installation_id"
-    t.check_constraint "health::text = ANY (ARRAY['healthy'::character varying::text, 'changed'::character varying::text, 'missing'::character varying::text, 'unavailable'::character varying::text, 'untracked'::character varying::text])", name: "plugin_releases_health"
-    t.check_constraint "package_digest_source::text = ANY (ARRAY['receipt'::character varying::text, 'derived'::character varying::text])", name: "plugin_releases_digest_source"
-    t.check_constraint "state::text = ANY (ARRAY['active'::character varying::text, 'disabled'::character varying::text, 'rollback'::character varying::text, 'uninstalled'::character varying::text])", name: "plugin_releases_state"
+    t.check_constraint "health::text = ANY (ARRAY['healthy'::character varying, 'changed'::character varying, 'missing'::character varying, 'unavailable'::character varying, 'untracked'::character varying]::text[])", name: "plugin_releases_health"
+    t.check_constraint "package_digest_source::text = ANY (ARRAY['receipt'::character varying, 'derived'::character varying]::text[])", name: "plugin_releases_digest_source"
+    t.check_constraint "state::text = ANY (ARRAY['active'::character varying, 'disabled'::character varying, 'rollback'::character varying, 'uninstalled'::character varying]::text[])", name: "plugin_releases_state"
   end
 
   create_table "plugin_setting_versions", force: :cascade do |t|
@@ -2425,7 +2425,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["plugin_id", "schema_version", "created_at"], name: "idx_plugin_settings_namespace_version_created"
     t.index ["plugin_id", "schema_version", "revision"], name: "idx_plugin_settings_namespace_version_revision", unique: true
     t.index ["rollback_source_id"], name: "index_plugin_setting_versions_on_rollback_source_id"
-    t.check_constraint "change_kind::text = ANY (ARRAY['update'::character varying::text, 'migration'::character varying::text, 'rollback'::character varying::text])", name: "plugin_setting_versions_change_kind"
+    t.check_constraint "change_kind::text = ANY (ARRAY['update'::character varying, 'migration'::character varying, 'rollback'::character varying]::text[])", name: "plugin_setting_versions_change_kind"
     t.check_constraint "revision > 0", name: "plugin_setting_versions_positive_revision"
     t.check_constraint "schema_digest::text ~ '^[0-9a-f]{64}$'::text", name: "plugin_setting_versions_schema_digest"
   end
@@ -2622,7 +2622,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_dispute_id", "created_at"], name: "idx_store_dispute_events_timeline"
     t.index ["store_dispute_id"], name: "index_store_dispute_events_on_store_dispute_id"
     t.check_constraint "payload_digest IS NULL OR payload_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_dispute_events_digest"
-    t.check_constraint "source::text = ANY (ARRAY['channel'::character varying::text, 'manual'::character varying::text, 'policy'::character varying::text, 'system'::character varying::text])", name: "chk_store_dispute_events_source"
+    t.check_constraint "source::text = ANY (ARRAY['channel'::character varying, 'manual'::character varying, 'policy'::character varying, 'system'::character varying]::text[])", name: "chk_store_dispute_events_source"
   end
 
   create_table "store_dispute_evidence", force: :cascade do |t|
@@ -2650,7 +2650,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["submitted_by_id"], name: "index_store_dispute_evidence_on_submitted_by_id"
     t.check_constraint "byte_size >= 0", name: "chk_store_dispute_evidence_size"
     t.check_constraint "sha256::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_dispute_evidence_digest"
-    t.check_constraint "submission_status::text = ANY (ARRAY['submitted'::character varying::text, 'failed'::character varying::text, 'purged'::character varying::text])", name: "chk_store_dispute_evidence_status"
+    t.check_constraint "submission_status::text = ANY (ARRAY['submitted'::character varying, 'failed'::character varying, 'purged'::character varying]::text[])", name: "chk_store_dispute_evidence_status"
   end
 
   create_table "store_dispute_rights_actions", force: :cascade do |t|
@@ -2670,7 +2670,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_dispute_id", "subject_type", "subject_id"], name: "idx_store_dispute_rights_subject"
     t.index ["store_dispute_id"], name: "index_store_dispute_rights_actions_on_store_dispute_id"
     t.index ["subject_type", "subject_id"], name: "index_store_dispute_rights_actions_on_subject"
-    t.check_constraint "action::text = ANY (ARRAY['freeze'::character varying::text, 'revoke'::character varying::text, 'restore'::character varying::text])", name: "chk_store_dispute_rights_action"
+    t.check_constraint "action::text = ANY (ARRAY['freeze'::character varying, 'revoke'::character varying, 'restore'::character varying]::text[])", name: "chk_store_dispute_rights_action"
   end
 
   create_table "store_disputes", force: :cascade do |t|
@@ -2717,11 +2717,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["status", "evidence_due_at"], name: "idx_store_disputes_status_due"
     t.index ["store_order_id"], name: "index_store_disputes_on_store_order_id"
     t.check_constraint "amount_cents > 0 AND liability_cents >= 0 AND offset_cents >= 0 AND (liability_cents + offset_cents) = amount_cents", name: "chk_store_disputes_amount_conservation"
-    t.check_constraint "kind::text = ANY (ARRAY['dispute'::character varying::text, 'chargeback'::character varying::text])", name: "chk_store_disputes_kind"
-    t.check_constraint "resolution IS NULL OR (resolution::text = ANY (ARRAY['won'::character varying::text, 'lost'::character varying::text, 'withdrawn'::character varying::text, 'accepted_loss'::character varying::text]))", name: "chk_store_disputes_resolution"
-    t.check_constraint "rights_status::text = ANY (ARRAY['unchanged'::character varying::text, 'frozen'::character varying::text, 'revoked'::character varying::text, 'restored'::character varying::text])", name: "chk_store_disputes_rights_status"
-    t.check_constraint "risk_level::text = ANY (ARRAY['low'::character varying::text, 'medium'::character varying::text, 'high'::character varying::text, 'critical'::character varying::text])", name: "chk_store_disputes_risk"
-    t.check_constraint "status::text = ANY (ARRAY['open'::character varying::text, 'evidence_required'::character varying::text, 'evidence_submitted'::character varying::text, 'under_review'::character varying::text, 'won'::character varying::text, 'lost'::character varying::text, 'withdrawn'::character varying::text, 'closed'::character varying::text])", name: "chk_store_disputes_status"
+    t.check_constraint "kind::text = ANY (ARRAY['dispute'::character varying, 'chargeback'::character varying]::text[])", name: "chk_store_disputes_kind"
+    t.check_constraint "resolution IS NULL OR (resolution::text = ANY (ARRAY['won'::character varying, 'lost'::character varying, 'withdrawn'::character varying, 'accepted_loss'::character varying]::text[]))", name: "chk_store_disputes_resolution"
+    t.check_constraint "rights_status::text = ANY (ARRAY['unchanged'::character varying, 'frozen'::character varying, 'revoked'::character varying, 'restored'::character varying]::text[])", name: "chk_store_disputes_rights_status"
+    t.check_constraint "risk_level::text = ANY (ARRAY['low'::character varying, 'medium'::character varying, 'high'::character varying, 'critical'::character varying]::text[])", name: "chk_store_disputes_risk"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'evidence_required'::character varying, 'evidence_submitted'::character varying, 'under_review'::character varying, 'won'::character varying, 'lost'::character varying, 'withdrawn'::character varying, 'closed'::character varying]::text[])", name: "chk_store_disputes_status"
   end
 
   create_table "store_finance_document_events", force: :cascade do |t|
@@ -2738,7 +2738,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["request_id"], name: "index_store_finance_document_events_on_request_id", unique: true, where: "(request_id IS NOT NULL)"
     t.index ["store_finance_document_id", "created_at"], name: "idx_finance_document_events_timeline"
     t.index ["store_finance_document_id"], name: "idx_finance_document_events_document"
-    t.check_constraint "event_type::text = ANY (ARRAY['issued'::character varying::text, 'superseded'::character varying::text, 'voided'::character varying::text])", name: "chk_finance_document_events_type"
+    t.check_constraint "event_type::text = ANY (ARRAY['issued'::character varying, 'superseded'::character varying, 'voided'::character varying]::text[])", name: "chk_finance_document_events_type"
   end
 
   create_table "store_finance_documents", force: :cascade do |t|
@@ -2780,9 +2780,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["supersedes_id"], name: "idx_finance_documents_supersedes"
     t.check_constraint "(net_amount_cents + tax_amount_cents) = gross_amount_cents", name: "chk_finance_document_conservation"
     t.check_constraint "document_kind::text = 'invoice'::text AND store_refund_id IS NULL OR document_kind::text = 'refund_receipt'::text AND store_refund_id IS NOT NULL", name: "chk_finance_document_source"
-    t.check_constraint "document_kind::text = ANY (ARRAY['invoice'::character varying::text, 'refund_receipt'::character varying::text])", name: "chk_finance_documents_kind"
+    t.check_constraint "document_kind::text = ANY (ARRAY['invoice'::character varying, 'refund_receipt'::character varying]::text[])", name: "chk_finance_documents_kind"
     t.check_constraint "net_amount_cents >= 0 AND tax_amount_cents >= 0 AND gross_amount_cents >= 0", name: "chk_finance_document_amounts"
-    t.check_constraint "status::text = ANY (ARRAY['issued'::character varying::text, 'superseded'::character varying::text, 'voided'::character varying::text])", name: "chk_finance_documents_status"
+    t.check_constraint "status::text = ANY (ARRAY['issued'::character varying, 'superseded'::character varying, 'voided'::character varying]::text[])", name: "chk_finance_documents_status"
   end
 
   create_table "store_finance_export_events", force: :cascade do |t|
@@ -2797,7 +2797,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_finance_export_id", "created_at"], name: "idx_finance_export_events_timeline"
     t.index ["store_finance_export_id"], name: "idx_finance_export_events_export"
     t.check_constraint "progress_percent >= 0 AND progress_percent <= 100", name: "chk_finance_export_events_progress"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'expired'::character varying::text, 'revoked'::character varying::text])", name: "chk_finance_export_events_status"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'expired'::character varying, 'revoked'::character varying]::text[])", name: "chk_finance_export_events_status"
   end
 
   create_table "store_finance_exports", force: :cascade do |t|
@@ -2832,7 +2832,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.check_constraint "attempts >= 0 AND (row_count IS NULL OR row_count >= 0)", name: "chk_finance_exports_counts"
     t.check_constraint "format::text = 'csv'::text", name: "chk_finance_exports_format"
     t.check_constraint "progress_percent >= 0 AND progress_percent <= 100", name: "chk_finance_exports_progress"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'expired'::character varying::text, 'revoked'::character varying::text])", name: "chk_finance_exports_status"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'expired'::character varying, 'revoked'::character varying]::text[])", name: "chk_finance_exports_status"
   end
 
   create_table "store_finance_tax_snapshots", force: :cascade do |t|
@@ -3001,7 +3001,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_order_item_id"], name: "index_store_inventory_movements_on_store_order_item_id"
     t.index ["target_type", "target_id", "created_at"], name: "idx_inventory_movements_target_time"
     t.index ["target_type", "target_id"], name: "index_store_inventory_movements_on_target"
-    t.check_constraint "movement_type::text = ANY (ARRAY['reserve'::character varying::text, 'confirm'::character varying::text, 'release'::character varying::text, 'expire'::character varying::text, 'refund'::character varying::text, 'damage'::character varying::text, 'adjustment'::character varying::text, 'recovery'::character varying::text])", name: "chk_inventory_movements_type"
+    t.check_constraint "movement_type::text = ANY (ARRAY['reserve'::character varying, 'confirm'::character varying, 'release'::character varying, 'expire'::character varying, 'refund'::character varying, 'damage'::character varying, 'adjustment'::character varying, 'recovery'::character varying]::text[])", name: "chk_inventory_movements_type"
     t.check_constraint "quantity > 0", name: "chk_inventory_movements_quantity"
   end
 
@@ -3029,7 +3029,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["target_type", "target_id", "status"], name: "idx_inventory_reservations_target_status"
     t.index ["target_type", "target_id"], name: "index_store_inventory_reservations_on_target"
     t.check_constraint "quantity > 0", name: "chk_inventory_reservations_quantity"
-    t.check_constraint "status::text = ANY (ARRAY['active'::character varying::text, 'confirmed'::character varying::text, 'released'::character varying::text, 'expired'::character varying::text])", name: "chk_inventory_reservations_status"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'confirmed'::character varying, 'released'::character varying, 'expired'::character varying]::text[])", name: "chk_inventory_reservations_status"
   end
 
   create_table "store_membership_types", force: :cascade do |t|
@@ -3177,6 +3177,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.datetime "edited_at"
+    t.integer "lock_version", default: 0, null: false
     t.boolean "official", default: false, null: false
     t.string "status", default: "published", null: false
     t.bigint "store_product_question_id", null: false
@@ -3185,6 +3186,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_product_question_id", "status"], name: "index_store_product_answers_on_question_and_status"
     t.index ["store_product_question_id"], name: "index_store_product_answers_on_store_product_question_id"
     t.index ["user_id"], name: "index_store_product_answers_on_user_id"
+    t.check_constraint "lock_version >= 0", name: "store_product_answers_lock_version_nonnegative"
     t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_product_answers_deleted_shape"
     t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_product_answers_status_valid"
   end
@@ -3216,6 +3218,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.datetime "edited_at"
+    t.integer "lock_version", default: 0, null: false
     t.string "status", default: "published", null: false
     t.bigint "store_order_item_id"
     t.bigint "store_product_id", null: false
@@ -3224,6 +3227,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_order_item_id"], name: "index_store_product_questions_on_store_order_item_id"
     t.index ["store_product_id"], name: "index_store_product_questions_on_store_product_id"
     t.index ["user_id"], name: "index_store_product_questions_on_user_id"
+    t.check_constraint "lock_version >= 0", name: "store_product_questions_lock_version_nonnegative"
     t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_product_questions_deleted_shape"
     t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_product_questions_status_valid"
   end
@@ -3310,6 +3314,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.string "provider_refund_id"
     t.string "provider_status"
     t.string "reason"
+    t.string "reason_kind"
     t.boolean "requested_by_customer", default: false, null: false
     t.bigint "requested_by_id"
     t.integer "restoration_attempts", default: 0, null: false
@@ -3331,9 +3336,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_order_id"], name: "index_store_refunds_on_store_order_id"
     t.index ["withdrawn_by_id"], name: "index_store_refunds_on_withdrawn_by_id"
     t.check_constraint "amount_cents > 0", name: "store_refunds_amount_cents_positive"
-    t.check_constraint "restoration_status::text = ANY (ARRAY['pending'::character varying::text, 'processing'::character varying::text, 'failed'::character varying::text, 'completed'::character varying::text])", name: "store_refunds_restoration_status_valid"
+    t.check_constraint "reason_kind IS NULL OR reason IS NULL AND (reason_kind::text = ANY (ARRAY['customer_request'::character varying, 'admin_refund'::character varying, 'superseded_by_admin_refund'::character varying]::text[]))", name: "store_refunds_reason_kind_valid"
+    t.check_constraint "restoration_status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'failed'::character varying, 'completed'::character varying]::text[])", name: "store_refunds_restoration_status_valid"
     t.check_constraint "status::text = 'withdrawn'::text AND withdrawn_at IS NOT NULL AND withdrawn_by_id IS NOT NULL OR status::text <> 'withdrawn'::text AND withdrawn_at IS NULL AND withdrawn_by_id IS NULL", name: "store_refunds_withdrawn_shape"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying, 'failed'::character varying, 'completed'::character varying, 'withdrawn'::character varying]::text[])", name: "store_refunds_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'provider_unknown'::character varying, 'rejected'::character varying, 'failed'::character varying, 'completed'::character varying, 'withdrawn'::character varying]::text[])", name: "store_refunds_status_valid"
   end
 
   create_table "store_review_helpful_votes", force: :cascade do |t|
@@ -3349,6 +3355,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.bigint "forum_post_id"
+    t.integer "lock_version", default: 0, null: false
     t.datetime "merchant_replied_at"
     t.text "merchant_reply"
     t.integer "rating", null: false
@@ -3361,6 +3368,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["store_product_id", "user_id"], name: "index_store_reviews_on_store_product_id_and_user_id", unique: true
     t.index ["store_product_id"], name: "index_store_reviews_on_store_product_id"
     t.index ["user_id"], name: "index_store_reviews_on_user_id"
+    t.check_constraint "lock_version >= 0", name: "store_reviews_lock_version_nonnegative"
     t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_reviews_deleted_shape"
     t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_reviews_status_valid"
   end
@@ -3543,7 +3551,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_101000) do
     t.index ["username", "display_name"], name: "idx_users_suggest_names_trgm", opclass: :gin_trgm_ops, where: "((status)::text = 'active'::text)", using: :gin
     t.index ["username"], name: "index_users_on_username", unique: true
     t.index ["wishlist_share_token"], name: "index_users_on_wishlist_share_token", unique: true
-    t.check_constraint "developer_mode_persona IS NULL OR (developer_mode_persona::text = ANY (ARRAY['owner'::character varying::text, 'moderator'::character varying::text, 'member'::character varying::text]))", name: "users_developer_mode_persona"
+    t.check_constraint "developer_mode_persona IS NULL OR (developer_mode_persona::text = ANY (ARRAY['owner'::character varying, 'moderator'::character varying, 'member'::character varying]::text[]))", name: "users_developer_mode_persona"
     t.check_constraint "permission_version >= 0", name: "users_permission_version_nonnegative"
   end
 

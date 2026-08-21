@@ -874,6 +874,7 @@ en:
         fulfillment_inventory_unavailable: Order inventory has not been confirmed, so fulfillment cannot be retried.
         fulfillment_state_changed: The fulfillment changed. Open a new impact preview.
         dispute_payment_invalid: The payment cannot be used for a dispute.
+        dispute_payment_binding_mismatch: The dispute does not belong to this order and payment.
         dispute_provider_mismatch: The dispute channel does not match the payment channel.
         dispute_event_identity_invalid: The channel event is missing a stable dispute or event identifier.
         dispute_event_type_invalid: The dispute event type is invalid.
@@ -1045,6 +1046,7 @@ en:
         refund_no_payment_basis: The order has no refundable payment basis.
         refund_restoration_failed: Local refund restoration failed. Staff can retry without charging the provider again.
         refund_provider_unavailable: The payment provider is unavailable. Try again later.
+        refund_provider_outcome_unknown: The payment provider's refund result could not be confirmed. The amount remains reserved for staff review; do not retry this refund.
         refund_dispute_reconciliation_failed: Refund dispute exposure could not be reconciled.
         refund_receipt_issue_failed: The refund receipt could not be issued.
         refund_entitlement_revoke_failed: Digital entitlement revocation failed.
@@ -1112,6 +1114,8 @@ en:
         review_hidden_by_moderator: This review was hidden by staff and cannot be restored by resubmitting it.
         review_already_exists: You already have a published review for this product.
         review_update_unauthorized: You are not allowed to edit this review.
+        review_revision_required: This review changed or the page is outdated. Reopen the editor and try again.
+        review_update_conflict: This review changed in another tab. Your edits were kept; compare them with the latest version before saving again.
         review_not_editable: This review can no longer be edited.
         review_not_visible: This review is not available for helpful votes.
         review_not_shareable: Only a published review can be shared to the forum.
@@ -1143,6 +1147,8 @@ en:
         order_question_unauthorized: You are not allowed to ask about this order item.
         question_too_long: A question cannot exceed 2,000 characters.
         question_update_unauthorized: You are not allowed to edit this question.
+        question_revision_required: This question changed or the page is outdated. Reopen the editor and try again.
+        question_update_conflict: This question changed in another tab. Your edits were kept; compare them with the latest version before saving again.
         question_delete_unauthorized: You are not allowed to delete this question.
         question_hidden_by_moderator: This question was hidden by staff and cannot be changed by its author.
         question_not_editable: This question can no longer be edited.
@@ -1150,6 +1156,8 @@ en:
         question_not_answerable: This question is not available for answers.
         answer_too_long: An answer cannot exceed 2,000 characters.
         answer_update_unauthorized: You are not allowed to edit this answer.
+        answer_revision_required: This answer changed or the page is outdated. Reopen the editor and try again.
+        answer_update_conflict: This answer changed in another tab. Your edits were kept; compare them with the latest version before saving again.
         answer_delete_unauthorized: You are not allowed to delete this answer.
         answer_hidden_by_moderator: This answer was hidden by staff and cannot be changed by its author.
         answer_not_editable: This answer can no longer be edited.
@@ -3497,6 +3505,7 @@ en:
       refund_status:
         pending: Pending review
         approved: Approved
+        provider_unknown: Needs reconciliation
         rejected: Rejected
         completed: Completed
         succeeded: Succeeded
@@ -3504,6 +3513,8 @@ en:
         withdrawn: Withdrawn
       refund_reasons:
         customer_request: Customer request
+        admin_refund: Admin refund
+        superseded_by_admin_refund: Superseded by admin refund
       fulfillment_status:
         pending: Pending
         processing: Processing
@@ -3534,6 +3545,7 @@ en:
         refund_processed: Refund processed
         refund_rejected: Refund rejected
         refund_withdrawn: Refund request withdrawn
+        refund_provider_unknown: Refund outcome needs reconciliation
         refunded: Refunded
         fulfilled: Fulfilled
         membership_granted: Membership granted

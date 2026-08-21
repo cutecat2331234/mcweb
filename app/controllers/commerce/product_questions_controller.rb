@@ -3,9 +3,12 @@
 module Commerce
   class ProductQuestionsController < ApplicationController
     before_action :require_login, except: :index
-    before_action :set_product
-    before_action :set_question, only: %i[update destroy answer update_answer destroy_answer toggle_answer_helpful]
-    before_action :set_answer, only: %i[update_answer destroy_answer toggle_answer_helpful]
+    before_action :set_visible_product, only: %i[index create answer toggle_answer_helpful]
+    before_action :set_mutation_product, only: %i[update destroy update_answer destroy_answer]
+    before_action :set_question, only: %i[answer update_answer destroy_answer toggle_answer_helpful]
+    before_action :set_owned_question, only: %i[update destroy]
+    before_action :set_answer, only: :toggle_answer_helpful
+    before_action :set_owned_answer, only: %i[update_answer destroy_answer]
 
     def index
       questions = @product.questions.visible.includes(:user, visible_answers: :user).recent.limit(50)
@@ -43,7 +46,8 @@ module Commerce
       result = Commerce::UpdateProductQuestion.call(
         user: current_user,
         question: @question,
-        body: params.dig(:question, :body)
+        body: params.dig(:question, :body),
+        expected_version: params.dig(:question, :expected_version)
       )
       redirect_with_result(result, success_key: "mcweb.flash.question_updated")
     end
@@ -67,7 +71,8 @@ module Commerce
       result = Commerce::UpdateProductAnswer.call(
         user: current_user,
         answer: @answer,
-        body: params.dig(:answer, :body)
+        body: params.dig(:answer, :body),
+        expected_version: params.dig(:answer, :expected_version)
       )
       redirect_with_result(result, success_key: "mcweb.flash.answer_updated")
     end
@@ -90,17 +95,29 @@ module Commerce
 
     private
 
-    def set_product
+    def set_visible_product
       @product = Commerce::Product.available.find_by!(public_id: params[:product_id])
       raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(@product)
+    end
+
+    def set_mutation_product
+      @product = Commerce::Product.find_by!(public_id: params[:product_id])
     end
 
     def set_question
       @question = @product.questions.find(params[:question_id])
     end
 
+    def set_owned_question
+      @question = @product.questions.where(user: current_user).find(params[:question_id])
+    end
+
     def set_answer
       @answer = @question.answers.find(params[:answer_id])
+    end
+
+    def set_owned_answer
+      @answer = @question.answers.where(user: current_user).find(params[:answer_id])
     end
 
     def official_answer_permission?
@@ -108,22 +125,34 @@ module Commerce
     end
 
     def redirect_with_result(result, success_key:)
+      destination = product_return_path
       if result.success?
-        redirect_to store_product_path(@product), notice: t(success_key)
+        redirect_to destination, notice: t(success_key)
       else
-        redirect_to store_product_path(@product), alert: service_error_message(result)
+        redirect_to destination, alert: service_error_message(result)
+      end
+    end
+
+    def product_return_path
+      if Commerce::Product.available.where(id: @product.id).exists? &&
+          Commerce::StoreFeatures.product_visible?(@product)
+        store_product_path(@product)
+      else
+        store_products_path
       end
     end
 
     def serialize_question(question)
       {
         id: question.id,
+        lock_version: question.lock_version,
         body: question.body,
         author: question.user.username,
         created_at: l(question.created_at, format: :short),
         answers: question.visible_answers.sort_by(&:created_at).map do |answer|
           {
             id: answer.id,
+            lock_version: answer.lock_version,
             body: answer.body,
             author: answer.user.username,
             official: answer.official,

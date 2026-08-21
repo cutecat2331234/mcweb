@@ -2,20 +2,19 @@
 
 module Commerce
   class UpdateProductAnswer < ApplicationService
-    def initialize(user:, answer:, body:)
+    def initialize(user:, answer:, body:, expected_version: nil)
       @user = user
       @answer = answer
       @body = body.to_s.strip
+      @expected_version = Integer(expected_version, exception: false)
+      @expected_version = nil if @expected_version&.negative?
     end
 
     def call
-      return ServiceResult.failure(error: :answer_update_unauthorized) unless @answer.user_id == @user.id
-      return ServiceResult.failure(error: :answer_is_required) if @body.blank?
-      return ServiceResult.failure(error: :answer_too_long) if @body.length > 2_000
-      if @answer.official? && !official_answer_permission?
-        return ServiceResult.failure(error: :official_answer_permission_required)
-      end
-
+      return service_failure(:answer_update_unauthorized) unless @answer.user_id == @user.id
+      return service_failure(:answer_revision_required) unless @expected_version
+      return service_failure(:answer_is_required) if @body.blank?
+      return service_failure(:answer_too_long) if @body.length > 2_000
       updated_answer = nil
       failure_error = nil
       Commerce::ProductAnswer.transaction do
@@ -28,7 +27,12 @@ module Commerce
           failure_error = answer.hidden? ? :answer_hidden_by_moderator : :answer_not_editable
           raise ActiveRecord::Rollback
         end
-        if answer.official? && !official_answer_permission?
+        unless answer.lock_version == @expected_version
+          failure_error = :answer_update_conflict
+          raise ActiveRecord::Rollback
+        end
+        authoritative_actor = ::User.lock.find(@user.id) if answer.official?
+        if answer.official? && !official_answer_permission?(authoritative_actor)
           failure_error = :official_answer_permission_required
           raise ActiveRecord::Rollback
         end
@@ -54,7 +58,7 @@ module Commerce
         updated_answer = answer
       end
 
-      return ServiceResult.failure(error: failure_error) if failure_error
+      return service_failure(failure_error) if failure_error
 
       ServiceResult.success(updated_answer)
     rescue ActiveRecord::RecordInvalid => e
@@ -63,8 +67,12 @@ module Commerce
 
     private
 
-    def official_answer_permission?
-      @user.permission?("store.questions.answer") || @user.permission?("admin.access")
+    def service_failure(code)
+      ServiceResult.failure(error: code, code: code)
+    end
+
+    def official_answer_permission?(user)
+      user.permission?("store.questions.answer") || user.permission?("admin.access")
     end
   end
 end

@@ -131,7 +131,12 @@ module Payments
 
     def process_refund(refund)
       config = Payments::ProviderConfig.checkout_config_for("stripe")
-      return ServiceResult.failure(error: :stripe_is_not_enabled_or_fully_configured) unless config
+      unless config
+        return ServiceResult.failure(
+          error: :stripe_is_not_enabled_or_fully_configured,
+          code: "provider_configuration_missing"
+        )
+      end
       unless refund.payment_record.provider_mode == config.effective_mode
         return ServiceResult.failure(
           error: :the_payment_stripe_environment_is_unknown_or_differs_from_the_active_provider,

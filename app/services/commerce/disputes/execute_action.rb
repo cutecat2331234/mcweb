@@ -91,9 +91,11 @@ module Commerce
         result = nil
 
         Commerce::Dispute.transaction do
-          @dispute = Commerce::Dispute.lock.find(@dispute.id)
-          @dispute.order.lock!
-          @dispute.payment_record.lock!
+          _order, _payment, @dispute = Commerce::FinancialLocking.lock_order_payment_dispute!(
+            order_id: @dispute.store_order_id,
+            payment_record_id: @dispute.payment_record_id,
+            dispute_id: @dispute.id
+          )
 
           existing = existing_event
           if existing
@@ -169,6 +171,8 @@ module Commerce
         end
 
         result
+      rescue Commerce::FinancialLocking::BindingMismatch
+        ServiceResult.failure(error: "dispute_payment_binding_mismatch")
       rescue ActiveRecord::RecordNotUnique
         idempotency_result(existing_event)
       rescue ActiveRecord::RecordInvalid => error

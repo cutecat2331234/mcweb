@@ -2,12 +2,24 @@
 
 module Commerce
   class UpdateReview < ApplicationService
-    def initialize(user:, review:, rating:, body: nil, retained_photo_ids: nil, photos: nil)
+    def initialize(
+      user:,
+      review:,
+      rating:,
+      expected_version: nil,
+      body: nil,
+      retained_photo_ids: nil,
+      photo_selection_present: false,
+      photos: nil
+    )
       @user = user
       @review = review
       @rating = rating.to_i
       @body = body&.strip
-      retained_values = Array(retained_photo_ids).reject(&:blank?) unless retained_photo_ids.nil?
+      @expected_version = Integer(expected_version, exception: false)
+      @expected_version = nil if @expected_version&.negative?
+      @photo_selection_present = ActiveModel::Type::Boolean.new.cast(photo_selection_present)
+      retained_values = Array(retained_photo_ids).reject(&:blank?) if @photo_selection_present
       parsed_retained_ids = retained_values&.map { |value| Integer(value, exception: false) }
       @retained_photo_ids_invalid = parsed_retained_ids&.any?(&:nil?) || false
       @retained_photo_ids = parsed_retained_ids&.compact&.uniq
@@ -15,10 +27,11 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: :review_update_unauthorized) unless @review.user_id == @user.id
-      return ServiceResult.failure(error: :review_rating_invalid) unless (1..5).cover?(@rating)
-      return ServiceResult.failure(error: :review_body_too_long) if @body.to_s.length > 5_000
-      return ServiceResult.failure(error: :review_photo_selection_invalid) if @retained_photo_ids_invalid
+      return service_failure(:review_update_unauthorized) unless @review.user_id == @user.id
+      return service_failure(:review_revision_required) unless @expected_version
+      return service_failure(:review_rating_invalid) unless (1..5).cover?(@rating)
+      return service_failure(:review_body_too_long) if @body.to_s.length > 5_000
+      return service_failure(:review_photo_selection_invalid) if @retained_photo_ids_invalid
 
       updated_review = nil
       failure_error = nil
@@ -34,17 +47,21 @@ module Commerce
           failure_error = review.hidden? ? :review_hidden_by_moderator : :review_not_editable
           raise ActiveRecord::Rollback
         end
+        unless review.lock_version == @expected_version
+          failure_error = :review_update_conflict
+          raise ActiveRecord::Rollback
+        end
 
         attachments = review.photos.attachments.includes(:blob).to_a
-        retained = if @retained_photo_ids.nil?
-          attachments
-        else
+        retained = if @photo_selection_present
           known_ids = attachments.map(&:id)
           unless (@retained_photo_ids - known_ids).empty?
             failure_error = :review_photo_selection_invalid
             raise ActiveRecord::Rollback
           end
           attachments.select { |attachment| @retained_photo_ids.include?(attachment.id) }
+        else
+          attachments
         end
 
         if (photo_error = Commerce::ReviewPhotoValidator.validate(@photos, retained_count: retained.length))
@@ -78,7 +95,7 @@ module Commerce
         updated_review = review
       end
 
-      return ServiceResult.failure(error: failure_error) if failure_error
+      return service_failure(failure_error) if failure_error
 
       purge_after_commit(stale_blobs)
       ServiceResult.success(updated_review)
@@ -87,6 +104,10 @@ module Commerce
     end
 
     private
+
+    def service_failure(code)
+      ServiceResult.failure(error: code, code: code)
+    end
 
     def changed_fields(before_state, review)
       fields = []

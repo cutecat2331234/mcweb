@@ -874,6 +874,7 @@
         fulfillment_inventory_unavailable: 订单库存尚未确认，不能重试履约。
         fulfillment_state_changed: 履约状态已变化，请重新打开影响预览。
         dispute_payment_invalid: 当前付款不能用于建立争议。
+        dispute_payment_binding_mismatch: 争议记录与订单或支付记录不匹配。
         dispute_provider_mismatch: 争议渠道与付款渠道不一致。
         dispute_event_identity_invalid: 渠道事件缺少稳定的争议编号或事件编号。
         dispute_event_type_invalid: 争议事件类型无效。
@@ -1045,6 +1046,7 @@
         refund_no_payment_basis: 订单没有可退款的支付依据。
         refund_restoration_failed: 本地退款恢复失败，工作人员可安全重试，且不会重复调用支付渠道。
         refund_provider_unavailable: 支付渠道暂不可用，请稍后重试。
+        refund_provider_outcome_unknown: 无法确认支付渠道的退款结果。该金额会继续预留并等待工作人员核对，请勿重试这笔退款。
         refund_dispute_reconciliation_failed: 无法重新核对退款争议敞口。
         refund_receipt_issue_failed: 无法签发退款凭证。
         refund_entitlement_revoke_failed: 数字权益撤销失败。
@@ -1112,6 +1114,8 @@
         review_hidden_by_moderator: 该评价已被工作人员隐藏，不能通过重新提交自行恢复。
         review_already_exists: 你已为该商品发布过评价。
         review_update_unauthorized: 你无权编辑该评价。
+        review_revision_required: 该评价已变更或当前页面已过期，请重新打开编辑器后再试。
+        review_update_conflict: 该评价已在其他标签页中变更。你的编辑内容已保留，请与最新版本对比后再保存。
         review_not_editable: 该评价已无法编辑。
         review_not_visible: 该评价当前不能标记为有帮助。
         review_not_shareable: 只有已发布的评价才能分享到论坛。
@@ -1143,6 +1147,8 @@
         order_question_unauthorized: 无权就此订单提问。
         question_too_long: 问题不能超过 2000 个字符。
         question_update_unauthorized: 你无权编辑该问题。
+        question_revision_required: 该问题已变更或当前页面已过期，请重新打开编辑器后再试。
+        question_update_conflict: 该问题已在其他标签页中变更。你的编辑内容已保留，请与最新版本对比后再保存。
         question_delete_unauthorized: 你无权删除该问题。
         question_hidden_by_moderator: 该问题已被工作人员隐藏，作者不能修改其状态。
         question_not_editable: 该问题已无法编辑。
@@ -1150,6 +1156,8 @@
         question_not_answerable: 该问题当前不能回答。
         answer_too_long: 回答不能超过 2000 个字符。
         answer_update_unauthorized: 你无权编辑该回答。
+        answer_revision_required: 该回答已变更或当前页面已过期，请重新打开编辑器后再试。
+        answer_update_conflict: 该回答已在其他标签页中变更。你的编辑内容已保留，请与最新版本对比后再保存。
         answer_delete_unauthorized: 你无权删除该回答。
         answer_hidden_by_moderator: 该回答已被工作人员隐藏，作者不能修改其状态。
         answer_not_editable: 该回答已无法编辑。
@@ -3497,6 +3505,7 @@
       refund_status:
         pending: 待审核
         approved: 已批准
+        provider_unknown: 待人工核对
         rejected: 已拒绝
         completed: 已完成
         succeeded: 已成功
@@ -3504,6 +3513,8 @@
         withdrawn: 已撤回
       refund_reasons:
         customer_request: 客户申请
+        admin_refund: 后台退款
+        superseded_by_admin_refund: 已被后台退款取代
       fulfillment_status:
         pending: 待发货
         processing: 处理中
@@ -3534,6 +3545,7 @@
         refund_processed: 退款完成
         refund_rejected: 退款拒绝
         refund_withdrawn: 退款申请已撤回
+        refund_provider_unknown: 退款结果待人工核对
         refunded: 已退款
         fulfilled: 发货完成
         membership_granted: 会员已授予

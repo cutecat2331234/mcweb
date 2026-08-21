@@ -2,16 +2,19 @@
 
 module Commerce
   class UpdateProductQuestion < ApplicationService
-    def initialize(user:, question:, body:)
+    def initialize(user:, question:, body:, expected_version: nil)
       @user = user
       @question = question
       @body = body.to_s.strip
+      @expected_version = Integer(expected_version, exception: false)
+      @expected_version = nil if @expected_version&.negative?
     end
 
     def call
-      return ServiceResult.failure(error: :question_update_unauthorized) unless @question.user_id == @user.id
-      return ServiceResult.failure(error: :question_is_required) if @body.blank?
-      return ServiceResult.failure(error: :question_too_long) if @body.length > 2_000
+      return service_failure(:question_update_unauthorized) unless @question.user_id == @user.id
+      return service_failure(:question_revision_required) unless @expected_version
+      return service_failure(:question_is_required) if @body.blank?
+      return service_failure(:question_too_long) if @body.length > 2_000
 
       updated_question = nil
       failure_error = nil
@@ -23,6 +26,10 @@ module Commerce
         end
         unless question.published?
           failure_error = question.hidden? ? :question_hidden_by_moderator : :question_not_editable
+          raise ActiveRecord::Rollback
+        end
+        unless question.lock_version == @expected_version
+          failure_error = :question_update_conflict
           raise ActiveRecord::Rollback
         end
 
@@ -43,11 +50,17 @@ module Commerce
         updated_question = question
       end
 
-      return ServiceResult.failure(error: failure_error) if failure_error
+      return service_failure(failure_error) if failure_error
 
       ServiceResult.success(updated_question)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def service_failure(code)
+      ServiceResult.failure(error: code, code: code)
     end
   end
 end

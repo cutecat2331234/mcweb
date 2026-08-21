@@ -548,17 +548,17 @@ module Admin
     def sync_roles_and_modules!
       return unless params[:user]
 
-      permission_context_changed = false
       if role_ids_update_requested?
         requested_role_ids = Array(params[:user][:role_ids]).reject(&:blank?).map(&:to_i).uniq.sort
-        permission_context_changed ||= @user.role_ids.sort != requested_role_ids
         @user.role_ids = requested_role_ids
       end
 
+      admin_module_context_changed = false
       if current_user.account_owner?
         if @user.account_staff? && params[:user].key?(:admin_modules)
           modules = requested_admin_modules
-          permission_context_changed ||= @user.admin_module_grants.pluck(:module_key).sort != modules.sort
+          admin_module_context_changed ||=
+            @user.admin_module_grants.pluck(:module_key).sort != modules.sort
           @user.admin_module_grants.where.not(module_key: modules).delete_all
           modules.each do |module_key|
             @user.admin_module_grants.find_or_create_by!(module_key: module_key) do |grant|
@@ -567,11 +567,11 @@ module Admin
             end
           end
         elsif !@user.account_staff? || @user.saved_change_to_account_type?
-          permission_context_changed ||= @user.admin_module_grants.exists?
+          admin_module_context_changed ||= @user.admin_module_grants.exists?
           @user.admin_module_grants.delete_all
         end
       end
-      Identity::PermissionVersion.bump_users!([ @user.id ]) if permission_context_changed
+      Identity::PermissionVersion.bump_users!([ @user.id ]) if admin_module_context_changed
     end
 
     def role_ids_update_requested?

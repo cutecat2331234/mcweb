@@ -22,8 +22,6 @@ module Community
     scope :ordered, -> { order(priority: :desc, name: :asc) }
     scope :primary_defaults, -> { where(is_primary_default: true) }
 
-    after_update :bump_member_permission_versions, if: :saved_change_to_permissions?
-
     def permission_keys
       Array(permissions).map(&:to_s)
     end
@@ -53,10 +51,6 @@ module Community
         suffix += 1
       end
       self[:key] = candidate
-    end
-
-    def bump_member_permission_versions
-      Identity::PermissionVersion.bump_group_users!(id)
     end
   end
 end

@@ -51,6 +51,81 @@ class PerformanceCacheTest < ActiveSupport::TestCase
     user.roles.delete(role)
 
     assert_not user.permission?("forum.performance.revoked")
+    assert_not user.has_changes_to_save?
+  end
+
+  test "bulk role deletion refreshes the loaded user without permission check queries" do
+    user = create_user
+    grant_permission(user, "forum.performance.bulk_revoked")
+
+    assert user.permission?("forum.performance.bulk_revoked")
+    user.user_roles.delete_all
+
+    assert_not user.permission?("forum.performance.bulk_revoked")
+    assert_not user.has_changes_to_save?
+
+    statements = capture_business_sql do
+      3.times { assert_not user.permission?("forum.performance.bulk_revoked") }
+    end
+    assert_empty statements,
+      "warm permission checks should remain query-free after bulk revocation:\n#{statements.join("\n")}"
+  end
+
+  test "owner demotion refreshes the same authorization snapshot once" do
+    user = create_user(account_type: "owner")
+    previous_version = user.permission_version
+
+    assert user.permission?("identity.owner.snapshot_probe")
+    user.update!(account_type: "member")
+
+    assert_equal previous_version + 1, user.permission_version
+    assert_not user.permission?("identity.owner.snapshot_probe")
+    assert_not user.has_changes_to_save?
+  end
+
+  test "role and group clear paths bump fresh permission snapshots" do
+    role_user = create_user
+    grant_permission(role_user, "forum.performance.role_clear")
+    role = Role.find_by!(key: "test_forum_performance_role_clear")
+
+    assert role_user.permission?("forum.performance.role_clear")
+    role.permissions.clear
+    assert_not role_user.reload.permission?("forum.performance.role_clear")
+
+    group_user = create_user
+    group = Community::UserGroup.create!(
+      name: "Performance clear #{SecureRandom.hex(4)}",
+      permissions: [ "forum.performance.group_clear" ]
+    )
+    group_user.user_groups << group
+    group_user.reload
+
+    assert group_user.permission?("forum.performance.group_clear")
+    group_user.user_groups.clear
+    assert_not group_user.permission?("forum.performance.group_clear")
+    assert_not group_user.has_changes_to_save?
+  end
+
+  test "single and destroy_all group revocations refresh the loaded user" do
+    user = create_user
+    group = Community::UserGroup.create!(
+      name: "Performance group revoke #{SecureRandom.hex(4)}",
+      permissions: [ "forum.performance.group_revoke" ]
+    )
+    user.user_groups << group
+    user.reload
+
+    assert user.permission?("forum.performance.group_revoke")
+    user.user_groups.delete(group)
+    assert_not user.permission?("forum.performance.group_revoke")
+    assert_not user.has_changes_to_save?
+
+    user.user_groups << group
+    user.reload
+    assert user.permission?("forum.performance.group_revoke")
+    user.group_memberships.destroy_all
+    assert_not user.permission?("forum.performance.group_revoke")
+    assert_not user.has_changes_to_save?
   end
 
   test "site setting reads cache values and invalidates exact keys" do

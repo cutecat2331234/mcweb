@@ -10,14 +10,5 @@ module Community
     validates :user_id, uniqueness: { scope: :community_user_group_id }
 
     scope :primary, -> { where(is_primary: true) }
-
-    after_create :bump_permission_version
-    after_destroy :bump_permission_version
-
-    private
-
-    def bump_permission_version
-      Identity::PermissionVersion.bump_users!([ user_id ])
-    end
   end
 end

@@ -34,6 +34,8 @@ module Identity
       end
       verification = nil
       revoked_session_count = 0
+      locked_session = nil
+      rotated_session_token = nil
       changed_at = Time.current
 
       User.transaction do
@@ -69,6 +71,8 @@ module Identity
             revoked_session_count += 1
           end
 
+        rotated_session_token = locked_session.rotate_token!
+
         Administration::AuditLogger.call(
           actor: @user,
           action: "identity.password_changed",
@@ -95,7 +99,9 @@ module Identity
         user: @user.reload,
         changed_at: changed_at,
         revoked_session_count: revoked_session_count,
-        verification_method: verification.value.fetch(:method)
+        verification_method: verification.value.fetch(:method),
+        current_session: locked_session,
+        session_token: rotated_session_token
       )
     rescue VerificationFailed => e
       e.result

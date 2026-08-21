@@ -25,11 +25,15 @@ import {
   IconBookmark,
   IconCloud,
   IconEdit,
+  IconEye,
+  IconEyeInvisible,
   IconLock,
   IconMessage,
   IconNotification,
   IconSettings,
   IconSubscribe,
+  IconTag,
+  IconTags,
   IconUserGroup,
 } from '@arco-design/web-vue/es/icon'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -113,14 +117,24 @@ const communityActions = computed<DashboardAction[]>(() => props.forum_enabled ?
   { key: 'bookmarks', href: routes.forumBookmarks, icon: IconBookmark },
 ] : [])
 
+const moreCommunityActions = computed<DashboardAction[]>(() => props.forum_enabled ? [
+  { key: 'following', href: routes.forumFollowing, icon: IconUserGroup },
+  { key: 'watchedTags', href: routes.forumWatchedTags, icon: IconTag },
+  { key: 'watchedTagTopics', href: routes.forumWatchedTagTopics, icon: IconTags },
+] : [])
+
+const privacyActions = computed<DashboardAction[]>(() => props.forum_enabled ? [
+  { key: 'preferences', href: routes.forumPreferences, icon: IconSettings },
+  { key: 'blocks', href: routes.forumBlocks, icon: IconEyeInvisible },
+  { key: 'ignores', href: routes.forumIgnores, icon: IconEye },
+  { key: 'muted', href: routes.forumMuted, icon: IconNotification },
+] : [])
+
 const settingsActions = computed<DashboardAction[]>(() => {
   const actions: DashboardAction[] = [
     { key: 'sessions', href: routes.sessionsManagement, icon: IconUserGroup },
     { key: 'dataExports', href: routes.identityDataExports, icon: IconCloud },
   ]
-  if (props.forum_enabled) {
-    actions.unshift({ key: 'preferences', href: routes.forumPreferences, icon: IconSettings })
-  }
   return actions
 })
 
@@ -221,7 +235,7 @@ function formatJoinedAt(value: string) {
       </Grid>
     </Card>
 
-    <Grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
+    <Grid :cols="{ xs: 1, lg: minecraft_enabled ? 2 : 1 }" :col-gap="16" :row-gap="16">
       <GridItem v-if="minecraft_enabled">
         <Card :title="t('accountCenter.minecraft.title')" :bordered="true">
           <template v-if="minecraft?.bound">
@@ -289,6 +303,60 @@ function formatJoinedAt(value: string) {
         <Card :title="t('accountCenter.groups.account')" :bordered="true">
           <List :bordered="false" :split="true">
             <ListItem v-for="action in settingsActions" :key="action.key">
+              <template #meta>
+                <ListItemMeta
+                  :title="t(`accountCenter.items.${action.key}.title`)"
+                  :description="t(`accountCenter.items.${action.key}.description`)"
+                >
+                  <template #avatar><component :is="action.icon" /></template>
+                </ListItemMeta>
+              </template>
+              <template #actions>
+                <Button
+                  type="text"
+                  :aria-label="t('accountCenter.openItem', { item: t(`accountCenter.items.${action.key}.title`) })"
+                  @click="visit(action.href)"
+                >
+                  {{ t('accountCenter.open') }}
+                </Button>
+              </template>
+            </ListItem>
+          </List>
+        </Card>
+      </GridItem>
+    </Grid>
+
+    <Grid v-if="forum_enabled" :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
+      <GridItem>
+        <Card :title="t('accountCenter.groups.moreCommunity')" :bordered="true">
+          <List :bordered="false" :split="true" size="small">
+            <ListItem v-for="action in moreCommunityActions" :key="action.key">
+              <template #meta>
+                <ListItemMeta
+                  :title="t(`accountCenter.items.${action.key}.title`)"
+                  :description="t(`accountCenter.items.${action.key}.description`)"
+                >
+                  <template #avatar><component :is="action.icon" /></template>
+                </ListItemMeta>
+              </template>
+              <template #actions>
+                <Button
+                  type="text"
+                  :aria-label="t('accountCenter.openItem', { item: t(`accountCenter.items.${action.key}.title`) })"
+                  @click="visit(action.href)"
+                >
+                  {{ t('accountCenter.open') }}
+                </Button>
+              </template>
+            </ListItem>
+          </List>
+        </Card>
+      </GridItem>
+
+      <GridItem>
+        <Card :title="t('accountCenter.groups.privacy')" :bordered="true">
+          <List :bordered="false" :split="true" size="small">
+            <ListItem v-for="action in privacyActions" :key="action.key">
               <template #meta>
                 <ListItemMeta
                   :title="t(`accountCenter.items.${action.key}.title`)"

@@ -6,17 +6,19 @@ module Identity
   class ChangePasswordTest < ActiveSupport::TestCase
     setup do
       @user = create_user
-      @current_session = SessionManager.call(
-        user: @user,
+      current_result = create_test_session(
+        @user,
         ip_address: "127.0.0.1",
         user_agent: "Current device"
-      ).value.fetch(:session)
+      )
+      @current_session = current_result.value.fetch(:session)
+      @current_token = current_result.value.fetch(:token)
     end
 
     test "changes the password, preserves the current session, and revokes every other session" do
-      first_other = SessionManager.call(user: @user).value.fetch(:session)
-      second_other = SessionManager.call(user: @user).value.fetch(:session)
-      expired_session = SessionManager.call(user: @user).value.fetch(:session)
+      first_other = create_test_session(@user).value.fetch(:session)
+      second_other = create_test_session(@user).value.fetch(:session)
+      expired_session = create_test_session(@user).value.fetch(:session)
       expired_session.update!(expires_at: 1.minute.ago)
       @user.update!(
         password_reset_token_digest: "pending-reset",
@@ -42,6 +44,10 @@ module Identity
       @user.reload
       assert @user.authenticate("replacement456")
       refute @user.authenticate("password123")
+      rotated_token = result.value.fetch(:session_token)
+      refute_equal @current_token, rotated_token
+      assert_equal Session.digest_token(rotated_token), @current_session.reload.token_digest
+      refute Session.exists?(token_digest: Session.digest_token(@current_token))
       refute @current_session.reload.revoked?
       assert first_other.reload.revoked?
       assert second_other.reload.revoked?
@@ -59,6 +65,8 @@ module Identity
       assert_equal "Password test", audit.user_agent
       refute_includes audit.to_json, "password123"
       refute_includes audit.to_json, "replacement456"
+      refute_includes audit.to_json, @current_token
+      refute_includes audit.to_json, rotated_token
 
       assert_equal [ "Identity::Mailer", "password_changed_email", "deliver_now" ], captured.first
       assert_equal @user.id, captured.last.fetch(:args).first
@@ -66,7 +74,7 @@ module Identity
     end
 
     test "rejects the wrong current password without changing credentials or sessions" do
-      other_session = SessionManager.call(user: @user).value.fetch(:session)
+      other_session = create_test_session(@user).value.fetch(:session)
 
       result = ChangePassword.call(
         user: @user,
@@ -86,7 +94,7 @@ module Identity
 
     test "fails closed when the current session is missing or belongs to another user" do
       other_user = create_user
-      foreign_session = SessionManager.call(user: other_user).value.fetch(:session)
+      foreign_session = create_test_session(other_user).value.fetch(:session)
 
       [ nil, foreign_session ].each do |session_record|
         result = ChangePassword.call(

@@ -84,11 +84,24 @@ module ActiveSupport
         return
       end
 
-      result = Identity::SessionManager.call(user: user, ip_address: "127.0.0.1", user_agent: "Test", remember_me: remember_me)
+      result = create_test_session(
+        user,
+        ip_address: "127.0.0.1",
+        user_agent: "Test",
+        remember_me: remember_me
+      )
       token = result.value[:token]
       @current_session = result.value[:session]
       cookies.signed[:session_token] = token
       token
+    end
+
+    def create_test_session(user, **attributes)
+      Identity::SessionManager.call(
+        user: user,
+        authentication_context: Identity::SessionManager::TEST_CONTEXT,
+        **attributes
+      )
     end
 
     def create_user(attrs = {})

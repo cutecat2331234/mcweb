@@ -58,8 +58,8 @@ module Identity
     end
 
     test "changing email requires reauthentication and revokes other sessions" do
-      current_session = SessionManager.call(user: @user).value.fetch(:session)
-      other_session = SessionManager.call(user: @user).value.fetch(:session)
+      current_session = create_test_session(@user).value.fetch(:session)
+      other_session = create_test_session(@user).value.fetch(:session)
 
       result = Mcweb::DeveloperMode.stub(:allow?, false) do
         ChangeEmail.call(
@@ -102,7 +102,7 @@ module Identity
     end
 
     test "account closure anonymizes profile revokes access and retains an immutable audit" do
-      session_record = SessionManager.call(user: @user).value.fetch(:session)
+      session_record = create_test_session(@user).value.fetch(:session)
       original_email = @user.email
       original_username = @user.username
 
@@ -237,7 +237,7 @@ module Identity
     test "verified email and password can reset lost totp and revoke every session" do
       @user.setup_totp!
       @user.update!(totp_enabled: true)
-      session_record = SessionManager.call(user: @user).value.fetch(:session)
+      session_record = create_test_session(@user).value.fetch(:session)
       captured = nil
 
       MailDeliveryJob.stub(:perform_later, ->(*args, **kwargs) { captured = [ args, kwargs ] }) do

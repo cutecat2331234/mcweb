@@ -17,6 +17,8 @@ test('signed-in password change is a dedicated Arco form with complete verificat
   assert.match(page, /new_password_confirmation/)
   assert.match(page, /v-if="totp_enabled"/)
   assert.match(page, /autocomplete="one-time-code"/)
+  assert.match(page, /inputmode="text"/)
+  assert.doesNotMatch(page, /inputmode="numeric"/)
   assert.match(page, /routes\.securityPassword/)
   assert.doesNotMatch(page, /components\/ui\//)
   assert.doesNotMatch(page, /gradient|translate[XY]?\(/i)

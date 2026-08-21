@@ -29,6 +29,10 @@ module Identity
         )
       end
 
+      replace_sign_in_token(
+        session_record: result.value.fetch(:current_session),
+        token: result.value.fetch(:session_token)
+      )
       redirect_to identity_security_password_path,
                   notice: t("mcweb.flash.password_changed")
     end

@@ -42,6 +42,15 @@ class Session < ApplicationRecord
     update!(revoked_at: Time.current)
   end
 
+  def rotate_token!
+    token = SecureRandom.urlsafe_base64(32)
+    update!(
+      token_digest: self.class.digest_token(token),
+      last_active_at: Time.current
+    )
+    token
+  end
+
   def touch_activity!(at: Time.current)
     cutoff = at - ACTIVITY_TOUCH_INTERVAL
     return false if last_active_at && last_active_at > cutoff

@@ -52,7 +52,7 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "email change revokes other sessions and requires replacement verification" do
-    other_session = Identity::SessionManager.call(user: @user).value.fetch(:session)
+    other_session = create_test_session(@user).value.fetch(:session)
     delivery_enqueued = false
 
     Mcweb::DeveloperMode.stub(:allow?, false) do

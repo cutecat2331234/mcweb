@@ -52,6 +52,19 @@ test('language switchers publish the selected locale before starting an Inertia 
   }
 })
 
+test('explicit Inertia visit headers override shared locale and csrf defaults', () => {
+  for (const relativePath of [
+    'app/javascript/entrypoints/inertia.ts',
+    'app/javascript/entrypoints/admin.ts',
+  ]) {
+    const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
+    assert.match(
+      source,
+      /event\.detail\.visit\.headers\s*=\s*\{\s*\.\.\.headers,\s*\.\.\.event\.detail\.visit\.headers,?\s*\}/,
+    )
+  }
+})
+
 test('Inertia resolves the target page locale before loading its component', () => {
   for (const relativePath of [
     'app/javascript/entrypoints/inertia.ts',

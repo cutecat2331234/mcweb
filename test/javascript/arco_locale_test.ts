@@ -86,3 +86,14 @@ test('every shared Arco shell binds its provider to the vue-i18n locale', () => 
     assert.match(source, /(?:a-config-provider|ConfigProvider) :locale="arcoLocale" global/)
   }
 })
+
+test('portal provider keeps Arco controls synchronized with the shared dark theme', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), 'app/javascript/components/AppProvider.vue'),
+    'utf8',
+  )
+
+  assert.match(source, /const \{ isDark \} = useTheme\(\)/)
+  assert.match(source, /document\.body\.setAttribute\('arco-theme', 'dark'\)/)
+  assert.match(source, /document\.body\.removeAttribute\('arco-theme'\)/)
+})

@@ -82,7 +82,7 @@ module Operations
       end
       with_settings(developer_settings(enabled: false)) do
         assert_not persona.session_eligible?
-        session_result = Identity::SessionManager.call(user: persona)
+        session_result = create_test_session(persona)
         assert_predicate session_result, :failure?
         assert_equal "session_ineligible", session_result.code
       end

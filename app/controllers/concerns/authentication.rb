@@ -27,7 +27,8 @@ module Authentication
       user: user,
       ip_address: request.remote_ip,
       user_agent: request.user_agent,
-      remember_me: false
+      remember_me: false,
+      authentication_context: Identity::SessionManager::DEVELOPER_MODE_CONTEXT
     )
     return unless result.success?
 
@@ -150,6 +151,17 @@ module Authentication
       cookies.signed[SESSION_COOKIE] = cookie_options
       request.session[SESSION_COOKIE] = token
     end
+  end
+
+  def replace_sign_in_token(session_record:, token:)
+    clear_invalid_session_token
+    @session_record = session_record
+    @current_user = session_record.user
+    sign_in(
+      session_record: session_record,
+      token: token,
+      remember_me: session_record.remember_me?
+    )
   end
 
   def sign_out

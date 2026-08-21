@@ -39,6 +39,9 @@ class IdentityProfileSelfServiceTest < ActionDispatch::IntegrationTest
         locale: "en",
         time_zone: "UTC"
       }
+    }, headers: {
+      "X-Inertia" => "true",
+      "X-McWeb-Locale" => "zh-CN"
     }
 
     assert_redirected_to identity_profile_path

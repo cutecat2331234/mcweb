@@ -32,14 +32,15 @@ module Identity
       end
 
       user = credentials_result.value.fetch(:user)
+      credential_snapshot = credentials_result.value.fetch(:credential_snapshot)
       if credentials_result.value.fetch(:two_factor_required)
-        begin_pending_second_factor!(user:, remember_me:)
+        begin_pending_second_factor!(user:, remember_me:, credential_snapshot:)
         return redirect_to identity_session_two_factor_path, status: :see_other
       end
 
-      result = complete_authentication(user:, remember_me:)
+      result = complete_authentication(user:, remember_me:, credential_snapshot:)
       if result.code == "two_factor_code_required"
-        begin_pending_second_factor!(user:, remember_me:)
+        begin_pending_second_factor!(user:, remember_me:, credential_snapshot:)
         return redirect_to identity_session_two_factor_path, status: :see_other
       end
 
@@ -67,7 +68,8 @@ module Identity
         user: pending.fetch(:user),
         remember_me: pending.fetch(:remember_me),
         totp_code: two_factor_params[:code],
-        two_factor_required: true
+        two_factor_required: true,
+        credential_snapshot: pending.fetch(:credential_snapshot)
       )
 
       if result.success?
@@ -97,14 +99,21 @@ module Identity
       session_params[:remember_me] == "1" || session_params[:remember_me] == true
     end
 
-    def complete_authentication(user:, remember_me:, totp_code: nil, two_factor_required: false)
+    def complete_authentication(
+      user:,
+      remember_me:,
+      credential_snapshot:,
+      totp_code: nil,
+      two_factor_required: false
+    )
       Identity::CompleteAuthentication.call(
         user:,
         totp_code:,
         ip_address: request.remote_ip,
         user_agent: request.user_agent,
         remember_me:,
-        two_factor_required:
+        two_factor_required:,
+        credential_snapshot:
       )
     end
 
@@ -135,11 +144,12 @@ module Identity
              props: { verification_error: service_error_message(result) }
     end
 
-    def begin_pending_second_factor!(user:, remember_me:)
+    def begin_pending_second_factor!(user:, remember_me:, credential_snapshot:)
       session[PENDING_SECOND_FACTOR_KEY] = {
         "user_id" => user.id,
         "issued_at" => Time.current.to_i,
-        "remember_me" => remember_me
+        "remember_me" => remember_me,
+        "credential_snapshot" => credential_snapshot
       }
     end
 
@@ -155,14 +165,16 @@ module Identity
       end
 
       user = User.find_by(id: payload[:user_id])
-      unless user&.totp_enabled?
+      credential_snapshot = payload[:credential_snapshot].to_s
+      unless user&.totp_enabled? && CredentialSnapshot.valid?(user, credential_snapshot)
         clear_pending_second_factor!
         return
       end
 
       {
         user:,
-        remember_me: ActiveModel::Type::Boolean.new.cast(payload[:remember_me])
+        remember_me: ActiveModel::Type::Boolean.new.cast(payload[:remember_me]),
+        credential_snapshot:
       }
     end
 

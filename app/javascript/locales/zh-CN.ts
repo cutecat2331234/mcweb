@@ -173,6 +173,8 @@ export default {
       community: '社区动态',
       content: '内容与沟通',
       account: '账户与隐私',
+      moreCommunity: '更多社区工具',
+      privacy: '社区隐私',
     },
     items: {
       newTopics: { title: '新主题', description: '查看你上次访问后的主题。' },

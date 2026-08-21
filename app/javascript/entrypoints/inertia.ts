@@ -67,8 +67,8 @@ async function bootstrap() {
     }
 
     event.detail.visit.headers = {
-      ...event.detail.visit.headers,
       ...headers,
+      ...event.detail.visit.headers,
     }
   })
 

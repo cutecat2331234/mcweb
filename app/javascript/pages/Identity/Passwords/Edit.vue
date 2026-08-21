@@ -127,8 +127,10 @@ function submit() {
         >
           <Input
             v-model="form.password_change.code"
-            inputmode="numeric"
+            inputmode="text"
             autocomplete="one-time-code"
+            autocapitalize="characters"
+            :spellcheck="false"
             :placeholder="t('identity.password.twoFactorPlaceholder')"
           />
         </FormItem>

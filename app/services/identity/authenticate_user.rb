@@ -25,7 +25,8 @@ module Identity
         ip_address: @ip_address,
         user_agent: @user_agent,
         remember_me: @remember_me,
-        two_factor_required: credentials_result.value.fetch(:two_factor_required)
+        two_factor_required: credentials_result.value.fetch(:two_factor_required),
+        credential_snapshot: credentials_result.value.fetch(:credential_snapshot)
       )
     end
   end

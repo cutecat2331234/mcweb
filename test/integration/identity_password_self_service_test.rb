@@ -28,7 +28,10 @@ class IdentityPasswordSelfServiceTest < ActionDispatch::IntegrationTest
     user = create_user
     sign_in_as(user)
     current_session = user.sessions.active.order(:created_at, :id).last
-    other_session = Identity::SessionManager.call(user: user).value.fetch(:session)
+    previous_token = session[Authentication::SESSION_COOKIE]
+    assert previous_token.present?
+    previous_token_digest = current_session.token_digest
+    other_session = create_test_session(user).value.fetch(:session)
 
     assert_enqueued_jobs 1, only: MailDeliveryJob do
       patch identity_security_password_path, params: {
@@ -45,12 +48,42 @@ class IdentityPasswordSelfServiceTest < ActionDispatch::IntegrationTest
     user.reload
     assert user.authenticate("replacement456")
     refute user.authenticate("password123")
-    refute current_session.reload.revoked?
+    current_session.reload
+    refute current_session.revoked?
+    refute_equal previous_token_digest, current_session.token_digest
     assert other_session.reload.revoked?
+    rotated_token = session[Authentication::SESSION_COOKIE]
+    assert rotated_token.present?
+    refute_equal previous_token, rotated_token
+    refute_includes response.body, previous_token
+    refute_includes response.body, rotated_token
 
     follow_redirect!
     assert_response :success
     assert_equal "Identity/Passwords/Edit", inertia.component
+  end
+
+  test "password change preserves remember-me cookie semantics while rotating the current token" do
+    user = create_user
+    sign_in_as(user, remember_me: true)
+    current_session = user.sessions.active.order(:created_at, :id).last
+    previous_token_digest = current_session.token_digest
+
+    patch identity_security_password_path, params: {
+      password_change: {
+        current_password: "password123",
+        new_password: "replacement456",
+        new_password_confirmation: "replacement456",
+        code: ""
+      }
+    }
+
+    assert_redirected_to identity_security_password_path
+    current_session.reload
+    assert current_session.remember_me?
+    refute_equal previous_token_digest, current_session.token_digest
+    assert cookies[Authentication::SESSION_COOKIE].present?
+    assert_not session[Authentication::SESSION_COOKIE].present?
   end
 
   test "invalid reauthentication returns only safe field errors" do

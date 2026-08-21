@@ -7,8 +7,8 @@ class Administration::BanUserSessionTest < ActiveSupport::TestCase
   setup do
     @admin = create_user
     @target = create_user
-    @session_result = Identity::SessionManager.call(
-      user: @target,
+    @session_result = create_test_session(
+      @target,
       ip_address: "127.0.0.1",
       user_agent: "Test"
     )
@@ -82,8 +82,8 @@ end
 class UserSoftDeleteSessionTest < ActiveSupport::TestCase
   test "soft delete revokes active sessions" do
     user = create_user
-    session_result = Identity::SessionManager.call(
-      user: user,
+    session_result = create_test_session(
+      user,
       ip_address: "127.0.0.1",
       user_agent: "Test"
     )

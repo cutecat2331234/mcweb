@@ -30,7 +30,8 @@ class DeveloperModeToolsController < ApplicationController
       user: target,
       ip_address: request.remote_ip,
       user_agent: request.user_agent,
-      remember_me: false
+      remember_me: false,
+      authentication_context: Identity::SessionManager::DEVELOPER_MODE_CONTEXT
     )
     unless result.success?
       return redirect_back(

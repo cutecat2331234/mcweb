@@ -140,6 +140,39 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_not session[Authentication::SESSION_COOKIE].present?
   end
 
+  test "password replacement expires the opaque pending second-factor credential snapshot" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123" }
+    }
+    assert_redirected_to identity_session_two_factor_path
+
+    pending = session[:identity_pending_second_factor]
+    credential_snapshot = pending.fetch("credential_snapshot")
+    assert credential_snapshot.present?
+    refute pending.key?("password_digest")
+    refute_includes pending.values, @user.password_digest
+
+    get identity_session_two_factor_path
+    assert_response :success
+    refute_includes response.body, credential_snapshot
+
+    @user.update!(
+      password: "replacement456",
+      password_confirmation: "replacement456"
+    )
+    post identity_session_two_factor_path, params: {
+      two_factor: { code: ROTP::TOTP.new(@user.totp_secret).now }
+    }
+
+    assert_response :see_other
+    assert_redirected_to identity_sign_in_path
+    assert_nil session[:identity_pending_second_factor]
+    assert_not session[Authentication::SESSION_COOKIE].present?
+  end
+
   test "wrong password does not reveal totp state or create a pending challenge" do
     @user.setup_totp!
     @user.update!(totp_enabled: true)

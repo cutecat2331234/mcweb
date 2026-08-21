@@ -173,6 +173,8 @@ export default {
       community: 'Community activity',
       content: 'Content and conversations',
       account: 'Account and privacy',
+      moreCommunity: 'More community tools',
+      privacy: 'Community privacy',
     },
     items: {
       newTopics: { title: 'New topics', description: 'Catch up on topics since your last visit.' },

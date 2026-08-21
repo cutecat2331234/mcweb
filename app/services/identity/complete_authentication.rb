@@ -8,7 +8,8 @@ module Identity
       ip_address: nil,
       user_agent: nil,
       remember_me: false,
-      two_factor_required: false
+      two_factor_required: false,
+      credential_snapshot: nil
     )
       @user = user
       @totp_code = totp_code
@@ -16,56 +17,65 @@ module Identity
       @user_agent = user_agent
       @remember_me = remember_me
       @two_factor_required = two_factor_required
+      @credential_snapshot = credential_snapshot
     end
 
     def call
-      return generic_failure unless account_still_eligible?
+      return generic_failure unless @user&.persisted?
 
-      if second_factor_required?
-        if @totp_code.blank?
-          return ServiceResult.failure(
-            error: "two_factor_code_required",
-            code: "two_factor_code_required"
-          )
+      User.transaction do
+        @user.lock!
+        return generic_failure unless CredentialSnapshot.valid?(@user, @credential_snapshot)
+        return generic_failure unless account_still_eligible?
+
+        if second_factor_required?
+          if @totp_code.blank?
+            return ServiceResult.failure(
+              error: "two_factor_code_required",
+              code: "two_factor_code_required"
+            )
+          end
+          unless verify_second_factor
+            return ServiceResult.failure(
+              error: "invalid_two_factor_code",
+              code: "invalid_two_factor_code"
+            )
+          end
         end
-        unless verify_second_factor
-          return ServiceResult.failure(
-            error: "invalid_two_factor_code",
-            code: "invalid_two_factor_code"
-          )
+
+        sign_in_attributes = {
+          last_sign_in_at: Time.current,
+          last_sign_in_ip: @ip_address
+        }
+        unless Mcweb::DeveloperMode.allow?(:skip_account_lockout)
+          sign_in_attributes[:failed_login_count] = 0
+          sign_in_attributes[:locked_until] = nil
         end
+        @user.update!(sign_in_attributes)
+
+        session_result = SessionManager.call(
+          user: @user,
+          ip_address: @ip_address,
+          user_agent: @user_agent,
+          remember_me: @remember_me,
+          credential_snapshot: @credential_snapshot,
+          authentication_context: SessionManager::VERIFIED_CREDENTIALS_CONTEXT
+        )
+        return generic_failure if session_result.failure?
+
+        Administration::AuditLogger.call(
+          actor: @user,
+          action: "identity.sign_in",
+          resource: @user,
+          ip_address: @ip_address,
+          user_agent: @user_agent
+        )
+
+        ServiceResult.success(
+          session: session_result.value[:session],
+          token: session_result.value[:token]
+        )
       end
-
-      sign_in_attributes = {
-        last_sign_in_at: Time.current,
-        last_sign_in_ip: @ip_address
-      }
-      unless Mcweb::DeveloperMode.allow?(:skip_account_lockout)
-        sign_in_attributes[:failed_login_count] = 0
-        sign_in_attributes[:locked_until] = nil
-      end
-      @user.update!(sign_in_attributes)
-
-      session_result = SessionManager.call(
-        user: @user,
-        ip_address: @ip_address,
-        user_agent: @user_agent,
-        remember_me: @remember_me
-      )
-      return session_result if session_result.failure?
-
-      Administration::AuditLogger.call(
-        actor: @user,
-        action: "identity.sign_in",
-        resource: @user,
-        ip_address: @ip_address,
-        user_agent: @user_agent
-      )
-
-      ServiceResult.success(
-        session: session_result.value[:session],
-        token: session_result.value[:token]
-      )
     end
 
     private

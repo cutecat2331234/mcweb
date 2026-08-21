@@ -45,6 +45,7 @@ module Identity
 
       ServiceResult.success(
         user: user,
+        credential_snapshot: CredentialSnapshot.issue(user),
         two_factor_required: user.totp_enabled? && !Mcweb::DeveloperMode.allow?(:skip_two_factor)
       )
     end

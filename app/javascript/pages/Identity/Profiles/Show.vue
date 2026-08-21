@@ -19,7 +19,7 @@ import {
 } from '@mcweb/ui'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import { normalizeAppLocale, preloadAppLocale, type AppLocale } from '@/lib/i18n'
-import { writeSharedAppLocale } from '@/lib/localePreference'
+import { localeRequestHeaders, writeSharedAppLocale } from '@/lib/localePreference'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -69,13 +69,33 @@ function fieldError(field: 'display_name' | 'locale') {
   return form.errors[key as keyof typeof form.errors] || props.form_errors?.[key] || ''
 }
 
+function currentPersistedLocale(): AppLocale {
+  const auth = page.props.auth as { user?: { locale?: unknown } | null } | undefined
+  return normalizeAppLocale(auth?.user?.locale ?? page.props.locale)
+}
+
 async function submit() {
   const selectedLocale = normalizeAppLocale(form.profile.locale)
+  const previousLocale = currentPersistedLocale()
   form.profile.locale = selectedLocale
   await preloadAppLocale(selectedLocale)
   form.patch(routes.identityProfile, {
     preserveScroll: true,
-    onSuccess: () => {
+    headers: localeRequestHeaders(selectedLocale),
+    onSuccess: (nextPage) => {
+      const responseErrors = nextPage.props.form_errors
+      const auth = nextPage.props.auth as { user?: { locale?: unknown } | null } | undefined
+      const persistedLocale = typeof auth?.user?.locale === 'string'
+        ? normalizeAppLocale(auth.user.locale)
+        : null
+      if (
+        (responseErrors && Object.keys(responseErrors as object).length > 0) ||
+        persistedLocale !== selectedLocale
+      ) {
+        writeSharedAppLocale(previousLocale)
+        return
+      }
+
       writeSharedAppLocale(selectedLocale)
       form.defaults({
         profile: {
@@ -84,6 +104,8 @@ async function submit() {
         },
       })
     },
+    onError: () => writeSharedAppLocale(previousLocale),
+    onCancel: () => writeSharedAppLocale(previousLocale),
   })
 }
 </script>

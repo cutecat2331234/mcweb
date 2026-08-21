@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { Moon, Sun } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { Button, Card } from '@mcweb/ui'
-import DeveloperModeTools from '@/components/portal/DeveloperModeTools.vue'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
@@ -18,6 +17,9 @@ const { t } = useI18n()
 const { activeTemplate, tokenStyle } = useActiveTemplate()
 const { features } = useFeatureFlags()
 const { isDark, toggleTheme } = useTheme()
+const DeveloperModeTools = defineAsyncComponent(
+  () => import('@/components/portal/DeveloperModeTools.vue'),
+)
 const developerMode = computed(
   () =>
     (page.props.developer_mode ?? { enabled: false }) as {
@@ -29,7 +31,7 @@ const developerMode = computed(
 </script>
 
 <template>
-  <DeveloperModeTools />
+  <DeveloperModeTools v-if="developerMode.enabled" />
   <div class="min-h-dvh bg-background text-foreground" :style="tokenStyle">
     <TemplateAssets :include-css="false" />
 

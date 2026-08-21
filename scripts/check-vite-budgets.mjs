@@ -18,6 +18,15 @@ if (!existsSync(manifestPath)) {
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const outputRoot = resolve(manifestPath, '..', '..')
 const entrypoint = 'entrypoints/inertia.ts'
+const requiredChunkGroups = [
+  'arco-provider-runtime',
+  'arco-auth-shell',
+  'arco-sign-in-form',
+  'arco-data-display',
+  'arco-extended-form',
+  'arco-developer-tools',
+  'arco-settings-icons',
+]
 
 const routeBudgets = [
   {
@@ -99,6 +108,13 @@ function kb(bytes) {
 }
 
 let failed = false
+const generatedChunkNames = new Set(Object.values(manifest).map((entry) => entry.name))
+const missingChunkGroups = requiredChunkGroups.filter((name) => !generatedChunkNames.has(name))
+if (missingChunkGroups.length > 0) {
+  failed = true
+  console.error(`Required Vite chunk groups are missing: ${missingChunkGroups.join(', ')}`)
+}
+
 const results = []
 for (const budget of routeBudgets) {
   const page = budget.pages.find((candidate) => manifest[candidate])

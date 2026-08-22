@@ -192,7 +192,6 @@ async function sendTestAllWebhooks() {
   <section class="admin-store-settings">
     <a-page-header
       :title="t('admin.storeSettings.title')"
-      :subtitle="t('admin.storeSettings.subtitle')"
       :show-back="false"
       class="mb-4 !px-0"
     />
@@ -208,17 +207,10 @@ async function sendTestAllWebhooks() {
           :title="t('admin.storeSettings.featureToggles')"
           :bordered="true"
         >
-          <template #extra>
-            <a-typography-text type="secondary">
-              {{ t('admin.storeSettings.featureTogglesHint') }}
-            </a-typography-text>
-          </template>
-
           <a-list :bordered="false" :split="true">
             <a-list-item v-for="feature in storeFeatures" :key="feature.id">
               <a-list-item-meta
                 :title="feature.label"
-                :description="feature.description"
               />
               <template #actions>
                 <a-switch v-model="form.store_features[feature.id]" />
@@ -237,12 +229,6 @@ async function sendTestAllWebhooks() {
               {{ t('admin.storeSettings.addShipping') }}
             </a-button>
           </template>
-
-          <a-alert
-            type="info"
-            :title="t('admin.storeSettings.shippingHint')"
-            class="mb-4"
-          />
 
           <a-space v-if="shippingMethods.length" direction="vertical" fill :size="12">
             <a-card

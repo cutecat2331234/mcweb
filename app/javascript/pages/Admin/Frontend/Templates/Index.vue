@@ -88,26 +88,23 @@ function statusColor(status: string) {
 <template>
   <a-page-header
     :title="t('admin.templates.title')"
-    :subtitle="t('admin.templates.subtitle')"
     :show-back="false"
   />
 
   <a-card :title="t('admin.templates.uploadTitle')" :bordered="true" class="mb-4">
-    <a-typography-paragraph type="secondary">
-      {{ t('admin.templates.uploadHint') }}
-      <a-link
+    <a-space class="mb-4" wrap>
+      <a-button
         href="/template-starter/manifest.json"
         target="_blank"
         rel="noopener"
         data-admin-hard-navigation
       >
         {{ t('admin.templates.manifestSpec') }}
-      </a-link>
-      {{ t('admin.templates.orDownload') }}
-      <a-link :href="starterDownloadUrl" data-admin-hard-navigation>
+      </a-button>
+      <a-button :href="starterDownloadUrl" data-admin-hard-navigation>
         {{ t('admin.templates.samplePack') }}
-      </a-link>
-    </a-typography-paragraph>
+      </a-button>
+    </a-space>
     <a-upload
       accept=".zip,application/zip"
       :auto-upload="false"

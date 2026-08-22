@@ -52,7 +52,7 @@ function medal(rank: number): string {
     { label: t('forum.leaderboard.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.leaderboard.title')" :subtitle="t('forum.leaderboard.subtitle')" />
+  <PageHeader :title="t('forum.leaderboard.title')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-3">
     <div class="flex gap-1">

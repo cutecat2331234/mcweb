@@ -42,7 +42,7 @@ function submit() {
     { label: t('commerce.preferences.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('commerce.preferences.title')" :subtitle="t('commerce.preferences.subtitle')" />
+  <PageHeader :title="t('commerce.preferences.title')" />
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div

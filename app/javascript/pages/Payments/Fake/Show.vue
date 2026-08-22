@@ -25,7 +25,7 @@ const form = useForm({
 </script>
 
 <template>
-  <PageHeader :title="t('payments.fake.title')" :subtitle="t('payments.fake.subtitle')" />
+  <PageHeader :title="t('payments.fake.title')" />
 
   <Card class="max-w-md">
     <CardContent class="space-y-4 pt-6">

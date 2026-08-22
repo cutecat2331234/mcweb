@@ -178,7 +178,7 @@ async function saveRenameSearch(search: SavedSearchItem) {
     { label: t('forum.preferences.title'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.preferences.title')" :subtitle="t('forum.preferences.subtitle')" />
+  <PageHeader :title="t('forum.preferences.title')" />
 
   <section class="mb-6 max-w-lg rounded-lg border p-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -241,16 +241,6 @@ async function saveRenameSearch(search: SavedSearchItem) {
         :options="watch_email_mode_options"
         class="w-full"
       />
-      <p class="mt-2 text-xs text-muted-foreground">{{ t('forum.preferences.watchEmailModeHint') }}</p>
-    </div>
-
-    <div v-if="notificationLevelGuide?.length" class="rounded-lg border p-4">
-      <p class="mb-3 text-sm font-medium">{{ t('forum.preferences.notificationLevelGuide') }}</p>
-      <ul class="space-y-2 text-sm text-muted-foreground">
-        <li v-for="item in notificationLevelGuide" :key="item.value">
-          <span class="font-medium text-foreground">{{ item.label }}</span> — {{ item.description }}
-        </li>
-      </ul>
     </div>
 
     <div class="rounded-lg border p-4">
@@ -261,7 +251,6 @@ async function saveRenameSearch(search: SavedSearchItem) {
         :options="digest_options"
         class="w-full"
       />
-      <p class="mt-2 text-xs text-muted-foreground">{{ t('forum.preferences.digestHint') }}</p>
       <label v-if="form.digest_frequency !== 'none'" class="mt-3 flex items-center gap-2 text-sm">
         <Checkbox v-model="form.digest_watched_only" />
         {{ t('forum.preferences.digestWatchedOnly') }}
@@ -292,7 +281,6 @@ async function saveRenameSearch(search: SavedSearchItem) {
         {{ t('forum.preferences.exportOpml') }}
       </a>
     </div>
-    <p class="mb-4 text-xs text-muted-foreground">{{ t('forum.preferences.savedSearchesHint') }}</p>
     <ul class="space-y-2">
       <li
         v-for="search in savedSearches"

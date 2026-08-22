@@ -52,7 +52,7 @@ function toggleWishlist(url: string) {
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader :title="t('commerce.recentlyViewed.title')" :subtitle="t('commerce.recentlyViewed.subtitle')" />
+    <PageHeader :title="t('commerce.recentlyViewed.title')" />
     <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
       {{ t('commerce.recentlyViewed.compareList', { count: compareCount }) }}
     </Link>

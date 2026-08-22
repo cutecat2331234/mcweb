@@ -224,7 +224,6 @@ function sourceLabel(entry: HistoryEntry) {
 <template>
   <a-page-header
     :title="title"
-    :subtitle="t('admin.pluginSettings.subtitle')"
     class="mb-5 !px-0"
   />
 

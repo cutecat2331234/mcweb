@@ -48,7 +48,6 @@ const hasMetadata = computed(() => Object.keys(props.log.metadata).length > 0)
   <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="log.actionLabel"
-      :subtitle="t('admin.audit.detailSubtitle')"
       :show-back="false"
     >
       <template #extra>

@@ -241,7 +241,7 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
     { label: t('community.notifications.title'), current: true },
   ]" />
 
-  <PageHeader :title="t('community.notifications.title')" :subtitle="t('community.notifications.subtitle')">
+  <PageHeader :title="t('community.notifications.title')">
     <template #actions>
       <Button type="button" variant="outline" size="sm" @click="markAllRead">
         {{ t('community.notifications.markAllRead') }}

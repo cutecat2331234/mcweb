@@ -39,7 +39,7 @@ function changeSort(value: string) {
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader :title="t('forum.assigned.title')" :subtitle="t('forum.assigned.subtitle')" />
+    <PageHeader :title="t('forum.assigned.title')" />
     <div class="flex flex-wrap items-center gap-2">
       <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
       <BulkModerateToolbar

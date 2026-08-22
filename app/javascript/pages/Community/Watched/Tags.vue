@@ -36,7 +36,7 @@ function unsubscribe(url: string) {
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader :title="t('forum.watched.watchedTagsTitle')" :subtitle="t('forum.watched.watchedTagsSubtitle')" />
+    <PageHeader :title="t('forum.watched.watchedTagsTitle')" />
     <div class="flex flex-wrap items-center gap-2">
       <a
         v-if="watchingOpmlUrl"

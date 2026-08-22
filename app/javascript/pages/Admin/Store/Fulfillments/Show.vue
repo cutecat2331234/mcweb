@@ -98,7 +98,6 @@ function visitTargetServer() {
   <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="t('admin.fulfillments.title', { id: fulfillment.delivery_id })"
-      :subtitle="t('admin.fulfillments.detailSubtitle')"
       :show-back="false"
     >
       <template #extra>

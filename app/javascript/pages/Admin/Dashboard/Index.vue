@@ -92,7 +92,6 @@ function metricSpan(index: number) {
   <a-space class="admin-dashboard" direction="vertical" :size="16" fill>
     <a-page-header
       :title="t('admin.dashboard.title')"
-      :subtitle="t('admin.dashboard.subtitle')"
       :show-back="false"
       class="!px-0"
     />

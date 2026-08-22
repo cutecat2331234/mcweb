@@ -27,6 +27,7 @@ export default {
     notifications: '通知',
     messages: '私信',
     cart: '购物车',
+    documentation: '查看文档',
     backToSite: '返回前台',
     adminPanel: '管理后台',
     adminBrand: 'McWeb 管理后台',

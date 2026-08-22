@@ -59,7 +59,7 @@ function dismissAll() {
     { label: t('forum.new.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.new.title')" :subtitle="t('forum.new.subtitle', { days: windowDays })" />
+  <PageHeader :title="t('forum.new.title')" />
 
   <ListFilterBar :active-filters="activeFilters ?? []" @remove-filter="removeFilter">
     <div class="flex items-center gap-2">

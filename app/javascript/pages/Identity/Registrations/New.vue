@@ -83,7 +83,7 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader density="compact" :title="t('auth.register.title')" :subtitle="t('auth.register.subtitle')" />
+  <PageHeader density="compact" :title="t('auth.register.title')" />
 
   <Alert v-if="formError" variant="destructive" :title="t('auth.register.failed')" class="mb-4 max-w-md">
     {{ formError }}

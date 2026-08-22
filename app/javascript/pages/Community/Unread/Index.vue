@@ -211,7 +211,7 @@ async function deleteFilterPreset(deleteUrl: string) {
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader :title="t('forum.unread.title')" :subtitle="t('forum.unread.subtitle')" />
+    <PageHeader :title="t('forum.unread.title')" />
     <div class="flex flex-wrap items-center gap-2">
       <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
       <Select :model-value="filter" :options="filterOptions" size="sm" @update:model-value="changeFilter" />

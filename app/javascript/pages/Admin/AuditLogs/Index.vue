@@ -136,7 +136,7 @@ function exportLogs() {
 
 <template>
   <a-space direction="vertical" :size="16" fill>
-    <a-page-header :title="t('admin.audit.title')" :subtitle="t('admin.audit.subtitle')" :show-back="false">
+    <a-page-header :title="t('admin.audit.title')" :show-back="false">
       <template #extra>
         <a-button
           v-if="canExport"

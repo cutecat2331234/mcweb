@@ -4,7 +4,7 @@ This directory contains the full **Arco Design Vue** component library source, v
 
 - **Upstream:** https://github.com/arco-design/arco-design-vue
 - **Package:** `@arco-design/web-vue` (`packages/web-vue/`)
-- **McWeb convention:** import runtime components via `@mcweb/ui` (see `docs/UI_COMPONENT_LIBRARY.md`)
+- **McWeb convention:** import runtime components via `@mcweb/ui`.
 
 ## Why vendored?
 

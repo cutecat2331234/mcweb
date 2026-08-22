@@ -32,7 +32,7 @@ defineProps<{
     { label: t('forum.staff.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.staff.title')" :subtitle="t('forum.staff.subtitle')" />
+  <PageHeader :title="t('forum.staff.title')" />
 
   <div v-if="staff.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
     <div

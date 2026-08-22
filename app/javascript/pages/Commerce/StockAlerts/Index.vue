@@ -41,7 +41,7 @@ function unsubscribe(url: string) {
     { label: t('commerce.stockAlerts.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('commerce.stockAlerts.title')" :subtitle="t('commerce.stockAlerts.subtitle')" />
+  <PageHeader :title="t('commerce.stockAlerts.title')" />
 
   <div v-if="alerts.length" class="space-y-3">
     <div v-for="alert in alerts" :key="alert.id" class="flex items-center justify-between gap-4 rounded-lg border p-4">

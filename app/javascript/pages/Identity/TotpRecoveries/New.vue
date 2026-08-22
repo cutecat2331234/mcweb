@@ -27,7 +27,6 @@ function submit() {
   <PageHeader
     density="compact"
     :title="t('identity.totpRecovery.requestTitle')"
-    :subtitle="t('identity.totpRecovery.requestSubtitle')"
   />
 
   <div class="w-full space-y-5">

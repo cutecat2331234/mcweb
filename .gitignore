@@ -54,6 +54,14 @@ node_modules
 
 dist/
 
+# Locally retained implementation targets are not product documentation.
+/development-targets/
+
+# Generated documentation-site state and deploy output.
+/docs/.astro/
+/docs/dist/
+/public/docs/
+
 # Gradle (MC connector plugin)
 plugins/**/build/
 plugins/**/.gradle/

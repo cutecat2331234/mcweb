@@ -34,7 +34,7 @@ function changeSort(value: string) {
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader :title="t('forum.watched.tagTopicsPageTitle')" :subtitle="t('forum.watched.tagTopicsPageSubtitle')" />
+    <PageHeader :title="t('forum.watched.tagTopicsPageTitle')" />
     <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
   </div>
 

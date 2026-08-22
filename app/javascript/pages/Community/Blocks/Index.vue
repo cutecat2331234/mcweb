@@ -33,7 +33,7 @@ function unblock(url: string) {
     { label: t('forum.blocks.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.blocks.title')" :subtitle="t('forum.blocks.subtitle')" />
+  <PageHeader :title="t('forum.blocks.title')" />
 
   <div v-if="users.length" class="divide-y rounded-lg border">
     <div v-for="user in users" :key="user.username" class="flex items-center justify-between gap-4 p-4">

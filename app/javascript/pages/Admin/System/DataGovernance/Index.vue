@@ -371,7 +371,6 @@ async function executeLifecycleAction() {
 <template>
   <PageHeader
     :title="t('admin.dataGovernance.title')"
-    :subtitle="t('admin.dataGovernance.subtitle')"
   >
     <template #extra>
       <Space>

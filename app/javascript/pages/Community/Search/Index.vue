@@ -649,7 +649,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     { label: t('nav.search'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.search.title')" :subtitle="t('forum.search.subtitle')" />
+  <PageHeader :title="t('forum.search.title')" />
 
   <form class="mb-4 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
     <div class="relative min-w-[200px] flex-1">

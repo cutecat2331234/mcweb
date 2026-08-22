@@ -467,7 +467,6 @@ function submitManualTrigger() {
   <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="t('admin.paymentReconciliation.title')"
-      :subtitle="t('admin.paymentReconciliation.subtitle')"
       :show-back="false"
     />
     <a-alert
@@ -476,13 +475,6 @@ function submitManualTrigger() {
       :closable="false"
       :title="t('admin.paymentReconciliation.safetyNotice')"
     />
-    <a-alert
-      type="info"
-      show-icon
-      :closable="false"
-      :title="t('admin.paymentReconciliation.scheduleNotice')"
-    />
-
     <a-grid :cols="{ xs: 1, sm: 2, xl: 5 }" :col-gap="12" :row-gap="12">
       <a-grid-item>
         <a-card :bordered="false" size="small">
@@ -527,9 +519,6 @@ function submitManualTrigger() {
             <a-typography-title :heading="5">
               {{ t('admin.paymentReconciliation.manualTitle') }}
             </a-typography-title>
-            <a-typography-text type="secondary">
-              {{ t('admin.paymentReconciliation.manualHint') }}
-            </a-typography-text>
           </a-space>
           <a-button
             v-if="manualTrigger.ready"
@@ -553,14 +542,7 @@ function submitManualTrigger() {
 
     <a-card :bordered="false">
       <template #title>
-        <a-space direction="vertical" size="mini" fill>
-          <a-typography-title :heading="5">
-            {{ t('admin.paymentReconciliation.runHistory') }}
-          </a-typography-title>
-          <a-typography-text type="secondary">
-            {{ t('admin.paymentReconciliation.runHistoryHint') }}
-          </a-typography-text>
-        </a-space>
+        {{ t('admin.paymentReconciliation.runHistory') }}
       </template>
       <a-table
         :data="runs"

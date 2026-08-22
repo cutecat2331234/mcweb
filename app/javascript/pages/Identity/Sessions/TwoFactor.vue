@@ -44,7 +44,7 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader density="compact" :title="t('auth.twoFactor.title')" :subtitle="t('auth.twoFactor.subtitle')" />
+  <PageHeader density="compact" :title="t('auth.twoFactor.title')" />
 
   <Alert
     v-if="verificationError"

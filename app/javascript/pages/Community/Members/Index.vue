@@ -107,7 +107,7 @@ function changeGroup(value: string) {
     { label: t('forum.members.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.members.title')" :subtitle="t('forum.members.subtitle')" />
+  <PageHeader :title="t('forum.members.title')" />
 
   <p class="mb-4 text-sm text-muted-foreground">{{ t('forum.members.onlineNow', { n: onlineCount ?? 0 }) }}</p>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { type Component } from 'vue'
 import {
   IconClockCircle,
   IconGift,
@@ -10,14 +10,12 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     title?: string
-    subtitle?: string
   }>(),
   {
     title: 'Overview',
-    subtitle: 'Arco Design layout, cards, and table (demo data)',
   },
 )
 
@@ -32,12 +30,6 @@ interface StatCard {
   hint: string
   hintColor: string
 }
-
-const subtitle = computed(() =>
-  props.subtitle
-    .replaceAll('Element Plus', 'Arco Design')
-    .replaceAll('EP ', 'Arco '),
-)
 
 const stats: StatCard[] = [
   {
@@ -112,12 +104,7 @@ function statusColor(status: string) {
 </script>
 
 <template>
-  <a-page-header :title="title" :subtitle="subtitle" :show-back="false" />
-
-  <a-alert type="info" show-icon class="mb-4">
-    This compatibility demo now uses the same Arco Design shell and components as every admin page.
-    It contains static data and does not read or write the database.
-  </a-alert>
+  <a-page-header :title="title" :show-back="false" />
 
   <a-grid :cols="{ xs: 1, sm: 2, lg: 4 }" :col-gap="16" :row-gap="16" class="mb-4">
     <a-grid-item v-for="stat in stats" :key="stat.key">

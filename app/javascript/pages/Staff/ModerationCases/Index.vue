@@ -456,7 +456,6 @@ onMounted(() => {
     <PageHeader
       :show-back="false"
       :title="t('staffWorkspace.cases.pageTitle')"
-      :subtitle="t('staffWorkspace.cases.pageSubtitle')"
     >
       <template #extra>
         <Button shape="round" @click="router.reload({ preserveScroll: true })">

@@ -2,7 +2,7 @@ import { getInitialPageFromDOM } from '@inertiajs/core'
 import { createInertiaApp, router } from '@inertiajs/vue3'
 import { createApp, h, type DefineComponent } from 'vue'
 
-// Arco Design Vue — unified admin UI library (see docs/UI_COMPONENT_LIBRARY.md)
+// Arco Design Vue — unified admin UI library.
 import '@/styles/shell-foundation.css'
 import '@/styles/arco-admin.css'
 import { installAdminSpaNavigation } from '@/lib/adminNavigation'

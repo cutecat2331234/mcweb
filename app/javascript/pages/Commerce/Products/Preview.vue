@@ -73,7 +73,7 @@ function toggleCompare() {
     <Badge v-if="product.available_at_label">{{ product.available_at_label }}</Badge>
   </div>
 
-  <PageHeader :title="product.name" :subtitle="product.coming_soon_label || t('commerce.productPreview.subtitle')" />
+  <PageHeader :title="product.name" :subtitle="product.coming_soon_label || undefined" />
 
   <div class="grid gap-8 lg:grid-cols-2">
     <div>

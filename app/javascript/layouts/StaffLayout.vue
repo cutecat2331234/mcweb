@@ -28,6 +28,7 @@ import {
   IconMenu,
   IconMoon,
   IconPoweroff,
+  IconQuestionCircle,
   IconSafe,
   IconSun,
   IconUser,
@@ -218,6 +219,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </Space>
 
           <Space align="center" :size="4">
+            <Button type="text" href="/docs/">
+              <template #icon><IconQuestionCircle /></template>
+              {{ t('common.documentation') }}
+            </Button>
             <AdminLanguageSwitcher />
             <Button
               type="text"

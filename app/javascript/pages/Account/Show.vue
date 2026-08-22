@@ -152,7 +152,6 @@ function formatJoinedAt(value: string) {
     <PageHeader
       :show-back="false"
       :title="t('accountCenter.title')"
-      :subtitle="t('accountCenter.subtitle')"
     />
 
     <Grid :cols="{ xs: 1, lg: 3 }" :col-gap="16" :row-gap="16">
@@ -280,7 +279,6 @@ function formatJoinedAt(value: string) {
               <template #meta>
                 <ListItemMeta
                   :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
                 >
                   <template #avatar><component :is="action.icon" /></template>
                 </ListItemMeta>
@@ -306,7 +304,6 @@ function formatJoinedAt(value: string) {
               <template #meta>
                 <ListItemMeta
                   :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
                 >
                   <template #avatar><component :is="action.icon" /></template>
                 </ListItemMeta>
@@ -334,7 +331,6 @@ function formatJoinedAt(value: string) {
               <template #meta>
                 <ListItemMeta
                   :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
                 >
                   <template #avatar><component :is="action.icon" /></template>
                 </ListItemMeta>
@@ -360,7 +356,6 @@ function formatJoinedAt(value: string) {
               <template #meta>
                 <ListItemMeta
                   :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
                 >
                   <template #avatar><component :is="action.icon" /></template>
                 </ListItemMeta>

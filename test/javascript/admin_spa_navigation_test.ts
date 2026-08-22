@@ -207,6 +207,7 @@ test('admin source keeps internal links on Inertia or delegated Arco navigation 
   assert.deepEqual(
     hardDestinations.sort(),
     [
+      'app/javascript/layouts/ArcoAdminLayout.vue|/docs/',
       'app/javascript/layouts/ArcoAdminLayout.vue|adminRoutes.site',
       'app/javascript/layouts/ArcoAdminLayout.vue|adminRoutes.site',
       'app/javascript/pages/Admin/Dashboard/Index.vue|adminRoutes.site',

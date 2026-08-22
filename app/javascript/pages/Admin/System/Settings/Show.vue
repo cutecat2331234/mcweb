@@ -173,10 +173,6 @@ function entryTitle(id: string) {
   return t(`admin.systemSettings.entries.${id}.title`)
 }
 
-function entryDescription(id: string) {
-  return t(`admin.systemSettings.entries.${id}.description`)
-}
-
 function visitEntry(url: string) {
   if (url === window.location.pathname) return
 
@@ -237,7 +233,6 @@ function resetChanges() {
   <a-space direction="vertical" :size="20" fill>
     <a-page-header
       :title="t('admin.systemSettings.title')"
-      :subtitle="t('admin.systemSettings.subtitle')"
       :show-back="false"
       class="!px-0"
     >
@@ -275,10 +270,6 @@ function resetChanges() {
         </a-tag>
       </template>
 
-      <a-typography-paragraph class="!mt-0" type="secondary">
-        {{ t('admin.systemSettings.basicDescription') }}
-      </a-typography-paragraph>
-
       <a-form
         :model="basicForm.basic_settings"
         layout="vertical"
@@ -293,7 +284,7 @@ function resetChanges() {
             <a-form-item
               field="basic_settings.site_name"
               :label="t('admin.systemSettings.siteNameLabel')"
-              :help="basicFieldError('site_name') || t('admin.systemSettings.siteNameHint')"
+              :help="basicFieldError('site_name') || undefined"
               :validate-status="basicFieldError('site_name') ? 'error' : undefined"
             >
               <a-input
@@ -311,7 +302,7 @@ function resetChanges() {
             <a-form-item
               field="basic_settings.site_url"
               :label="t('admin.systemSettings.siteUrlLabel')"
-              :help="basicFieldError('site_url') || t('admin.systemSettings.siteUrlHint')"
+              :help="basicFieldError('site_url') || undefined"
               :validate-status="basicFieldError('site_url') ? 'error' : undefined"
             >
               <a-input
@@ -364,10 +355,6 @@ function resetChanges() {
             </a-tag>
           </template>
 
-          <a-typography-paragraph class="!mt-0" type="secondary">
-            {{ t(`admin.systemSettings.sections.${section.id}.description`) }}
-          </a-typography-paragraph>
-
           <a-space direction="vertical" fill :size="12">
             <Link
               v-for="entry in section.entries"
@@ -389,9 +376,6 @@ function resetChanges() {
                     <a-typography-title :heading="6" class="!mb-1 !mt-0">
                       {{ entryTitle(entry.id) }}
                     </a-typography-title>
-                    <a-typography-text type="secondary">
-                      {{ entryDescription(entry.id) }}
-                    </a-typography-text>
                   </div>
 
                   <a-tag :color="kindColors[entry.kind]" class="shrink-0">

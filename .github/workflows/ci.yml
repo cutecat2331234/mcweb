@@ -111,9 +111,11 @@ jobs:
       - name: Check Rails locale parity
         run: bundle exec ruby scripts/check-rails-i18n.rb
       - name: Install JavaScript dependencies
-        run: npm ci
+        run: npm ci && npm ci --prefix docs
       - name: Check frontend locale parity and TypeScript
         run: npm run check:i18n && npm run check:user-copy && npm run typecheck
+      - name: Test and build documentation
+        run: npm run docs:test && npm run docs:build
       - name: Run JavaScript contract tests
         run: npm run test:javascript
       - name: Compile system acceptance inventory
@@ -174,13 +176,16 @@ jobs:
           cache: npm
 
       - name: Install JavaScript dependencies
-        run: npm ci
+        run: npm ci && npm ci --prefix docs
 
       - name: Build Tailwind CSS
         run: bundle exec rails tailwindcss:build
 
       - name: Build Vite production assets
         run: bin/vite build
+
+      - name: Build deployable documentation
+        run: npm run docs:publish
 
       - name: Upload frontend assets for local deploy
         uses: actions/upload-artifact@v4
@@ -190,5 +195,6 @@ jobs:
             public/vite
             app/assets/builds
             public/template-starter
+            public/docs
           retention-days: 30
           if-no-files-found: error

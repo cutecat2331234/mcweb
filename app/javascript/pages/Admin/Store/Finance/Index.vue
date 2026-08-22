@@ -398,7 +398,6 @@ onUnmounted(() => {
 <template>
   <PageHeader
     :title="t('admin.finance.title')"
-    :subtitle="t('admin.finance.subtitle')"
     :show-back="false"
   >
       <template #extra>

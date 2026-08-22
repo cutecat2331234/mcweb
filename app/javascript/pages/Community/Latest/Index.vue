@@ -62,7 +62,7 @@ function removeFilter(chip: { param: string }) {
     { label: t('forum.latest.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.latest.title')" :subtitle="t('forum.latest.subtitle')" />
+  <PageHeader :title="t('forum.latest.title')" />
 
   <ListFilterBar :active-filters="activeFilters ?? []" @remove-filter="removeFilter">
     <div class="flex items-center gap-2">

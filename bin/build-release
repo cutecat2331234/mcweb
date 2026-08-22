@@ -44,8 +44,10 @@ bundle install --jobs 4 --retry 3
 
 echo "==> Installing Node dependencies & building frontend…"
 npm ci --no-audit --no-fund
+npm ci --prefix docs --no-audit --no-fund
 bundle exec rails tailwindcss:build
 bin/vite build
+npm run docs:publish
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
   echo "==> Preparing database for asset pipeline…"

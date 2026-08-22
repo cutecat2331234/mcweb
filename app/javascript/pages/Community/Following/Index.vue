@@ -52,7 +52,7 @@ function unfollow(url: string) {
     { label: t('forum.following.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.following.title')" :subtitle="t('forum.following.subtitle')" />
+  <PageHeader :title="t('forum.following.title')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-3">
     <div class="flex gap-2">

@@ -173,7 +173,7 @@ function clearFilters() {
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader :title="t('commerce.productList.title')" :subtitle="t('commerce.productList.subtitle')" />
+    <PageHeader :title="t('commerce.productList.title')" />
     <a v-if="rss_url" :href="rss_url" target="_blank" rel="noopener" class="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground">{{ t('commerce.productList.rss') }}</a>
     <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
       {{ t('commerce.productList.compareList', { count: compareCount }) }}

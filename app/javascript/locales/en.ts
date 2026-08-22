@@ -27,6 +27,7 @@ export default {
     notifications: 'Notifications',
     messages: 'Messages',
     cart: 'Cart',
+    documentation: 'View documentation',
     backToSite: 'Back to site',
     adminPanel: 'Admin',
     adminBrand: 'McWeb Admin',

@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import { Moon, Sun, Bell, Mail, ShoppingCart, Menu, TriangleAlert, X } from '@lucide/vue'
+import { Moon, Sun, Bell, BookOpen, Mail, ShoppingCart, Menu, TriangleAlert, X } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
 import ForumShortcuts from '@/components/portal/ForumShortcuts.vue'
@@ -185,6 +185,12 @@ const sidebarProps = computed(() => ({
             </div>
 
             <div class="flex items-center gap-0.5 sm:gap-1">
+              <Button as-child variant="ghost" size="sm">
+                <a href="/docs/" data-no-prefetch :aria-label="t('common.documentation')">
+                  <BookOpen class="h-4 w-4" />
+                  <span class="hidden sm:inline">{{ t('common.documentation') }}</span>
+                </a>
+              </Button>
               <LanguageSwitcher />
 
               <Button variant="ghost" size="icon" type="button" :aria-label="t('common.toggleTheme')" @click="toggleTheme">

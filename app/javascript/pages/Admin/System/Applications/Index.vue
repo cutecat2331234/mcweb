@@ -609,7 +609,6 @@ function submitUninstall() {
         <a-col :xs="24" :lg="17">
           <a-page-header
             :title="title"
-            :subtitle="t('admin.applications.subtitle')"
             :show-back="false"
           >
           </a-page-header>
@@ -660,9 +659,6 @@ function submitUninstall() {
       <a-tabs default-active-key="applications" type="line">
       <a-tab-pane key="platform" :title="t('admin.applications.platformTitle')">
         <a-space direction="vertical" :size="16" fill>
-          <a-typography-paragraph type="secondary">
-            {{ t('admin.applications.platformHint') }}
-          </a-typography-paragraph>
           <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
             <a-grid-item v-for="item in platform" :key="item.id">
               <a-card :bordered="true" hoverable>
@@ -701,9 +697,6 @@ function submitUninstall() {
 
       <a-tab-pane key="applications" :title="t('admin.applications.appsTitle')">
         <a-space direction="vertical" :size="16" fill>
-          <a-typography-paragraph type="secondary">
-            {{ t('admin.applications.appsHint') }}
-          </a-typography-paragraph>
           <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
             <a-grid-item v-for="item in applications" :key="item.id">
               <a-card :bordered="true" hoverable>
@@ -1064,9 +1057,6 @@ function submitUninstall() {
               {{ t('admin.applications.marketplace.runtimeTitle') }}
             </a-typography-text>
           </a-divider>
-          <a-typography-paragraph type="secondary">
-            {{ t('admin.applications.pluginsHint') }}
-          </a-typography-paragraph>
           <a-collapse v-if="plugins.length" accordion>
             <a-collapse-item
               v-for="plugin in plugins"
@@ -1237,9 +1227,6 @@ function submitUninstall() {
 
       <a-tab-pane key="diagnostics" :title="t('admin.applications.diagnosticsTitle')">
         <a-space direction="vertical" :size="16" fill>
-          <a-typography-paragraph type="secondary">
-            {{ t('admin.applications.diagnosticsHint') }}
-          </a-typography-paragraph>
           <a-table
             :data="pluginDiagnostics"
             :pagination="false"
@@ -1597,9 +1584,6 @@ function submitUninstall() {
 
       <a-tab-pane key="extensions" :title="t('admin.applications.extensionsTitle')">
         <a-space direction="vertical" :size="16" fill>
-          <a-typography-paragraph type="secondary">
-            {{ t('admin.applications.extensionsHint') }}
-          </a-typography-paragraph>
           <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
             <a-grid-item v-for="item in extensions" :key="item.id">
               <a-card :bordered="true" hoverable>

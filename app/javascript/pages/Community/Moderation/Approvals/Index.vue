@@ -44,7 +44,7 @@ function reject(url: string) {
     { label: t('forum.moderation.approvalsTitle'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.moderation.approvalsTitle')" :subtitle="t('forum.moderation.approvalsSubtitle')" />
+  <PageHeader :title="t('forum.moderation.approvalsTitle')" />
 
   <p v-if="posts.length === 0" class="text-sm text-muted-foreground">{{ t('forum.moderation.noPendingPosts') }}</p>
 

@@ -42,13 +42,11 @@ interface DemoRow {
 const props = withDefaults(
   defineProps<{
     title?: string
-    subtitle?: string
     demo_stats?: DemoStat[]
     demo_table?: DemoRow[]
   }>(),
   {
     title: 'Arco UI 范例',
-    subtitle: 'Arco Design Vue 组件演示',
     demo_stats: () => [],
     demo_table: () => [],
   },
@@ -145,7 +143,6 @@ function onModalOk() {
   <div class="arco-demo-page">
     <a-page-header
       :title="title"
-      :subtitle="subtitle"
       :show-back="false"
       class="arco-demo-page__header"
     >
@@ -164,10 +161,6 @@ function onModalOk() {
         </a-space>
       </template>
     </a-page-header>
-
-    <a-alert type="info" class="arco-demo-page__alert">
-      本页展示 McWeb 统一 UI 库（Arco Design Vue）的表格、表单、统计卡片与布局能力。数据来自控制器静态 props，不访问数据库。
-    </a-alert>
 
     <!-- Stat cards -->
     <a-row :gutter="16" class="arco-demo-page__stats">

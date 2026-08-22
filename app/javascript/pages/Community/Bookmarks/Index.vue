@@ -88,7 +88,7 @@ function filterByLabel(label: string | null) {
     { label: t('forum.bookmarks.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.bookmarks.title')" :subtitle="t('forum.bookmarks.subtitle')" />
+  <PageHeader :title="t('forum.bookmarks.title')" />
 
   <div v-if="labels?.length" class="mb-4 flex flex-wrap items-center gap-2">
     <span class="text-xs text-muted-foreground">{{ t('forum.bookmarks.labelFilter') }}</span>

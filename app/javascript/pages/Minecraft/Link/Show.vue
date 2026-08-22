@@ -176,7 +176,6 @@ function dateLabel(value?: string | null) {
   <a-space direction="vertical" size="large" fill>
     <a-page-header
       :title="t('minecraft.link.title')"
-      :subtitle="t('minecraft.link.subtitle')"
       :show-back="false"
     />
 

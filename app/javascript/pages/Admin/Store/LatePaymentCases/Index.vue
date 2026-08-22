@@ -236,7 +236,6 @@ function submitReview() {
   <section>
     <PageHeader
       :title="t('admin.latePayments.title')"
-      :subtitle="t('admin.latePayments.subtitle')"
       :show-back="false"
       class="mb-4 !px-0"
     >

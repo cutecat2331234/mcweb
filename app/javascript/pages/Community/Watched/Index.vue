@@ -33,7 +33,7 @@ function changeSort(value: string) {
     { label: t('forum.watched.topicsBreadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.watched.topicsTitle')" :subtitle="t('forum.watched.topicsSubtitle')" />
+  <PageHeader :title="t('forum.watched.topicsTitle')" />
 
   <ListFilterBar>
     <div class="flex items-center gap-2">

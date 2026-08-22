@@ -19,7 +19,8 @@ ENV RAILS_ENV=production \
     BUNDLE_PATH=/app/vendor/bundle
 
 COPY Gemfile Gemfile.lock package.json package-lock.json ./
-RUN bundle install && npm ci
+COPY docs/package.json docs/package-lock.json ./docs/
+RUN bundle install && npm ci && npm ci --prefix docs
 
 COPY . .
 RUN SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')" \
@@ -32,6 +33,7 @@ RUN SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')" \
     MCWEB_MAIL_FROM=build@mcweb.invalid-domain \
     MCWEB_S3_BUCKET=mcweb-build-private \
     MCWEB_S3_REGION=us-east-1 \
+    npm run docs:publish && \
     bundle exec rails assets:precompile && \
     rm -rf node_modules tmp/cache
 

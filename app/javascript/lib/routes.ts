@@ -86,6 +86,7 @@ export const routes = {
   forumUpload: `${appPrefix}/forum/uploads`,
   forumAttachments: `${appPrefix}/forum/attachments`,
   signIn: `${appPrefix}/identity/sign-in`,
+  signedOut: '/signed-out',
   identitySession: `${appPrefix}/identity/session`,
   identitySessionTwoFactor: `${appPrefix}/identity/session/two-factor`,
   register: `${appPrefix}/identity/register`,

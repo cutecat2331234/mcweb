@@ -6,6 +6,7 @@ Rails.application.routes.draw do
   end
 
   root "website/home#index"
+  get "signed-out", to: "website/home#index", as: :signed_out_landing
 
   get "minecraft/cached-skins/:id/:variant",
     to: "minecraft/cached_skins#show",

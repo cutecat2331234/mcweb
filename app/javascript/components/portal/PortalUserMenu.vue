@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import Avatar from '@/components/ui/Avatar.vue'
 import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
+import { safeSignOut } from '@/lib/safeSignOut'
 
 defineProps<{
   username: string
@@ -22,9 +24,15 @@ defineProps<{
 
 const { features } = useFeatureFlags()
 const { t } = useI18n()
+const signingOut = ref(false)
 
 function signOut() {
-  router.delete(routes.signOut)
+  if (signingOut.value) return
+
+  safeSignOut({
+    onStart: () => { signingOut.value = true },
+    onFinish: () => { signingOut.value = false },
+  })
 }
 </script>
 
@@ -82,6 +90,8 @@ function signOut() {
       <DropdownMenuItem as-child>
         <button
           type="button"
+          :disabled="signingOut"
+          :aria-busy="signingOut"
           class="relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10"
           @click="signOut"
         >

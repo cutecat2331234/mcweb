@@ -243,9 +243,35 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert session[:session_token].present? || cookies[:session_token].present?
 
     delete identity_session_path
-    assert_redirected_to root_path
+    assert_response :see_other
+    assert_redirected_to signed_out_landing_path
     assert_not session[:session_token].present?
     assert_not cookies[:session_token].present?
+  end
+
+  test "inertia destroy uses a full-document safe public location" do
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123", remember_me: "0" }
+    }
+
+    delete identity_session_path, headers: { "X-Inertia" => "true" }
+
+    assert_response :conflict
+    assert_equal signed_out_landing_path, response.headers["X-Inertia-Location"]
+    assert_equal I18n.t("mcweb.flash.sign_out_success"), flash[:notice]
+    assert_not session[:session_token].present?
+    assert_not cookies[:session_token].present?
+  end
+
+  test "signed-out landing remains public even while another session is active" do
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123", remember_me: "0" }
+    }
+
+    get signed_out_landing_path
+
+    assert_response :success
+    assert_no_match %r{\Ahttps?://}, signed_out_landing_path
   end
 
   test "revoking current session from management signs user out" do

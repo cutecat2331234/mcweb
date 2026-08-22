@@ -82,7 +82,13 @@ module Identity
 
     def destroy
       sign_out
-      redirect_to root_path, notice: t("mcweb.flash.sign_out_success")
+      flash[:notice] = t("mcweb.flash.sign_out_success")
+
+      if request.inertia?
+        inertia_location(signed_out_landing_path)
+      else
+        redirect_to signed_out_landing_path, status: :see_other
+      end
     end
 
     private

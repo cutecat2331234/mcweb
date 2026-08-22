@@ -37,6 +37,7 @@ import { useArcoLocale } from '@/lib/i18n'
 import { useTheme } from '@/lib/useTheme'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
+import { safeSignOut } from '@/lib/safeSignOut'
 
 const page = usePage()
 const { t } = useI18n()
@@ -86,8 +87,10 @@ function syncArcoTheme() {
 }
 
 function confirmSignOut() {
-  signingOut.value = true
-  router.delete(routes.signOut, {
+  if (signingOut.value) return false
+
+  safeSignOut({
+    onStart: () => { signingOut.value = true },
     onFinish: () => {
       signingOut.value = false
       signOutVisible.value = false

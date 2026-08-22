@@ -866,6 +866,8 @@
         email_change_conflict: 邮箱修改状态已被其他请求更新，请重试。
         account_close_confirmation_invalid: 请输入 DELETE 确认关闭账户。
         account_close_mode_invalid: 请选择支持的内容处理方式。
+        account_close_preflight_blocked: 一个或多个模块暂时无法安全关闭此账户。
+        account_close_contributor_failed: 某个模块处理失败，账户关闭已安全停止，所有修改均未提交。
         last_owner_account_cannot_close: 不能关闭站点最后一个所有者账户，请先转移所有权。
         idempotency_key_required: 此操作需要稳定的请求标识。
         idempotency_key_invalid: 请求标识无效。

@@ -169,7 +169,7 @@ module Identity
       end
 
       sign_out
-      redirect_to root_path, notice: t("mcweb.flash.account_closed")
+      redirect_after_sign_out(notice: t("mcweb.flash.account_closed"))
     end
 
     private

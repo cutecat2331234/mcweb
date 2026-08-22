@@ -154,9 +154,11 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to root_path
+    assert_response :see_other
+    assert_redirected_to signed_out_landing_path
     assert @user.reload.deleted?
     assert_not session[:session_token].present?
     assert AuditLog.exists?(action: "identity.account_closed", resource_id: @user.id)
+    assert_equal "completed", @user.account_closure_results.dig("identity.profile", "status")
   end
 end

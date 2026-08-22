@@ -129,7 +129,32 @@ module Identity
       assert_equal "profile_anonymized_financial_and_governance_records_retained",
                    audit.metadata.fetch("policy")
       assert_equal "stable_anonymous_author", audit.metadata.fetch("closure_outcome")
+      results = @user.account_closure_results
+      assert_equal "completed", results.dig("identity.profile", "status")
+      assert_equal "stable_anonymous_author",
+                   results.dig("identity.authored_content", "details", "outcome")
       refute_includes audit.to_json, original_email
+    end
+
+    test "account closure replays its persisted module results without executing twice" do
+      first = CloseAccount.call(
+        user: @user,
+        password: "password123",
+        confirmation: "DELETE"
+      )
+      persisted = @user.reload.account_closure_results.deep_dup
+
+      replay = CloseAccount.call(
+        user: @user,
+        password: "no-longer-required-for-idempotent-replay",
+        confirmation: "DELETE"
+      )
+
+      assert_predicate first, :success?
+      assert_predicate replay, :success?
+      assert replay.value.fetch(:replayed)
+      assert_equal persisted, replay.value.fetch(:closure_results)
+      assert_equal 1, AuditLog.where(action: "identity.account_closed", resource_id: @user.id).count
     end
 
     test "the last active owner cannot close their account" do
@@ -208,6 +233,12 @@ module Identity
 
       assert result.success?
       assert_equal "authored_content_deleted", @user.reload.account_closure_outcome
+      assert_equal 1,
+                   @user.account_closure_results
+                     .dig("identity.authored_content", "details", "deleted_records", "topics")
+      assert_equal 1,
+                   @user.account_closure_results
+                     .dig("identity.authored_content", "details", "deleted_records", "posts")
       assert_equal I18n.t("mcweb.identity.deleted_content_title"),
                    Community::Topic.with_discarded.find(topic.id).title
       assert_equal I18n.t("mcweb.identity.deleted_content_body"),

@@ -174,6 +174,16 @@ module Authentication
 
   alias_method :sign_out_user, :sign_out
 
+  def redirect_after_sign_out(notice: nil)
+    flash[:notice] = notice if notice.present?
+
+    if request.inertia?
+      inertia_location(signed_out_landing_path)
+    else
+      redirect_to signed_out_landing_path, status: :see_other
+    end
+  end
+
   def store_return_location
     return unless request.get? && !request.xhr?
 

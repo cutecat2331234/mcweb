@@ -31,10 +31,17 @@ module Identity
       return failure("account_close_mode_invalid") unless CLOSURE_MODES.include?(@closure_mode)
 
       avatar = nil
-      closure_outcome = nil
+      closure_results = nil
+      replayed = false
+      closed_at = Time.current
       User.transaction do
         lock_active_owner_roster!
         @user.lock!
+        if account_already_closed?
+          closure_results = stored_closure_results
+          replayed = true
+          next
+        end
         raise LastActiveOwner if last_active_owner?
 
         verification = SensitiveActionVerifier.call(
@@ -45,64 +52,36 @@ module Identity
         raise VerificationFailed, verification unless verification.success?
 
         avatar = @user.forum_avatar if @user.respond_to?(:forum_avatar) && @user.forum_avatar.attached?
-        before_state = {
-          status: @user.status,
-          email_verified: @user.email_verified?,
-          totp_enabled: @user.totp_enabled?,
-          requested_closure_mode: @closure_mode
-        }
-
-        closure_outcome = apply_content_outcome!
-        @user.update!(
-          email: anonymized_email,
-          username: anonymized_username,
-          display_name: nil,
-          bio: nil,
-          email_verified: false,
-          email_verified_at: nil,
-          developer_mode_email_verified: false,
-          developer_mode_relaxed_password: false,
-          email_verification_token: nil,
-          email_verification_token_digest: nil,
-          email_verification_sent_at: nil,
-          password_reset_token_digest: nil,
-          password_reset_sent_at: nil,
-          totp_enabled: false,
-          totp_secret: nil,
-          recovery_codes: nil,
-          totp_recovery_token_digest: nil,
-          totp_recovery_sent_at: nil,
-          account_closure_outcome: closure_outcome,
-          account_closed_at: Time.current
+        context = AccountClosure::Context.new(
+          user: @user,
+          closure_mode: @closure_mode,
+          reason: @reason,
+          at: closed_at
         )
-        @user.soft_delete!
-
-        Administration::AuditLogger.call(
-          actor: @user,
-          action: "identity.account_closed",
-          resource: @user,
-          metadata: {
-            verification_method: verification.value.fetch(:method),
-            requested_closure_mode: @closure_mode,
-            closure_outcome: closure_outcome,
-            policy: "profile_anonymized_financial_and_governance_records_retained"
-          },
-          before_state: before_state,
-          after_state: {
-            status: "deleted",
-            profile_anonymized: true,
-            sessions_revoked: true,
-            closure_outcome: closure_outcome
-          },
-          reason: @reason.presence,
-          ip_address: @ip_address,
-          user_agent: @user_agent
+        lifecycle = AccountClosure::Lifecycle.call(
+          context:,
+          finalize: lambda do |contributions|
+            finalize_account!(
+              contributions:,
+              verification_method: verification.value.fetch(:method),
+              closed_at:
+            )
+          end
         )
+        raise LifecycleFailed, lifecycle unless lifecycle.success?
+
+        closure_results = lifecycle.value.fetch(:contributions)
       end
 
-      avatar&.purge_later
-      ServiceResult.success(user: @user)
+      avatar&.purge_later unless replayed
+      ServiceResult.success(
+        user: @user,
+        closure_results:,
+        replayed:
+      )
     rescue VerificationFailed => e
+      e.result
+    rescue LifecycleFailed => e
       e.result
     rescue LastActiveOwner
       failure("last_owner_account_cannot_close")
@@ -120,6 +99,15 @@ module Identity
     end
 
     class LastActiveOwner < StandardError; end
+
+    class LifecycleFailed < StandardError
+      attr_reader :result
+
+      def initialize(result)
+        @result = result
+        super(result.code)
+      end
+    end
 
     private
 
@@ -141,38 +129,116 @@ module Identity
         .load
     end
 
-    def apply_content_outcome!
-      return "legally_retained" if DataGovernance::RetentionHold.effective.exists?(target: @user)
-      return "stable_anonymous_author" unless @closure_mode == "delete_content"
-
-      blocked = false
-      Community::Topic.where(user: @user).find_each do |topic|
-        policy = DataGovernance::DeletionPolicy.call(target: topic)
-        if policy.value.fetch(:allowed)
-          topic.update!(title: I18n.t("mcweb.identity.deleted_content_title"), status: :deleted, deleted_at: Time.current)
-        else
-          blocked = true
-        end
-      end
-      Community::Post.where(user: @user).find_each do |post|
-        policy = DataGovernance::DeletionPolicy.call(target: post)
-        if policy.value.fetch(:allowed)
-          post.update!(body: I18n.t("mcweb.identity.deleted_content_body"), status: :deleted, deleted_at: Time.current)
-        else
-          blocked = true
-        end
-      end
-      Community::Message.where(user: @user).find_each do |message|
-        policy = DataGovernance::DeletionPolicy.call(target: message)
-        if policy.value.fetch(:allowed)
-          message.update!(body: I18n.t("mcweb.identity.deleted_content_body"), deleted_at: Time.current)
-        else
-          blocked = true
-        end
-      end
-
-      blocked ? "legally_retained" : "authored_content_deleted"
+    def account_already_closed?
+      @user.deleted? && @user.account_closed_at.present?
     end
+
+    def stored_closure_results
+      return @user.account_closure_results if @user.account_closure_results.present?
+
+      {
+        "identity.profile" => {
+          "status" => "completed",
+          "details" => { "outcome" => "profile_anonymized" }
+        },
+        "identity.authored_content" => {
+          "status" => "completed",
+          "details" => {
+            "outcome" => @user.account_closure_outcome.presence || "stable_anonymous_author"
+          }
+        }
+      }
+    end
+
+    def finalize_account!(contributions:, verification_method:, closed_at:)
+      closure_outcome = contributions.dig(
+        "identity.authored_content",
+        "details",
+        "outcome"
+      ) || "stable_anonymous_author"
+      closure_results = contributions.merge(
+        "identity.profile" => {
+          "status" => "completed",
+          "details" => {
+            "outcome" => "profile_anonymized",
+            "sessions_revoked" => true,
+            "pending_email_changes_cancelled" => true
+          }
+        }
+      )
+      before_state = {
+        status: @user.status,
+        email_verified: @user.email_verified?,
+        totp_enabled: @user.totp_enabled?,
+        requested_closure_mode: @closure_mode
+      }
+
+      cancel_email_changes!(at: closed_at)
+      @user.update!(
+        email: anonymized_email,
+        username: anonymized_username,
+        display_name: nil,
+        bio: nil,
+        email_verified: false,
+        email_verified_at: nil,
+        developer_mode_email_verified: false,
+        developer_mode_relaxed_password: false,
+        email_verification_token: nil,
+        email_verification_token_digest: nil,
+        email_verification_sent_at: nil,
+        password_reset_token_digest: nil,
+        password_reset_sent_at: nil,
+        totp_enabled: false,
+        totp_secret: nil,
+        recovery_codes: nil,
+        totp_recovery_token_digest: nil,
+        totp_recovery_sent_at: nil,
+        account_closure_outcome: closure_outcome,
+        account_closure_results: closure_results,
+        account_closed_at: closed_at
+      )
+      @user.soft_delete!
+
+      audit_result = Administration::AuditLogger.call(
+        actor: @user,
+        action: "identity.account_closed",
+        resource: @user,
+        metadata: {
+          verification_method:,
+          requested_closure_mode: @closure_mode,
+          closure_outcome:,
+          closure_results:,
+          policy: "profile_anonymized_financial_and_governance_records_retained"
+        },
+        before_state:,
+        after_state: {
+          status: "deleted",
+          profile_anonymized: true,
+          sessions_revoked: true,
+          closure_outcome:,
+          contribution_count: closure_results.size
+        },
+        reason: @reason.presence,
+        ip_address: @ip_address,
+        user_agent: @user_agent
+      )
+      raise AccountClosureFinalizationFailed unless audit_result.success?
+
+      closure_results
+    end
+
+    def cancel_email_changes!(at:)
+      @user.email_change_requests
+        .where(status: %w[pending confirmed])
+        .update_all(
+          status: "superseded",
+          confirmation_token_ciphertext: nil,
+          revocation_token_ciphertext: nil,
+          updated_at: at
+        )
+    end
+
+    class AccountClosureFinalizationFailed < StandardError; end
 
     def anonymized_username
       "deleted_#{anonymized_identifier}"

@@ -866,6 +866,8 @@ en:
         email_change_conflict: The email-change state changed in another request. Please retry.
         account_close_confirmation_invalid: Type DELETE to confirm account closure.
         account_close_mode_invalid: Select a supported content-handling option.
+        account_close_preflight_blocked: One or more modules cannot safely close this account yet.
+        account_close_contributor_failed: Account closure stopped safely because a module failed. No changes were committed.
         last_owner_account_cannot_close: The site's last owner account cannot be closed. Transfer ownership first.
         idempotency_key_required: A stable request identifier is required.
         idempotency_key_invalid: The request identifier is invalid.

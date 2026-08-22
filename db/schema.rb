@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_22_091000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3574,6 +3574,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_091000) do
   create_table "users", force: :cascade do |t|
     t.datetime "account_closed_at"
     t.string "account_closure_outcome"
+    t.jsonb "account_closure_results", default: {}, null: false
     t.string "account_type", default: "member", null: false
     t.datetime "ban_expires_at"
     t.text "ban_reason"

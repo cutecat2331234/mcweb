@@ -4,32 +4,19 @@ require "zip"
 
 module Identity
   class DataExportArchive < ApplicationService
-    PROFILE_FIELDS = %w[
-      public_id email username display_name bio locale time_zone created_at updated_at
-      email_verified email_verified_at status account_type deleted_at
-    ].freeze
-    TOPIC_FIELDS = %w[public_id title status created_at updated_at deleted_at forum_section_id].freeze
-    POST_FIELDS = %w[id forum_topic_id body status post_type created_at updated_at deleted_at edited_at].freeze
-    MESSAGE_FIELDS = %w[id forum_conversation_id body created_at updated_at edited_at deleted_at].freeze
-    NOTIFICATION_FIELDS = %w[id notification_type title body metadata read_at created_at].freeze
-    UPLOAD_FIELDS = %w[
-      public_id kind status scan_status content_type byte_size created_at linked_at cleaned_at
-      manual_review_status manual_reviewed_at manual_review_revoked_at
-    ].freeze
-    ORDER_FIELDS = %w[
-      public_id order_number status currency subtotal_cents discount_cents total_cents
-      store_credit_amount_cents created_at updated_at
-    ].freeze
-    MEMBERSHIP_FIELDS = %w[id store_membership_type_id status source starts_at expires_at created_at].freeze
-    ENTITLEMENT_FIELDS = %w[id store_product_id starts_at expires_at revoked_at created_at].freeze
+    MANIFEST_SCHEMA_VERSION = 2
 
-    def initialize(user:, generated_at: Time.current)
+    def initialize(user:, generated_at: Time.current, entries: DataExportCatalog.entries)
       @user = user
       @generated_at = generated_at
+      @entries = entries
     end
 
     def call
-      documents = export_documents
+      contributions = build_contributions
+      manifest = build_manifest(contributions)
+      documents = { "manifest.json" => manifest }
+      contributions.each_value { |contribution| documents.merge!(contribution.documents) }
       archive = Zip::OutputStream.write_buffer do |zip|
         documents.each do |path, payload|
           zip.put_next_entry(path)
@@ -40,8 +27,11 @@ module Identity
 
       ServiceResult.success(
         io: archive,
-        manifest: documents.transform_values { |payload| record_count(payload) }
+        manifest:
       )
+    rescue ContributorFailure => e
+      Rails.logger.error("data export contributor failed: #{e.module_key} (#{e.failure_class})")
+      ServiceResult.failure(error: "data_export_contributor_failed", code: "data_export_contributor_failed")
     rescue StandardError => e
       Rails.logger.error("data export generation failed: #{e.class}")
       ServiceResult.failure(error: "data_export_generation_failed", code: "data_export_generation_failed")
@@ -49,52 +39,50 @@ module Identity
 
     private
 
-    def export_documents
-      {
-        "manifest.json" => {
-          schema_version: 1,
-          generated_at: @generated_at.iso8601,
-          user_public_id: @user.public_id,
-          files: %w[
-            profile.json forum/topics.json forum/posts.json forum/messages.json
-            notifications.json uploads.json commerce/orders.json commerce/memberships.json
-            commerce/entitlements.json commerce/shipping-addresses.json
-          ]
-        },
-        "profile.json" => record(@user, PROFILE_FIELDS),
-        "forum/topics.json" => records(Community::Topic.where(user: @user).order(:id), TOPIC_FIELDS),
-        "forum/posts.json" => records(Community::Post.where(user: @user).order(:id), POST_FIELDS),
-        "forum/messages.json" => records(Community::Message.where(user: @user).order(:id), MESSAGE_FIELDS),
-        "notifications.json" => records(Notification.where(user: @user).order(:id), NOTIFICATION_FIELDS),
-        "uploads.json" => records(Community::Upload.where(user: @user).order(:id), UPLOAD_FIELDS),
-        "commerce/orders.json" => records(Commerce::Order.where(user: @user).order(:id), ORDER_FIELDS),
-        "commerce/memberships.json" => records(Commerce::UserMembership.where(user: @user).order(:id), MEMBERSHIP_FIELDS),
-        "commerce/entitlements.json" => records(Commerce::UserEntitlement.where(user: @user).order(:id), ENTITLEMENT_FIELDS),
-        "commerce/shipping-addresses.json" => shipping_addresses
-      }
-    end
+    def build_contributions
+      context = DataExporting::Context.new(user: @user, generated_at: @generated_at)
+      documents = {}
 
-    def shipping_addresses
-      Commerce::ShippingAddress.where(user: @user).order(:id).map do |address|
-        address.to_address_hash.merge(
-          "id" => address.id,
-          "label" => address.label,
-          "default" => address.default_address?,
-          "created_at" => address.created_at
-        )
+      @entries.each_with_object({}) do |entry, result|
+        contribution = entry.contributor.call(context:)
+        unless contribution.is_a?(DataExporting::Contribution)
+          raise ContributorFailure.new(module_key: entry.key, failure_class: "invalid_contract")
+        end
+
+        duplicate_path = contribution.documents.keys.find { |path| documents.key?(path) }
+        if duplicate_path
+          raise ContributorFailure.new(module_key: entry.key, failure_class: "duplicate_path")
+        end
+
+        contribution.documents.each_key { |path| documents[path] = entry.key }
+        result[entry.key] = contribution
+      rescue ContributorFailure
+        raise
+      rescue StandardError => e
+        raise ContributorFailure.new(module_key: entry.key, failure_class: e.class.name), cause: e
       end
     end
 
-    def records(relation, fields)
-      relation.map { |item| record(item, fields) }
+    def build_manifest(contributions)
+      modules = contributions.transform_values(&:manifest)
+      {
+        "schema_version" => MANIFEST_SCHEMA_VERSION,
+        "generated_at" => @generated_at.iso8601,
+        "user_public_id" => @user.public_id,
+        "modules" => modules,
+        "files" => modules.values.flat_map { |mod| mod.fetch("files").map { |file| file.fetch("path") } },
+        "total_record_count" => modules.values.sum { |mod| mod.fetch("record_count") }
+      }
     end
 
-    def record(item, fields)
-      item.attributes.slice(*fields)
-    end
+    class ContributorFailure < StandardError
+      attr_reader :module_key, :failure_class
 
-    def record_count(payload)
-      payload.is_a?(Array) ? payload.length : 1
+      def initialize(module_key:, failure_class:)
+        @module_key = module_key
+        @failure_class = failure_class
+        super("data export contributor failed")
+      end
     end
   end
 end

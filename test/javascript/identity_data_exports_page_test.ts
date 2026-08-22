@@ -20,3 +20,13 @@ test('identity data exports page shows explicit lifecycle and privacy states', (
   assert.match(source, /item\.downloadable/)
   assert.match(source, /item\.error_code/)
 })
+
+test('identity data exports page renders versioned module counts and cursor history navigation', () => {
+  assert.match(source, /schema_version\?: number/)
+  assert.match(source, /total_record_count\?: number/)
+  assert.match(source, /manifestModules\(item\)/)
+  assert.match(source, /module\.recordCount/)
+  assert.match(source, /pagination\.next_cursor/)
+  assert.match(source, /historyPageUrl/)
+  assert.match(source, /<Button as-child variant="outline">/)
+})

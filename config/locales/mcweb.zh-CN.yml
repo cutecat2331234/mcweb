@@ -875,6 +875,7 @@
         data_export_retry_not_allowed: 此导出当前不能重试。
         data_export_conflict: 更新期间导出状态已变化，请刷新后重试。
         data_export_generation_failed: 无法生成导出文件，可以安全重试。
+        data_export_contributor_failed: 有一个数据模块无法导出，可以安全重试。
         reason_required: 请输入此操作的业务理由。
         unsupported_resource_type: 此资源类型不受数据治理管理。
         retention_policy_missing: 此资源类型没有保留策略。

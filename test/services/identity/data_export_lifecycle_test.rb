@@ -63,6 +63,11 @@ module Identity
       assert_includes files.keys, "profile.json"
       assert_includes files.keys, "notifications.json"
       assert_includes files.fetch("profile.json"), @user.email
+      manifest = JSON.parse(files.fetch("manifest.json"))
+      assert_equal 2, manifest.fetch("schema_version")
+      assert_equal 1, manifest.dig("modules", "identity.profile", "record_count")
+      assert_equal 1, manifest.dig("modules", "identity.notifications", "record_count")
+      assert_equal manifest, data_export.manifest
       refute_includes files.values.join, @user.password_digest
       refute_includes files.values.join, "totp_secret"
       refute_includes files.values.join, "recovery_codes"
@@ -113,6 +118,48 @@ module Identity
 
       assert_predicate data_export.reload, :queued?
       assert_nil data_export.error_code
+    end
+
+    test "a contributor failure retries the same logical export and completes on a later attempt" do
+      calls = 0
+      registry = DataExportRegistry.new
+      registry.register(
+        key: "sample.transient",
+        contributor: ->(context:) do
+          calls += 1
+          raise "transient private failure" if calls == 1
+
+          DataExporting::Contribution.new(
+            documents: { "sample.json" => [ { "user" => context.user.public_id } ] }
+          )
+        end
+      )
+      data_export = DataExport.create!(
+        user: @user,
+        idempotency_key: "retry-contributor-export-1",
+        requested_at: Time.current
+      )
+
+      DataExportCatalog.stub(:entries, registry.entries) do
+        BuildDataExportJob.perform_now(data_export.id)
+
+        assert_predicate data_export.reload, :failed?
+        assert_equal "data_export_contributor_failed", data_export.error_code
+        assert_equal 1, data_export.attempts
+
+        assert_no_difference -> { DataExport.count } do
+          assert_enqueued_jobs 1, only: BuildDataExportJob do
+            result = RetryDataExport.call(data_export:, user: @user)
+            assert_predicate result, :success?
+          end
+        end
+
+        BuildDataExportJob.perform_now(data_export.id)
+      end
+
+      assert_predicate data_export.reload, :completed?
+      assert_equal 2, data_export.attempts
+      assert_equal 1, data_export.manifest.dig("modules", "sample.transient", "record_count")
     end
   end
 end

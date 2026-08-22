@@ -875,6 +875,7 @@ en:
         data_export_retry_not_allowed: This export cannot be retried in its current state.
         data_export_conflict: The export changed while it was being updated. Refresh and try again.
         data_export_generation_failed: The export could not be generated. You can retry it safely.
+        data_export_contributor_failed: One data module could not be exported. You can retry safely.
         reason_required: Enter a business reason for this operation.
         unsupported_resource_type: This resource type is not governed.
         retention_policy_missing: No retention policy exists for this resource type.

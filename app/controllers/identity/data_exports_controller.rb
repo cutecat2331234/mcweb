@@ -4,13 +4,17 @@ module Identity
   class DataExportsController < ApplicationController
     include PrivateNoStoreResponse
 
+    PAGE_SIZE = 25
+
     before_action :require_login
     before_action :set_data_export, only: %i[download retry revoke]
 
     def index
       current_user_exports.find_each(&:mark_expired_if_needed!)
+      exports, pagination = paginated_exports
       render inertia: "Identity/DataExports/Index", props: {
-        exports: current_user_exports.recent_first.limit(25).map { |data_export| export_payload(data_export) },
+        exports: exports.map { |data_export| export_payload(data_export) },
+        pagination:,
         retention_hours: Identity::BuildDataExportJob::RETENTION.in_hours.to_i,
         daily_limit: Identity::RequestDataExport::DAILY_LIMIT
       }
@@ -95,6 +99,30 @@ module Identity
 
     def request_params
       params.expect(data_export: [ :idempotency_key ])
+    end
+
+    def paginated_exports
+      scope = current_user_exports.recent_first
+      if params[:cursor].present?
+        cursor = current_user_exports.find_by!(public_id: params[:cursor])
+        scope = scope.where(
+          "requested_at < :requested_at OR (requested_at = :requested_at AND id < :id)",
+          requested_at: cursor.requested_at,
+          id: cursor.id
+        )
+      end
+
+      rows = scope.limit(PAGE_SIZE + 1).to_a
+      has_more = rows.length > PAGE_SIZE
+      rows = rows.first(PAGE_SIZE)
+      [
+        rows,
+        {
+          has_more:,
+          next_cursor: has_more ? rows.last.public_id : nil,
+          page_size: PAGE_SIZE
+        }
+      ]
     end
 
     def export_payload(data_export)

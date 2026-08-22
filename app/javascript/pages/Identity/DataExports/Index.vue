@@ -21,7 +21,15 @@ type DataExport = {
   attempts: number
   error_code?: string | null
   downloadable: boolean
-  manifest: Record<string, number>
+  manifest: {
+    schema_version?: number
+    total_record_count?: number
+    modules?: Record<string, {
+      status: 'completed'
+      record_count: number
+      files: Array<{ path: string; record_count: number }>
+    }>
+  }
   paths: {
     download: string
     retry: string
@@ -31,6 +39,11 @@ type DataExport = {
 
 const props = defineProps<{
   exports: DataExport[]
+  pagination: {
+    has_more: boolean
+    next_cursor?: string | null
+    page_size: number
+  }
   retention_hours: number
   daily_limit: number
 }>()
@@ -65,6 +78,27 @@ function badgeVariant(status: DataExport['status']): 'success' | 'danger' | 'def
   if (status === 'failed' || status === 'revoked') return 'danger'
   if (status === 'running') return 'default'
   return 'secondary'
+}
+
+const moduleTranslationKeys: Record<string, string> = {
+  'identity.profile': 'identity.dataExports.modules.identityProfile',
+  'identity.notifications': 'identity.dataExports.modules.identityNotifications',
+  'community.content': 'identity.dataExports.modules.communityContent',
+  'community.uploads': 'identity.dataExports.modules.communityUploads',
+  'commerce.account': 'identity.dataExports.modules.commerceAccount',
+}
+
+function manifestModules(item: DataExport) {
+  return Object.entries(item.manifest.modules ?? {}).map(([key, value]) => ({
+    key,
+    label: moduleTranslationKeys[key] ? t(moduleTranslationKeys[key]) : key,
+    recordCount: value.record_count,
+  }))
+}
+
+function historyPageUrl(cursor: string) {
+  const query = new URLSearchParams({ cursor })
+  return `${routes.identityDataExports}?${query.toString()}`
 }
 </script>
 
@@ -129,6 +163,17 @@ function badgeVariant(status: DataExport['status']): 'success' | 'danger' | 'def
             <p v-if="item.error_code" role="alert" class="text-sm text-destructive">
               {{ t('identity.dataExports.failedDescription') }}
             </p>
+            <div v-if="manifestModules(item).length" class="space-y-1 text-sm">
+              <p class="font-medium text-foreground">
+                {{ t('identity.dataExports.totalRecords', { count: item.manifest.total_record_count ?? 0 }) }}
+              </p>
+              <ul :aria-label="t('identity.dataExports.moduleSummary')" class="space-y-1 text-muted-foreground">
+                <li v-for="module in manifestModules(item)" :key="module.key" class="flex justify-between gap-4">
+                  <span>{{ module.label }}</span>
+                  <span>{{ t('identity.dataExports.recordCount', { count: module.recordCount }) }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div class="flex flex-wrap gap-2">
@@ -155,6 +200,14 @@ function badgeVariant(status: DataExport['status']): 'success' | 'danger' | 'def
         </div>
       </li>
     </ol>
+
+    <div v-if="pagination.has_more && pagination.next_cursor" class="flex justify-end">
+      <Button as-child variant="outline">
+        <Link :href="historyPageUrl(pagination.next_cursor)" preserve-scroll>
+          {{ t('identity.dataExports.olderHistory') }}
+        </Link>
+      </Button>
+    </div>
 
     <Button as-child variant="ghost">
       <Link :href="routes.security">{{ t('identity.dataExports.backToSecurity') }}</Link>

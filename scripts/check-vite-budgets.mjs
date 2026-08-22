@@ -19,6 +19,7 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const outputRoot = resolve(manifestPath, '..', '..')
 const entrypoint = 'entrypoints/inertia.ts'
 const requiredChunkGroups = [
+  'vue-runtime',
   'arco-provider-runtime',
   'arco-auth-shell',
   'arco-sign-in-form',
@@ -107,12 +108,53 @@ function kb(bytes) {
   return Number((bytes / 1024).toFixed(1))
 }
 
+function findImportCycles(entries) {
+  const state = new Map()
+  const stack = []
+  const signatures = new Set()
+  const cycles = []
+
+  function visit(key) {
+    if (state.get(key) === 'visited') return
+    if (state.get(key) === 'visiting') {
+      const cycleStart = stack.indexOf(key)
+      const cycleKeys = stack.slice(cycleStart)
+      const signature = [...cycleKeys].sort().join('\0')
+      if (!signatures.has(signature)) {
+        signatures.add(signature)
+        cycles.push(cycleKeys.map((cycleKey) => entries[cycleKey]?.file ?? cycleKey))
+      }
+      return
+    }
+
+    state.set(key, 'visiting')
+    stack.push(key)
+    for (const importedKey of entries[key]?.imports ?? []) {
+      if (entries[importedKey]) visit(importedKey)
+    }
+    stack.pop()
+    state.set(key, 'visited')
+  }
+
+  for (const key of Object.keys(entries)) visit(key)
+  return cycles
+}
+
 let failed = false
 const generatedChunkNames = new Set(Object.values(manifest).map((entry) => entry.name))
 const missingChunkGroups = requiredChunkGroups.filter((name) => !generatedChunkNames.has(name))
 if (missingChunkGroups.length > 0) {
   failed = true
   console.error(`Required Vite chunk groups are missing: ${missingChunkGroups.join(', ')}`)
+}
+
+const importCycles = findImportCycles(manifest)
+if (importCycles.length > 0) {
+  failed = true
+  console.error('Static Vite import cycles detected:')
+  for (const cycle of importCycles) {
+    console.error(`  ${[...cycle, cycle[0]].join(' -> ')}`)
+  }
 }
 
 const results = []

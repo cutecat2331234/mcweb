@@ -23,12 +23,12 @@ const props = defineProps<{
     display_name: string | null
     avatar_url: string
     profile_url: string
-    last_seen_at: string | null
-    online: boolean
+    last_seen_at?: string | null
+    online?: boolean
     posts_count: number
     likes_received: number
     reviews_count: number
-    purchases_count: number
+    purchases_count?: number
     trust_level: number
     trust_name: string
     member_since: string
@@ -39,7 +39,8 @@ const props = defineProps<{
   trustLevel?: string
   group?: string
   groupOptions?: Array<{ value: string; label: string }>
-  onlineCount?: number
+  availableSorts: string[]
+  onlineCount?: number | null
 }>()
 
 const searchQuery = ref(props.query)
@@ -52,7 +53,7 @@ const sortOptions = computed(() => [
   { value: 'likes', label: t('forum.members.sortLikes') },
   { value: 'reviews', label: t('forum.members.sortReviews') },
   { value: 'purchases', label: t('forum.members.sortPurchases') },
-])
+].filter(option => props.availableSorts.includes(option.value)))
 
 const trustLevelOptions = computed(() => [
   { value: '', label: t('forum.members.allTrustLevels') },
@@ -107,9 +108,9 @@ function changeGroup(value: string) {
     { label: t('forum.members.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.members.title')" :subtitle="t('forum.members.subtitle')" />
+  <PageHeader :title="t('forum.members.title')" />
 
-  <p class="mb-4 text-sm text-muted-foreground">{{ t('forum.members.onlineNow', { n: onlineCount ?? 0 }) }}</p>
+  <p v-if="onlineCount != null" class="mb-4 text-sm text-muted-foreground">{{ t('forum.members.onlineNow', { n: onlineCount }) }}</p>
 
   <div class="mb-4 flex flex-wrap items-center gap-2">
     <form class="flex flex-1 gap-2" @submit.prevent="search">
@@ -143,7 +144,7 @@ function changeGroup(value: string) {
           <Badge v-if="member.online" class="ml-2 text-[10px]">{{ t('forum.members.online') }}</Badge>
         </p>
         <p class="text-xs text-muted-foreground">
-          @{{ member.username }} · {{ member.trust_name }} · {{ t('forum.members.posts', { n: member.posts_count }) }} · {{ t('forum.members.likes', { n: member.likes_received }) }} · {{ t('forum.members.purchases', { n: member.purchases_count }) }}
+          @{{ member.username }} · {{ member.trust_name }} · {{ t('forum.members.posts', { n: member.posts_count }) }} · {{ t('forum.members.likes', { n: member.likes_received }) }}<span v-if="member.purchases_count != null"> · {{ t('forum.members.purchases', { n: member.purchases_count }) }}</span>
         </p>
         <p class="text-xs text-muted-foreground">
           {{ t('forum.members.reviews', { n: member.reviews_count }) }} ·

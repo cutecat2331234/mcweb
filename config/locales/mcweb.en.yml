@@ -28,6 +28,9 @@ en:
       identity_permissions_explain:
         name: "Explain effective permissions"
         description: "View a member's final global permission decisions and the role, group, or account source of each grant."
+      identity_users_private_activity_read:
+        name: "View private member activity"
+        description: "View a member's private presence, commerce, points, check-in, and game-activity details."
       system_bans_manage:
         name: "Manage access bans"
         description: "Create and remove IP address and email address bans."

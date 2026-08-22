@@ -28,6 +28,9 @@
       identity_permissions_explain:
         name: "解释最终权限"
         description: "查看成员的最终全局权限结论，以及每项授权来自角色、身份组还是账户覆盖。"
+      identity_users_private_activity_read:
+        name: "查看成员私密活动"
+        description: "查看成员的私密在线状态、交易、积分、签到与游戏活动详情。"
       system_bans_manage:
         name: "管理访问封禁"
         description: "创建和移除 IP 地址与邮箱地址封禁。"

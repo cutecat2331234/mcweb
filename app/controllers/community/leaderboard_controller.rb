@@ -2,13 +2,17 @@
 
 module Community
   class LeaderboardController < ApplicationController
+    include ViewerScopedNoStoreResponse
+
     PERIODS = %w[all week month].freeze
-    METRICS = %w[posts likes score points].freeze
+    PUBLIC_METRICS = %w[posts likes score].freeze
+    PRIVATE_METRICS = %w[points].freeze
     LIMIT = 50
 
     def index
       period = PERIODS.include?(params[:period].to_s) ? params[:period].to_s : "all"
-      metric = METRICS.include?(params[:metric].to_s) ? params[:metric].to_s : "posts"
+      metrics = available_metrics
+      metric = metrics.include?(params[:metric].to_s) ? params[:metric].to_s : "posts"
       since = window_start(period)
 
       counts = ranked_counts(metric, since)
@@ -22,11 +26,18 @@ module Community
       render inertia: "Community/Leaderboard/Index", props: {
         entries: entries,
         period: period,
-        metric: metric
+        metric: metric,
+        availableMetrics: metrics
       }
     end
 
     private
+
+    def available_metrics
+      return PUBLIC_METRICS unless Community::UserProfileVisibility.private_directory_visible?(viewer: current_user)
+
+      PUBLIC_METRICS + PRIVATE_METRICS
+    end
 
     def window_start(period)
       case period
@@ -78,9 +89,9 @@ module Community
     # - Windowed periods (week/month): rank by points EARNED in the window, i.e.
     #   the SUM of positive point transactions since the window start. Negative
     #   adjustments (e.g. admin deductions) do not subtract from the period board.
-    # - All-time (since nil): rank by lifetime account balance, matching the
-    #   balance shown on user profiles. Users without a points account simply
-    #   don't appear (balance 0); positive balances rank desc.
+    # - All-time (since nil): rank authorized viewers by lifetime account
+    #   balance. Users without a points account don't appear; positive balances
+    #   rank descending.
     def ranked_points(since)
       if since
         sums = Community::PointTransaction

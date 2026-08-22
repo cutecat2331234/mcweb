@@ -26,6 +26,7 @@ const props = defineProps<{
   }>
   period: 'all' | 'week' | 'month'
   metric: 'posts' | 'likes' | 'score' | 'points'
+  availableMetrics: Array<'posts' | 'likes' | 'score' | 'points'>
 }>()
 
 function apply(next: { period?: string; metric?: string }) {
@@ -52,14 +53,14 @@ function medal(rank: number): string {
     { label: t('forum.leaderboard.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.leaderboard.title')" :subtitle="t('forum.leaderboard.subtitle')" />
+  <PageHeader :title="t('forum.leaderboard.title')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-3">
     <div class="flex gap-1">
       <Button :variant="metric === 'posts' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'posts' })">{{ t('forum.leaderboard.metricPosts') }}</Button>
       <Button :variant="metric === 'likes' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'likes' })">{{ t('forum.leaderboard.metricLikes') }}</Button>
       <Button :variant="metric === 'score' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'score' })">{{ t('forum.leaderboard.metricScore') }}</Button>
-      <Button :variant="metric === 'points' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'points' })">{{ t('forum.leaderboard.metricPoints') }}</Button>
+      <Button v-if="availableMetrics.includes('points')" :variant="metric === 'points' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'points' })">{{ t('forum.leaderboard.metricPoints') }}</Button>
     </div>
     <div class="flex gap-1">
       <Button :variant="period === 'all' ? 'default' : 'outline'" size="sm" @click="apply({ period: 'all' })">{{ t('forum.leaderboard.periodAll') }}</Button>

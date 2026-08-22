@@ -8,6 +8,7 @@ module Community
     include Community::WarningRestrictionsSerializable
     include Community::SubscriptionNoticeable
     include Community::SectionVisibility
+    include ViewerScopedNoStoreResponse
 
     before_action :require_login, only: %i[new create update destroy toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
@@ -57,10 +58,18 @@ module Community
         .distinct
         .pluck(:user_id)
         .to_set
-      # Batch-preload points balances for all post authors on the page (avoids an
-      # N+1 find_by inside serialize_post). user_id => balance.
+      # Exact balances are private. Preload only authors this viewer may inspect;
+      # serialize_post applies the same policy again at the output boundary.
+      post_author_ids = posts.map(&:user_id).uniq
+      point_author_ids = if Community::UserProfileVisibility.private_directory_visible?(viewer: current_user)
+                           post_author_ids
+      elsif current_user && post_author_ids.include?(current_user.id)
+                           [ current_user.id ]
+      else
+                           []
+      end
       point_balances = Community::PointAccount
-        .where(user_id: posts.map(&:user_id).uniq, currency: "points")
+        .where(user_id: point_author_ids, currency: "points")
         .pluck(:user_id, :balance)
         .to_h
       author_post_counts = Community::ForumAccess.listed_post_scope(
@@ -105,7 +114,7 @@ module Community
             solved_post_id: @topic.solved_post_id,
             post_bookmark: post_bookmarks[post.id],
             verified_purchaser: verified_purchaser_ids.include?(post.user_id),
-            author_forum_points: point_balances[post.user_id].to_i,
+            author_forum_points: point_author_ids.include?(post.user_id) ? point_balances.fetch(post.user_id, 0) : nil,
             author_posts_count: author_post_counts[post.user_id].to_i
           )
         end,

@@ -2,6 +2,8 @@
 
 module Commerce
   class SerializeUserMemberships < ApplicationService
+    PUBLIC_KEYS = %i[slug name color icon label].freeze
+
     def initialize(user:, limit: nil)
       @user = user
       @limit = limit
@@ -10,6 +12,7 @@ module Commerce
     def call
       scope = Commerce::UserMembership
         .currently_active
+        .where(user: @user)
         .includes(:membership_type)
         .joins(:membership_type)
         .merge(Commerce::MembershipType.by_display_priority)
@@ -21,6 +24,10 @@ module Commerce
 
     def self.for_user(user, limit: nil)
       call(user: user, limit: limit).value || []
+    end
+
+    def self.public_for_user(user, limit: nil)
+      for_user(user, limit: limit).map { |membership| membership.slice(*PUBLIC_KEYS) }
     end
 
     private

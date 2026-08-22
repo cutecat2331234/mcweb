@@ -14,6 +14,7 @@ class Identity::PermissionCatalogTest < ActiveSupport::TestCase
     identity.groups.permissions.manage
     identity.roles.read
     identity.roles.manage
+    identity.users.private_activity.read
     system.bans.manage
     forum.users.trust.manage
     store.credit.read

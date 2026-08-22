@@ -2,14 +2,17 @@
 
 module Community
   class MembersController < ApplicationController
+    include ViewerScopedNoStoreResponse
+
     def index
       scope = User.where(status: :active)
+      private_directory_visible = Community::UserProfileVisibility.private_directory_visible?(viewer: current_user)
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
         scope = scope.where("username ILIKE ? OR display_name ILIKE ?", q, q)
       end
 
-      sort = params[:sort].to_s.presence || "active"
+      sort = normalized_member_sort(params[:sort], private_directory_visible: private_directory_visible)
       trust_level = params[:trust_level].to_s.presence
       group_id = params[:group].to_s.presence
       scope = apply_member_sort(scope, sort)
@@ -19,7 +22,7 @@ module Community
       end
 
       @pagy, members = pagy(:offset, scope, limit: 30)
-      stats = member_stats(members)
+      stats = member_stats(members, private_directory_visible: private_directory_visible)
 
       render inertia: "Community/Members/Index", props: {
         members: members.map { |user| serialize_member(user, stats: stats) },
@@ -29,32 +32,57 @@ module Community
         trustLevel: trust_level.to_s,
         group: group_id.to_s,
         groupOptions: Community::UserGroup.ordered.map { |g| { value: g.id.to_s, label: g.name } },
-        onlineCount: User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count
+        availableSorts: available_member_sorts(private_directory_visible: private_directory_visible),
+        onlineCount: private_directory_visible ? User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count : nil
       }
     end
 
     private
 
+    def normalized_member_sort(value, private_directory_visible:)
+      allowed = available_member_sorts(private_directory_visible: private_directory_visible)
+      default = private_directory_visible ? "active" : "posts"
+      requested = value.to_s.presence
+      requested && allowed.include?(requested) ? requested : default
+    end
+
+    def available_member_sorts(private_directory_visible:)
+      sorts = Community::UserProfileVisibility::PUBLIC_MEMBER_SORTS
+      return sorts unless private_directory_visible
+
+      Community::UserProfileVisibility::PRIVATE_MEMBER_SORTS + sorts
+    end
+
     def apply_member_sort(scope, sort)
       case sort
       when "joined"
-        scope.order(created_at: :desc)
+        scope.order(created_at: :desc, id: :desc)
       when "posts"
-        scope.order(Arel::Nodes::Descending.new(member_post_count_subquery))
+        scope.order(Arel::Nodes::Descending.new(member_post_count_subquery), created_at: :desc, id: :desc)
       when "likes"
-        scope.order(Arel::Nodes::Descending.new(member_reaction_count_subquery))
+        scope.order(Arel::Nodes::Descending.new(member_reaction_count_subquery), created_at: :desc, id: :desc)
       when "reviews"
-        scope.order(Arel.sql("(SELECT COUNT(*) FROM store_reviews WHERE store_reviews.user_id = users.id AND store_reviews.status = 'published') DESC"))
+        scope.order(
+          Arel.sql("(SELECT COUNT(*) FROM store_reviews WHERE store_reviews.user_id = users.id AND store_reviews.status = 'published') DESC"),
+          created_at: :desc,
+          id: :desc
+        )
       when "purchases"
-        scope.order(Arel.sql(<<~SQL.squish))
-          (SELECT COUNT(*) FROM store_orders
-           WHERE store_orders.user_id = users.id
-           AND store_orders.status IN ('paid','processing','fulfilling','fulfilled','completed')) DESC
-        SQL
+        scope.order(
+          Arel.sql(<<~SQL.squish),
+            (SELECT COUNT(*) FROM store_orders
+             WHERE store_orders.user_id = users.id
+             AND store_orders.status IN ('paid','processing','fulfilling','fulfilled','completed')) DESC
+          SQL
+          created_at: :desc,
+          id: :desc
+        )
       when "online"
-        scope.where("last_seen_at > ?", 5.minutes.ago).order(last_seen_at: :desc)
+        scope.where("last_seen_at > ?", 5.minutes.ago).order(last_seen_at: :desc, id: :desc)
+      when "active"
+        scope.order(Arel.sql("last_seen_at DESC NULLS LAST"), created_at: :desc, id: :desc)
       else
-        scope.order(Arel.sql("last_seen_at DESC NULLS LAST, created_at DESC"))
+        scope.order(Arel::Nodes::Descending.new(member_post_count_subquery), created_at: :desc, id: :desc)
       end
     end
 
@@ -74,16 +102,23 @@ module Community
       scope.where(forum_trust_level_override: level).or(auto_scope)
     end
 
-    def member_stats(members)
+    def member_stats(members, private_directory_visible:)
       ids = members.map(&:id)
       posts = listed_posts.where(user_id: ids)
+      purchase_ids = if private_directory_visible
+                       ids
+      elsif current_user && ids.include?(current_user.id)
+                       [ current_user.id ]
+      else
+                       []
+      end
       {
         posts: posts.group(:user_id).count,
         likes: Community::Reaction.joins(:post)
           .where(forum_post_id: posts.select(:id))
           .group("forum_posts.user_id").count,
         reviews: Commerce::Review.where(user_id: ids, status: :published).group(:user_id).count,
-        purchases: Commerce::Order.where(user_id: ids, status: %w[paid processing fulfilling fulfilled completed]).group(:user_id).count
+        purchases: Commerce::Order.where(user_id: purchase_ids, status: %w[paid processing fulfilling fulfilled completed]).group(:user_id).count
       }
     end
 
@@ -115,21 +150,28 @@ module Community
     def serialize_member(user, stats:)
       level = Community::TrustLevel.level_for(user)
       trust = Community::TrustLevel::LEVELS.find { |entry| entry[:level] == level } || Community::TrustLevel::LEVELS.first
-      {
+      payload = {
         username: user.username,
         display_name: user.display_name,
         avatar_url: user.avatar_url,
         profile_url: forum_user_path(user.username),
-        last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
-        online: user.last_seen_at && user.last_seen_at > 5.minutes.ago,
         posts_count: stats[:posts][user.id].to_i,
         likes_received: stats[:likes][user.id].to_i,
         reviews_count: stats[:reviews][user.id].to_i,
-        purchases_count: stats[:purchases][user.id].to_i,
         trust_level: trust[:level],
         trust_name: trust[:name],
         member_since: l(user.created_at, format: :short)
       }
+
+      visibility = Community::UserProfileVisibility.new(user: user, viewer: current_user)
+      if visibility.private_activity?
+        payload.merge!(
+          last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
+          online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
+          purchases_count: stats[:purchases][user.id].to_i
+        )
+      end
+      payload
     end
   end
 end

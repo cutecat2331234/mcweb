@@ -6,6 +6,7 @@ module Community
     include Community::TopicListPreloadable
     include Community::SubscriptionNoticeable
     include Community::SectionVisibility
+    include ViewerScopedNoStoreResponse
 
     def index
       scope = Community::Section.roots.ordered.includes(:category, :children)
@@ -69,6 +70,8 @@ module Community
 
     # XenForo-style "Staff online now" widget.
     def online_staff
+      return [] unless Community::UserProfileVisibility.private_directory_visible?(viewer: current_user)
+
       User.where(status: :active)
         .where(id: AdminModuleGrant.select(:user_id))
         .where("last_seen_at > ?", 5.minutes.ago)
@@ -102,6 +105,7 @@ module Community
     def forum_index_stats
       latest = User.where(status: :active).order(created_at: :desc).first
       online = User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count
+      online_peak = online_peak_record(online)
       visible_topics = Community::ForumAccess.listed_topic_scope(
         relation: Community::Topic.all,
         user: current_user
@@ -110,18 +114,19 @@ module Community
         relation: Community::Post.all,
         user: current_user
       )
-      {
+      stats = {
         topics: visible_topics.count,
         posts: visible_posts.count,
         members: User.where(status: :active).count,
-        online: online,
-        online_peak: online_peak_record(online),
         latest_member: latest && {
           username: latest.username,
           display_name: latest.display_name,
           url: forum_user_path(latest.username)
         }
       }
+      return stats unless Community::UserProfileVisibility.private_directory_visible?(viewer: current_user)
+
+      stats.merge(online: online, online_peak: online_peak)
     end
 
     # XenForo "Most users ever online" — tracked in SiteSetting, bumped when the

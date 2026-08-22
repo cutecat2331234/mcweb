@@ -377,6 +377,12 @@ module InertiaSerializable
     edits_loaded = post.association(:edits).loaded?
     edit_count = edits_loaded ? post.edits.size : post.edits.count
     has_edits = edits_loaded ? post.edits.any? : post.edits.exists?
+    private_activity_visible = Community::UserProfileVisibility
+      .new(user: post.user, viewer: current_user)
+      .private_activity?
+    visible_author_points = if private_activity_visible
+                              author_forum_points.nil? ? Community::PointAccount.find_by(user: post.user, currency: "points")&.balance.to_i : author_forum_points
+    end
 
     {
       id: post.id,
@@ -390,7 +396,7 @@ module InertiaSerializable
       author_flair_color: post.user.forum_flair_color_hex.presence,
       author_forum_title: resolved_user_title(post.user, posts_count: author_posts_count),
       author_posts_count: author_posts_count.nil? ? post.user.forum_posts_count : author_posts_count,
-      author_forum_points: author_forum_points.nil? ? Community::PointAccount.find_by(user: post.user, currency: "points")&.balance.to_i : author_forum_points,
+      **(private_activity_visible ? { author_forum_points: visible_author_points } : {}),
       author_member_since: l(post.user.created_at.to_date, format: :short),
       author_url: forum_user_path(post.user.username),
       author_card_url: card_forum_user_path(post.user.username),
@@ -568,7 +574,7 @@ module InertiaSerializable
   end
 
   def serialize_user_memberships(user, limit: nil)
-    Commerce::SerializeUserMemberships.for_user(user, limit: limit)
+    Commerce::SerializeUserMemberships.public_for_user(user, limit: limit)
   end
 
   # XenForo-style user group badges (colored) for profile/card display.

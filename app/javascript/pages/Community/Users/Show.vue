@@ -415,14 +415,14 @@ function saveWallEdit(
             <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm lg:justify-start">
               <span><strong>{{ profile.topics_count }}</strong> {{ t('userProfile.topics') }}</span>
               <span><strong>{{ profile.posts_count }}</strong> {{ t('userProfile.posts') }}</span>
-              <span v-if="profile.orders_count"><strong>{{ profile.orders_count }}</strong> {{ t('userProfile.orders') }}</span>
+              <span v-if="profile.orders_count !== undefined"><strong>{{ profile.orders_count }}</strong> {{ t('userProfile.orders') }}</span>
               <Link v-if="profile.followers_url" :href="profile.followers_url" class="hover:underline">
                 <strong>{{ profile.followers_count ?? 0 }}</strong> {{ t('userProfile.followers') }}
               </Link>
               <span><strong>{{ profile.likes_received }}</strong> {{ t('userProfile.likesReceived') }}</span>
               <span v-if="profile.reaction_score != null && profile.reaction_score !== profile.likes_received"><strong>{{ profile.reaction_score }}</strong> {{ t('userProfile.reactionScore') }}</span>
               <span v-if="profile.trophy_points"><strong>{{ profile.trophy_points }}</strong> {{ t('userProfile.trophyPoints') }}</span>
-              <span><strong>{{ profile.forum_points ?? 0 }}</strong> {{ t('userProfile.forumPoints') }}</span>
+              <span v-if="profile.forum_points !== undefined"><strong>{{ profile.forum_points }}</strong> {{ t('userProfile.forumPoints') }}</span>
               <span v-if="profile.check_in_total"><strong>{{ profile.check_in_streak ?? 0 }}</strong> {{ t('userProfile.checkInStreak') }} · <strong>{{ profile.check_in_total }}</strong> {{ t('userProfile.checkInTotal') }}</span>
               <span v-if="profile.profile_views"><strong>{{ profile.profile_views }}</strong> {{ t('userProfile.profileViews') }}</span>
               <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> {{ t('userProfile.warningPoints') }}</span>
@@ -516,7 +516,7 @@ function saveWallEdit(
         <div v-if="profile.recent_point_transactions?.length" class="max-w-xl rounded-lg border p-4">
           <h3 class="mb-2 text-sm font-semibold">
             {{ t('userProfile.pointsActivityTitle') }} ·
-            <span class="font-bold">{{ profile.forum_points ?? 0 }}</span> {{ t('userProfile.forumPoints') }}
+            <span class="font-bold">{{ profile.forum_points }}</span> {{ t('userProfile.forumPoints') }}
           </h3>
           <ul class="space-y-2 text-sm">
             <li
@@ -559,7 +559,7 @@ function saveWallEdit(
                 variant="outline"
               >
                 {{ membership.icon }} {{ membership.name }}
-                <span class="text-muted-foreground">· {{ membership.permanent ? t('commerce.memberships.permanent') : membership.expires_label }}</span>
+                <span v-if="membership.permanent != null || membership.expires_label" class="text-muted-foreground">· {{ membership.permanent ? t('commerce.memberships.permanent') : membership.expires_label }}</span>
               </Badge>
             </div>
             <p v-else class="text-muted-foreground">{{ t('userProfile.noMemberships') }}</p>
@@ -755,7 +755,7 @@ function saveWallEdit(
       {{ t('userProfile.tabPosts') }} ({{ profile.posts_count }})
     </Button>
     <Button :variant="activeTab === 'store' ? 'default' : 'outline'" size="sm" @click="switchTab('store')">
-      {{ t('userProfile.tabStore') }} ({{ profile.orders_count ?? 0 }})
+      {{ t('userProfile.tabStore') }}<template v-if="profile.orders_count !== undefined"> ({{ profile.orders_count }})</template>
     </Button>
     <Button
       v-if="profile.assigned_count"

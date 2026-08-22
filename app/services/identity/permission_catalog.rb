@@ -353,6 +353,15 @@ module Identity
         ]
       ),
       build_entry.call(
+        "identity.users.private_activity.read",
+        "View private member activity",
+        admin_module: nil,
+        execution_points: [
+          "app/services/community/user_profile_visibility.rb#private_activity?"
+        ],
+        fallback_description: "View private presence, commerce, points, check-in, and game-activity details."
+      ),
+      build_entry.call(
         "forum.badges.manage",
         "管理论坛徽章",
         execution_points: [

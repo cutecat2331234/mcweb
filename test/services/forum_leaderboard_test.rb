@@ -37,6 +37,7 @@ class ForumLeaderboardTest < ActionDispatch::IntegrationTest
   end
 
   test "week points ranks by points earned inside the window only" do
+    sign_in_private_viewer
     award_points(@u1, 10)
     award_points(@u1, 7, at: 2.weeks.ago)
     award_points(@u2, 4, at: 2.weeks.ago)
@@ -51,6 +52,7 @@ class ForumLeaderboardTest < ActionDispatch::IntegrationTest
   end
 
   test "all points ranks by lifetime balance including old transactions" do
+    sign_in_private_viewer
     award_points(@u1, 10)
     award_points(@u1, 7, at: 2.weeks.ago)
     award_points(@u2, 4, at: 2.weeks.ago)
@@ -64,6 +66,7 @@ class ForumLeaderboardTest < ActionDispatch::IntegrationTest
   end
 
   test "negative adjustment reduces all-time balance but not weekly earnings" do
+    sign_in_private_viewer
     award_points(@u1, 10)
     award_points(@u1, -4)
 
@@ -77,6 +80,7 @@ class ForumLeaderboardTest < ActionDispatch::IntegrationTest
   end
 
   test "month points includes transactions older than a week but within a month" do
+    sign_in_private_viewer
     award_points(@u1, 8, at: 2.weeks.ago)
 
     get forum_leaderboard_path(period: "month", metric: "points")
@@ -88,7 +92,25 @@ class ForumLeaderboardTest < ActionDispatch::IntegrationTest
     assert_not_includes points_scores.keys, @u1.username
   end
 
+  test "public viewers cannot request the private points leaderboard" do
+    award_points(@u1, 99)
+
+    get forum_leaderboard_path(metric: "points")
+
+    assert_response :success
+    props = inertia.props.deep_symbolize_keys
+    assert_equal "posts", props.fetch(:metric)
+    assert_not_includes props.fetch(:availableMetrics), "points"
+    assert_equal 5, props.fetch(:entries).first.fetch(:score)
+  end
+
   private
+
+  def sign_in_private_viewer
+    viewer = create_user
+    grant_permission(viewer, Community::UserProfileVisibility::PRIVATE_ACTIVITY_PERMISSION)
+    sign_in_as(viewer)
+  end
 
   def award_points(user, amount, at: nil)
     result = Community::AwardPoints.call(user: user, amount: amount, reason: "admin_adjust")

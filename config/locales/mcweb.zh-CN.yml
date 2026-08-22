@@ -855,6 +855,7 @@
         slow_mode_active: 当前处于慢速模式，请稍后再发帖。
         wait_before_posting: 请稍后再发帖。
         invalid_or_expired_link_code: 绑定码无效或已过期。
+        minecraft_identity_link_account_unavailable: 当前账号已无法绑定 Minecraft 身份。
         invalid_connector_signature: 连接器签名无效。
         server_connector_not_configured: 服务器未配置连接器密钥。
         invalid_url: 链接无效。

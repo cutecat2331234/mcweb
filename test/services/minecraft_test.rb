@@ -88,6 +88,24 @@ class Minecraft::CompleteLinkTest < ActiveSupport::TestCase
     result = Minecraft::CompleteLink.call(user: other_user, code: @code)
     assert result.failure?
   end
+
+  test "rejects a closed account before consuming the code or creating either binding" do
+    @user.update!(status: "deleted", account_closed_at: Time.current)
+
+    result = Minecraft::CompleteLink.call(user: @user, code: @code)
+
+    assert_predicate result, :failure?
+    assert_equal "minecraft_identity_link_account_unavailable", result.code
+    assert_empty Minecraft::Identity.where(user: @user)
+    assert_empty Minecraft::IdentityLink.where(user: @user)
+    link_code = Minecraft::LinkCode.find_by_code(@code)
+    assert_nil link_code.used_at
+    assert_nil link_code.used_by
+    I18n.available_locales.each do |locale|
+      key = "mcweb.services.errors.minecraft_identity_link_account_unavailable"
+      assert I18n.exists?(key, locale:), "missing #{locale}.#{key}"
+    end
+  end
 end
 
 class Minecraft::ConnectorAuthenticatorTest < ActiveSupport::TestCase

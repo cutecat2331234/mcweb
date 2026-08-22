@@ -33,6 +33,7 @@ module Identity
 
       assert_equal %w[
         identity.profile identity.notifications community.content community.uploads commerce.account
+        minecraft.accounts
       ], keys
       assert DataExportCatalog.registry_frozen?
     end

@@ -855,6 +855,7 @@ en:
         slow_mode_active: Slow mode is active. Please wait before posting again.
         wait_before_posting: Please wait before posting again.
         invalid_or_expired_link_code: Invalid or expired link code.
+        minecraft_identity_link_account_unavailable: This account can no longer link a Minecraft identity.
         invalid_connector_signature: Invalid connector signature.
         server_connector_not_configured: Server connector is not configured.
         invalid_url: Invalid URL.

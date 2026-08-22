@@ -15,11 +15,11 @@ only participate through the existing bounded unlink-restriction extension.
 - [x] Classify modern identity links, legacy user-owned identities, shared
       player profiles, public identity facts, skin attachments, primary-account
       history, active sessions, and node operations.
-- [ ] Register one CE Minecraft data-export contributor.
-- [ ] Register one CE Minecraft account-closure contributor.
-- [ ] Add focused database coverage for privacy, preflight, execution,
+- [x] Register one CE Minecraft data-export contributor.
+- [x] Register one CE Minecraft account-closure contributor.
+- [x] Add focused database coverage for privacy, preflight, execution,
       compensation, idempotency, and shared-profile preservation.
-- [ ] Pass focused tests, RuboCop, and Zeitwerk validation.
+- [x] Pass focused tests, RuboCop, and Zeitwerk validation.
 - [ ] Merge the CE history through EE into EE-PVP without recreating it.
 
 ## Functional requirements
@@ -90,6 +90,9 @@ only participate through the existing bounded unlink-restriction extension.
 7. A failure in this or any later contributor leaves the account-close
    transaction uncommitted; compensation also satisfies the contributor
    protocol when exercised independently.
+8. Binding completion and legacy link-code redemption lock and recheck the user
+   before consuming a code, so a concurrent or already completed account close
+   cannot create a new active or legacy binding afterward.
 
 ## Privacy contract
 
@@ -121,5 +124,7 @@ only participate through the existing bounded unlink-restriction extension.
   identities, attachments, and immutable history.
 - Re-execution is a no-op, and injected later failure/explicit compensation
   restores the exact pre-execution binding state.
+- A closed account cannot consume a valid link code or recreate either binding
+  representation.
 - Focused database tests, RuboCop, and Zeitwerk validation pass on the CE
   branch with a clean worktree.

@@ -55,7 +55,7 @@ const arcoChunkPlan: readonly ArcoChunkGroupPlan[] = [
     name: 'arco-sign-in-form',
     areas: 'alert checkbox divider form grid input page-header space tooltip trigger',
     icons: 'icon-check-circle-fill icon-close icon-close-circle-fill icon-empty icon-exclamation-circle-fill icon-eye icon-eye-invisible icon-info-circle-fill icon-left icon-question-circle icon-search',
-    packages: 'resize-observer-polyfill',
+    packages: 'compute-scroll-into-view resize-observer-polyfill scroll-into-view-if-needed',
     paths: '_components/client-only.js _components/feedback-icon.js _components/icon-hover.js _components/resize-observer.js _components/resize-observer-v2.js _hooks/use-cursor.js _hooks/use-first-element.js _hooks/use-index.js _hooks/use-merge-state.js _hooks/use-overflow.js _hooks/use-pick-slots.js _hooks/use-popup-manager.js _hooks/use-resize-observer.js _hooks/use-state.js _hooks/use-teleport-container.js _utils/constant.js _utils/dom.js _utils/get-value-by-path.js _utils/keyboard.js _utils/keycode.js _utils/pick.js _utils/raf.js _utils/responsive-observe.js _utils/throttle-by-raf.js',
   },
   {

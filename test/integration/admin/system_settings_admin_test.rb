@@ -17,6 +17,11 @@ module Admin
       SiteSetting.set("forum.bump_cooldown_hours", "24")
       SiteSetting.set("forum.vapid_private_key", "server-only-secret")
       SiteSetting.set("store.flat_shipping_cents", "800")
+      Mcweb::SettingsNamespaceRegistry.register(
+        prefix: "owned_test.",
+        owner: "test.dedicated_configuration"
+      )
+      SiteSetting.set("owned_test.policy_version", "7")
     end
 
     test "settings expose localized labels instead of raw keys" do
@@ -71,6 +76,35 @@ module Admin
       assert_equal "true", SiteSetting.get("features.forum.enabled")
       assert_equal "true", SiteSetting.get("features.store.enabled")
       assert_equal "论坛和商城至少需要保留一个开启。", flash[:alert]
+    end
+
+    test "dedicated namespaces are hidden and rejected atomically without auditing values" do
+      get admin_system_settings_path
+
+      settings = inertia.props.deep_symbolize_keys.fetch(:settings)
+      refute settings.any? { |item| item[:key] == "owned_test.policy_version" }
+
+      submitted_secret = "must-not-audit-#{SecureRandom.hex(12)}"
+      assert_difference -> { AuditLog.count }, 1 do
+        patch admin_system_settings_path, params: {
+          settings: {
+            "owned_test.policy_version" => submitted_secret,
+            "forum.bump_cooldown_hours" => "48"
+          }
+        }
+      end
+
+      assert_redirected_to admin_system_settings_path
+      assert_equal "7", SiteSetting.get("owned_test.policy_version")
+      assert_equal "24", SiteSetting.get("forum.bump_cooldown_hours")
+      assert_equal "此配置由专用配置页面管理，本次未作任何更改。", flash[:alert]
+
+      audit = AuditLog.order(:id).last
+      assert_equal "admin.settings_protected_write_rejected", audit.action
+      assert_equal [ "owned_test.policy_version" ], audit.metadata.fetch("keys")
+      assert_equal "test.dedicated_configuration",
+        audit.metadata.fetch("owners").fetch("owned_test.policy_version")
+      refute_includes audit.to_json, submitted_secret
     end
 
     test "all known setting labels are complete in Chinese and English" do

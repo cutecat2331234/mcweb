@@ -42,6 +42,33 @@ class Mcweb::LocalConfigTest < ActiveSupport::TestCase
     assert Mcweb::LocalConfig.load["lockbox_master_key"].present?
   end
 
+  test "complete configuration permits an explicitly blank database password" do
+    Mcweb::LocalConfig.write!(
+      database: {
+        host: "127.0.0.1",
+        port: 5432,
+        username: "postgres",
+        password: "",
+        test: "mcweb_test"
+      }
+    )
+
+    assert Mcweb::LocalConfig.complete?
+  end
+
+  test "complete configuration still requires the database password key" do
+    Mcweb::LocalConfig.write!(
+      database: {
+        host: "127.0.0.1",
+        port: 5432,
+        username: "postgres",
+        test: "mcweb_test"
+      }
+    )
+
+    assert_not Mcweb::LocalConfig.complete?
+  end
+
   test "database_settings_for returns env-specific database name" do
     Mcweb::LocalConfig.write!(
       database: {

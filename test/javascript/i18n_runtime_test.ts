@@ -7,6 +7,18 @@ import {
   MISSING_TRANSLATION_EVENT,
   normalizeAppLocale,
 } from '../../app/javascript/lib/i18nRuntime.ts'
+import {
+  beginStoragePreferenceTransaction,
+} from '../../app/javascript/lib/storagePreferenceTransaction.ts'
+import englishMessages from '../../app/javascript/locales/en.ts'
+import chineseMessages from '../../app/javascript/locales/zh-CN.ts'
+
+function messageAt(messages: object, key: string): unknown {
+  return key.split('.').reduce<unknown>((value, segment) => {
+    if (!value || typeof value !== 'object') return undefined
+    return (value as Record<string, unknown>)[segment]
+  }, messages)
+}
 
 test('application locale normalization stays explicit', () => {
   assert.equal(normalizeAppLocale('zh_Hans'), 'zh-CN')
@@ -38,18 +50,79 @@ test('locale preference supplies a stable shared key and partitions Inertia cach
   assert.match(source, /\[INERTIA_LOCALE_HEADER\]: normalizeAppLocale\(candidate\)/)
 })
 
-test('language switchers publish the selected locale before starting an Inertia visit', () => {
+test('locale preference transactions roll storage back unless the visit succeeds', () => {
+  const storageKey = 'mcweb-locale'
+  const values = new Map<string, string>([[storageKey, 'en']])
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      },
+    },
+  })
+
+  try {
+    const failed = beginStoragePreferenceTransaction(storageKey, 'zh-CN')
+    assert.equal(values.get(storageKey), 'zh-CN')
+    failed.rollback()
+    assert.equal(values.get(storageKey), 'en')
+
+    values.delete(storageKey)
+    const cancelled = beginStoragePreferenceTransaction(storageKey, 'zh-CN')
+    cancelled.rollback()
+    assert.equal(values.has(storageKey), false)
+
+    const successful = beginStoragePreferenceTransaction(storageKey, 'zh-CN')
+    successful.commit()
+    successful.rollback()
+    assert.equal(values.get(storageKey), 'zh-CN')
+  } finally {
+    if (previousWindow) {
+      Object.defineProperty(globalThis, 'window', previousWindow)
+    } else {
+      delete (globalThis as { window?: unknown }).window
+    }
+  }
+})
+
+test('language switchers use the shared rollback transaction around an Inertia visit', () => {
   for (const relativePath of [
     'app/javascript/components/portal/LanguageSwitcher.vue',
     'app/javascript/components/admin/AdminLanguageSwitcher.vue',
   ]) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
-    const publishSelection = source.indexOf('writeSharedAppLocale(locale)')
+    const publishSelection = source.indexOf('beginAppLocalePreferenceTransaction(locale)')
     const startVisit = source.indexOf('router.patch(')
 
     assert.ok(publishSelection >= 0, `${relativePath} must publish the selected locale`)
     assert.ok(startVisit > publishSelection, `${relativePath} must publish the locale before the visit`)
+    assert.match(source, /\.\.\.localePreferenceVisitCallbacks\(transaction\)/)
+    assert.match(source, /catch \(error\) \{\s*transaction\.rollback\(\)/)
   }
+})
+
+test('community preference copy belongs to the forum domain in both locale bundles', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), 'app/javascript/pages/Community/Preferences/Show.vue'),
+    'utf8',
+  )
+  const keys = [...source.matchAll(/t\('([^']+)'/g)]
+    .map((match) => match[1])
+    .filter((key) => key.startsWith('forum.preferences.'))
+
+  assert.ok(keys.length > 20)
+  assert.doesNotMatch(source, /t\('preferences\./)
+  assert.doesNotMatch(source, /<button\b/)
+  for (const key of new Set(keys)) {
+    assert.equal(typeof messageAt(englishMessages, key), 'string', `missing English ${key}`)
+    assert.equal(typeof messageAt(chineseMessages, key), 'string', `missing Chinese ${key}`)
+  }
+  assert.equal(messageAt(englishMessages, 'preferences.title'), undefined)
+  assert.equal(messageAt(chineseMessages, 'preferences.title'), undefined)
 })
 
 test('explicit Inertia visit headers override shared locale and csrf defaults', () => {

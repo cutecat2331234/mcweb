@@ -192,9 +192,12 @@ const dueProgress = computed(() => {
   return Math.min(1, Math.max(0, (Date.now() - start) / (end - start)))
 })
 
-const highRiskTitle = computed(() =>
-  t(`admin.disputes.actions.${highRiskAction.value}`),
-)
+const simpleActionTitle = computed(() => (
+  simpleAction.value ? t(`admin.disputes.actions.${simpleAction.value}`) : ''
+))
+const highRiskTitle = computed(() => (
+  highRiskAction.value ? t(`admin.disputes.actions.${highRiskAction.value}`) : ''
+))
 
 function applyFilters(page = 1) {
   const query = Object.fromEntries(
@@ -764,7 +767,7 @@ function rightsColor(status: string) {
 
   <Modal
     v-model:visible="actionVisible"
-    :title="t(`admin.disputes.actions.${simpleAction}`)"
+    :title="simpleActionTitle"
     :ok-text="t('common.confirm')"
     :cancel-text="t('common.cancel')"
     :ok-loading="actionSubmitting"

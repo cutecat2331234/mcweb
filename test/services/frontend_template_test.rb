@@ -109,6 +109,32 @@ class FrontendTemplateIntegrationTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "template-test"
   end
 
+  test "account surface explicitly inherits the active portal template" do
+    install_and_activate_template!
+    get account_path
+    assert_response :success
+    assert_includes response.body, "activeTemplate"
+    assert_includes response.body, "template-test"
+  end
+
+  test "controllers can explicitly opt in to a supported template scope" do
+    controller = Class.new(ApplicationController)
+
+    controller.uses_frontend_template :portal
+
+    assert_equal "portal", controller.frontend_template_scope
+  end
+
+  test "controllers reject unknown template scopes" do
+    controller = Class.new(ApplicationController)
+
+    error = assert_raises(ArgumentError) do
+      controller.uses_frontend_template :player_product
+    end
+
+    assert_includes error.message, "unsupported frontend template scope"
+  end
+
   test "theme asset route serves css" do
     install_and_activate_template!
     get frontend_theme_asset_path(template_key: "template-test", path: "styles/theme.css")

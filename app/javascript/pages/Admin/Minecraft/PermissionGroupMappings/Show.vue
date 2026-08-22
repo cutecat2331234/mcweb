@@ -46,9 +46,9 @@ function addMapping() {
 
 function deleteMapping(index: number, gameGroupName: string) {
   Modal.warning({
-    title: t('preferences.delete'),
+    title: t('common.delete'),
     content: t('adminMinecraft.deleteMappingConfirm', `Delete mapping for ${gameGroupName}?`),
-    okText: t('preferences.delete'),
+    okText: t('common.delete'),
     cancelText: t('common.cancel'),
     hideCancel: false,
     okButtonProps: { status: 'danger' },
@@ -106,7 +106,7 @@ function deleteMapping(index: number, gameGroupName: string) {
           size="small"
           @click="deleteMapping(record.index, record.game_group)"
         >
-          {{ t('preferences.delete') }}
+          {{ t('common.delete') }}
         </a-button>
       </template>
       <template #empty>

@@ -88,6 +88,14 @@ const currentStep = computed(() => {
   if (authorization.value) return 2
   return 1
 })
+const modalTitle = computed(() => {
+  if (!props.visible || !props.action) return ''
+
+  return t('admin.moderationWorkbench.actionModal.title', {
+    action: t(`admin.moderationWorkbench.actions.${props.action}`),
+    count: props.caseIds.length,
+  })
+})
 const canPreview = computed(() =>
   props.action.length > 0 &&
   props.caseIds.length > 0 &&
@@ -270,10 +278,7 @@ async function execute() {
 <template>
   <Modal
     :visible="visible"
-    :title="t('admin.moderationWorkbench.actionModal.title', {
-      action: t(`admin.moderationWorkbench.actions.${action}`),
-      count: caseIds.length,
-    })"
+    :title="modalTitle"
     :footer="false"
     :mask-closable="!authorizing && !executing"
     :esc-to-close="!authorizing && !executing"

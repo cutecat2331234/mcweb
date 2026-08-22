@@ -85,6 +85,19 @@ Exceptions (document in PR):
 - Portal/community surfaces (shadcn until a deliberate migration)
 - Temporary POC pages clearly marked for removal
 
+## Shared visual contracts
+
+- Use Arco component props and the centralized token layers before adding CSS.
+  Page-scoped CSS must solve a page-specific layout constraint and must not
+  restyle an Arco component into a new visual language.
+- Active navigation uses Arco's selected state. Do not add a custom leading
+  stripe, a permanent focus outline, or a second selected background.
+- Application surfaces do not use decorative gradients. Hover and focus must
+  not translate, scale, or otherwise move cards and controls.
+- A Collapse body containing bordered Descriptions or a Table is one continuous
+  `--color-bg-2` surface. Keep label/header fills provided by Arco and do not
+  mix transparent value cells with a differently colored Collapse body.
+
 ## Vite aliases (`vite.config.ts`)
 
 - `@mcweb/ui` → npm `@arco-design/web-vue` (default runtime)

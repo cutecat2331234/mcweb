@@ -66,8 +66,20 @@ test('admin form help and word counts use readable supporting text', () => {
 })
 
 test('medium-width page headers retain a padded surface instead of collapsing into loose text', () => {
-  assert.match(shell, /@media \(max-width: 1099px\)[\s\S]*?\.arco-admin-main :deep\(\.arco-page-header\)\s*\{[\s\S]*?padding:\s*var\(--mc-page-header-padding, 14px\) !important/)
+  assert.match(shell, /@media \(max-width: 1199px\)[\s\S]*?\.arco-admin-main :deep\(\.arco-page-header\)\s*\{[\s\S]*?padding:\s*var\(--mc-page-header-padding, 14px\) !important/)
   assert.doesNotMatch(shell, /padding:\s*8px 0/)
+})
+
+test('admin application surfaces avoid decorative gradients and position-changing hover motion', () => {
+  assert.doesNotMatch(css, /(?:linear|radial)-gradient\(/)
+  assert.doesNotMatch(shell, /(?:linear|radial)-gradient\(/)
+  assert.doesNotMatch(css, /transform:\s*translateY/)
+  assert.doesNotMatch(css, /transition:[^;]*\btransform\b/)
+  const primaryButtonRules = [...css.matchAll(
+    /\.mcweb-admin \.arco-btn-primary[\s\S]*?\{([^}]*)\}/g,
+  )]
+  assert.equal(primaryButtonRules.length, 2)
+  for (const rule of primaryButtonRules) assert.doesNotMatch(rule[1], /box-shadow:/)
 })
 
 test('admin task cards use a bounded Arco grid instead of a fixed four-column breakpoint', () => {

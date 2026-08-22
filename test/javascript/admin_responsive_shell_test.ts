@@ -27,12 +27,14 @@ test('admin shell switches to its Drawer before the sidebar can squeeze medium v
 
   assert.ok(drawerBreakpoint)
   assert.ok(desktopBreakpoint)
-  assert.equal(Number(drawerBreakpoint[1]), 1099)
-  assert.equal(Number(desktopBreakpoint[1]), 1100)
+  assert.equal(Number(drawerBreakpoint[1]), 1199)
+  assert.equal(Number(desktopBreakpoint[1]), 1200)
 
   for (const [width, expectedMode] of [
     [1280, 'sidebar'],
-    [1100, 'sidebar'],
+    [1200, 'sidebar'],
+    [1199, 'drawer'],
+    [1100, 'drawer'],
     [1024, 'drawer'],
     [900, 'drawer'],
     [768, 'drawer'],
@@ -170,4 +172,24 @@ test('collapsed sidebar keeps its brand and menu inside the 48px rail', () => {
     css,
     /\.arco-admin-sider\.arco-layout-sider-collapsed \.arco-admin-sider__menu\s*\{[\s\S]*?padding-inline:\s*4px/,
   )
+})
+
+test('desktop navigation persists collapse state and keeps one visible menu group', () => {
+  assert.match(source, /COLLAPSED_STORAGE_KEY = 'mc-admin-arco-nav-collapsed'/)
+  assert.match(source, /readStoredCollapsedState\(\)/)
+  assert.match(source, /watch\(collapsed, persistCollapsedState\)/)
+  assert.match(source, /openKeys\.value = nextKey \? \[nextKey\] : \[\]/)
+  assert.equal(source.match(/:open-keys="openKeys"/g)?.length, 2)
+  assert.equal(source.match(/@update:open-keys="onOpenKeysChange"/g)?.length, 2)
+  assert.doesNotMatch(source, /v-model:open-keys/)
+  assert.doesNotMatch(source, /mc-admin-arco-nav-open/)
+})
+
+test('route changes open and reveal the selected item in both navigation surfaces', () => {
+  assert.match(source, /watch\(\s*\[activeGroupKey, activeItemHref\]/)
+  assert.match(source, /openKeys\.value = groupKey \? \[groupKey\] : \[\]/)
+  assert.match(source, /querySelector<HTMLElement>\('\.arco-menu-selected'\)/)
+  assert.match(source, /scrollIntoView\(\{ block: 'nearest' \}\)/)
+  assert.match(source, /ref="desktopMenuScroll"/)
+  assert.match(source, /ref="drawerMenuScroll"/)
 })

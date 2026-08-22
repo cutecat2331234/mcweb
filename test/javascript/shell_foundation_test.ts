@@ -121,3 +121,11 @@ test('page gutters step down through the shared responsive scale', () => {
   assert.match(foundation, /@media \(max-width: 767px\)[\s\S]*?--mc-page-gutter:\s*16px/)
   assert.match(foundation, /@media \(max-width: 479px\)[\s\S]*?--mc-page-gutter:\s*12px/)
 })
+
+test('compound Arco detail views retain one token-backed content surface', () => {
+  assert.match(
+    foundation,
+    /\.mc-page-surface \.arco-collapse-item-content,[\s\S]*?\.arco-descriptions-border,[\s\S]*?\.arco-descriptions-item-value-block,[\s\S]*?\.arco-table-container,[\s\S]*?\.arco-table-body[\s\S]*?background-color:\s*var\(--color-bg-2\)/,
+  )
+  assert.doesNotMatch(foundation, /\.arco-collapse-item-content[\s\S]{0,500}(?:#[0-9a-f]{3,8}|rgba?\()/i)
+})

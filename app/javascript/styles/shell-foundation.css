@@ -183,6 +183,22 @@
   row-gap: var(--mc-space-2);
 }
 
+/*
+ * Collapse content and the structured data inside it form one Arco surface.
+ * Arco defaults Collapse bodies to a fill color while bordered Descriptions
+ * values and Table cells use the page background; normalizing the containing
+ * surface prevents visible gray/transparent/white seams in compound details.
+ */
+.mc-page-surface .arco-collapse-item-content,
+.mc-page-surface .arco-collapse-item-content :is(
+  .arco-descriptions-border,
+  .arco-descriptions-item-value-block,
+  .arco-table-container,
+  .arco-table-body
+) {
+  background-color: var(--color-bg-2);
+}
+
 @media (max-width: 1279px) {
   :root {
     --mc-page-gutter: 20px;

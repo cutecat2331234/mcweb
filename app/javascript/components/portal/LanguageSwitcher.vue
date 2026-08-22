@@ -15,7 +15,10 @@ import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
 import { normalizeAppLocale, preloadAppLocale, type AppLocale } from '@/lib/i18n'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
-import { writeSharedAppLocale } from '@/lib/localePreference'
+import {
+  beginAppLocalePreferenceTransaction,
+  localePreferenceVisitCallbacks,
+} from '@/lib/localePreference'
 import { routes } from '@/lib/routes'
 
 const page = usePage()
@@ -35,13 +38,22 @@ function localeLabel(locale: AppLocale) {
 async function switchLocale(locale: AppLocale) {
   if (locale === currentLocale.value) return
   await preloadAppLocale(locale)
-  writeSharedAppLocale(locale)
+  const transaction = beginAppLocalePreferenceTransaction(locale)
   const token = readCsrfToken()
-  router.patch(
-    routes.locale,
-    { locale, authenticity_token: token },
-    { preserveScroll: true, headers: csrfHeaders() },
-  )
+  try {
+    router.patch(
+      routes.locale,
+      { locale, authenticity_token: token },
+      {
+        preserveScroll: true,
+        headers: csrfHeaders(),
+        ...localePreferenceVisitCallbacks(transaction),
+      },
+    )
+  } catch (error) {
+    transaction.rollback()
+    throw error
+  }
 }
 </script>
 

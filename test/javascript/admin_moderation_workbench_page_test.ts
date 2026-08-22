@@ -80,6 +80,9 @@ test('action modal implements authorization preview and typed-confirmed executio
   assert.match(modal, /warningExpireDays/)
   assert.match(modal, /durationDays/)
   assert.match(modal, /action === 'ban_user' \? 0 : 1/)
+  assert.match(modal, /if \(!props\.visible \|\| !props\.action\) return ''/)
+  assert.match(modal, /:title="modalTitle"/)
+  assert.doesNotMatch(modal, /actions\.\$\{action\}/)
 })
 
 test('preview and per-item execution results stay inside the modal until explicitly closed', () => {

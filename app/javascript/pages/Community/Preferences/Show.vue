@@ -175,16 +175,16 @@ async function saveRenameSearch(search: SavedSearchItem) {
   <Breadcrumb :items="[
     { label: t('breadcrumb.home'), href: routes.home },
     { label: t('breadcrumb.forum'), href: routes.forum },
-    { label: t('preferences.title'), current: true },
+    { label: t('forum.preferences.title'), current: true },
   ]" />
 
-  <PageHeader :title="t('preferences.title')" :subtitle="t('preferences.subtitle')" />
+  <PageHeader :title="t('forum.preferences.title')" :subtitle="t('forum.preferences.subtitle')" />
 
   <section class="mb-6 max-w-lg rounded-lg border p-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-sm font-medium">{{ t('preferences.language') }}</h2>
-        <p class="mt-1 text-sm text-muted-foreground">{{ t('preferences.languageHint') }}</p>
+        <h2 class="text-sm font-medium">{{ t('forum.preferences.language') }}</h2>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('forum.preferences.languageHint') }}</p>
       </div>
       <LanguageSwitcher />
     </div>
@@ -193,24 +193,24 @@ async function saveRenameSearch(search: SavedSearchItem) {
   <section v-if="pushSupported" class="mb-6 max-w-lg rounded-lg border p-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-sm font-medium">{{ t('preferences.push.title') }}</h2>
-        <p class="mt-1 text-sm text-muted-foreground">{{ t('preferences.push.description') }}</p>
+        <h2 class="text-sm font-medium">{{ t('forum.preferences.push.title') }}</h2>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('forum.preferences.push.description') }}</p>
       </div>
       <Button type="button" variant="outline" size="sm" :disabled="pushBusy" @click="togglePush">
-        {{ pushEnabled ? t('preferences.push.disable') : t('preferences.push.enable') }}
+        {{ pushEnabled ? t('forum.preferences.push.disable') : t('forum.preferences.push.enable') }}
       </Button>
     </div>
   </section>
 
   <section class="mb-6 max-w-lg rounded-lg border p-4">
-    <h2 class="text-sm font-semibold">{{ t('preferences.dnd.title') }}</h2>
-    <p v-if="dnd_active" class="mt-1 text-sm text-muted-foreground">{{ t('preferences.dnd.activeUntil', { time: dnd_until }) }}</p>
-    <p v-else class="mt-1 text-sm text-muted-foreground">{{ t('preferences.dnd.description') }}</p>
+    <h2 class="text-sm font-semibold">{{ t('forum.preferences.dnd.title') }}</h2>
+    <p v-if="dnd_active" class="mt-1 text-sm text-muted-foreground">{{ t('forum.preferences.dnd.activeUntil', { time: dnd_until }) }}</p>
+    <p v-else class="mt-1 text-sm text-muted-foreground">{{ t('forum.preferences.dnd.description') }}</p>
     <div class="mt-3 flex flex-wrap gap-2">
-      <Button type="button" size="sm" variant="outline" @click="pauseDnd(60)">{{ t('preferences.dnd.pause1h') }}</Button>
-      <Button type="button" size="sm" variant="outline" @click="pauseDnd(480)">{{ t('preferences.dnd.pause8h') }}</Button>
-      <Button type="button" size="sm" variant="outline" @click="pauseDnd(1440)">{{ t('preferences.dnd.pause24h') }}</Button>
-      <Button v-if="dnd_active" type="button" size="sm" @click="pauseDnd(0)">{{ t('preferences.dnd.resume') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="pauseDnd(60)">{{ t('forum.preferences.dnd.pause1h') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="pauseDnd(480)">{{ t('forum.preferences.dnd.pause8h') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="pauseDnd(1440)">{{ t('forum.preferences.dnd.pause24h') }}</Button>
+      <Button v-if="dnd_active" type="button" size="sm" @click="pauseDnd(0)">{{ t('forum.preferences.dnd.resume') }}</Button>
     </div>
   </section>
 
@@ -224,28 +224,28 @@ async function saveRenameSearch(search: SavedSearchItem) {
       <div class="flex flex-wrap gap-6">
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.preferences[pref.notification_type].in_app" />
-          {{ t('preferences.inApp') }}
+          {{ t('forum.preferences.inApp') }}
         </label>
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.preferences[pref.notification_type].email" />
-          {{ t('preferences.email') }}
+          {{ t('forum.preferences.email') }}
         </label>
       </div>
     </div>
 
     <div class="rounded-lg border p-4">
-      <Label for="watch-email-mode" class="mb-2 block text-sm font-medium">{{ t('preferences.watchEmailMode') }}</Label>
+      <Label for="watch-email-mode" class="mb-2 block text-sm font-medium">{{ t('forum.preferences.watchEmailMode') }}</Label>
       <Select
         id="watch-email-mode"
         v-model="form.watch_email_mode"
         :options="watch_email_mode_options"
         class="w-full"
       />
-      <p class="mt-2 text-xs text-muted-foreground">{{ t('preferences.watchEmailModeHint') }}</p>
+      <p class="mt-2 text-xs text-muted-foreground">{{ t('forum.preferences.watchEmailModeHint') }}</p>
     </div>
 
     <div v-if="notificationLevelGuide?.length" class="rounded-lg border p-4">
-      <p class="mb-3 text-sm font-medium">{{ t('preferences.notificationLevelGuide') }}</p>
+      <p class="mb-3 text-sm font-medium">{{ t('forum.preferences.notificationLevelGuide') }}</p>
       <ul class="space-y-2 text-sm text-muted-foreground">
         <li v-for="item in notificationLevelGuide" :key="item.value">
           <span class="font-medium text-foreground">{{ item.label }}</span> — {{ item.description }}
@@ -254,34 +254,34 @@ async function saveRenameSearch(search: SavedSearchItem) {
     </div>
 
     <div class="rounded-lg border p-4">
-      <Label for="digest" class="mb-2 block text-sm font-medium">{{ t('preferences.digest') }}</Label>
+      <Label for="digest" class="mb-2 block text-sm font-medium">{{ t('forum.preferences.digest') }}</Label>
       <Select
         id="digest"
         v-model="form.digest_frequency"
         :options="digest_options"
         class="w-full"
       />
-      <p class="mt-2 text-xs text-muted-foreground">{{ t('preferences.digestHint') }}</p>
+      <p class="mt-2 text-xs text-muted-foreground">{{ t('forum.preferences.digestHint') }}</p>
       <label v-if="form.digest_frequency !== 'none'" class="mt-3 flex items-center gap-2 text-sm">
         <Checkbox v-model="form.digest_watched_only" />
-        {{ t('preferences.digestWatchedOnly') }}
+        {{ t('forum.preferences.digestWatchedOnly') }}
       </label>
     </div>
 
     <div class="rounded-lg border p-4">
-      <Label class="mb-2 block text-sm font-medium">{{ t('preferences.display') }}</Label>
+      <Label class="mb-2 block text-sm font-medium">{{ t('forum.preferences.display') }}</Label>
       <label class="flex items-center gap-2 text-sm">
         <Checkbox v-model="form.hide_signatures" />
-        {{ t('preferences.hideSignatures') }}
+        {{ t('forum.preferences.hideSignatures') }}
       </label>
     </div>
 
-    <Button type="submit" :disabled="form.processing">{{ t('preferences.save') }}</Button>
+    <Button type="submit" :disabled="form.processing">{{ t('forum.preferences.save') }}</Button>
   </form>
 
   <section v-if="savedSearches?.length" class="mt-8 max-w-lg">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">{{ t('preferences.savedSearchesTitle') }}</h2>
+      <h2 class="text-sm font-semibold">{{ t('forum.preferences.savedSearchesTitle') }}</h2>
       <a
         v-if="savedSearchesOpmlUrl"
         :href="savedSearchesOpmlUrl"
@@ -289,10 +289,10 @@ async function saveRenameSearch(search: SavedSearchItem) {
         target="_blank"
         rel="noopener noreferrer"
       >
-        {{ t('preferences.exportOpml') }}
+        {{ t('forum.preferences.exportOpml') }}
       </a>
     </div>
-    <p class="mb-4 text-xs text-muted-foreground">{{ t('preferences.savedSearchesHint') }}</p>
+    <p class="mb-4 text-xs text-muted-foreground">{{ t('forum.preferences.savedSearchesHint') }}</p>
     <ul class="space-y-2">
       <li
         v-for="search in savedSearches"
@@ -314,9 +314,9 @@ async function saveRenameSearch(search: SavedSearchItem) {
           </template>
           <template v-else>
             <Link :href="search.url" class="font-medium hover:underline">{{ search.name }}</Link>
-            <button type="button" class="ml-2 text-xs text-muted-foreground hover:text-foreground" :title="t('preferences.rename')" @click="startRenameSearch(search)">✎</button>
+            <Button type="button" variant="ghost" size="sm" class="ml-1" :title="t('forum.preferences.rename')" @click="startRenameSearch(search)">✎</Button>
           </template>
-          <p v-if="search.query && editingSearchId !== search.id" class="truncate text-xs text-muted-foreground">{{ t('preferences.keywords') }}{{ t('common.colon') }}{{ search.query }}</p>
+          <p v-if="search.query && editingSearchId !== search.id" class="truncate text-xs text-muted-foreground">{{ t('forum.preferences.keywords') }}{{ t('common.colon') }}{{ search.query }}</p>
           <p v-if="search.filter_labels?.length && editingSearchId !== search.id" class="mt-1 flex flex-wrap gap-1">
             <span
               v-for="label in search.filter_labels"
@@ -334,7 +334,7 @@ async function saveRenameSearch(search: SavedSearchItem) {
               :disabled="togglingId === search.id"
               @update:model-value="toggleSavedSearchNotify(search)"
             />
-            {{ t('preferences.dailyEmail') }}
+            {{ t('forum.preferences.dailyEmail') }}
           </label>
           <a
             v-if="search.rss_url"
@@ -345,51 +345,55 @@ async function saveRenameSearch(search: SavedSearchItem) {
           >
             RSS
           </a>
-          <span v-if="search.webhook_url" class="text-xs text-muted-foreground" :title="t('preferences.webhookConfigured')">Webhook</span>
-          <button
+          <span v-if="search.webhook_url" class="text-xs text-muted-foreground" :title="t('forum.preferences.webhookConfigured')">Webhook</span>
+          <Button
             type="button"
-            class="text-xs text-destructive hover:underline"
+            variant="link"
+            size="sm"
+            class="text-destructive"
             @click="deleteSavedSearch(search.delete_url)"
           >
-            {{ t('preferences.delete') }}
-          </button>
+            {{ t('forum.preferences.delete') }}
+          </Button>
         </div>
       </li>
     </ul>
     <p class="mt-3 text-xs text-muted-foreground">
-      <Link :href="routes.forumSearch" class="text-primary hover:underline">{{ t('preferences.goToSearch') }}</Link>
-      {{ t('preferences.manageSavedSearches') }}
+      <Link :href="routes.forumSearch" class="text-primary hover:underline">{{ t('forum.preferences.goToSearch') }}</Link>
+      {{ t('forum.preferences.manageSavedSearches') }}
       <template v-if="savedSearchesOpmlUrl">
         ·
-        <a :href="savedSearchesOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{{ t('preferences.exportSavedSearchesOpml') }}</a>
+        <a :href="savedSearchesOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{{ t('forum.preferences.exportSavedSearchesOpml') }}</a>
       </template>
       <template v-if="watchingOpmlUrl">
         ·
-        <a :href="watchingOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{{ t('preferences.exportWatchingOpml') }}</a>
+        <a :href="watchingOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{{ t('forum.preferences.exportWatchingOpml') }}</a>
       </template>
     </p>
   </section>
 
   <section v-if="savedSearchWebhookDeliveries?.length" class="mt-8 max-w-lg">
-    <h2 class="mb-3 text-sm font-semibold">{{ t('preferences.webhookDeliveriesTitle') }}</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.preferences.webhookDeliveriesTitle') }}</h2>
     <ul class="space-y-2 text-xs">
       <li
         v-for="delivery in savedSearchWebhookDeliveries"
         :key="delivery.id"
         class="rounded-lg border px-3 py-2"
       >
-        <span class="font-medium">{{ delivery.search_name || t('preferences.searchFallback') }}</span>
+        <span class="font-medium">{{ delivery.search_name || t('forum.preferences.searchFallback') }}</span>
         — {{ delivery.status }}
         <span v-if="delivery.response_code" class="text-muted-foreground">({{ delivery.response_code }})</span>
         <span class="ml-2 text-muted-foreground">{{ delivery.created_at }}</span>
-        <button
+        <Button
           v-if="delivery.retry_url"
           type="button"
-          class="mt-1 block text-xs text-primary hover:underline"
+          variant="link"
+          size="sm"
+          class="mt-1"
           @click="retryWebhook(delivery.retry_url)"
         >
-          {{ t('preferences.retrySend') }}
-        </button>
+          {{ t('forum.preferences.retrySend') }}
+        </Button>
       </li>
     </ul>
   </section>

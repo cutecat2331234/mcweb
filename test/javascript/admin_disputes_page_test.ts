@@ -45,3 +45,10 @@ test('dispute actions remain local, idempotent, and permission-shaped', () => {
   assert.match(source, /router\.reload\(\{ only: \['summary', 'rows'\] \}\)/)
   assert.match(source, /downloadTokenUrl/)
 })
+
+test('closed dispute dialogs do not construct empty dynamic translation keys', () => {
+  assert.match(source, /simpleAction\.value \? t\(`admin\.disputes\.actions\.\$\{simpleAction\.value\}`\) : ''/)
+  assert.match(source, /highRiskAction\.value \? t\(`admin\.disputes\.actions\.\$\{highRiskAction\.value\}`\) : ''/)
+  assert.match(source, /:title="simpleActionTitle"/)
+  assert.doesNotMatch(source, /:title="t\(`admin\.disputes\.actions\.\$\{simpleAction\}`\)"/)
+})

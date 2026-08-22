@@ -2,9 +2,18 @@ import {
   normalizeAppLocale,
   type AppLocale,
 } from './i18nRuntime'
+import {
+  beginStoragePreferenceTransaction,
+} from './storagePreferenceTransaction'
 
 export const SHARED_LOCALE_STORAGE_KEY = 'mcweb-locale'
 export const INERTIA_LOCALE_HEADER = 'X-McWeb-Locale'
+
+export type AppLocalePreferenceTransaction = {
+  locale: AppLocale
+  commit: () => void
+  rollback: () => void
+}
 
 export function readSharedAppLocale(): AppLocale | null {
   if (typeof window === 'undefined') return null
@@ -27,6 +36,33 @@ export function writeSharedAppLocale(locale: unknown): AppLocale {
     // Storage can be unavailable in hardened or private browser contexts.
   }
   return normalized
+}
+
+export function beginAppLocalePreferenceTransaction(
+  locale: unknown,
+): AppLocalePreferenceTransaction {
+  const normalized = normalizeAppLocale(locale)
+  const transaction = beginStoragePreferenceTransaction(
+    SHARED_LOCALE_STORAGE_KEY,
+    normalized,
+  )
+
+  return {
+    locale: normalized,
+    commit: transaction.commit,
+    rollback: transaction.rollback,
+  }
+}
+
+export function localePreferenceVisitCallbacks(
+  transaction: AppLocalePreferenceTransaction,
+) {
+  return {
+    onSuccess: () => transaction.commit(),
+    onError: () => transaction.rollback(),
+    onCancel: () => transaction.rollback(),
+    onException: () => transaction.rollback(),
+  }
 }
 
 export function localeRequestHeaders(locale?: unknown): Record<string, string> {

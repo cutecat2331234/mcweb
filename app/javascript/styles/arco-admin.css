@@ -62,12 +62,9 @@ html.dark body.mcweb-admin {
   --mc-admin-tag-gold-text: #f4d36f;
 }
 
-/* Layered canvas: neutral enough for long sessions, colored enough for hierarchy. */
+/* A neutral canvas keeps dense administration pages visually stable. */
 .arco-admin-layout .arco-layout-content {
-  background:
-    radial-gradient(circle at 8% 0%, rgb(22 93 255 / 8%), transparent 30rem),
-    radial-gradient(circle at 94% 12%, rgb(14 159 187 / 7%), transparent 28rem),
-    var(--mc-admin-canvas);
+  background: var(--mc-admin-canvas);
 }
 
 .arco-admin-main {
@@ -81,9 +78,7 @@ html.dark body.mcweb-admin {
   overflow: hidden;
   border: 1px solid var(--mc-admin-border);
   border-radius: var(--mc-admin-radius-card);
-  background:
-    linear-gradient(115deg, rgb(22 93 255 / 10%), rgb(112 72 232 / 5%) 48%, transparent 78%),
-    var(--mc-admin-surface);
+  background: var(--mc-admin-surface);
   box-shadow: var(--mc-admin-shadow-sm);
 }
 
@@ -164,19 +159,18 @@ html.dark body.mcweb-admin {
   border-radius: var(--mc-admin-radius-card);
   background: var(--mc-admin-surface);
   box-shadow: var(--mc-admin-shadow-sm);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .arco-admin-main .arco-card-hoverable:hover {
   border-color: var(--mc-admin-border-strong);
   box-shadow: var(--mc-admin-shadow-md);
-  transform: translateY(-1px);
 }
 
 .arco-admin-main .arco-card-header {
   min-height: 48px;
   border-bottom-color: var(--mc-admin-border);
-  background: linear-gradient(90deg, rgb(22 93 255 / 5%), transparent 56%);
+  background: var(--mc-admin-surface-muted);
 }
 
 .arco-admin-main .arco-card-header-title {
@@ -191,7 +185,7 @@ html.dark body.mcweb-admin {
 
 .arco-admin-main .arco-table-th {
   color: var(--color-text-2);
-  background: linear-gradient(180deg, rgb(22 93 255 / 7%), rgb(22 93 255 / 3%));
+  background: var(--mc-admin-surface-muted);
 }
 
 .arco-admin-main .arco-table-tr:hover .arco-table-td {
@@ -225,8 +219,7 @@ html.dark body.mcweb-admin {
   .arco-btn-disabled
 ):not([disabled]) {
   border-color: transparent;
-  background: linear-gradient(135deg, var(--mc-admin-accent-blue), #3b7cff);
-  box-shadow: 0 4px 12px rgb(22 93 255 / 20%);
+  background: var(--mc-control-primary-background);
 }
 
 .mcweb-admin .arco-btn-primary:not(
@@ -236,8 +229,7 @@ html.dark body.mcweb-admin {
   .arco-btn-disabled
 ):not([disabled]):hover {
   border-color: transparent;
-  background: linear-gradient(135deg, #0f4fe5, #2f6ff1);
-  box-shadow: 0 6px 16px rgb(22 93 255 / 26%);
+  background: var(--mc-control-primary-background-hover);
 }
 
 .mcweb-admin .arco-tag,
@@ -366,7 +358,7 @@ html.dark body.mcweb-admin {
   position: relative;
   min-height: 116px;
   border-radius: var(--mc-admin-radius-card);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .arco-stat-card:hover {
   box-shadow: var(--mc-admin-shadow-md);

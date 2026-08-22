@@ -3,7 +3,7 @@
  * ArcoAdminLayout — Arco Design shell for McWeb admin (sidebar + navbar + content).
  * Inspired by Arco Pro default-layout; navigation uses Inertia router.visit(), not vue-router.
  */
-import { computed, ref, watch, type Component } from 'vue'
+import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -78,9 +78,11 @@ const developerModeMessage = computed(() =>
   ].filter(Boolean).join(' '),
 )
 
-const STORAGE_KEY = 'mc-admin-arco-nav-open'
-const collapsed = ref(false)
+const COLLAPSED_STORAGE_KEY = 'mc-admin-arco-nav-collapsed'
+const collapsed = ref(readStoredCollapsedState())
 const mobileNavOpen = ref(false)
+const desktopMenuScroll = ref<HTMLElement | null>(null)
+const drawerMenuScroll = ref<HTMLElement | null>(null)
 
 const grantedAdminModules = computed(
   () => new Set(auth.value.user?.admin_modules || []),
@@ -632,26 +634,59 @@ const trailingCrumbs = computed<Array<{ label: string }>>(() => {
   return typeof title === 'string' && title ? [{ label: title }] : []
 })
 
-function loadOpen(): string[] {
+function readStoredCollapsedState() {
+  if (typeof window === 'undefined') return false
+
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    return Array.isArray(raw) ? (raw as string[]) : []
+    return window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true'
   } catch {
-    return []
+    return false
   }
 }
 
-const openKeys = ref<string[]>(loadOpen())
+function persistCollapsedState(value: boolean) {
+  if (typeof window === 'undefined') return
 
-watch(activeGroupKey, (key) => {
-  if (key && !openKeys.value.includes(key)) {
-    openKeys.value = [...openKeys.value, key]
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(openKeys.value))
+  try {
+    window.localStorage.setItem(COLLAPSED_STORAGE_KEY, String(value))
+  } catch {
+    // Storage can be unavailable in hardened or private browser contexts.
   }
-}, { immediate: true })
+}
 
-watch(openKeys, (keys) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(keys))
+const openKeys = ref<string[]>([])
+
+function onOpenKeysChange(keys: Array<string | number>) {
+  const validKeys = keys
+    .map(String)
+    .filter((key) => nav.value.some((group) => group.key === key))
+  const newlyOpenedKey = validKeys.find((key) => !openKeys.value.includes(key))
+  const nextKey = newlyOpenedKey ?? validKeys.at(-1)
+
+  openKeys.value = nextKey ? [nextKey] : []
+}
+
+async function revealActiveMenuItem(container: HTMLElement | null) {
+  await nextTick()
+  container
+    ?.querySelector<HTMLElement>('.arco-menu-selected')
+    ?.scrollIntoView({ block: 'nearest' })
+}
+
+watch(
+  [activeGroupKey, activeItemHref],
+  async ([groupKey]) => {
+    openKeys.value = groupKey ? [groupKey] : []
+    await revealActiveMenuItem(desktopMenuScroll.value)
+    if (mobileNavOpen.value) await revealActiveMenuItem(drawerMenuScroll.value)
+  },
+  { immediate: true },
+)
+
+watch(collapsed, persistCollapsedState)
+
+watch(mobileNavOpen, async (visible) => {
+  if (visible) await revealActiveMenuItem(drawerMenuScroll.value)
 })
 
 function onMenuClick(key: string) {
@@ -697,11 +732,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </span>
         </Link>
       </div>
-      <div class="arco-admin-sider__menu">
+      <div ref="desktopMenuScroll" class="arco-admin-sider__menu">
         <a-menu
           :selected-keys="activeItemHref ? [activeItemHref] : []"
-          v-model:open-keys="openKeys"
+          :open-keys="openKeys"
           :collapsed="collapsed"
+          @update:open-keys="onOpenKeysChange"
           @menu-item-click="onMenuClick"
         >
           <a-sub-menu
@@ -817,13 +853,15 @@ watch(isDark, syncArcoTheme, { immediate: true })
       </div>
       <div
         class="arco-admin-drawer__menu"
+        ref="drawerMenuScroll"
         role="navigation"
         :aria-label="t('common.navigation')"
         tabindex="0"
       >
         <a-menu
           :selected-keys="activeItemHref ? [activeItemHref] : []"
-          v-model:open-keys="openKeys"
+          :open-keys="openKeys"
+          @update:open-keys="onOpenKeysChange"
           @menu-item-click="onMenuClick"
         >
           <a-sub-menu
@@ -903,9 +941,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   flex: 0 0 auto;
   overflow: hidden;
   border-right: 1px solid var(--mc-admin-border, var(--color-border-2));
-  background:
-    linear-gradient(180deg, rgba(var(--primary-6), 0.05), transparent 180px),
-    var(--mc-admin-surface-raised, var(--color-bg-2));
+  background: var(--mc-admin-surface-raised, var(--color-bg-2));
 }
 .arco-admin-sider :deep(.arco-layout-sider-children) {
   display: flex;
@@ -948,7 +984,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   border-radius: 10px;
   font-size: 20px;
   color: #fff;
-  background: linear-gradient(145deg, rgb(var(--primary-6)), #7048e8);
+  background: rgb(var(--primary-6));
   box-shadow: 0 6px 16px rgba(var(--primary-6), 0.24);
 }
 .arco-admin-brand__text {
@@ -1143,7 +1179,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   overflow: visible;
 }
 
-@media (max-width: 1099px) {
+@media (max-width: 1199px) {
   .arco-admin-sider {
     display: none !important;
   }
@@ -1228,7 +1264,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1200px) {
   .arco-admin-sider {
     display: flex !important;
   }

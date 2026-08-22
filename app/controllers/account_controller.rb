@@ -3,6 +3,8 @@
 class AccountController < ApplicationController
   include PrivateNoStoreResponse
 
+  uses_frontend_template :portal
+
   before_action :require_login
 
   def show

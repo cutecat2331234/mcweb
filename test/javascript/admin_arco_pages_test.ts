@@ -692,7 +692,9 @@ test('Arco admin shell selects parent items on detail routes and keeps mobile gr
 
   assert.match(source, /const activeItemHref = computed/)
   assert.match(source, /:selected-keys="activeItemHref \? \[activeItemHref\] : \[\]"/)
-  assert.match(source, /v-model:open-keys="openKeys"/)
+  assert.match(source, /:open-keys="openKeys"/)
+  assert.match(source, /@update:open-keys="onOpenKeysChange"/)
+  assert.match(source, /openKeys\.value = nextKey \? \[nextKey\] : \[\]/)
   assert.doesNotMatch(source, /`m-\$\{group\.key\}`/)
   assert.match(source, /min\(var\(--mc-shell-drawer-width, 280px\), 100vw\)/)
   assert.match(source, /id="admin-content"/)

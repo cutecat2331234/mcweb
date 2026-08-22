@@ -813,6 +813,7 @@ en:
       tag: Tag
       censored_word: Censored word
       template: Template
+      theme: Theme
     services:
       community:
         section_lifecycle:
@@ -2356,6 +2357,15 @@ en:
           col_type: Type
           col_published: Published
           field_summary: Summary
+        themes:
+          title: Website themes
+          new: New theme
+          edit: Edit theme
+          activate: Activate
+          activated: Theme activated
+          col_name: Name
+          col_key: Key
+          col_active: Status
       system:
         settings:
           custom_label: Custom setting

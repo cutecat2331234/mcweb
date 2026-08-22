@@ -5,7 +5,7 @@ module Admin
     class NavItemsController < BaseController
       before_action -> { require_permission("website.pages.read") }, only: %i[index]
       before_action -> { require_permission("website.pages.edit") }, except: %i[index]
-      before_action :set_nav_item, only: %i[edit update destroy]
+      before_action :set_nav_item, only: %i[update destroy]
 
       def index
         items = ::Website::NavItem.order(:location, :position)

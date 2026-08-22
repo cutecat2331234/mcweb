@@ -14,15 +14,15 @@ module Admin
         render inertia: "Admin/Generic/Index", props: {
           title: t("mcweb.admin.website.themes.title", default: "Website themes"),
           columns: [
-            admin_column(:name, t("admin.common.title"), link: true),
-            admin_column(:key, "Key"),
-            admin_column(:active, t("admin.common.status"))
+            admin_column(:name, t("mcweb.admin.website.themes.col_name"), link: true),
+            admin_column(:key, t("mcweb.admin.website.themes.col_key")),
+            admin_column(:active, t("mcweb.admin.website.themes.col_active"))
           ],
           rows: themes.map do |theme|
             admin_row(
               name: theme.name,
               key: theme.key,
-              active: theme.active? ? t("admin.common.yes", default: "Yes") : "—",
+              active: theme.active? ? t("mcweb.labels.enabled") : t("mcweb.labels.disabled"),
               url: admin_website_theme_path(theme)
             )
           end,
@@ -35,7 +35,10 @@ module Admin
           title: @theme.name,
           subtitle: @theme.key,
           fields: [
-            { label: t("admin.common.status"), value: @theme.active? ? "active" : "inactive" },
+            {
+              label: t("mcweb.admin.common.status"),
+              value: t(@theme.active? ? "mcweb.labels.enabled" : "mcweb.labels.disabled")
+            },
             { label: t("mcweb.user_copy.theme_tokens"), value: @theme.tokens.to_json.truncate(200) }
           ],
           backUrl: admin_website_themes_path,
@@ -57,7 +60,7 @@ module Admin
 
         theme.assign_attributes(attrs)
         if theme.save
-          redirect_to admin_website_theme_path(theme), notice: t("mcweb.flash.created", resource: "Theme")
+          redirect_to admin_website_theme_path(theme), notice: t("mcweb.flash.created", resource: t("mcweb.resources.theme"))
         else
           render inertia: "Admin/Website/Themes/Form", props: form_props(theme), status: :unprocessable_entity
         end
@@ -72,7 +75,7 @@ module Admin
         return render_theme_form(@theme, :unprocessable_entity) if attrs.nil?
 
         if @theme.update(attrs)
-          redirect_to admin_website_theme_path(@theme), notice: t("mcweb.flash.updated", resource: "Theme")
+          redirect_to admin_website_theme_path(@theme), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.theme"))
         else
           render inertia: "Admin/Website/Themes/Form", props: form_props(@theme), status: :unprocessable_entity
         end
@@ -80,7 +83,7 @@ module Admin
 
       def destroy
         @theme.destroy!
-        redirect_to admin_website_themes_path, notice: t("mcweb.flash.deleted", resource: "Theme")
+        redirect_to admin_website_themes_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.theme"))
       end
 
       def activate

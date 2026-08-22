@@ -813,6 +813,7 @@
       tag: 标签
       censored_word: 敏感词
       template: 模板
+      theme: 主题
     services:
       community:
         section_lifecycle:
@@ -2356,6 +2357,15 @@
           col_type: 类型
           col_published: 发布时间
           field_summary: 摘要
+        themes:
+          title: 官网主题
+          new: 新建主题
+          edit: 编辑主题
+          activate: 启用
+          activated: 主题已启用
+          col_name: 名称
+          col_key: 标识
+          col_active: 状态
       system:
         settings:
           custom_label: 自定义配置项

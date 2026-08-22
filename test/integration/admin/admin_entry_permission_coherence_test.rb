@@ -132,4 +132,34 @@ module Admin
       )
     end
   end
+
+  class WebsiteCmsEntryTest < ActionDispatch::IntegrationTest
+    setup do
+      @editor = create_user(account_type: "staff")
+      grant_permission(@editor, "admin.access")
+      grant_permission(@editor, "website.pages.read")
+      grant_permission(@editor, "website.articles.read")
+      grant_admin_module(@editor, "website")
+      sign_in_as(@editor)
+    end
+
+    test "authorized website staff can open every CMS menu destination" do
+      {
+        admin_website_pages_path => "Admin/Generic/Index",
+        admin_website_articles_path => "Admin/Generic/Index",
+        admin_website_nav_items_path => "Admin/Website/NavItems/Index",
+        admin_website_themes_path => "Admin/Generic/Index"
+      }.each do |path, component|
+        get path
+
+        failure_detail = response.body[%r{<div class="message">(.*?)</div>}m, 1]
+          .to_s
+          .gsub(%r{<[^>]+>}, " ")
+          .squish
+        assert_response :success,
+                        "expected #{path} to load, got #{response.status}: #{failure_detail}"
+        assert_equal component, inertia.component, "expected #{path} to render #{component}"
+      end
+    end
+  end
 end

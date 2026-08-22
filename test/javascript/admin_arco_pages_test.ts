@@ -642,6 +642,8 @@ test('website and frontend Arco pages retain publishing, ordering, upload, and d
 
   const nav = pageSource('Website/NavItems/Index.vue')
   assert.match(nav, /<a-table/)
+  assert.match(nav, /function locationLabel\(location: \(typeof locations\)\[number\]\)/)
+  assert.match(nav, /t\(`admin\.website\.nav\.locations\.\$\{location\}`\)/)
   assert.match(nav, /item_ids: ids/)
   assert.match(nav, /router\.patch\(props\.reorderUrl/)
   assert.match(nav, /router\.delete\(/)

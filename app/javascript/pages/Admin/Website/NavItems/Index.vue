@@ -52,6 +52,10 @@ const locationOptions = computed(() =>
   })),
 )
 
+function locationLabel(location: (typeof locations)[number]) {
+  return t(`admin.website.nav.locations.${location}`)
+}
+
 function itemsForLocation(location: string) {
   return props.items.filter((item) => item.location === location)
 }

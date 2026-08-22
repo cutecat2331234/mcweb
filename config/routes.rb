@@ -388,7 +388,7 @@ Rails.application.routes.draw do
           get :preview
         end
       end
-      resources :nav_items do
+      resources :nav_items, only: %i[index create update destroy] do
         collection do
           patch :reorder
         end

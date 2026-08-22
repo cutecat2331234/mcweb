@@ -330,9 +330,15 @@
       data_governance: "数据治理"
     role_admin:
       title: "角色"
+      subtitle: "创建有明确范围的角色、查看分配情况，并安全停用角色。"
+      new_title: "新建角色"
+      edit_title: "编辑角色"
       name: "名称"
       key: "标识"
       permission_count: "权限数"
+      member_count: "成员数"
+      role_type: "类型"
+      custom_role: "自定义角色"
       system_role: "系统角色"
       permissions: "权限"
     permission_explanation:
@@ -550,6 +556,10 @@
       command_required: 命令不能为空。
       system_role_immutable: 系统内置角色不可修改。
       system_role_undeletable: 系统内置角色不可删除。
+      replacement_role_required: 仍有成员的角色必须先选择接替角色才能停用。
+      replacement_role_same: 角色不能由自身接替。
+      replacement_role_not_found: 所选接替角色已不存在。
+      forbidden_replacement_role: 你无权委派所选接替角色。
       category_has_sections: 分类下仍有板块，无法删除。
       user_banned: 用户已封禁。
       user_unbanned: 用户已解封。

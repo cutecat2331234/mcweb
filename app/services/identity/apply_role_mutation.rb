@@ -15,6 +15,7 @@ module Identity
 
     def initialize(actor:, operation:, role: nil, attributes: {},
                    permission_ids: [], permissions_submitted: false,
+                   replacement_role_id: nil,
                    assignable_permission_keys: PermissionCatalog.assignable_keys)
       @actor = actor
       @operation = operation.to_s.to_sym
@@ -22,6 +23,7 @@ module Identity
       @attributes = attributes.to_h.deep_symbolize_keys.slice(*ROLE_ATTRIBUTES)
       @permission_ids = Array(permission_ids)
       @permissions_submitted = permissions_submitted
+      @replacement_role_id = replacement_role_id
       @assignable_permission_keys = Array(assignable_permission_keys).map(&:to_s).to_set.freeze
     end
 
@@ -80,21 +82,111 @@ module Identity
       return permissions if permissions.is_a?(ServiceResult)
 
       before_state = role_snapshot(role)
-      role.update!(@attributes)
+      role.update!(@attributes.except(:key))
       role.permissions = permissions if @permissions_submitted
       audit!(role:, before_state:, after_state: role_snapshot(role))
       success(role:)
     end
 
     def apply_destroy
-      role = locked_role
+      roles = locked_retirement_roles
+      return roles if roles.is_a?(ServiceResult)
+
+      role = roles.fetch(:role)
+      replacement_role = roles[:replacement_role]
       return failure("System roles cannot be deleted.", code: "system_role_immutable", role:) if role.system_role?
       return failure("Not allowed.", code: "forbidden_role", role:) unless role_manageable?(role)
+      if replacement_role && !role_manageable?(replacement_role)
+        return failure("forbidden_replacement_role", code: "forbidden_replacement_role", role:)
+      end
+
+      assignments = UserRole.lock.where(role_id: role.id).order(:id).to_a
+      if assignments.any? && replacement_role.nil?
+        return failure(
+          "A replacement role is required before retiring an assigned role.",
+          code: "replacement_role_required",
+          role:
+        )
+      end
 
       before_state = role_snapshot(role)
+      reassigned_count = 0
+      already_assigned_count = 0
+      if replacement_role
+        existing_user_ids = UserRole.lock
+          .where(role_id: replacement_role.id, user_id: assignments.map(&:user_id))
+          .pluck(:user_id)
+          .to_set
+        assignments.each do |assignment|
+          if existing_user_ids.include?(assignment.user_id)
+            already_assigned_count += 1
+          else
+            UserRole.create!(user_id: assignment.user_id, role_id: replacement_role.id)
+            reassigned_count += 1
+          end
+          assignment.destroy!
+        end
+      end
       role.destroy!
-      audit!(role:, before_state:, after_state: { exists: false })
-      success(role:)
+      audit!(
+        role:,
+        before_state:,
+        after_state: { exists: false },
+        metadata: {
+          replacement_role_id: replacement_role&.id,
+          assignment_count: assignments.size,
+          reassigned_count:,
+          already_assigned_count:
+        }
+      )
+      success(
+        role:,
+        replacement_role:,
+        assignment_count: assignments.size,
+        reassigned_count:,
+        already_assigned_count:
+      )
+    end
+
+    def locked_retirement_roles
+      source_id = @role.respond_to?(:id) ? @role.id : @role
+      source_id = Integer(source_id, exception: false)
+      return failure("Role not found.", code: "not_found") unless source_id
+
+      replacement_id = normalized_replacement_role_id
+      return replacement_id if replacement_id.is_a?(ServiceResult)
+      if replacement_id == source_id
+        return failure(
+          "A role cannot replace itself.",
+          code: "replacement_role_same",
+          role: @role
+        )
+      end
+
+      ids = [ source_id, replacement_id ].compact.sort
+      roles = Role.lock.where(id: ids).order(:id).index_by(&:id)
+      role = roles[source_id]
+      return failure("Role not found.", code: "not_found") unless role
+
+      replacement_role = replacement_id ? roles[replacement_id] : nil
+      if replacement_id && replacement_role.nil?
+        return failure(
+          "Replacement role not found.",
+          code: "replacement_role_not_found",
+          role:
+        )
+      end
+
+      { role:, replacement_role: }
+    end
+
+    def normalized_replacement_role_id
+      return if @replacement_role_id.blank?
+
+      value = Integer(@replacement_role_id, exception: false)
+      return value if value&.positive?
+
+      failure("Replacement role not found.", code: "replacement_role_not_found", role: @role)
     end
 
     def locked_role
@@ -164,12 +256,12 @@ module Identity
       result.success? && result.value[:allowed]
     end
 
-    def audit!(role:, before_state:, after_state:)
+    def audit!(role:, before_state:, after_state:, metadata: {})
       Administration::AuditLogger.call(
         actor: @actor,
         action: AUDIT_ACTIONS.fetch(@operation),
         resource: role,
-        metadata: { operation: @operation.to_s },
+        metadata: { operation: @operation.to_s }.merge(metadata),
         before_state:,
         after_state:
       )

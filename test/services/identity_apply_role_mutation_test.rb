@@ -152,6 +152,88 @@ class Identity::ApplyRoleMutationTest < ActiveSupport::TestCase
     assert Role.exists?(system_role.id)
   end
 
+  test "assigned roles require a replacement before retirement" do
+    owner = create_user(account_type: "owner")
+    member = create_user
+    role = create_role_with_permissions(name: "Assigned role", permissions: [])
+    member.roles << role
+
+    result = mutate(actor: owner, operation: :destroy, role: role)
+
+    assert result.failure?
+    assert_equal "replacement_role_required", result.code
+    assert Role.exists?(role.id)
+    assert UserRole.exists?(user: member, role: role)
+  end
+
+  test "retirement atomically moves assignments and deduplicates replacement memberships" do
+    owner = create_user(account_type: "owner")
+    first_member = create_user
+    second_member = create_user
+    source = create_role_with_permissions(name: "Retiring role", permissions: [])
+    replacement = create_role_with_permissions(name: "Replacement role", permissions: [])
+    first_member.roles << source
+    second_member.roles << source
+    second_member.roles << replacement
+
+    result = mutate(
+      actor: owner,
+      operation: :destroy,
+      role: source,
+      replacement_role_id: replacement.id
+    )
+
+    assert result.success?
+    assert_not Role.exists?(source.id)
+    assert_equal [ replacement.id ], first_member.reload.role_ids
+    assert_equal [ replacement.id ], second_member.reload.role_ids
+    assert_equal 2, result.value.fetch(:assignment_count)
+    assert_equal 1, result.value.fetch(:reassigned_count)
+    assert_equal 1, result.value.fetch(:already_assigned_count)
+
+    audit = AuditLog.find_by!(action: "identity.role.deleted", resource_id: source.id)
+    assert_equal replacement.id, audit.metadata.fetch("replacement_role_id")
+    assert_equal 2, audit.metadata.fetch("assignment_count")
+    refute_includes audit.to_json, first_member.email
+    refute_includes audit.to_json, second_member.email
+  end
+
+  test "retirement rejects self replacement without changing assignments" do
+    owner = create_user(account_type: "owner")
+    member = create_user
+    role = create_role_with_permissions(name: "Self replacement", permissions: [])
+    member.roles << role
+
+    result = mutate(
+      actor: owner,
+      operation: :destroy,
+      role: role,
+      replacement_role_id: role.id
+    )
+
+    assert result.failure?
+    assert_equal "replacement_role_same", result.code
+    assert Role.exists?(role.id)
+    assert UserRole.exists?(user: member, role: role)
+  end
+
+  test "role keys remain stable during updates" do
+    owner = create_user(account_type: "owner")
+    role = create_role_with_permissions(name: "Stable key", permissions: [])
+    original_key = role.key
+
+    result = mutate(
+      actor: owner,
+      operation: :update,
+      role: role,
+      attributes: { name: "Renamed role", key: "attempted_key_change" }
+    )
+
+    assert result.success?
+    assert_equal "Renamed role", role.reload.name
+    assert_equal original_key, role.key
+  end
+
   test "omitting permission ids preserves the existing role grants" do
     existing_permission = permission_for("forum.topics.lock")
     grant_permission(@manager, existing_permission.key)

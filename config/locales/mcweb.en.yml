@@ -330,9 +330,15 @@ en:
       data_governance: "Data governance"
     role_admin:
       title: "Roles"
+      subtitle: "Create scoped roles, review assignments, and retire roles safely."
+      new_title: "New role"
+      edit_title: "Edit role"
       name: "Name"
       key: "Key"
       permission_count: "Permissions"
+      member_count: "Members"
+      role_type: "Type"
+      custom_role: "Custom role"
       system_role: "System role"
       permissions: "Permissions"
     permission_explanation:
@@ -550,6 +556,10 @@ en:
       command_required: Command cannot be empty.
       system_role_immutable: System roles cannot be modified.
       system_role_undeletable: System roles cannot be deleted.
+      replacement_role_required: Select a replacement role before retiring a role that still has members.
+      replacement_role_same: A role cannot replace itself.
+      replacement_role_not_found: The selected replacement role is no longer available.
+      forbidden_replacement_role: You cannot delegate the selected replacement role.
       category_has_sections: Category still has sections and cannot be deleted.
       user_banned: User banned.
       user_unbanned: User unbanned.

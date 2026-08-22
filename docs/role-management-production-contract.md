@@ -8,18 +8,18 @@ through ordinary downstream merges; neither edition may recreate it.
 
 ## Task checklist
 
-- [ ] Replace the read-only generic role screens with dedicated Arco pages.
-- [ ] Expose create and edit forms only to administrators with both role read
+- [x] Replace the read-only generic role screens with dedicated Arco pages.
+- [x] Expose create and edit forms only to administrators with both role read
       and manage permissions.
-- [ ] Group the assignable permission catalog without exposing permissions the
+- [x] Group the assignable permission catalog without exposing permissions the
       acting administrator cannot delegate.
-- [ ] Show assignment counts and immutable-system-role state before mutation.
-- [ ] Require a replacement role before retiring a role that has members.
-- [ ] Move assignments atomically, deduplicate existing replacement
+- [x] Show assignment counts and immutable-system-role state before mutation.
+- [x] Require a replacement role before retiring a role that has members.
+- [x] Move assignments atomically, deduplicate existing replacement
       assignments, and audit counts without personal data.
-- [ ] Reject stale, self-replacement, forbidden replacement, and system-role
+- [x] Reject stale, self-replacement, forbidden replacement, and system-role
       retirement requests.
-- [ ] Add controller, service, rendering, localization, and contract coverage.
+- [x] Add controller, service, rendering, localization, and contract coverage.
 - [ ] Merge the CE history through EE into EE-PVP.
 
 ## Functional requirements

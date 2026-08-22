@@ -122,7 +122,7 @@ const nav = computed<NavGroup[]>(() => {
           permissionKey: 'system.settings.manage',
         },
         {
-          label: t('admin.roles'),
+          label: t('admin.roles.nav'),
           href: adminRoutes.roles,
           moduleKey: 'system',
           permissionKey: 'identity.roles.read',

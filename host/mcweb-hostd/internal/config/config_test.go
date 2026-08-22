@@ -37,6 +37,9 @@ func TestSaveLoad(t *testing.T) {
 	if loaded.AdminUsername != "admin" {
 		t.Fatalf("got %q", loaded.AdminUsername)
 	}
+	if loaded.McwebUser != "mcweb" {
+		t.Fatalf("mcweb user = %q, want mcweb", loaded.McwebUser)
+	}
 }
 
 func TestDefaultPathEnv(t *testing.T) {

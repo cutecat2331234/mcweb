@@ -131,9 +131,12 @@
   <form method="post" action="/operations/check" style="display:inline"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button type="submit" class="secondary">Check</button></form>
   <form method="post" action="/operations/update" style="display:inline;margin-left:1rem">
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-    <input name="version" placeholder="version (optional)" style="width:auto;display:inline">
+    {{if eq .Report.DeployMode "native"}}
+    <input name="version" required aria-label="Release version" placeholder="release version (required)" style="width:auto;display:inline">
+    {{end}}
     <button type="submit" class="secondary">Update</button>
   </form>
+  {{if eq .Report.DeployMode "native"}}<p>Native updates verify and stage the named release before running its hardened update contract.</p>{{end}}
 </div>
 <div class="card">
   <h2>Extended</h2>
@@ -167,6 +170,7 @@
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
     <label>Listen</label><input name="listen" value="{{.Config.Listen}}">
     <label>McWeb root</label><input name="mcweb_root" value="{{.Config.McwebRoot}}">
+    <label>McWeb system user</label><input name="mcweb_user" value="{{.Config.McwebUser}}">
     <label>McWeb env file</label><input name="mcweb_env_file" value="{{.Config.McwebEnvFile}}">
     <label>Compose directory</label><input name="compose_dir" value="{{.Config.ComposeDir}}">
     <label>Deploy mode</label>
@@ -174,7 +178,7 @@
       <option value="native" {{if eq .Config.DeployMode "native"}}selected{{end}}>native</option>
       <option value="docker" {{if eq .Config.DeployMode "docker"}}selected{{end}}>docker</option>
     </select>
-    <label>Release URL</label><input name="release_url" value="{{.Config.ReleaseURL}}">
+    <label>Release download base URL</label><input name="release_url" value="{{.Config.ReleaseURL}}">
     <label>Health URL</label><input name="health_url" value="{{.Config.HealthURL}}">
     <p style="margin-top:1rem"><button type="submit">Save</button></p>
   </form>

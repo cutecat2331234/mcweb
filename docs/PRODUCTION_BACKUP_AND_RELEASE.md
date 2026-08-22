@@ -221,8 +221,11 @@ schema 变化兼容。
 migration。此时必须停止发布，检查迁移状态和当前版本兼容性；需要恢复时使用新
 空库和已验证备份，不要未经审查直接执行连续 `db:rollback`。
 
-原生 hostd 的旧 Update 动作没有传候选路径和确认文本，安全脚本会拒绝无参数更新。
-在 hostd 适配显式候选 release 合同前，应通过受控命令行执行上述更新。
+原生 hostd 的 Update 动作要求明确版本，并从配置的 release 下载基地址获取归档及
+`.sha256`。它会先校验摘要、安全解包并发布全新候选目录，再从候选版本调用
+`bin/update --release <candidate> --confirm UPDATE:<version>`。hostd 本身不修改
+`current`；下载、校验、解包和候选验证失败都发生在调用更新脚本之前。更新脚本失败时
+hostd 会复核 `current` 仍指向原 release，并保留候选目录供事故检查。
 
 发布包根目录的 `quick-install.sh` 在已有 `current` 时只是安全更新入口：它把发布包
 放入一个全新的 `/opt/mcweb/releases/<version>`（同名目录已存在时拒绝覆盖），然后

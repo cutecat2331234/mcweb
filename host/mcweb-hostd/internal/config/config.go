@@ -15,24 +15,26 @@ import (
 const DefaultPath = "/etc/mcweb/hostd.yml"
 
 type Config struct {
-	Listen           string `yaml:"listen"`
-	SecretKey        string `yaml:"secret_key"`
-	AdminUsername    string `yaml:"admin_username"`
+	Listen            string `yaml:"listen"`
+	SecretKey         string `yaml:"secret_key"`
+	AdminUsername     string `yaml:"admin_username"`
 	AdminPasswordHash string `yaml:"admin_password_hash"`
-	McwebRoot        string `yaml:"mcweb_root"`
-	McwebEnvFile     string `yaml:"mcweb_env_file"`
-	ComposeDir       string `yaml:"compose_dir"`
-	DeployMode       string `yaml:"deploy_mode"` // native | docker
-	ReleaseURL       string `yaml:"release_url"`
-	HealthURL        string `yaml:"health_url"`
-	JobLogDir        string `yaml:"job_log_dir"`
-	Initialized      bool   `yaml:"initialized"`
+	McwebRoot         string `yaml:"mcweb_root"`
+	McwebUser         string `yaml:"mcweb_user"`
+	McwebEnvFile      string `yaml:"mcweb_env_file"`
+	ComposeDir        string `yaml:"compose_dir"`
+	DeployMode        string `yaml:"deploy_mode"` // native | docker
+	ReleaseURL        string `yaml:"release_url"`
+	HealthURL         string `yaml:"health_url"`
+	JobLogDir         string `yaml:"job_log_dir"`
+	Initialized       bool   `yaml:"initialized"`
 }
 
 func Default() *Config {
 	return &Config{
 		Listen:       ":8787",
 		McwebRoot:    "/opt/mcweb/current",
+		McwebUser:    "mcweb",
 		McwebEnvFile: "/etc/mcweb/mcweb.env",
 		ComposeDir:   "/opt/mcweb/docker",
 		DeployMode:   "native",

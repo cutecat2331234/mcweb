@@ -193,6 +193,7 @@ func (s *Server) handleSettingsPost(w http.ResponseWriter, r *http.Request) {
 	}
 	s.cfg.Listen = r.FormValue("listen")
 	s.cfg.McwebRoot = r.FormValue("mcweb_root")
+	s.cfg.McwebUser = r.FormValue("mcweb_user")
 	s.cfg.McwebEnvFile = r.FormValue("mcweb_env_file")
 	s.cfg.ComposeDir = r.FormValue("compose_dir")
 	s.cfg.DeployMode = r.FormValue("deploy_mode")
@@ -207,10 +208,10 @@ func (s *Server) handleSettingsPost(w http.ResponseWriter, r *http.Request) {
 
 // Install wizard state stored in memory (single-node hostd).
 type InstallState struct {
-	Step   int
-	Mode   string
-	DB     mcweb.FinalizeInput
-	JobID  string
+	Step  int
+	Mode  string
+	DB    mcweb.FinalizeInput
+	JobID string
 }
 
 func NewInstallState() *InstallState {

@@ -33,7 +33,7 @@ module Community
       skipped = nil
 
       @upload.with_lock do
-        unless @upload.kind_post_attachment?
+        unless @upload.kind_post_attachment? || @upload.kind_secure_evidence_attachment?
           skipped = "not_downloadable_attachment"
           next
         end
@@ -109,11 +109,14 @@ module Community
     end
 
     def persist_clean(result, claim:)
-      @upload.with_lock do
+      Community::Upload.transaction do
+        @upload.lock!
         return stale_result unless current_claim?(claim)
 
         @upload.update!(
           scan_status: "clean",
+          status: secure_evidence_upload? ? "linked" : @upload.status,
+          expires_at: secure_evidence_upload? ? nil : @upload.expires_at,
           scan_started_at: nil,
           next_scan_at: nil,
           scanned_at: @now,
@@ -122,13 +125,15 @@ module Community
           scan_result_code: result.code,
           scan_error_message: nil
         )
+        sync_secure_evidence!(status: :clean, result:, claim:)
       end
       instrument("community.attachment.scan_clean")
       ServiceResult.success(upload: @upload, status: "clean")
     end
 
     def persist_infected(result, claim:)
-      @upload.with_lock do
+      Community::Upload.transaction do
+        @upload.lock!
         return stale_result unless current_claim?(claim)
 
         @upload.update!(
@@ -145,6 +150,7 @@ module Community
           scan_result_code: result.code,
           scan_error_message: nil
         )
+        sync_secure_evidence!(status: :infected, result:, claim:)
       end
       instrument("community.attachment.scan_infected")
       ServiceResult.success(upload: @upload, status: "infected")
@@ -154,7 +160,8 @@ module Community
       retryable = @upload.scan_attempts < max_attempts
       next_scan_at = retryable ? @now + retry_delay : nil
 
-      @upload.with_lock do
+      Community::Upload.transaction do
+        @upload.lock!
         return stale_result unless current_claim?(claim)
 
         @upload.update!(
@@ -168,6 +175,7 @@ module Community
           scan_result_code: result.code,
           scan_error_message: result.error_message.to_s.first(500).presence
         )
+        sync_secure_evidence!(status: :error, result:, claim:, retryable:)
       end
       instrument(
         "community.attachment.scan_error",
@@ -210,6 +218,24 @@ module Community
     def current_claim?(claim)
       @upload.scan_status_pending? &&
         @upload.scan_attempts == claim.fetch(:scan_attempt)
+    end
+
+    def secure_evidence_upload?
+      @upload.kind_secure_evidence_attachment?
+    end
+
+    def sync_secure_evidence!(status:, result:, claim:, retryable: nil)
+      return unless secure_evidence_upload?
+
+      SecureEvidence::SyncScanResult.call!(
+        upload: @upload,
+        status:,
+        scanner: result.scanner,
+        result_code: result.code,
+        scan_attempt: claim.fetch(:scan_attempt),
+        retryable:,
+        at: @now
+      )
     end
 
     def stale_result

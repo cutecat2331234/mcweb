@@ -16,7 +16,7 @@ module Community
       snapshot = claim.value
       remove_attachment(snapshot[:post_attachment_id])
       purge_blob(snapshot[:blob_id])
-      finish_cleanup
+      finish_cleanup(snapshot[:secure_evidence_attachment_id])
     rescue StandardError => error
       record_failure(error)
       ServiceResult.failure(
@@ -71,6 +71,7 @@ module Community
         )
         snapshot = {
           post_attachment_id: attachment&.id,
+          secure_evidence_attachment_id: @upload.secure_evidence_attachment_id,
           blob_id: @upload.active_storage_blob_id
         }
       end
@@ -89,6 +90,14 @@ module Community
     end
 
     def cleanup_allowed?
+      if @upload.kind_secure_evidence_attachment? && @upload.secure_evidence_attachment_id
+        attachment = SecureEvidence::Attachment.lock.find_by(
+          id: @upload.secure_evidence_attachment_id
+        )
+        return attachment&.state_purge_pending? == true &&
+          (@upload.status_cleanup_pending? || @upload.status_cleanup_failed?) &&
+          @upload.expires_at&.<=(@now)
+      end
       return true if @orphan_only
       return true if @force
       return true if @upload.scan_quarantined? && @upload.expires_at&.<=(@now)
@@ -118,8 +127,9 @@ module Community
       blob.purge
     end
 
-    def finish_cleanup
-      @upload.with_lock do
+    def finish_cleanup(secure_evidence_attachment_id)
+      Community::Upload.transaction do
+        @upload.lock!
         @upload.update!(
           status: "cleaned",
           blob: nil,
@@ -131,13 +141,21 @@ module Community
           cleanup_error_code: nil,
           cleanup_error_message: nil
         )
+        if secure_evidence_attachment_id
+          SecureEvidence::SyncCleanupResult.purged!(
+            attachment_id: secure_evidence_attachment_id,
+            upload: @upload,
+            at: @now
+          )
+        end
       end
       instrument("community.upload.cleaned")
       ServiceResult.success(upload_id: @upload.id, cleaned: true)
     end
 
     def record_failure(error)
-      @upload.with_lock do
+      Community::Upload.transaction do
+        @upload.lock!
         @upload.update!(
           status: "cleanup_failed",
           expires_at: @now,
@@ -145,6 +163,14 @@ module Community
           cleanup_error_code: error.class.name.to_s.first(120),
           cleanup_error_message: error.message.to_s.first(500)
         )
+        if @upload.secure_evidence_attachment_id
+          SecureEvidence::SyncCleanupResult.failed!(
+            attachment_id: @upload.secure_evidence_attachment_id,
+            upload: @upload,
+            error:,
+            at: @now
+          )
+        end
       end
       instrument(
         "community.upload.cleanup_failed",

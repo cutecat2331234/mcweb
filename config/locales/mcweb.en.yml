@@ -1236,6 +1236,18 @@ en:
         upload_quota_invalid: The upload could not be accounted for.
         upload_quota_exceeded: Your upload storage or accepted-upload quota has been reached.
         upload_cleanup_failed: The upload could not be cleaned up and will be retried.
+        secure_evidence_subject_unavailable: The evidence target is unavailable or you do not have access.
+        secure_evidence_idempotency_key_invalid: The evidence request identifier is invalid.
+        secure_evidence_idempotency_conflict: This evidence request identifier was already used for different content.
+        secure_evidence_file_limit_exceeded: This item has reached its evidence file limit.
+        secure_evidence_total_size_exceeded: This item has reached its total evidence storage limit.
+        secure_evidence_retention_invalid: The evidence retention policy is unavailable.
+        secure_evidence_retention_active: This evidence is still within its retention period.
+        secure_evidence_retention_hold: This evidence is protected by a retention hold.
+        secure_evidence_upload_missing: The managed evidence upload record is unavailable.
+        secure_evidence_creation_failed: The evidence attachment could not be created.
+        secure_evidence_cleanup_failed: The evidence attachment could not be cleaned up and will be retried.
+        secure_evidence_account_closure_failed: Evidence retention could not be verified for account closure.
         inline_upload_expired: An inline image expired before the content was saved. Upload it again.
         post_moderation_unauthorized: You are not allowed to moderate posts.
         post_not_pending_approval: Post is not pending approval.

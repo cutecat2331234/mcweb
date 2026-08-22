@@ -29,6 +29,10 @@ module Identity
         key: "minecraft.accounts",
         contributor: Minecraft::IdentityLifecycle::DataExportContributor
       )
+      registry.register(
+        key: "security.evidence_attachments",
+        contributor: SecureEvidence::IdentityLifecycle::DataExportContributor
+      )
     end
   end
 end

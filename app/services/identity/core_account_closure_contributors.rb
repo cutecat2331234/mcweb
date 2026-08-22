@@ -13,6 +13,10 @@ module Identity
         key: "minecraft.identity_bindings",
         contributor: Minecraft::IdentityLifecycle::AccountClosureContributor
       )
+      registry.register(
+        key: "security.evidence_attachments",
+        contributor: SecureEvidence::IdentityLifecycle::AccountClosureContributor
+      )
     end
   end
 end

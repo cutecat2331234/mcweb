@@ -570,6 +570,12 @@ Rails.application.routes.draw do
       end
     end
 
+    namespace :secure_evidence, path: "evidence" do
+      resources :attachments, only: %i[create show] do
+        member { get :scan_status }
+      end
+    end
+
   scope module: :community, path: "forum", as: :forum do
     resources :sections, only: %i[index show] do
       member do

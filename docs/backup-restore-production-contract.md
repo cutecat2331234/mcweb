@@ -31,22 +31,22 @@ or durable restore-preflight/drill report.
 
 ## Task checklist
 
-- [ ] Snapshot every referenced private S3 object into a dedicated backup
+- [x] Snapshot every referenced private S3 object into a dedicated backup
       bucket/prefix and verify the uploaded byte count and SHA-256 digest.
-- [ ] Record only non-secret immutable object locators and integrity metadata
+- [x] Record only non-secret immutable object locators and integrity metadata
       in the backup inventory and manifest.
-- [ ] Make verify-only restore download every snapshot object and validate its
+- [x] Make verify-only restore download every snapshot object and validate its
       digest without changing the database or primary object store.
-- [ ] Make apply restore publish verified object bytes to an isolated target
+- [x] Make apply restore publish verified object bytes to an isolated target
       store before restoring the database, with idempotent retry behavior and
       collision refusal.
-- [ ] Persist checksum-covered preflight and apply/drill reports whose failure
+- [x] Persist checksum-covered preflight and apply/drill reports whose failure
       codes are actionable but contain no credentials or secret-bearing URLs.
-- [ ] Add a single-instance host maintenance entry point with configurable
+- [x] Add a single-instance host maintenance entry point with configurable
       schedule and bounded retention by age and minimum retained generations.
-- [ ] Audit completed and failed runs using stable identifiers, stage names,
+- [x] Audit completed and failed runs using stable identifiers, stage names,
       counts, and redacted error classes only.
-- [ ] Add focused contract and failure-path tests without requiring a real
+- [x] Add focused contract and failure-path tests without requiring a real
       external cloud account.
 - [ ] Keep a real external-store restore drill, RPO/RTO measurement, bucket
       versioning/immutability review, and operator sign-off as production

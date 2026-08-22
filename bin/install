@@ -154,6 +154,8 @@ configure_app() {
 write_systemd_units() {
   install -m 644 config/templates/mcweb-web.service /etc/systemd/system/mcweb-web.service
   install -m 644 config/templates/mcweb-worker.service /etc/systemd/system/mcweb-worker.service
+  install -m 644 config/templates/mcweb-backup.service /etc/systemd/system/mcweb-backup.service
+  install -m 644 config/templates/mcweb-backup.timer /etc/systemd/system/mcweb-backup.timer
   systemctl daemon-reload
 }
 
@@ -283,7 +285,7 @@ main() {
     "
 
   echo "安装完成。请访问 https://\${MCWEB_DOMAIN:-your-domain}/setup 完成初始化。"
-  echo "服务启动: systemctl enable --now mcweb-web mcweb-worker nginx"
+  echo "服务启动: systemctl enable --now mcweb-web mcweb-worker mcweb-backup.timer nginx"
 }
 
 main "$@"

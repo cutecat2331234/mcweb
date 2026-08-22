@@ -12,6 +12,17 @@ STORAGE_TARGET=""
 RESTORE_CONFIG=0
 CONFIG_TARGET=""
 CONFIG_STAGE=""
+APP_ROOT="${MCWEB_APPLICATION_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+BACKUP_FORMAT=""
+OBJECT_COUNT="0"
+RECOVERY_STAGE="startup"
+RECOVERY_ERROR_CODE="restore_failed"
+RECOVERY_EVIDENCE_DIR="${MCWEB_RECOVERY_EVIDENCE_DIR:-}"
+RECOVERY_REPORT_ENABLED=0
+RECOVERY_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+RECOVERY_BACKUP_ID=""
+RECOVERY_MANIFEST_SHA256=""
+RECOVERY_CHECKSUMS_SHA256=""
 
 die() {
   echo "Restore failed: $*" >&2
@@ -103,7 +114,7 @@ read_manifest_value() {
 validate_backup_manifest() {
   ruby -rjson -e '
     manifest = JSON.parse(File.read(ARGV.fetch(0)))
-    abort "unsupported backup format" unless manifest["format"] == "mcweb-backup-v1"
+    abort "unsupported backup format" unless %w[mcweb-backup-v1 mcweb-backup-v2].include?(manifest["format"])
     abort "invalid backup id" unless manifest["backup_id"].match?(/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/)
     abort "invalid database artifact" unless manifest.dig("database", "path") == "database.dump"
     abort "invalid database format" unless manifest.dig("database", "format") == "postgresql-custom"
@@ -112,9 +123,24 @@ validate_backup_manifest() {
     if storage["mode"] == "local"
       abort "invalid local inventory" unless storage["inventory"] == "active_storage_files.sha256"
       abort "invalid local archive" unless storage["archive"] == "active_storage.tar.gz"
+      if manifest["format"] == "mcweb-backup-v2"
+        abort "local backup must not claim a remote snapshot" unless storage["remote_snapshot"].nil?
+      end
     else
       abort "invalid object inventory" unless storage["inventory"] == "active_storage_objects.ndjson"
       abort "object backup must not claim a local archive" unless storage["archive"].nil?
+      if manifest["format"] == "mcweb-backup-v2"
+        snapshot = storage["remote_snapshot"]
+        valid_bucket = ->(value) {
+          value.is_a?(String) && value.match?(/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/)
+        }
+        abort "invalid remote object snapshot" unless snapshot.is_a?(Hash) &&
+          snapshot["provider"] == "s3" &&
+          snapshot["inventory_format"] == "mcweb-object-snapshot-v1" &&
+          valid_bucket.call(snapshot["source_bucket"]) &&
+          valid_bucket.call(snapshot["backup_bucket"]) &&
+          snapshot["source_bucket"] != snapshot["backup_bucket"]
+      end
     end
     config = manifest.fetch("configuration")
     abort "invalid non-secret config artifact" unless config["non_secret"] == "configuration.env"
@@ -179,6 +205,20 @@ validate_object_inventory() {
   ' "${inventory}"
 }
 
+verify_object_snapshot() {
+  local inventory="$1"
+  local source_bucket backup_bucket
+
+  RECOVERY_STAGE="object_snapshot_verify"
+  source_bucket="$(read_manifest_value 'manifest.dig("active_storage", "remote_snapshot", "source_bucket")')"
+  backup_bucket="$(read_manifest_value 'manifest.dig("active_storage", "remote_snapshot", "backup_bucket")')"
+  MCWEB_OBJECT_ARCHIVE_EXPECTED_SOURCE_BUCKET="${source_bucket}" \
+  MCWEB_OBJECT_ARCHIVE_EXPECTED_BACKUP_BUCKET="${backup_bucket}" \
+    bundle exec ruby scripts/object-storage-archive.rb verify --inventory "${inventory}"
+  OBJECT_COUNT="$(ruby -e 'puts File.foreach(ARGV.fetch(0)).count { |line| !line.strip.empty? }' "${inventory}")"
+  [[ "${OBJECT_COUNT}" =~ ^[0-9]+$ ]] || die "could not count verified object snapshots"
+}
+
 validate_secret_reference() {
   local artifact="$1"
   local reference
@@ -188,6 +228,145 @@ validate_secret_reference() {
   [[ "${reference}" =~ ^[a-z][a-z0-9+.-]*://[A-Za-z0-9._/-]+/versions/[A-Za-z0-9._-]+$ &&
      ! "${reference}" =~ /versions/(latest|current|active)$ ]] ||
     die "external secret-manager reference is not an immutable version URI"
+}
+
+initialize_recovery_evidence() {
+  local canonical_evidence evidence_class
+
+  RECOVERY_BACKUP_ID="$(read_manifest_value 'manifest.fetch("backup_id")')"
+  [[ "${RECOVERY_BACKUP_ID}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+    die "backup id is invalid for recovery evidence"
+  if [[ -z "${RECOVERY_EVIDENCE_DIR}" ]]; then
+    RECOVERY_EVIDENCE_DIR="$(dirname "${BACKUP_PATH}")/recovery-evidence"
+  fi
+  [[ "${RECOVERY_EVIDENCE_DIR}" = /* ]] || die "recovery evidence directory must be absolute"
+  canonical_evidence="$(realpath --canonicalize-missing -- "${RECOVERY_EVIDENCE_DIR}")"
+  [[ "${RECOVERY_EVIDENCE_DIR}" == "${canonical_evidence}" ]] ||
+    die "recovery evidence directory must be canonical"
+  case "${canonical_evidence}" in
+    /|/etc|/opt|/usr|/var|/var/lib|/var/lib/mcweb|/var/backups)
+      die "recovery evidence directory is too broad"
+      ;;
+  esac
+  [[ ! -L "${RECOVERY_EVIDENCE_DIR}" ]] ||
+    die "recovery evidence directory must not be a symbolic link"
+  case "${canonical_evidence}/" in
+    "${BACKUP_PATH}/"*)
+      die "recovery evidence directory must not be inside the immutable backup"
+      ;;
+  esac
+
+  evidence_class="${MCWEB_RECOVERY_EVIDENCE_CLASS:-unclassified}"
+  case "${evidence_class}" in
+    unclassified|local_acceptance|operator_preflight|production_drill)
+      ;;
+    *)
+      die "unsupported recovery evidence class"
+      ;;
+  esac
+  if [[ "${evidence_class}" == "production_drill" ]]; then
+    [[ "${MODE}" == "apply" &&
+       "${MCWEB_RECOVERY_EXTERNAL_DRILL_CONFIRMATION:-}" == "EXTERNAL-RESTORE-DRILL:${RECOVERY_BACKUP_ID}" ]] ||
+      die "production_drill evidence requires apply mode and the exact external-drill confirmation"
+  fi
+
+  mkdir -p "${RECOVERY_EVIDENCE_DIR}"
+  chmod 700 "${RECOVERY_EVIDENCE_DIR}"
+  RECOVERY_MANIFEST_SHA256="$(sha256sum "${BACKUP_PATH}/backup-manifest.json" | awk '{print $1}')"
+  RECOVERY_CHECKSUMS_SHA256="$(sha256sum "${BACKUP_PATH}/SHA256SUMS" | awk '{print $1}')"
+  [[ "${RECOVERY_MANIFEST_SHA256}" =~ ^[0-9a-f]{64}$ &&
+     "${RECOVERY_CHECKSUMS_SHA256}" =~ ^[0-9a-f]{64}$ ]] ||
+    die "could not fingerprint recovery evidence inputs"
+
+  RECOVERY_REPORT_ENABLED=1
+  trap finalize_restore EXIT
+}
+
+write_recovery_report() {
+  local status="$1"
+  local outcome error_code error_class finished_at evidence_class report_name report_tmp
+
+  [[ "${RECOVERY_REPORT_ENABLED}" == "1" ]] || return 0
+  outcome="failure"
+  error_code="${RECOVERY_ERROR_CODE:-restore_failed}"
+  error_class="process_exit"
+  if [[ "${status}" == "0" ]]; then
+    outcome="success"
+    error_code=""
+    error_class=""
+  fi
+  finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  evidence_class="${MCWEB_RECOVERY_EVIDENCE_CLASS:-unclassified}"
+  report_name="restore-${RECOVERY_BACKUP_ID}-$(date -u +%Y%m%dT%H%M%SZ)-$$.json"
+  report_tmp="$(mktemp "${RECOVERY_EVIDENCE_DIR}/.restore-report.XXXXXX")" || return 1
+
+  REPORT_MODE="${MODE}" \
+  REPORT_OUTCOME="${outcome}" \
+  REPORT_STAGE="${RECOVERY_STAGE}" \
+  REPORT_ERROR_CODE="${error_code}" \
+  REPORT_ERROR_CLASS="${error_class}" \
+  REPORT_BACKUP_ID="${RECOVERY_BACKUP_ID}" \
+  REPORT_BACKUP_FORMAT="${BACKUP_FORMAT:-unknown}" \
+  REPORT_OBJECT_COUNT="${OBJECT_COUNT}" \
+  REPORT_MANIFEST_SHA256="${RECOVERY_MANIFEST_SHA256}" \
+  REPORT_CHECKSUMS_SHA256="${RECOVERY_CHECKSUMS_SHA256}" \
+  REPORT_STARTED_AT="${RECOVERY_STARTED_AT}" \
+  REPORT_FINISHED_AT="${finished_at}" \
+  REPORT_EVIDENCE_CLASS="${evidence_class}" \
+    ruby -rjson -e '
+      payload = {
+        format: "mcweb-recovery-evidence-v1",
+        mode: ENV.fetch("REPORT_MODE"),
+        outcome: ENV.fetch("REPORT_OUTCOME"),
+        stage: ENV.fetch("REPORT_STAGE"),
+        error_code: ENV.fetch("REPORT_ERROR_CODE").then { |value| value.empty? ? nil : value },
+        error_class: ENV.fetch("REPORT_ERROR_CLASS").then { |value| value.empty? ? nil : value },
+        backup_id: ENV.fetch("REPORT_BACKUP_ID"),
+        backup_format: ENV.fetch("REPORT_BACKUP_FORMAT"),
+        object_count: Integer(ENV.fetch("REPORT_OBJECT_COUNT"), 10),
+        manifest_sha256: ENV.fetch("REPORT_MANIFEST_SHA256"),
+        checksums_sha256: ENV.fetch("REPORT_CHECKSUMS_SHA256"),
+        started_at: ENV.fetch("REPORT_STARTED_AT"),
+        finished_at: ENV.fetch("REPORT_FINISHED_AT"),
+        evidence_class: ENV.fetch("REPORT_EVIDENCE_CLASS")
+      }
+      File.binwrite(ARGV.fetch(0), JSON.pretty_generate(payload) << "\n")
+    ' "${report_tmp}" || {
+      rm --force -- "${report_tmp}"
+      return 1
+    }
+  chmod 600 "${report_tmp}" || {
+    rm --force -- "${report_tmp}"
+    return 1
+  }
+  mv --no-clobber --no-target-directory \
+    "${report_tmp}" "${RECOVERY_EVIDENCE_DIR}/${report_name}" || {
+      rm --force -- "${report_tmp}"
+      return 1
+    }
+}
+
+finalize_restore() {
+  local status=$?
+  local cleanup_status=0
+  local report_status=0
+
+  trap - EXIT
+  cleanup_sensitive_stage || cleanup_status=$?
+  if [[ "${status}" == "0" && "${cleanup_status}" != "0" ]]; then
+    status="${cleanup_status}"
+    RECOVERY_STAGE="cleanup"
+    RECOVERY_ERROR_CODE="cleanup_failed"
+  fi
+  write_recovery_report "${status}" || report_status=$?
+  if [[ "${status}" == "0" && "${report_status}" != "0" ]]; then
+    echo "Restore failed: recovery evidence could not be persisted" >&2
+    exit "${report_status}"
+  fi
+  if [[ "${report_status}" != "0" ]]; then
+    echo "Recovery evidence persistence also failed" >&2
+  fi
+  exit "${status}"
 }
 
 verify_backup() {
@@ -207,8 +386,13 @@ verify_backup() {
   [[ -z "$(find "${BACKUP_PATH}" -type l -print -quit)" ]] ||
     die "symbolic links are forbidden in a backup"
 
+  initialize_recovery_evidence
+  RECOVERY_STAGE="checksum_verify"
   validate_checksum_manifest
+  RECOVERY_STAGE="manifest_verify"
   validate_backup_manifest
+  BACKUP_FORMAT="$(read_manifest_value 'manifest.fetch("format")')"
+  RECOVERY_STAGE="database_archive_verify"
   pg_restore --list "${BACKUP_PATH}/database.dump" >/dev/null
 
   storage_mode="$(read_manifest_value 'manifest.fetch("active_storage").fetch("mode")')"
@@ -223,7 +407,12 @@ verify_backup() {
       validate_tar_paths "${BACKUP_PATH}/active_storage.tar.gz"
       ;;
     private_s3)
-      validate_object_inventory "${BACKUP_PATH}/${inventory}"
+      if [[ "${BACKUP_FORMAT}" == "mcweb-backup-v2" ]]; then
+        verify_object_snapshot "${BACKUP_PATH}/${inventory}"
+      else
+        validate_object_inventory "${BACKUP_PATH}/${inventory}"
+        echo "Legacy private-S3 metadata verified, but this backup has no recoverable object snapshot." >&2
+      fi
       ;;
   esac
 
@@ -244,13 +433,39 @@ verify_backup() {
 }
 
 database_name() {
-  psql --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+  run_psql \
     --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
     --command "SELECT current_database();"
 }
 
+run_psql() {
+  if [[ -n "${DATABASE_URL:-}" ]]; then
+    PGDATABASE="${DATABASE_URL}" DATABASE_URL="" psql "$@"
+  else
+    PGHOST="${MCWEB_DATABASE_HOST:-${PGHOST:-}}" \
+    PGPORT="${MCWEB_DATABASE_PORT:-${PGPORT:-}}" \
+    PGUSER="${MCWEB_DATABASE_USERNAME:-${PGUSER:-}}" \
+    PGPASSWORD="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}" \
+    PGDATABASE="${MCWEB_DATABASE_NAME:-${PGDATABASE:-mcweb_production}}" \
+      psql "$@"
+  fi
+}
+
+run_pg_restore() {
+  if [[ -n "${DATABASE_URL:-}" ]]; then
+    PGDATABASE="${DATABASE_URL}" DATABASE_URL="" pg_restore "$@"
+  else
+    PGHOST="${MCWEB_DATABASE_HOST:-${PGHOST:-}}" \
+    PGPORT="${MCWEB_DATABASE_PORT:-${PGPORT:-}}" \
+    PGUSER="${MCWEB_DATABASE_USERNAME:-${PGUSER:-}}" \
+    PGPASSWORD="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}" \
+    PGDATABASE="${MCWEB_DATABASE_NAME:-${PGDATABASE:-mcweb_production}}" \
+      pg_restore "$@"
+  fi
+}
+
 database_user_object_count() {
-  psql --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+  run_psql \
     --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
     --command "
       SELECT COALESCE(SUM(object_count), 0)
@@ -287,7 +502,7 @@ database_user_object_count() {
 }
 
 database_required_table_count() {
-  psql --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+  run_psql \
     --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
     --command "
       SELECT count(*)
@@ -463,23 +678,37 @@ cleanup_sensitive_stage() {
 apply_restore() {
   local storage_mode restored_required_table_count
 
+  RECOVERY_STAGE="apply_guards"
   validate_apply_guards
   storage_mode="$(read_manifest_value 'manifest.fetch("active_storage").fetch("mode")')"
   validate_restore_target_relationships "${storage_mode}"
 
   STORAGE_STAGE=""
-  trap cleanup_sensitive_stage EXIT
   if [[ "${storage_mode}" == "local" ]]; then
+    RECOVERY_STAGE="local_storage_stage"
     stage_local_storage \
       "${BACKUP_PATH}/active_storage.tar.gz" \
       "${BACKUP_PATH}/active_storage_files.sha256"
-  elif [[ -n "${STORAGE_TARGET}" ]]; then
-    die "--storage-target is only valid for a local-storage backup"
+  else
+    [[ "${BACKUP_FORMAT}" == "mcweb-backup-v2" ]] ||
+      die "legacy private-S3 backup cannot be applied; create a v2 backup with a verified object snapshot"
+    [[ -z "${STORAGE_TARGET}" ]] ||
+      die "--storage-target is only valid for a local-storage backup"
+    RECOVERY_STAGE="object_snapshot_restore"
+    MCWEB_OBJECT_ARCHIVE_EXPECTED_SOURCE_BUCKET="$(
+      read_manifest_value 'manifest.dig("active_storage", "remote_snapshot", "source_bucket")'
+    )" \
+    MCWEB_OBJECT_ARCHIVE_EXPECTED_BACKUP_BUCKET="$(
+      read_manifest_value 'manifest.dig("active_storage", "remote_snapshot", "backup_bucket")'
+    )" \
+      bundle exec ruby scripts/object-storage-archive.rb restore \
+        --inventory "${BACKUP_PATH}/active_storage_objects.ndjson"
   fi
+  RECOVERY_STAGE="configuration_stage"
   stage_secret_configuration
 
-  pg_restore --exit-on-error --single-transaction --no-owner --no-privileges \
-    --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+  RECOVERY_STAGE="database_restore"
+  run_pg_restore --exit-on-error --single-transaction --no-owner --no-privileges \
     "${BACKUP_PATH}/database.dump"
   restored_required_table_count="$(database_required_table_count)"
   [[ "${restored_required_table_count}" == "3" ]] ||
@@ -496,7 +725,8 @@ apply_restore() {
     CONFIG_STAGE=""
   fi
 
-  trap - EXIT
+  RECOVERY_STAGE="completed"
+  RECOVERY_ERROR_CODE=""
   echo "Restore applied to protected targets from: ${BACKUP_PATH}"
 }
 
@@ -560,10 +790,13 @@ main() {
   parse_arguments "$@"
   load_runtime_environment
   [[ -n "${BACKUP_PATH}" ]] || resolve_default_backup
+  cd "${APP_ROOT}"
 
   require_command sha256sum
   require_command pg_restore
   require_command ruby
+  require_command bundle
+  require_command date
   require_command tar
   require_command awk
   require_command find
@@ -574,6 +807,8 @@ main() {
 
   verify_backup
   if [[ "${MODE}" == "verify" ]]; then
+    RECOVERY_STAGE="completed"
+    RECOVERY_ERROR_CODE=""
     echo "Dry run only: no database, storage, or configuration was changed."
     exit 0
   fi

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+umask 077
+
+CONFIG_FILE="${MCWEB_CONFIG_FILE:-/etc/mcweb/mcweb.env}"
+APP_ROOT="${MCWEB_APPLICATION_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+die() {
+  echo "Backup maintenance failed: $*" >&2
+  exit 1
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "required command is not available: $1"
+}
+
+load_runtime_environment() {
+  if [[ -r "${CONFIG_FILE}" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "${CONFIG_FILE}"
+    set +a
+  fi
+}
+
+main() {
+  local backup_root backup_id backup_path lock_file lock_parent canonical_lock_parent
+
+  require_command flock
+  require_command realpath
+  require_command date
+  require_command bundle
+  load_runtime_environment
+  cd "${APP_ROOT}"
+  export MCWEB_BACKUP_RETENTION_DAYS="${MCWEB_BACKUP_RETENTION_DAYS:-30}"
+  export MCWEB_BACKUP_RETENTION_COUNT="${MCWEB_BACKUP_RETENTION_COUNT:-7}"
+
+  backup_root="${MCWEB_BACKUP_DIR:-/var/backups/mcweb}"
+  lock_file="${MCWEB_BACKUP_LOCK_FILE:-/run/lock/mcweb-backup-maintenance.lock}"
+  [[ "${lock_file}" = /* ]] || die "MCWEB_BACKUP_LOCK_FILE must be absolute"
+  lock_parent="$(dirname "${lock_file}")"
+  [[ -d "${lock_parent}" && ! -L "${lock_parent}" ]] ||
+    die "backup lock parent must be a real directory"
+  canonical_lock_parent="$(realpath --canonicalize-existing -- "${lock_parent}")"
+  [[ "${lock_parent}" == "${canonical_lock_parent}" ]] ||
+    die "backup lock parent must be canonical"
+  case "${canonical_lock_parent}" in
+    /run/lock|/var/lock)
+      ;;
+    *)
+      die "backup lock must be stored in /run/lock or /var/lock"
+      ;;
+  esac
+  [[ ! -L "${lock_file}" ]] || die "backup lock file must not be a symbolic link"
+
+  exec 9>"${lock_file}"
+  flock --nonblock 9 || die "another backup maintenance run is active"
+
+  backup_id="$(date -u +%Y%m%dT%H%M%SZ)-scheduled-$$"
+  MCWEB_BACKUP_ID="${backup_id}" bin/backup
+  backup_path="${backup_root}/${backup_id}"
+  MCWEB_RECOVERY_EVIDENCE_CLASS="${MCWEB_RECOVERY_EVIDENCE_CLASS:-operator_preflight}" \
+    bin/restore --backup "${backup_path}" --verify
+  bundle exec ruby scripts/prune-backups.rb --root "${backup_root}"
+
+  echo "Backup maintenance completed: backup_id=${backup_id}"
+}
+
+main "$@"

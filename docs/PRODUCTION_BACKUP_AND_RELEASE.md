@@ -27,7 +27,7 @@
 | 文件 | 内容 |
 |---|---|
 | `database.dump` | `pg_dump --format=custom` 数据库快照 |
-| `active_storage_objects.ndjson` | `private_s3` 模式下数据库引用的对象清单及逐对象存在性检查 |
+| `active_storage_objects.ndjson` | `private_s3` 模式下每个独立对象快照的原键、备份键、字节数和 SHA-256 |
 | `active_storage.tar.gz` | 仅本地盘模式下的文件归档 |
 | `active_storage_files.sha256` | 仅本地盘模式下的逐文件 SHA-256 |
 | `configuration.env` | 固定白名单中的非密钥配置 |
@@ -39,11 +39,31 @@
 `configuration.env` 不包含数据库密码、Rails/Lockbox 密钥、SMTP 密码、S3
 访问密钥、Redis URL 或入站邮件密码。
 
-`private_s3` 模式只记录并验证 McWeb 数据库引用的对象，不下载整桶，也不包含孤儿
-对象。生产仍必须在对象存储供应商启用版本控制、不可变快照/异地复制和生命周期
-保护。只有供应商快照与本备份采用同一恢复点，才构成完整灾备。
+`private_s3` 模式逐个读取 McWeb 数据库引用的 Blob，把对象本体写入独立的
+`MCWEB_BACKUP_S3_BUCKET`/`MCWEB_BACKUP_S3_PREFIX/<backup-id>/objects/`，再从备份桶
+下载并比对字节数与 SHA-256 后才发布备份。备份桶必须与主存储桶不同；已有同键
+对象只会在内容完全相同时作为幂等重试复用，不同内容会以不可变冲突失败。该过程
+不会扫描或复制数据库没有引用的孤儿对象。
+
+备份桶仍必须由供应商侧启用私有访问、最小权限、加密、版本控制/对象锁、异地复制
+和生命周期保护。仓库内 SHA-256 证明的是对象字节一致，不是供应商账户、KMS 密钥或
+地域灾难后的可用性。
 
 ## 创建备份
+
+私有对象存储部署必须先配置独立备份目标。静态凭据应由 root-only 环境文件或部署
+平台 secret 注入；使用 IAM role 时可省略：
+
+```bash
+MCWEB_BACKUP_S3_BUCKET=mcweb-production-backups
+MCWEB_BACKUP_S3_REGION=us-east-1
+MCWEB_BACKUP_S3_PREFIX=mcweb-backups
+# 非 AWS 兼容服务另设 MCWEB_BACKUP_S3_ENDPOINT=https://s3-backup.internal
+# 及 MCWEB_BACKUP_S3_FORCE_PATH_STYLE=1
+```
+
+`MCWEB_BACKUP_S3_ACCESS_KEY_ID`、`MCWEB_BACKUP_S3_SECRET_ACCESS_KEY` 和可选
+`MCWEB_BACKUP_S3_SESSION_TOKEN` 不会进入 manifest、恢复报告或安全配置副本。
 
 ### OpenPGP 公钥方式
 
@@ -87,11 +107,20 @@ sudo env MCWEB_ACTIVE_STORAGE_SERVICE=local \
 ## 默认验证与恢复演练
 
 以下命令只解析 manifest、校验全部 SHA-256、验证 PostgreSQL custom dump、检查
-归档路径和对象清单，不会连接目标数据库执行写入：
+归档路径，并逐个下载对象备份计算 SHA-256；不会连接目标数据库或写入主对象存储：
 
 ```bash
 sudo /opt/mcweb/current/bin/restore \
   --backup /var/backups/mcweb/20260726T120000Z
+```
+
+对象存储恢复还必须配置第三个、隔离且为空的目标桶。它不得等于生产源桶或备份桶，
+并使用独立的 `MCWEB_RESTORE_S3_*` 变量；以下凭据仍须通过 secret 注入：
+
+```bash
+export MCWEB_RESTORE_S3_BUCKET=mcweb-restore-drill-20260726
+export MCWEB_RESTORE_S3_REGION=us-east-1
+# 非 AWS 兼容服务另设 MCWEB_RESTORE_S3_ENDPOINT 和 FORCE_PATH_STYLE。
 ```
 
 实际数据库恢复必须连接到新建空库，并同时提交精确数据库名与备份 ID：
@@ -111,6 +140,12 @@ sudo env DATABASE_URL='postgresql:///mcweb_restore_20260726' \
 `pg_restore` 使用单事务；任何后置必要表检查失败时仍应删除并重新创建演练库，
 不要在未确认状态的库上重试。
 
+私有对象会在数据库事务开始前写入隔离目标桶。中断后重试会复用内容完全一致的
+目标对象；同名但内容不同的目标对象不会被覆盖。对象阶段失败时目标数据库仍为空，
+数据库阶段失败时可以删除并重建空库后安全复用已验证对象。旧版
+`mcweb-backup-v1` 的私有 S3 清单不含对象本体，脚本只允许校验其旧元数据，拒绝将其
+作为完整恢复应用。
+
 本地盘恢复还必须指定一个不存在的绝对目录：
 
 ```bash
@@ -127,8 +162,9 @@ sudo env DATABASE_URL='postgresql:///mcweb_restore_20260726' \
 `chown -R mcweb:mcweb /var/lib/mcweb-restore/uploads`，不得对未确认路径使用递归
 改权。
 
-对象存储灾难恢复应先由供应商快照恢复到隔离 bucket，修改隔离恢复环境指向该
-bucket，再恢复数据库并逐项比对对象清单。脚本不会覆盖远程对象。
+恢复结束后应让隔离应用的 `MCWEB_S3_BUCKET` 指向 `MCWEB_RESTORE_S3_BUCKET`，启动
+隔离实例并通过 Active Storage 下载代表性对象。不得让生产应用在演练过程中指向
+恢复桶，也不得把恢复目标设为生产源桶。
 
 需要恢复 OpenPGP 配置时，目标文件也必须不存在：
 
@@ -150,6 +186,43 @@ sudo env DATABASE_URL='postgresql:///mcweb_restore_20260726' \
 `--storage-target` 与 `--config-target` 必须彼此独立、不得嵌套，也不得位于备份目录
 内。脚本在最终发布暂存目录或解密配置前会再次确认目标不存在；目标在恢复期间被
 其他进程占用时，发布会拒绝覆盖。
+
+每次 verify/apply 都会在 `MCWEB_RECOVERY_EVIDENCE_DIR`（默认备份根目录旁的
+`recovery-evidence`）原子写入 `mcweb-recovery-evidence-v1` 报告。报告只含备份 ID、
+模式、阶段、结果、对象数量、manifest/SHA256SUMS 摘要和 UTC 时间，不含 endpoint、
+bucket URL、DSN、文件名、异常原文或凭据。自动化本地演练必须标记
+`MCWEB_RECOVERY_EVIDENCE_CLASS=local_acceptance`；只有 apply 模式并提供精确
+`EXTERNAL-RESTORE-DRILL:<backup-id>` 确认时才能标为 `production_drill`。
+每次进入正式备份阶段后也会在 `MCWEB_BACKUP_EVIDENCE_DIR`（默认
+`<backup-root>/.backup-evidence`）写入 `mcweb-backup-run-evidence-v1` 成功/失败报告；
+失败报告只有稳定阶段和错误类别，不复制异常原文。若成功备份无法持久化审计报告，
+命令仍返回失败，值班人员必须检查已经发布的恢复点与证据目录后再继续自动流程。
+
+## 调度与保留
+
+安装包提供 `mcweb-backup.service` 和 `mcweb-backup.timer`，默认每天 02:30 执行，带
+15 分钟随机延迟与 `Persistent=true`。启用前先确认备份桶、secret 产物方式和保留
+策略，然后运行：
+
+```bash
+# 既有实例先从当前已验证 release 安装/复核这两个 unit；全新 bin/install 会自动安装。
+sudo install -m 644 config/templates/mcweb-backup.service /etc/systemd/system/
+sudo install -m 644 config/templates/mcweb-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now mcweb-backup.timer
+sudo systemctl start mcweb-backup.service
+sudo systemctl status mcweb-backup.service
+```
+
+`bin/backup-maintenance` 使用 `/run/lock` 非阻塞独占锁，依次创建备份、执行完整
+verify-only、再运行保留策略。`MCWEB_BACKUP_RETENTION_DAYS` 默认 30，
+`MCWEB_BACKUP_RETENTION_COUNT` 默认 7；只有同时超过天数且不在最新保留代数内的
+完整 v2 备份才会清理。未完成目录不会当作恢复点，也会保留供排障。远程删除只读取
+校验通过的 inventory，逐个限制在已记录备份键；中断时目录改名为 `.pruning-*`，
+下一次会幂等续做，不会执行整桶删除。自定义运行时间应通过 systemd timer drop-in
+修改 `OnCalendar` 并执行 `systemctl daemon-reload`，不要复制第二套脚本或并行 cron。
+非默认备份、数据或日志路径还必须在同一个 drop-in 中收窄/更新 `ReadWritePaths`，
+否则 systemd 沙箱会失败关闭，而不是悄悄写到未授权目录。
 
 ## 安全更新
 
@@ -273,25 +346,28 @@ bash scripts/run-production-acceptance.sh
 
 它会在唯一临时 Compose project 中构建生产镜像，启动 PostgreSQL 18、Redis 8 和
 带临时 TLS 的 S3 兼容存储，随后执行全新建库、migration 基线升级、对象写读、
-`bin/backup`、verify-only 和空库 `bin/restore`。对象存储不可达、错误确认、
+独立备份桶快照、删除源对象、从备份桶 verify-only、向第三个空桶与空库恢复并再次
+下载对象。对象存储不可达、错误确认、
 非空目标库和 Redis 不可达必须失败。手动 GitHub Actions 入口是
 `.github/workflows/production-acceptance.yml`。
 
 该脚本要求 Docker Compose、PostgreSQL 18 client、OpenSSL、Ruby 和已安装 bundle，
 并只允许 `mcweb_acceptance_*` 数据库。当前开发机没有 Docker，因此截至
-2026-07-29 尚无本机真实运行成功记录；静态合同测试通过不能替代 workflow 结果。
+2026-08-22 尚无本机 MinIO/Compose 真实运行成功记录；静态合同与临时 PostgreSQL 18
+测试通过不能替代 workflow 结果。
 详细边界见 [`QUALITY_ACCEPTANCE.md`](QUALITY_ACCEPTANCE.md)。
 
 即使上述自动演练通过，也不能代替：
 
 - 在与生产同版本 PostgreSQL 上完成 dump、空库恢复、表数量/关键记录比对并记录
   RPO/RTO；
-- 从对象存储不可变快照恢复到隔离 bucket，并比对订单关联 Blob 与全部对象清单；
+- 在真实外部对象存储删除/隔离源对象后，从不可变备份恢复到新 bucket，并比对订单
+  关联 Blob 与全部对象清单；本地 MinIO 结果只能标记为 `local_acceptance`；
 - 在不接触应用主机的恢复环境中，用托管私钥解密配置并完成密钥轮换；
 - 在预发布 systemd 主机故障注入 bundle、migration、restart 和 readiness 失败，
   证明切流前失败不改 `current`，切流后失败能返回原 release；
 - 独立配置并演练 Redis/Sidekiq 的持久化与恢复；本批脚本不备份 Redis；
 - 将备份复制到异地、不可变存储并签名或由平台提供真实性证明。`SHA256SUMS`
   只能检测相对完整性，不能抵抗攻击者同时替换文件与校验清单；
-- 在静默写入窗口或一致性快照窗口执行完整灾备。数据库 dump 与远程对象清单不是
-  同一个分布式事务。
+- 在静默写入窗口或一致性快照窗口执行完整灾备。数据库 dump 与逐对象快照仍不是
+  同一个分布式事务，必须测量并批准实际 RPO/RTO。

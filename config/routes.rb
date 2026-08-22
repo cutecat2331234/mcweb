@@ -118,7 +118,7 @@ Rails.application.routes.draw do
     get "store/store-credits/:id",
       to: "users#store_credit_show",
       as: :store_credit_user
-    resources :roles, only: %i[index show create update destroy]
+    resources :roles
     resources :audit_logs, only: %i[index show] do
       collection { get :export }
     end

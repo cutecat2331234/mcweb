@@ -20,12 +20,13 @@ module Admin
       end
     end
 
-    test "role index exposes paginated rows and metadata" do
+    test "role index exposes paginated role cards and metadata" do
       get admin_roles_path
 
       assert_response :success
+      assert_equal "Admin/Roles/Index", inertia.component
       props = inertia.props.deep_symbolize_keys
-      assert_equal 25, props[:rows].size
+      assert_equal 25, props[:roles].size
       assert_equal 1, props.dig(:pagination, :page)
       assert_operator props.dig(:pagination, :pages), :>=, 2
       assert_equal Role.count, props.dig(:pagination, :count)
@@ -35,7 +36,7 @@ module Admin
       assert_response :success
       page_two = inertia.props.deep_symbolize_keys
       assert_equal 2, page_two.dig(:pagination, :page)
-      assert page_two[:rows].any?
+      assert page_two[:roles].any?
     end
 
     test "an out-of-range page redirects to the canonical last page and preserves query parameters" do

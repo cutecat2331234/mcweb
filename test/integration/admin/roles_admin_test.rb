@@ -21,8 +21,13 @@ module Admin
 
       get admin_roles_path
       assert_response :success
+      assert_equal "Admin/Roles/Index", inertia.component
+      assert_equal false, inertia.props.deep_symbolize_keys.fetch(:canManage)
+      assert_nil inertia.props.deep_symbolize_keys[:newUrl]
       get admin_role_path(@role)
       assert_response :success
+      assert_equal "Admin/Roles/Show", inertia.component
+      assert_nil inertia.props.deep_symbolize_keys[:editUrl]
 
       post admin_roles_path, params: {
         role: {
@@ -87,6 +92,44 @@ module Admin
       created_role = Role.find_by!(name: "Topic moderator")
       assert_redirected_to admin_role_path(created_role)
       assert_equal [ delegated_permission.key ], created_role.permissions.pluck(:key)
+
+      get new_admin_role_path
+      assert_response :success
+      assert_equal "Admin/Roles/Form", inertia.component
+      assert_equal true, inertia.props.deep_symbolize_keys.fetch(:canManage)
+
+      get edit_admin_role_path(created_role)
+      assert_response :success
+      assert_equal "Admin/Roles/Form", inertia.component
+      assert_equal delegated_permission.id,
+        inertia.props.deep_symbolize_keys.dig(:role, :permissionIds).sole
+    end
+
+    test "destroy requires and applies a replacement for an assigned role" do
+      owner = create_user(account_type: "owner")
+      grant_permission(owner, "admin.access")
+      grant_admin_module(owner, "system")
+      member = create_user
+      replacement = Role.create!(
+        name: "Replacement role",
+        key: "replacement_role_#{SecureRandom.hex(4)}"
+      )
+      member.roles << @role
+      sign_in_as(owner)
+
+      delete admin_role_path(@role)
+
+      assert_redirected_to edit_admin_role_path(@role)
+      assert Role.exists?(@role.id)
+      assert UserRole.exists?(user: member, role: @role)
+
+      delete admin_role_path(@role), params: {
+        role: { replacement_role_id: replacement.id }
+      }
+
+      assert_redirected_to admin_roles_path
+      assert_not Role.exists?(@role.id)
+      assert UserRole.exists?(user: member, role: replacement)
     end
   end
 end

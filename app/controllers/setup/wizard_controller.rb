@@ -68,6 +68,11 @@ module Setup
 
     def handle_database_step(params)
       data = params.to_h.with_indifferent_access
+      unless data.key?(:password)
+        flash[:alert] = t("mcweb.setup.database_password_field_missing")
+        return redirect_to setup_step_path("database")
+      end
+
       database_name = data[:development_database].presence || Mcweb::LocalConfig.default_database_name("development")
 
       test_result = Mcweb::TestDatabaseConnection.call(

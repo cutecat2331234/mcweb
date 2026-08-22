@@ -43,6 +43,61 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     assert_redirected_to setup_root_path
   end
 
+  test "database form allows an intentionally empty password" do
+    unlock_for_setup!
+
+    get setup_step_path("database")
+
+    assert_response :success
+    assert_select "#setup_password"
+    assert_select "#setup_password[required]", count: 0
+  end
+
+  test "database step preserves an explicitly empty password" do
+    unlock_for_setup!
+    connection_options = []
+    connection_check = lambda do |**options|
+      connection_options << options
+      ServiceResult.success
+    end
+
+    Mcweb::TestDatabaseConnection.stub(:call, connection_check) do
+      Mcweb::PrepareApplicationDatabase.stub(:call, ServiceResult.success) do
+        patch setup_step_path("database"), params: {
+          setup: {
+            host: "127.0.0.1",
+            port: 5432,
+            username: "postgres",
+            password: "",
+            development_database: "mcweb_passwordless"
+          }
+        }
+      end
+    end
+
+    assert_redirected_to setup_step_path("site")
+    assert_equal "", connection_options.sole.fetch(:password)
+    assert_equal "", Mcweb::LocalConfig["database", "password"]
+  end
+
+  test "database step rejects a missing password field without testing a connection" do
+    unlock_for_setup!
+
+    Mcweb::TestDatabaseConnection.stub(:call, ->(**) { flunk("connection must not be tested") }) do
+      patch setup_step_path("database"), params: {
+        setup: {
+          host: "127.0.0.1",
+          port: 5432,
+          username: "postgres",
+          development_database: "mcweb_missing_password_field"
+        }
+      }
+    end
+
+    assert_redirected_to setup_step_path("database")
+    assert_equal I18n.t("mcweb.setup.database_password_field_missing"), flash[:alert]
+  end
+
   test "completes setup when admin step submits password" do
     unlock_for_setup!
     patch setup_step_path("database"), params: {

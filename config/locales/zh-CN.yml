@@ -151,6 +151,7 @@
       database_name_invalid: 数据库名称只能包含字母、数字和下划线。
       database_host_required: 请填写数据库主机。
       database_username_required: 请填写数据库用户名。
+      database_password_field_missing: 请提交数据库密码字段；数据库无需密码时可留空。
       already_complete: 安装已完成，请使用管理员账号登录。
       complete_prior_steps: 请先完成前面的安装步骤，再创建管理员账号。
     store_features:

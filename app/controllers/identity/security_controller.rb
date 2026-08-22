@@ -13,6 +13,7 @@ module Identity
         email_verified: current_user.email_verified?,
         totp_enabled: current_user.totp_enabled?,
         require_totp: current_user.require_totp?,
+        pending_email_change: pending_email_change_props,
         pending_totp: pending_totp_props,
         recovery_codes_remaining: current_user.totp_enabled? ? Array(current_user.recovery_codes).size : 0,
         new_recovery_codes: session.delete(:identity_recovery_codes)
@@ -172,6 +173,17 @@ module Identity
     end
 
     private
+
+    def pending_email_change_props
+      request_record = current_user.email_change_requests.active_pending.recent_first.first
+      return unless request_record
+
+      {
+        email: request_record.requested_email,
+        requested_at: request_record.requested_at.iso8601,
+        expires_at: request_record.expires_at.iso8601
+      }
+    end
 
     def pending_totp_props
       secret = session[:pending_totp_secret].presence

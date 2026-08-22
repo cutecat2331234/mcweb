@@ -3,7 +3,10 @@
 require "test_helper"
 
 class UserFacingMailerI18nTest < ActionMailer::TestCase
-  IDENTITY_SUBJECTS = %w[verification password_reset password_changed totp_recovery].freeze
+  IDENTITY_SUBJECTS = %w[
+    verification password_reset password_changed totp_recovery
+    email_change_confirmation email_change_security_notice
+  ].freeze
   FORUM_SUBJECTS = %w[
     topic_reply private_message mention here section_topic tag_topic
     followed_topic followed_reply digest saved_search_digest post_edited
@@ -46,6 +49,35 @@ class UserFacingMailerI18nTest < ActionMailer::TestCase
     assert_equal "您的 McWeb 密码已修改", chinese.subject
     assert_includes decoded_body(chinese), "已撤销 1 个其他登录会话"
     assert_includes decoded_body(chinese), "重置密码"
+  end
+
+  test "email-change confirmation and old-address security notice use the account locale" do
+    token = SecureRandom.urlsafe_base64(32)
+    revocation_token = SecureRandom.urlsafe_base64(32)
+    request_record = Identity::EmailChangeRequest.create!(
+      user: @english_user,
+      original_email: @english_user.email,
+      requested_email: "replacement@example.com",
+      original_email_verified: true,
+      original_email_verified_at: @english_user.email_verified_at,
+      confirmation_token: token,
+      confirmation_token_digest: Digest::SHA256.hexdigest(token),
+      revocation_token:,
+      revocation_token_digest: Digest::SHA256.hexdigest(revocation_token),
+      requested_at: Time.current,
+      expires_at: 24.hours.from_now
+    )
+
+    confirmation = Identity::Mailer.email_change_confirmation(request_record.id, token)
+    notice = Identity::Mailer.email_change_security_notice(request_record.id, revocation_token)
+
+    assert_equal [ "replacement@example.com" ], confirmation.to
+    assert_equal "Confirm your new McWeb email address", confirmation.subject
+    assert_includes decoded_body(confirmation), "current email remains active"
+    assert_equal [ @english_user.email ], notice.to
+    assert_equal "Security notice: McWeb email change requested", notice.subject
+    assert_includes decoded_body(notice), "replacement@example.com"
+    assert_includes decoded_body(notice), "reset your password"
   end
 
   test "forum mail renders subject and body in each recipient locale" do

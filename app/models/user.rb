@@ -48,6 +48,9 @@ class User < ApplicationRecord
     has_many :entitlements, class_name: "Commerce::UserEntitlement", dependent: :destroy
   has_many :admin_module_grants, dependent: :destroy
   has_many :data_exports, class_name: "Identity::DataExport", dependent: :destroy
+  has_many :email_change_requests,
+           class_name: "Identity::EmailChangeRequest",
+           dependent: :destroy
   has_many :created_retention_holds,
            class_name: "DataGovernance::RetentionHold",
            foreign_key: :created_by_id,

@@ -57,28 +57,29 @@ module Identity
       assert_empty AuditLog.where(action: "identity.totp_recovery_codes_regenerated", resource_id: @user.id)
     end
 
-    test "changing email requires reauthentication and revokes other sessions" do
+    test "changing email requires reauthentication and keeps the current address until confirmation" do
       current_session = create_test_session(@user).value.fetch(:session)
       other_session = create_test_session(@user).value.fetch(:session)
 
-      result = Mcweb::DeveloperMode.stub(:allow?, false) do
-        ChangeEmail.call(
-          user: @user,
-          email: "replacement@example.com",
-          password: "password123",
-          current_session: current_session,
-          ip_address: "127.0.0.1",
-          user_agent: "Security lifecycle test"
-        )
-      end
+      result = ChangeEmail.call(
+        user: @user,
+        email: "replacement@example.com",
+        password: "password123",
+        current_session: current_session,
+        ip_address: "127.0.0.1",
+        user_agent: "Security lifecycle test"
+      )
 
       assert result.success?
-      assert_equal "replacement@example.com", @user.reload.email
-      refute @user.email_verified?
+      refute_equal "replacement@example.com", @user.reload.email
+      assert @user.email_verified?
       refute current_session.reload.revoked?
-      assert other_session.reload.revoked?
+      refute other_session.reload.revoked?
+      request = result.value.fetch(:email_change_request)
+      assert_predicate request, :pending?
+      assert_equal "replacement@example.com", request.requested_email
 
-      audit = AuditLog.find_by!(action: "identity.email_changed", resource_id: @user.id)
+      audit = AuditLog.find_by!(action: "identity.email_change_requested", resource_id: request.id)
       refute_includes audit.to_json, "replacement@example.com"
       assert_equal "example.com", audit.metadata.fetch("replacement_domain")
     end

@@ -39,6 +39,14 @@ module Identity
       user = nil
 
       User.transaction do
+        Identity::EmailAddressLock.acquire!(@email)
+        if Identity::EmailChangeRequest.email_reserved?(@email)
+          raise RegistrationStepFailed, ServiceResult.failure(
+            error: "email_not_available",
+            code: "email_not_available"
+          )
+        end
+
         user = User.create!(
           public_id: generate_public_id,
           email: @email,

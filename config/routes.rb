@@ -532,6 +532,12 @@ Rails.application.routes.draw do
       post "security/totp/disable", to: "security#disable_totp"
       post "security/totp/recovery-codes", to: "security#regenerate_recovery_codes"
       patch "security/email", to: "security#change_email"
+      get "security/email-change/confirm",
+          to: "email_changes#confirm",
+          as: :email_change_confirmation
+      get "security/email-change/revoke",
+          to: "email_changes#revoke",
+          as: :email_change_revocation
       delete "security/account", to: "security#close_account"
       resources :data_exports, only: %i[index create], path: "data-exports" do
         member do

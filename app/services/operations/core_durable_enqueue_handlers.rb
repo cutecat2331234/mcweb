@@ -25,6 +25,8 @@ module Operations
         Identity::EmailVerificationDelivery.deliver(intent)
       end
 
+      Identity::EmailChangeDelivery.register(registry)
+
       registry.register(
         key: "community.web_push",
         source_kind: "notification",

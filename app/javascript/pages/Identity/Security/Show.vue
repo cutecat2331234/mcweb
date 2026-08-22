@@ -18,6 +18,11 @@ defineOptions({ layout: PortalLayout })
 const props = defineProps<{
   email: string
   email_verified: boolean
+  pending_email_change?: {
+    email: string
+    requested_at: string
+    expires_at: string
+  } | null
   totp_enabled: boolean
   require_totp: boolean
   recovery_codes_remaining: number
@@ -29,7 +34,7 @@ const props = defineProps<{
   } | null
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const recoveryCodesVisible = ref(Boolean(props.new_recovery_codes?.length))
 const recoveryCodesAcknowledged = ref(false)
 const recoveryCodesFeedback = ref('')
@@ -99,6 +104,13 @@ function changeEmail() {
       emailForm.email_change.code = ''
     },
   })
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat(locale.value, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
 }
 
 function closeAccount() {
@@ -193,6 +205,18 @@ function dismissRecoveryCodes() {
           <Link :href="routes.resendVerification">{{ t('identity.resendVerification.submit') }}</Link>
         </Button>
       </div>
+
+      <Alert
+        v-if="pending_email_change"
+        :title="t('identity.security.pendingEmailTitle')"
+      >
+        <p>
+          {{ t('identity.security.pendingEmailDescription', { email: pending_email_change.email }) }}
+        </p>
+        <p class="mt-1 text-sm text-muted-foreground">
+          {{ t('identity.security.pendingEmailExpires', { at: formatDate(pending_email_change.expires_at) }) }}
+        </p>
+      </Alert>
 
       <form class="grid gap-4 border-t pt-4 md:grid-cols-2" @submit.prevent="changeEmail">
         <div class="space-y-2 md:col-span-2">

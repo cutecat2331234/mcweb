@@ -35,5 +35,27 @@ module Identity
         subject: recipient_t("mcweb.mail.identity.subjects.totp_recovery")
       )
     end
+
+    def email_change_confirmation(request_id, token)
+      @email_change_request = Identity::EmailChangeRequest.find(request_id)
+      @user = @email_change_request.user
+      @confirmation_url = identity_email_change_confirmation_url(token:)
+
+      mail(
+        to: @email_change_request.requested_email,
+        subject: recipient_t("mcweb.mail.identity.subjects.email_change_confirmation")
+      )
+    end
+
+    def email_change_security_notice(request_id, token)
+      @email_change_request = Identity::EmailChangeRequest.find(request_id)
+      @user = @email_change_request.user
+      @revocation_url = identity_email_change_revocation_url(token:)
+
+      mail(
+        to: @email_change_request.original_email,
+        subject: recipient_t("mcweb.mail.identity.subjects.email_change_security_notice")
+      )
+    end
   end
 end

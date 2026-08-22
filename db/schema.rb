@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_22_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_22_091000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1353,6 +1353,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_090000) do
     t.index ["user_id", "status", "requested_at"], name: "idx_identity_exports_user_status"
     t.index ["user_id"], name: "index_identity_data_exports_on_user_id"
     t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'revoked'::character varying::text, 'expired'::character varying::text])", name: "chk_identity_data_exports_status"
+  end
+
+  create_table "identity_email_change_requests", force: :cascade do |t|
+    t.text "confirmation_token_ciphertext"
+    t.string "confirmation_token_digest", null: false
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "initiating_session_id"
+    t.integer "lock_version", default: 0, null: false
+    t.string "original_email", null: false
+    t.boolean "original_email_verified", null: false
+    t.datetime "original_email_verified_at"
+    t.datetime "requested_at", null: false
+    t.string "requested_email", null: false
+    t.datetime "revert_expires_at"
+    t.datetime "reverted_at"
+    t.text "revocation_token_ciphertext"
+    t.string "revocation_token_digest", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index "lower((requested_email)::text)", name: "idx_identity_email_changes_one_pending_target", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["confirmation_token_digest"], name: "idx_identity_email_changes_confirmation_token", unique: true
+    t.index ["initiating_session_id"], name: "index_identity_email_change_requests_on_initiating_session_id"
+    t.index ["revocation_token_digest"], name: "idx_identity_email_changes_revocation_token", unique: true
+    t.index ["status", "expires_at"], name: "idx_identity_email_changes_expiry"
+    t.index ["user_id"], name: "idx_identity_email_changes_one_pending_per_user", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["user_id"], name: "index_identity_email_change_requests_on_user_id"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'confirmed'::character varying::text, 'revoked'::character varying::text, 'superseded'::character varying::text, 'expired'::character varying::text])", name: "chk_identity_email_changes_status"
   end
 
   create_table "installation_locks", force: :cascade do |t|
@@ -3856,6 +3886,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_090000) do
   add_foreign_key "forum_user_warnings", "users"
   add_foreign_key "forum_user_warnings", "users", column: "issuer_id"
   add_foreign_key "identity_data_exports", "users"
+  add_foreign_key "identity_email_change_requests", "sessions", column: "initiating_session_id", on_delete: :nullify
+  add_foreign_key "identity_email_change_requests", "users"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
   add_foreign_key "ip_bans", "users", column: "banned_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"

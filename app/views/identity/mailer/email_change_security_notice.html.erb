@@ -1,0 +1,11 @@
+<p><%= t("mcweb.mail.greeting_formal", username: @user.display_name) %></p>
+
+<p><%= t(
+  "mcweb.mail.identity.email_change_security_notice.intro",
+  requested_email: @email_change_request.requested_email
+) %></p>
+
+<p><%= link_to @revocation_url, @revocation_url %></p>
+
+<p><%= t("mcweb.mail.identity.email_change_security_notice.expiry") %></p>
+<p><%= t("mcweb.mail.identity.email_change_security_notice.guidance") %></p>

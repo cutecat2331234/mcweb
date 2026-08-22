@@ -95,16 +95,17 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
     assert_includes response.body, replacement
   end
 
-  test "email change revokes other sessions and requires replacement verification" do
+  test "email change creates a pending request and waits for replacement confirmation" do
     other_session = create_test_session(@user).value.fetch(:session)
 
-    Mcweb::DeveloperMode.stub(:allow?, false) do
+    assert_difference -> {
+      Identity::EmailChangeRequest.where(user: @user, status: :pending).count
+    }, 1 do
       assert_difference -> {
         Operations::DurableEnqueueIntent.where(
-          handler_key: Identity::EmailVerificationDelivery::HANDLER_KEY,
-          source_id: @user.id
+          handler_key: Identity::EmailChangeDelivery::HANDLER_KEY
         ).count
-      }, 1 do
+      }, 2 do
         patch identity_security_email_path, params: {
           email_change: {
             email: "changed@example.com",
@@ -116,8 +117,30 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to identity_security_path
-    assert_equal "changed@example.com", @user.reload.email
-    refute @user.email_verified?
+    refute_equal "changed@example.com", @user.reload.email
+    assert @user.email_verified?
+    refute other_session.reload.revoked?
+    follow_redirect!
+    assert_includes response.body, "changed@example.com"
+  end
+
+  test "confirmation switches the email and revokes every session except the initiating one" do
+    current_session = @user.sessions.active.order(created_at: :desc).first
+    other_session = create_test_session(@user).value.fetch(:session)
+    request_result = Identity::ChangeEmail.call(
+      user: @user,
+      email: "confirmed@example.com",
+      password: "password123",
+      current_session:
+    )
+    request_record = request_result.value.fetch(:email_change_request)
+
+    get identity_email_change_confirmation_path(token: request_record.confirmation_token)
+
+    assert_redirected_to identity_security_path
+    assert_equal "confirmed@example.com", @user.reload.email
+    assert @user.email_verified?
+    refute current_session.reload.revoked?
     assert other_session.reload.revoked?
   end
 

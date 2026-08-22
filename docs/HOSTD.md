@@ -46,7 +46,7 @@ mcweb-hostd check
 mcweb-hostd start [--web] [--worker] [--all] [--docker]
 mcweb-hostd stop  [--web] [--worker] [--all] [--docker]
 mcweb-hostd restart ...
-mcweb-hostd update [--version vX]
+mcweb-hostd update --version vX
 mcweb-hostd logs [--web] [--worker] [-f]
 mcweb-hostd install wizard
 mcweb-hostd install native [--fresh] [--version vX]
@@ -123,10 +123,25 @@ Then use hostd **Install** wizard steps 4–7 (database defaults match compose `
 - **mcweb-node**: documents installing the node agent binary and `mcweb-node.service`
 - **Plugins**: creates `/var/lib/mcweb/plugins`; full boot loader is a separate project
 
-The current native hostd Update action does not yet pass the staged release path
-and exact confirmation required by the hardened update contract. Until hostd is
-adapted, use the controlled CLI procedure from the production runbook; the
-script intentionally rejects an ambiguous no-argument update.
+For native deployments, configure `release_url` as the release download base
+(for example `https://github.com/your-org/mcweb/releases/download`) and run the
+Update action with an explicit version. Hostd downloads
+`<release_url>/<version>/mcweb-<version>.tar.gz` and its `.sha256`, verifies and
+safely unpacks the archive into a new `/opt/mcweb/releases/<version>` candidate,
+then calls that candidate's hardened contract exactly as:
+
+```bash
+/opt/mcweb/releases/<version>/bin/update \
+  --release /opt/mcweb/releases/<version> \
+  --confirm UPDATE:<version>
+```
+
+Hostd never changes `current` itself. A download, checksum, extraction, ownership
+or candidate validation failure stops before the update script runs. If the
+script fails, it is responsible for restoring the pre-update `current` pointer;
+hostd verifies that pointer and retains the staged candidate for investigation.
+Database migrations are not automatically reversed, so follow the production
+runbook before retrying a failure that reached the migration phase.
 
 ## Security
 

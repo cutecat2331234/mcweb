@@ -87,7 +87,7 @@ func (m *JobManager) Recent(limit int) []*Job {
 }
 
 type Lifecycle struct {
-	Cfg *config.Config
+	Cfg  *config.Config
 	Jobs *JobManager
 }
 
@@ -176,16 +176,7 @@ func (l *Lifecycle) Update(version string) *Job {
 			}
 			return runCompose(j, l.Cfg.ComposeDir, "up", "-d")
 		}
-		paths := mcweb.ResolvePaths(l.Cfg.McwebRoot, l.Cfg.McwebEnvFile)
-		if version != "" {
-			j.Append("Downloading release " + version)
-			if err := downloadRelease(j, l.Cfg, version); err != nil {
-				return err
-			}
-		}
-		out, err := exec.Command(paths.UpdateBin()).CombinedOutput()
-		j.Append(string(out))
-		return err
+		return newNativeReleaseUpdater(l.Cfg).Run(j, version)
 	})
 }
 
@@ -229,26 +220,6 @@ func runCompose(j *Job, dir, action string, extra ...string) error {
 	return err
 }
 
-func downloadRelease(j *Job, cfg *config.Config, version string) error {
-	url := strings.TrimRight(cfg.ReleaseURL, "/") + "/mcweb-" + version + ".tar.gz"
-	dest := filepath.Join("/tmp", "mcweb-"+version+".tar.gz")
-	j.Append("curl " + url)
-	cmd := exec.Command("curl", "-fsSL", "-o", dest, url)
-	out, err := cmd.CombinedOutput()
-	j.Append(string(out))
-	if err != nil {
-		return err
-	}
-	script := filepath.Join(cfg.McwebRoot, "quick-install.sh")
-	if _, err := os.Stat(script); err != nil {
-		script = "/opt/mcweb/current/quick-install.sh"
-	}
-	cmd = exec.Command("bash", script, dest)
-	out, err = cmd.CombinedOutput()
-	j.Append(string(out))
-	return err
-}
-
 func (l *Lifecycle) InstallNative(fresh bool, version string) *Job {
 	return l.Jobs.Start("install-native", func(j *Job) error {
 		if fresh {
@@ -263,9 +234,7 @@ func (l *Lifecycle) InstallNative(fresh bool, version string) *Job {
 				return err
 			}
 		} else if version != "" {
-			if err := downloadRelease(j, l.Cfg, version); err != nil {
-				return err
-			}
+			return fmt.Errorf("versioned native installation is disabled: complete a fresh install, then run mcweb-hostd update --version %s", version)
 		}
 		return systemctl(j, "enable", "--now", "mcweb-web", "mcweb-worker")
 	})

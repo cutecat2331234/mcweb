@@ -2,6 +2,15 @@
 
 module Operations
   class RecoverDurableEnqueue < ApplicationService
+    class ReopenSelectionInvalid < StandardError
+      attr_reader :code
+
+      def initialize(code)
+        @code = code
+        super(code)
+      end
+    end
+
     DEFAULT_LIMIT = 200
     MAX_LIMIT = 1_000
     KEYSET_BATCH_SIZE = 200
@@ -34,7 +43,6 @@ module Operations
       if @reopen && (
         @trigger != "manual" ||
         !@actor&.persisted? ||
-        !@actor.permission?("system.jobs.manage") ||
         @reason.blank? ||
         @reason.length > 500
       )
@@ -42,6 +50,19 @@ module Operations
       end
       return failure("durable_enqueue_public_ids_required") if @reopen && @intent_public_ids.empty?
 
+      return reopen_selected if @reopen
+
+      recover_due
+    rescue ReopenSelectionInvalid => error
+      failure(error.code)
+    rescue ActiveRecord::ActiveRecordError => error
+      Rails.logger.error("[operations.durable_enqueue] recovery_failed error=#{error.class}")
+      failure("durable_enqueue_recovery_failed")
+    end
+
+    private
+
+    def recover_due
       scanned = 0
       due = 0
       enqueued = 0
@@ -95,12 +116,118 @@ module Operations
       else
         ServiceResult.success(value)
       end
-    rescue ActiveRecord::ActiveRecordError => error
-      Rails.logger.error("[operations.durable_enqueue] recovery_failed error=#{error.class}")
-      failure("durable_enqueue_recovery_failed")
     end
 
-    private
+    def reopen_selected
+      selected = authorized_reopen_selection!
+      prepared = []
+      skipped = 0
+
+      Operations::DurableEnqueueIntent.transaction do
+        locked = Operations::DurableEnqueueIntent
+          .where(id: selected.map(&:id))
+          .order(:id)
+          .lock
+          .to_a
+        raise ReopenSelectionInvalid, "durable_enqueue_reopen_selection_invalid" unless locked.length == selected.length
+        locked.each { |intent| authorized_reopen_entry!(intent) }
+
+        locked.each do |intent|
+          intent.association(:events).reset
+          intent.association(:attempts).reset
+          state = Operations::DurableEnqueueLedger.state(intent)
+          unless state.reopenable?
+            skipped += 1
+            next
+          end
+
+          generation = state.generation + 1
+          Operations::DurableEnqueueLedger.append_locked!(
+            intent:,
+            state:,
+            event_type: "reopened",
+            generation:,
+            metadata: {
+              actor_id: @actor.id,
+              reason: @reason
+            },
+            occurred_at: @now
+          )
+          audit_reopen(intent, generation:)
+          prepared << [ intent, generation ]
+        end
+      end
+
+      dispatch_reopened(prepared, scanned: selected.length, skipped:)
+    end
+
+    def authorized_reopen_selection!
+      intents = Operations::DurableEnqueueIntent
+        .where(public_id: @intent_public_ids)
+        .to_a
+      unless intents.length == @intent_public_ids.length
+        raise ReopenSelectionInvalid, "durable_enqueue_reopen_selection_invalid"
+      end
+
+      intents.each { |intent| authorized_reopen_entry!(intent) }
+      intents
+    end
+
+    def authorized_reopen_entry!(intent)
+      entry = Operations::DurableEnqueueCatalog.entry(intent.handler_key)
+      unless entry &&
+          intent.source_kind == entry.source_kind &&
+          intent.queue_name == entry.queue_name
+        raise ReopenSelectionInvalid, "durable_enqueue_reopen_selection_invalid"
+      end
+      unless @actor.permission?(entry.manual_reopen_permission)
+        raise ReopenSelectionInvalid, "durable_enqueue_reopen_forbidden"
+      end
+
+      entry
+    end
+
+    def dispatch_reopened(prepared, scanned:, skipped:)
+      enqueued = 0
+      failed = 0
+      public_ids = []
+
+      prepared.each do |intent, generation|
+        result = Operations::DurableEnqueueDispatcher.call(
+          intent_id: intent.id,
+          generation:,
+          trigger: @trigger,
+          now: @now
+        )
+        if result.success? && !result.value.to_h[:skipped]
+          enqueued += 1
+          public_ids << intent.public_id
+        elsif result.success?
+          skipped += 1
+        else
+          failed += 1
+        end
+      end
+
+      value = {
+        scanned_count: scanned,
+        candidate_count: prepared.length,
+        enqueued_count: enqueued,
+        failed_count: failed,
+        skipped_count: skipped,
+        partial: failed.positive? && enqueued.positive?,
+        intent_public_ids: public_ids
+      }
+      if failed.positive? && enqueued.zero?
+        ServiceResult.failure(
+          error: "durable_enqueue_recovery_failed",
+          code: "durable_enqueue_recovery_failed",
+          value:
+        )
+      else
+        ServiceResult.success(value)
+      end
+    end
 
     def each_candidate
       scope = Operations::DurableEnqueueIntent.order(:id)
@@ -135,25 +262,6 @@ module Operations
 
     def prepare(intent)
       Operations::DurableEnqueueLedger.with_locked_intent(intent) do |state|
-        if @reopen
-          next unless state.reopenable?
-
-          generation = state.generation + 1
-          Operations::DurableEnqueueLedger.append_locked!(
-            intent:,
-            state:,
-            event_type: "reopened",
-            generation:,
-            metadata: {
-              actor_id: @actor.id,
-              reason: @reason
-            },
-            occurred_at: @now
-          )
-          audit_reopen(intent, generation:)
-          next generation
-        end
-
         next if state.terminal?
         entry = Operations::DurableEnqueueCatalog.entry(intent.handler_key)
         next state.generation unless entry

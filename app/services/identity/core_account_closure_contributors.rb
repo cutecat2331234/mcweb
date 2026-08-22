@@ -9,6 +9,10 @@ module Identity
         key: "identity.authored_content",
         contributor: AccountClosure::AuthoredContentContributor
       )
+      registry.register(
+        key: "minecraft.identity_bindings",
+        contributor: Minecraft::IdentityLifecycle::AccountClosureContributor
+      )
     end
   end
 end

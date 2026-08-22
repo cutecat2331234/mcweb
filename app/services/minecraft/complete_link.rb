@@ -18,6 +18,12 @@ module Minecraft
       identity = nil
       player_ref = nil
       ActiveRecord::Base.transaction do
+        @user.lock!
+        return ServiceResult.failure(
+          error: :minecraft_identity_link_account_unavailable,
+          code: :minecraft_identity_link_account_unavailable
+        ) if @user.deleted?
+
         link_code.lock!
         return ServiceResult.failure(error: :link_code_used) if link_code.used_at?
 

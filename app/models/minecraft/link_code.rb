@@ -34,7 +34,10 @@ module Minecraft
     def redeem!(user)
       return false if expired? || used?
 
-      transaction do
+      transaction_result = transaction do
+        user.lock!
+        next false if user.deleted?
+
         update!(used_at: Time.current, used_by: user)
         Identity.create!(
           user: user,
@@ -44,8 +47,9 @@ module Minecraft
           server: server,
           linked_at: Time.current
         )
+        true
       end
-      true
+      transaction_result
     end
 
     private

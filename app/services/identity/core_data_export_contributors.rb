@@ -25,6 +25,10 @@ module Identity
         key: "commerce.account",
         contributor: DataExporting::CommerceAccountContributor
       )
+      registry.register(
+        key: "minecraft.accounts",
+        contributor: Minecraft::IdentityLifecycle::DataExportContributor
+      )
     end
   end
 end

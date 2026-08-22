@@ -28,13 +28,15 @@ module Identity
       end
     end
 
-    test "core catalog is frozen and includes every CE data owner" do
+    test "core catalog is frozen keeps CE order and permits unique downstream owners" do
       keys = DataExportCatalog.entries.map(&:key)
-
-      assert_equal %w[
+      ce_keys = %w[
         identity.profile identity.notifications community.content community.uploads commerce.account
         minecraft.accounts security.evidence_attachments
-      ], keys
+      ]
+
+      assert_equal ce_keys, keys.select { |key| key.in?(ce_keys) }
+      assert_equal keys.uniq, keys
       assert DataExportCatalog.registry_frozen?
     end
 

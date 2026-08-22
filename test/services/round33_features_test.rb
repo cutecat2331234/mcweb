@@ -106,7 +106,11 @@ class Community::NotifyFollowedIgnoreTest < ActiveSupport::TestCase
     @author = create_user(username: "author_r33f")
     @follower = create_user(username: "follower_r33f")
     Community::UserFollow.create!(follower: @follower, followed: @author)
-    Community::ToggleUserIgnore.call(ignorer: @follower, ignored_username: @author.username)
+    Community::SetUserIgnore.call(
+      ignorer: @follower,
+      ignored_username: @author.username,
+      desired_state: true
+    )
     category = Community::Category.find_or_create_by!(slug: "r33-follow") { |c| c.name = "R33 Follow" }
     section = Community::Section.find_or_create_by!(category: category, slug: "r33-follow-sec") do |s|
       s.name = "Follow Sec"

@@ -9,13 +9,23 @@ module Api
       skip_before_action :require_read_scope!, only: :follow
       before_action :require_writer!, only: :follow
 
-      # POST /api/v1/users/:id/follow  (write scope) — toggles following the user
+      # PUT/DELETE /api/v1/users/:id/follow (write scope) — establishes the requested final state
       def follow
         target = User.find_by!(public_id: params[:id])
-        result = Community::ToggleUserFollow.call(follower: api_user, followed_username: target.username)
+        result = Community::SetUserFollow.call(
+          follower: api_user,
+          followed_username: target.username,
+          desired_state: request.put?
+        )
         return render_service_error(result) if result.failure?
 
-        render json: { data: { user_id: target.public_id, following: result.value[:following] } }
+        render json: {
+          data: {
+            user_id: target.public_id,
+            following: result.value[:following],
+            changed: result.value[:changed]
+          }
+        }
       end
 
       # GET /api/v1/users?q=<name>&sort=<posts|newest|username>

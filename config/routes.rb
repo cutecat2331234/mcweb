@@ -48,7 +48,7 @@ Rails.application.routes.draw do
         end
       end
       resources :users, only: %i[index show] do
-        member { post :follow }
+        member { match :follow, via: %i[put delete] }
         resources :profile_posts, only: %i[index create], path: "profile-posts"
       end
       namespace :staff do
@@ -609,9 +609,12 @@ Rails.application.routes.draw do
     get "blocks", to: "blocks#index", as: :blocks
     get "ignores", to: "ignores#index", as: :ignores
     get "muted", to: "mutes#index", as: :muted
-    post "users/:username/block", to: "blocks#create", as: :block_user
-    post "users/:username/ignore", to: "ignores#create", as: :ignore_user
-    post "users/:username/follow", to: "follows#create", as: :user_follow
+    put "users/:username/block", to: "blocks#update", as: :block_user
+    delete "users/:username/block", to: "blocks#destroy"
+    put "users/:username/ignore", to: "ignores#update", as: :ignore_user
+    delete "users/:username/ignore", to: "ignores#destroy"
+    put "users/:username/follow", to: "follows#update", as: :user_follow
+    delete "users/:username/follow", to: "follows#destroy"
     get "users/:username/followers", to: "followers#index", as: :user_followers
     resources :polls, only: [] do
       member do

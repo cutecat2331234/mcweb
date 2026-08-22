@@ -45,7 +45,11 @@ class Community::FilterNotificationRecipientsTest < ActiveSupport::TestCase
     @actor = create_user(username: "actor_r32")
     @recipient = create_user(username: "recipient_r32")
     @ignorer = create_user(username: "ignorer_r32")
-    Community::ToggleUserIgnore.call(ignorer: @ignorer, ignored_username: @actor.username)
+    Community::SetUserIgnore.call(
+      ignorer: @ignorer,
+      ignored_username: @actor.username,
+      desired_state: true
+    )
   end
 
   test "filters ignored actor from recipients" do
@@ -193,7 +197,11 @@ class Community::NotifyIgnoreFilterTest < ActiveSupport::TestCase
     end
     @topic = Community::CreateTopic.call(user: @author, section: section, title: "Notify", body: "OP").value
     Community::Subscription.create!(user: @ignorer, subscribable: @topic)
-    Community::ToggleUserIgnore.call(ignorer: @ignorer, ignored_username: @author.username)
+    Community::SetUserIgnore.call(
+      ignorer: @ignorer,
+      ignored_username: @author.username,
+      desired_state: true
+    )
     NotificationPreference.set!(@ignorer, channel: "in_app", notification_type: "forum.topic_reply", enabled: true)
     @reply = Community::CreatePost.call(user: @author, topic: @topic, body: "Another post here", skip_interval_check: true).value
   end

@@ -2,26 +2,38 @@
 
 require "test_helper"
 
-class Community::ToggleUserBlockTest < ActiveSupport::TestCase
+class Community::SetUserBlockTest < ActiveSupport::TestCase
   setup do
     @blocker = create_user(username: "blocker1")
     @target = create_user(username: "target1")
   end
 
   test "user can block and unblock another user" do
-    result = Community::ToggleUserBlock.call(blocker: @blocker, blocked_username: @target.username)
+    result = Community::SetUserBlock.call(
+      blocker: @blocker,
+      blocked_username: @target.username,
+      desired_state: true
+    )
     assert result.success?
     assert result.value[:blocked]
     assert Community::UserBlock.exists?(blocker: @blocker, blocked: @target)
 
-    unblock = Community::ToggleUserBlock.call(blocker: @blocker, blocked_username: @target.username)
+    unblock = Community::SetUserBlock.call(
+      blocker: @blocker,
+      blocked_username: @target.username,
+      desired_state: false
+    )
     assert unblock.success?
     assert_not unblock.value[:blocked]
     assert_not Community::UserBlock.exists?(blocker: @blocker, blocked: @target)
   end
 
   test "cannot block yourself" do
-    result = Community::ToggleUserBlock.call(blocker: @blocker, blocked_username: @blocker.username)
+    result = Community::SetUserBlock.call(
+      blocker: @blocker,
+      blocked_username: @blocker.username,
+      desired_state: true
+    )
     assert result.failure?
   end
 end

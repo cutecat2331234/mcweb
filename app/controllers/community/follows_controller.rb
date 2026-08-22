@@ -48,18 +48,30 @@ module Community
       }
     end
 
-    def create
-      result = Community::ToggleUserFollow.call(follower: current_user, followed_username: params[:username])
+    def update
+      set_follow(desired_state: true)
+    end
 
-      if result.success?
-        notice = result.value[:following] ? t("mcweb.flash.following_toggled_on") : t("mcweb.flash.following_toggled_off")
-        redirect_back fallback_location: forum_user_path(params[:username]), notice: notice
-      else
-        redirect_back fallback_location: forum_path, alert: service_error_message(result)
-      end
+    def destroy
+      set_follow(desired_state: false)
     end
 
     private
+
+    def set_follow(desired_state:)
+      result = Community::SetUserFollow.call(
+        follower: current_user,
+        followed_username: params[:username],
+        desired_state: desired_state
+      )
+
+      if result.success?
+        notice = result.value[:following] ? t("mcweb.flash.following_toggled_on") : t("mcweb.flash.following_toggled_off")
+        redirect_back fallback_location: forum_user_path(params[:username]), notice: notice, status: :see_other
+      else
+        redirect_back fallback_location: forum_path, alert: service_error_message(result), status: :see_other
+      end
+    end
 
     def forum_sort_options
       Community::TopicListSortOptions.call

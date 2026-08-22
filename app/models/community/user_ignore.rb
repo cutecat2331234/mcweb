@@ -5,7 +5,7 @@ module Community
     belongs_to :ignorer, class_name: "User"
     belongs_to :ignored, class_name: "User"
 
-    validates :ignorer_id, uniqueness: { scope: :ignored_id }
+    # The unique database index is the concurrency boundary used by SetUserRelationship.
     validate :cannot_ignore_self
 
     def self.ignored_user_ids(user)

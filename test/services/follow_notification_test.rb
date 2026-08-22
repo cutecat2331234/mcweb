@@ -8,7 +8,11 @@ class FollowNotificationTest < ActiveSupport::TestCase
     followed = create_user
 
     assert_difference -> { followed.notifications.where(notification_type: "forum.new_follower").count }, 1 do
-      result = Community::ToggleUserFollow.call(follower: follower, followed_username: followed.username)
+      result = Community::SetUserFollow.call(
+        follower: follower,
+        followed_username: followed.username,
+        desired_state: true
+      )
       assert result.success?
       assert result.value[:following]
     end
@@ -20,7 +24,11 @@ class FollowNotificationTest < ActiveSupport::TestCase
     Community::UserFollow.create!(follower: follower, followed: followed)
 
     assert_no_difference -> { Notification.count } do
-      result = Community::ToggleUserFollow.call(follower: follower, followed_username: followed.username)
+      result = Community::SetUserFollow.call(
+        follower: follower,
+        followed_username: followed.username,
+        desired_state: false
+      )
       assert result.success?
       assert_not result.value[:following]
     end

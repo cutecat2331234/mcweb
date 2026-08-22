@@ -28,7 +28,11 @@ class Community::IgnoresListTest < ActiveSupport::TestCase
   setup do
     @ignorer = create_user(username: "ignorer_r30")
     @ignored = create_user(username: "ignored_r30")
-    Community::ToggleUserIgnore.call(ignorer: @ignorer, ignored_username: @ignored.username)
+    Community::SetUserIgnore.call(
+      ignorer: @ignorer,
+      ignored_username: @ignored.username,
+      desired_state: true
+    )
   end
 
   test "ignored user ids" do

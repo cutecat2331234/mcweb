@@ -53,9 +53,10 @@ class Community::ForumNotificationReliabilityTest < ActiveSupport::TestCase
   end
 
   test "an ignored author cannot notify or email the recipient through a mention" do
-    Community::ToggleUserIgnore.call(
+    Community::SetUserIgnore.call(
       ignorer: @recipient,
-      ignored_username: @author.username
+      ignored_username: @author.username,
+      desired_state: true
     )
     topic, post = create_topic_and_post(body: "Hello @#{@recipient.username}")
 

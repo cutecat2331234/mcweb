@@ -2,26 +2,38 @@
 
 require "test_helper"
 
-class Community::ToggleUserFollowTest < ActiveSupport::TestCase
+class Community::SetUserFollowTest < ActiveSupport::TestCase
   setup do
     @follower = create_user
     @followed = create_user
   end
 
   test "follows and unfollows user" do
-    result = Community::ToggleUserFollow.call(follower: @follower, followed_username: @followed.username)
+    result = Community::SetUserFollow.call(
+      follower: @follower,
+      followed_username: @followed.username,
+      desired_state: true
+    )
     assert result.success?
     assert result.value[:following]
     assert Community::UserFollow.exists?(follower: @follower, followed: @followed)
 
-    result = Community::ToggleUserFollow.call(follower: @follower, followed_username: @followed.username)
+    result = Community::SetUserFollow.call(
+      follower: @follower,
+      followed_username: @followed.username,
+      desired_state: false
+    )
     assert result.success?
     assert_not result.value[:following]
     assert_not Community::UserFollow.exists?(follower: @follower, followed: @followed)
   end
 
   test "cannot follow yourself" do
-    result = Community::ToggleUserFollow.call(follower: @follower, followed_username: @follower.username)
+    result = Community::SetUserFollow.call(
+      follower: @follower,
+      followed_username: @follower.username,
+      desired_state: true
+    )
     assert result.failure?
   end
 end

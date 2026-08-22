@@ -954,6 +954,8 @@ en:
         cannot_share_topic: You are not allowed to share this topic.
         not_group_conversation: Not a group conversation.
         user_not_found: User not found.
+        relationship_state_required: Choose the final relationship state before saving.
+        relationship_update_conflict: The relationship changed at the same time. Please try again.
         user_not_participant: User is not a participant.
         not_allowed: Not allowed.
         invalid_permission_keys: One or more selected permissions are unavailable.

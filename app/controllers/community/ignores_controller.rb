@@ -24,16 +24,31 @@ module Community
       }
     end
 
-    def create
-      result = Community::ToggleUserIgnore.call(
+    def update
+      set_ignore(desired_state: true)
+    end
+
+    def destroy
+      set_ignore(desired_state: false)
+    end
+
+    private
+
+    def set_ignore(desired_state:)
+      result = Community::SetUserIgnore.call(
         ignorer: current_user,
-        ignored_username: params[:username]
+        ignored_username: params[:username],
+        desired_state: desired_state
       )
 
       if result.success?
-        redirect_back fallback_location: forum_ignores_path, notice: result.value[:ignored] ? t("mcweb.flash.user_ignored") : t("mcweb.flash.user_unignored")
+        redirect_back(
+          fallback_location: forum_ignores_path,
+          notice: result.value[:ignored] ? t("mcweb.flash.user_ignored") : t("mcweb.flash.user_unignored"),
+          status: :see_other
+        )
       else
-        redirect_back fallback_location: forum_ignores_path, alert: service_error_message(result)
+        redirect_back fallback_location: forum_ignores_path, alert: service_error_message(result), status: :see_other
       end
     end
   end

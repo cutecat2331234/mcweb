@@ -108,7 +108,11 @@ class Community::NotifyPostReactionIgnoreTest < ActiveSupport::TestCase
     end
     @topic = Community::CreateTopic.call(user: @author, section: @section, title: "React", body: "OP").value
     @post = @topic.posts.first
-    Community::ToggleUserIgnore.call(ignorer: @author, ignored_username: @reactor.username)
+    Community::SetUserIgnore.call(
+      ignorer: @author,
+      ignored_username: @reactor.username,
+      desired_state: true
+    )
   end
 
   test "ignored reactor does not trigger reaction notification" do

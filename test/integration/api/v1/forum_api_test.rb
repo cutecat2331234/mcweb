@@ -340,18 +340,57 @@ module Api
         assert_equal 1, counts["👍"]
       end
 
-      test "follow toggles following a user" do
+      test "follow endpoint converges on the requested final state" do
         follower = create_user(username: "apifollower")
         target = create_user(username: "apifollowed")
         _rec, wtoken = Administration::ApiKey.generate!(name: "fl", scopes: %w[read write], user: follower)
 
-        post "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        put "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
         assert_response :success
         assert_equal true, JSON.parse(response.body)["data"]["following"]
+        assert_equal true, JSON.parse(response.body)["data"]["changed"]
         assert Community::UserFollow.exists?(follower: follower, followed: target)
 
-        post "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        put "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal true, JSON.parse(response.body)["data"]["following"]
+        assert_equal false, JSON.parse(response.body)["data"]["changed"]
+
+        delete "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        assert_response :success
         assert_equal false, JSON.parse(response.body)["data"]["following"]
+        assert_equal true, JSON.parse(response.body)["data"]["changed"]
+
+        delete "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal false, JSON.parse(response.body)["data"]["following"]
+        assert_equal false, JSON.parse(response.body)["data"]["changed"]
+      end
+
+      test "legacy POST follow endpoint cannot mutate relationship state" do
+        follower = create_user(username: "apilegacyfollower")
+        target = create_user(username: "apilegacyfollowed")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "fllegacy", scopes: %w[read write], user: follower)
+
+        post "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+
+        assert_response :not_found
+        assert_not Community::UserFollow.exists?(follower: follower, followed: target)
+      end
+
+      test "follow write conflicts use the API conflict contract" do
+        follower = create_user(username: "apiconflictfollower")
+        target = create_user(username: "apiconflictfollowed")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "flconflict", scopes: %w[read write], user: follower)
+        conflict = ServiceResult.failure(error: :relationship_update_conflict, code: "conflict")
+
+        Community::SetUserFollow.stub(:call, conflict) do
+          put "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        end
+
+        assert_response :conflict
+        assert_equal "conflict", JSON.parse(response.body)["error"]
+        assert_not Community::UserFollow.exists?(follower: follower, followed: target)
       end
 
       test "profile posts list and create" do

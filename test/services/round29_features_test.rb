@@ -38,15 +38,23 @@ class Community::UserIgnoreTest < ActiveSupport::TestCase
     @ignored = create_user(username: "ignored_r29")
   end
 
-  test "toggle user ignore" do
-    result = Community::ToggleUserIgnore.call(ignorer: @ignorer, ignored_username: @ignored.username)
+  test "sets user ignore" do
+    result = Community::SetUserIgnore.call(
+      ignorer: @ignorer,
+      ignored_username: @ignored.username,
+      desired_state: true
+    )
     assert result.success?
     assert result.value[:ignored]
     assert Community::UserIgnore.exists?(ignorer: @ignorer, ignored: @ignored)
   end
 
   test "cannot ignore self" do
-    result = Community::ToggleUserIgnore.call(ignorer: @ignorer, ignored_username: @ignorer.username)
+    result = Community::SetUserIgnore.call(
+      ignorer: @ignorer,
+      ignored_username: @ignorer.username,
+      desired_state: true
+    )
     assert result.failure?
   end
 end

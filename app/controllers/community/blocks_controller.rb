@@ -24,16 +24,31 @@ module Community
       }
     end
 
-    def create
-      result = Community::ToggleUserBlock.call(
+    def update
+      set_block(desired_state: true)
+    end
+
+    def destroy
+      set_block(desired_state: false)
+    end
+
+    private
+
+    def set_block(desired_state:)
+      result = Community::SetUserBlock.call(
         blocker: current_user,
-        blocked_username: params[:username]
+        blocked_username: params[:username],
+        desired_state: desired_state
       )
 
       if result.success?
-        redirect_back fallback_location: forum_blocks_path, notice: result.value[:blocked] ? t("mcweb.flash.user_blocked") : t("mcweb.flash.user_unblocked")
+        redirect_back(
+          fallback_location: forum_blocks_path,
+          notice: result.value[:blocked] ? t("mcweb.flash.user_blocked") : t("mcweb.flash.user_unblocked"),
+          status: :see_other
+        )
       else
-        redirect_back fallback_location: forum_blocks_path, alert: service_error_message(result)
+        redirect_back fallback_location: forum_blocks_path, alert: service_error_message(result), status: :see_other
       end
     end
   end

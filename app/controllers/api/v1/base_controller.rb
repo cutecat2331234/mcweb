@@ -58,6 +58,13 @@ module Api
           )
         end
 
+        if result.code == "conflict"
+          return render(
+            json: { error: "conflict", message: service_error_message(result) },
+            status: :conflict
+          )
+        end
+
         render json: { error: "unprocessable", message: service_error_message(result) }, status: :unprocessable_entity
       end
 

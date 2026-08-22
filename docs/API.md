@@ -69,7 +69,8 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | POST | `/api/v1/posts/:id/react` | 切换帖子反应 `emoji=...`（需 `write`） |
 | GET | `/api/v1/users?q=<名>&sort=<posts\|username\|newest>` | 会员列表（按用户名搜索 / 排序） |
 | GET | `/api/v1/users/:id` | 公开用户资料（`:id` 为用户 `public_id`） |
-| POST | `/api/v1/users/:id/follow` | 关注/取消关注用户（需 `write`） |
+| PUT | `/api/v1/users/:id/follow` | 将用户关系设为已关注（需 `write`，重复请求不会反转状态） |
+| DELETE | `/api/v1/users/:id/follow` | 将用户关系设为未关注（需 `write`，重复请求不会反转状态） |
 | GET | `/api/v1/users/:id/profile-posts` | 用户资料墙帖子 |
 | POST | `/api/v1/users/:id/profile-posts` | 在用户资料墙发帖（需 `write`） |
 | POST | `/api/v1/topics` | 发主题（需 `write` scope + 绑定用户） |

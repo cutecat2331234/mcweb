@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { reactive } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -14,6 +15,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
+const processingUsers = reactive(new Set<string>())
 
 const props = defineProps<{
   tab: 'topics' | 'users'
@@ -40,8 +42,14 @@ function changeSort(value: string) {
   router.get(routes.forumFollowing, { tab: props.tab, sort: value }, { preserveState: true })
 }
 
-function unfollow(url: string) {
-  router.post(url, {}, { preserveScroll: true })
+function unfollow(user: { username: string; unfollow_url: string }) {
+  if (processingUsers.has(user.username)) return
+
+  processingUsers.add(user.username)
+  router.delete(user.unfollow_url, {
+    preserveScroll: true,
+    onFinish: () => processingUsers.delete(user.username),
+  })
 }
 </script>
 
@@ -87,7 +95,7 @@ function unfollow(url: string) {
           <UserLink variant="name" :user="user" link-class="font-medium hover:underline" />
           <p v-if="user.forum_title" class="text-xs text-muted-foreground">{{ user.forum_title }}</p>
         </div>
-        <Button type="button" size="sm" variant="outline" @click="unfollow(user.unfollow_url)">{{ t('forum.following.unfollow') }}</Button>
+        <Button type="button" size="sm" variant="outline" :disabled="processingUsers.has(user.username)" @click="unfollow(user)">{{ t('forum.following.unfollow') }}</Button>
       </div>
     </div>
     <p v-else class="text-sm text-muted-foreground">{{ t('forum.following.emptyUsers') }}</p>

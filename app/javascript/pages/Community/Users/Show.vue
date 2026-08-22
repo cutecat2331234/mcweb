@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, toRef } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -22,6 +22,7 @@ import MinecraftProfileCard, { type MinecraftProfile } from '@/components/minecr
 import Badge from '@/components/ui/Badge.vue'
 import UserCustomFieldsForm, { type UserCustomField } from '@/components/portal/UserCustomFieldsForm.vue'
 import { createIdempotencyKey } from '@/lib/idempotency'
+import { beginCommunityRelationshipMutation, finishCommunityRelationshipMutation } from '@/lib/communityRelationshipMutation'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -227,20 +228,45 @@ const initialFieldValues = Object.fromEntries(
 const fieldsForm = useForm({ user_fields: initialFieldValues })
 const visibleCustomFields = computed(() => (props.custom_fields || []).filter((field) => field.value || field.editable))
 const hasEditableCustomFields = computed(() => (props.custom_fields || []).some((field) => field.editable))
+const relationshipProcessing = reactive({ block: false, ignore: false, follow: false })
+const blockProcessing = toRef(relationshipProcessing, 'block')
+const ignoreProcessing = toRef(relationshipProcessing, 'ignore')
+const followProcessing = toRef(relationshipProcessing, 'follow')
 
-function toggleBlock() {
+function setBlock() {
   if (!props.profile.block_url) return
-  router.post(props.profile.block_url, {}, { preserveScroll: true })
+  const mutation = beginCommunityRelationshipMutation(blockProcessing, props.profile.is_blocked)
+  if (!mutation) return
+  const options = {
+    preserveScroll: true,
+    onFinish: () => finishCommunityRelationshipMutation(blockProcessing),
+  }
+  if (mutation.method === 'put') router.put(props.profile.block_url, {}, options)
+  else router.delete(props.profile.block_url, options)
 }
 
-function toggleIgnore() {
+function setIgnore() {
   if (!props.profile.ignore_url) return
-  router.post(props.profile.ignore_url, {}, { preserveScroll: true })
+  const mutation = beginCommunityRelationshipMutation(ignoreProcessing, props.profile.is_ignored === true)
+  if (!mutation) return
+  const options = {
+    preserveScroll: true,
+    onFinish: () => finishCommunityRelationshipMutation(ignoreProcessing),
+  }
+  if (mutation.method === 'put') router.put(props.profile.ignore_url, {}, options)
+  else router.delete(props.profile.ignore_url, options)
 }
 
-function toggleFollow() {
+function setFollow() {
   if (!props.profile.follow_url) return
-  router.post(props.profile.follow_url, {}, { preserveScroll: true })
+  const mutation = beginCommunityRelationshipMutation(followProcessing, props.profile.is_following)
+  if (!mutation) return
+  const options = {
+    preserveScroll: true,
+    onFinish: () => finishCommunityRelationshipMutation(followProcessing),
+  }
+  if (mutation.method === 'put') router.put(props.profile.follow_url, {}, options)
+  else router.delete(props.profile.follow_url, options)
 }
 
 function toggleProfileEdit(panel: ProfileEditPanel) {
@@ -442,7 +468,8 @@ function saveWallEdit(
               type="button"
               size="sm"
               :variant="profile.is_following ? 'outline' : 'default'"
-              @click="toggleFollow"
+              :disabled="relationshipProcessing.follow"
+              @click="setFollow"
             >
               {{ profile.is_following ? t('userProfile.unfollow') : t('userProfile.follow') }}
             </Button>
@@ -451,7 +478,8 @@ function saveWallEdit(
               type="button"
               size="sm"
               :variant="profile.is_blocked ? 'outline' : 'destructive'"
-              @click="toggleBlock"
+              :disabled="relationshipProcessing.block"
+              @click="setBlock"
             >
               {{ profile.is_blocked ? t('userProfile.unblock') : t('userProfile.block') }}
             </Button>
@@ -460,7 +488,8 @@ function saveWallEdit(
               type="button"
               size="sm"
               :variant="profile.is_ignored ? 'outline' : 'secondary'"
-              @click="toggleIgnore"
+              :disabled="relationshipProcessing.ignore"
+              @click="setIgnore"
             >
               {{ profile.is_ignored ? t('userProfile.unignore') : t('userProfile.ignore') }}
             </Button>

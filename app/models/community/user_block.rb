@@ -5,7 +5,7 @@ module Community
     belongs_to :blocker, class_name: "User"
     belongs_to :blocked, class_name: "User"
 
-    validates :blocker_id, uniqueness: { scope: :blocked_id }
+    # The unique database index is the concurrency boundary used by SetUserRelationship.
 
     def self.blocked?(viewer, author)
       return false unless viewer && author

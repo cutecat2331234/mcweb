@@ -2,6 +2,8 @@
 import { onBeforeUnmount, onMounted, nextTick, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import Button from '@/components/ui/Button.vue'
+import { beginCommunityRelationshipMutation, finishCommunityRelationshipMutation } from '@/lib/communityRelationshipMutation'
 
 const { t } = useI18n()
 
@@ -45,6 +47,7 @@ export interface UserCardData {
 const open = ref(false)
 const pinned = ref(false)
 const loading = ref(false)
+const followProcessing = ref(false)
 const card = ref<UserCardData | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
 const cardRef = ref<HTMLElement | null>(null)
@@ -66,6 +69,11 @@ async function loadCard() {
   } finally {
     loading.value = false
   }
+}
+
+async function reloadCard() {
+  card.value = null
+  await loadCard()
 }
 
 function clearHoverTimer() {
@@ -177,12 +185,18 @@ function onScrollResize() {
 
 function toggleFollow() {
   if (!card.value?.follow_url) return
-  router.post(card.value.follow_url, {}, {
+
+  const mutation = beginCommunityRelationshipMutation(followProcessing, card.value.following === true)
+  if (!mutation) return
+  const url = card.value.follow_url
+  const options = {
     preserveScroll: true,
-    onSuccess: () => {
-      if (card.value) card.value.following = !card.value.following
-    },
-  })
+    preserveState: true,
+    onSuccess: () => { void reloadCard() },
+    onFinish: () => finishCommunityRelationshipMutation(followProcessing),
+  }
+  if (mutation.method === 'put') router.put(url, {}, options)
+  else router.delete(url, options)
 }
 
 onMounted(() => {
@@ -274,14 +288,16 @@ onBeforeUnmount(() => {
           <div class="mt-3 flex flex-wrap gap-2">
             <Link :href="card.profile_url" class="text-xs text-primary hover:underline">{{ t('components.userHover.viewProfile') }}</Link>
             <Link v-if="card.message_url" :href="card.message_url" class="text-xs text-primary hover:underline">{{ t('components.userHover.sendMessage') }}</Link>
-            <button
+            <Button
               v-if="card.follow_url"
               type="button"
-              class="text-xs text-primary hover:underline"
-              @click="toggleFollow"
+              variant="link"
+              size="sm"
+              :disabled="followProcessing || loading"
+              @click.stop="toggleFollow"
             >
               {{ card.following ? t('components.userHover.unfollow') : t('components.userHover.follow') }}
-            </button>
+            </Button>
           </div>
         </template>
       </div>

@@ -954,6 +954,8 @@
         cannot_share_topic: 无权分享该主题。
         not_group_conversation: 此会话不是群组私信。
         user_not_found: 找不到该用户。
+        relationship_state_required: 请先明确要保存的关系状态。
+        relationship_update_conflict: 关系状态刚刚发生变化，请重试。
         user_not_participant: 该用户不是会话参与者。
         not_allowed: 无权执行此操作。
         invalid_permission_keys: 选择的权限中包含不可用项目。

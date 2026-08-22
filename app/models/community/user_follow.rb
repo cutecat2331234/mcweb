@@ -5,7 +5,7 @@ module Community
     belongs_to :follower, class_name: "User"
     belongs_to :followed, class_name: "User"
 
-    validates :follower_id, uniqueness: { scope: :followed_id }
+    # The unique database index is the concurrency boundary used by SetUserRelationship.
     validate :cannot_follow_self
 
     private

@@ -58,9 +58,9 @@ module Api
           )
         end
 
-        if result.code == "conflict"
+        if result.code&.to_sym == :conflict
           return render(
-            json: { error: "conflict", message: service_error_message(result) },
+            json: { error: result.code.to_s, message: service_error_message(result) },
             status: :conflict
           )
         end

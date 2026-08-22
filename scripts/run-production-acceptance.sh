@@ -139,6 +139,19 @@ export MCWEB_S3_ACCESS_KEY_ID="${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}"
 export MCWEB_S3_SECRET_ACCESS_KEY="${MCWEB_ACCEPTANCE_S3_SECRET_KEY}"
 export MCWEB_S3_ENDPOINT="https://127.0.0.1:${MINIO_PORT}"
 export MCWEB_S3_FORCE_PATH_STYLE="1"
+export MCWEB_BACKUP_S3_BUCKET="mcweb-acceptance-backups"
+export MCWEB_BACKUP_S3_REGION="us-east-1"
+export MCWEB_BACKUP_S3_ACCESS_KEY_ID="${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}"
+export MCWEB_BACKUP_S3_SECRET_ACCESS_KEY="${MCWEB_ACCEPTANCE_S3_SECRET_KEY}"
+export MCWEB_BACKUP_S3_ENDPOINT="https://127.0.0.1:${MINIO_PORT}"
+export MCWEB_BACKUP_S3_FORCE_PATH_STYLE="1"
+export MCWEB_BACKUP_S3_PREFIX="acceptance-backups"
+export MCWEB_RESTORE_S3_BUCKET="mcweb-acceptance-restore"
+export MCWEB_RESTORE_S3_REGION="us-east-1"
+export MCWEB_RESTORE_S3_ACCESS_KEY_ID="${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}"
+export MCWEB_RESTORE_S3_SECRET_ACCESS_KEY="${MCWEB_ACCEPTANCE_S3_SECRET_KEY}"
+export MCWEB_RESTORE_S3_ENDPOINT="https://127.0.0.1:${MINIO_PORT}"
+export MCWEB_RESTORE_S3_FORCE_PATH_STYLE="1"
 export SSL_CERT_FILE="${WORKSPACE}/ca.crt"
 export AWS_CA_BUNDLE="${WORKSPACE}/ca.crt"
 export AWS_EC2_METADATA_DISABLED="true"
@@ -151,6 +164,8 @@ export MCWEB_DATABASE_PASSWORD="${PGPASSWORD}"
 export MCWEB_CONFIG_FILE="${WORKSPACE}/intentionally-absent.env"
 export MCWEB_LOCAL_CONFIG_PATH="${WORKSPACE}/intentionally-absent-local.yml"
 export MCWEB_SECRET_BACKUP_REFERENCE="vault://mcweb/acceptance/versions/v1"
+export MCWEB_RECOVERY_EVIDENCE_DIR="${WORKSPACE}/recovery-evidence"
+export MCWEB_RECOVERY_EVIDENCE_CLASS="local_acceptance"
 
 create_database_pair() {
   local database="$1"
@@ -211,6 +226,7 @@ export MCWEB_BACKUP_DIR="${WORKSPACE}/backups"
 export MCWEB_BACKUP_ID="acceptance-v1"
 bash bin/backup
 BACKUP_PATH="${MCWEB_BACKUP_DIR}/${MCWEB_BACKUP_ID}"
+run_probe delete-primary-object
 bash bin/restore --backup "${BACKUP_PATH}" --verify
 
 echo "[acceptance] guarded restore into a new database"
@@ -229,6 +245,7 @@ bash bin/restore \
   --apply \
   --target-database "${RESTORE_DATABASE}" \
   --confirm "RESTORE:${MCWEB_BACKUP_ID}"
+export MCWEB_S3_BUCKET="${MCWEB_RESTORE_S3_BUCKET}"
 bundle exec rails db:prepare
 run_probe verify-restored
 

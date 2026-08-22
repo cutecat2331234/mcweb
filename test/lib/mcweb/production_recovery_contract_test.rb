@@ -3,12 +3,13 @@
 require "test_helper"
 require "open3"
 require "fileutils"
+require "json"
 require "shellwords"
 require "tmpdir"
 
 class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
   ROOT = Rails.root
-  SCRIPT_NAMES = %w[backup restore update rollback].freeze
+  SCRIPT_NAMES = %w[backup backup-maintenance restore update rollback].freeze
   BASH_PROBE_MARKER = "mcweb-bash-ready"
 
   test "production recovery scripts are valid Bash programs" do
@@ -123,6 +124,12 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
       assert_path_exists File.join(backup, "SHA256SUMS")
       assert_not File.exist?(File.join(backup, "mcweb.env"))
       assert_not_includes File.read(File.join(backup, "configuration.env")), "must-not-be-copied"
+      backup_reports = Dir[File.join(backup_root, ".backup-evidence", "backup-contract-001-*.json")]
+      assert_equal 1, backup_reports.size
+      backup_report = JSON.parse(File.binread(backup_reports.first))
+      assert_equal "mcweb-backup-run-evidence-v1", backup_report.fetch("format")
+      assert_equal "success", backup_report.fetch("outcome")
+      assert_not_includes JSON.generate(backup_report), "must-not-be-copied"
 
       restore_stdout, restore_stderr, restore_status = run_bash(
         "bin/restore",
@@ -185,6 +192,49 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
         "contract object",
         File.binread(File.join(storage_target, "objects", "aa", "blob"))
       )
+
+      evidence_dir = File.join(backup_root, "recovery-evidence")
+      reports = Dir[File.join(evidence_dir, "restore-contract-001-*.json")].map do |path|
+        JSON.parse(File.binread(path))
+      end
+      assert_operator reports.size, :>=, 3
+      assert reports.any? { |report| report["outcome"] == "failure" }
+      assert reports.any? { |report| report["outcome"] == "success" }
+      reports.each do |report|
+        serialized = JSON.generate(report)
+        assert_not_includes serialized, "must-not-be-copied"
+        assert_not_includes serialized, "isolated-contract-database"
+        assert_equal "mcweb-recovery-evidence-v1", report.fetch("format")
+      end
+
+      write_executable(
+        File.join(fake_bin, "pg_dump"),
+        <<~BASH
+          #!/usr/bin/env bash
+          set -euo pipefail
+          printf '%s\n' 'simulated dump failure with secret must-not-be-copied' >&2
+          exit 41
+        BASH
+      )
+      failed_stdout, failed_stderr, failed_status = run_bash(
+        "bin/backup",
+        fake_bin:,
+        environment: {
+          "MCWEB_APPLICATION_ROOT" => bash_path(ROOT),
+          "MCWEB_CONFIG_FILE" => bash_path(config_file),
+          "MCWEB_BACKUP_ID" => "contract-failure"
+        }
+      )
+      refute failed_status.success?, failed_stdout
+      assert_includes failed_stderr, "simulated dump failure"
+      failure_reports = Dir[
+        File.join(backup_root, ".backup-evidence", "backup-contract-failure-*.json")
+      ]
+      assert_equal 1, failure_reports.size
+      failure_report = JSON.parse(File.binread(failure_reports.first))
+      assert_equal "failure", failure_report.fetch("outcome")
+      assert_equal "database_dump", failure_report.fetch("stage")
+      assert_not_includes JSON.generate(failure_report), "must-not-be-copied"
     end
   end
 
@@ -201,7 +251,8 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
 
     assert_no_match(/\bcp\b[^\n]*mcweb\.env/, source)
     assert_includes source, "pg_dump --format=custom"
-    assert_includes source, '--dbname="${database_target}"'
+    assert_includes source, 'PGDATABASE="${DATABASE_URL}" DATABASE_URL=""'
+    assert_includes source, 'PGPASSWORD="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}"'
     assert_includes source, "pg_restore --list"
     assert_includes source, "mcweb.env.gpg"
     assert_includes source, "MCWEB_BACKUP_GPG_RECIPIENT"
@@ -215,7 +266,11 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
     assert_includes source, ".active-storage-snapshot."
     assert_includes source, "must not be inside MCWEB_LOCAL_STORAGE_ROOT"
     assert_includes source, "must not be inside MCWEB_BACKUP_DIR"
-    assert_includes source, "MCWEB_BACKUP_EXPECTED_STORAGE_SERVICE"
+    assert_includes source, "scripts/object-storage-archive.rb snapshot"
+    assert_includes source, "MCWEB_BACKUP_S3_BUCKET"
+    assert_includes source, 'format: "mcweb-backup-v2"'
+    assert_includes source, 'inventory_format: "mcweb-object-snapshot-v1"'
+    assert_includes source, "MCWEB_BACKUP_S3_BUCKET must differ from MCWEB_S3_BUCKET"
     assert_includes source, "backup-manifest.json"
     assert_includes source, "SHA256SUMS"
     assert_includes source,
@@ -231,6 +286,13 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
       MCWEB_SMTP_PASSWORD
       MCWEB_S3_ACCESS_KEY_ID
       MCWEB_S3_SECRET_ACCESS_KEY
+      MCWEB_S3_SESSION_TOKEN
+      MCWEB_BACKUP_S3_ACCESS_KEY_ID
+      MCWEB_BACKUP_S3_SECRET_ACCESS_KEY
+      MCWEB_BACKUP_S3_SESSION_TOKEN
+      MCWEB_RESTORE_S3_ACCESS_KEY_ID
+      MCWEB_RESTORE_S3_SECRET_ACCESS_KEY
+      MCWEB_RESTORE_S3_SESSION_TOKEN
       REDIS_URL
       RAILS_INBOUND_EMAIL_PASSWORD
     ].each do |secret_name|
@@ -258,16 +320,42 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
     assert_includes source, "sha256sum --check --strict SHA256SUMS"
     assert_includes source, "pg_restore --list"
     assert_includes source, "pg_restore --exit-on-error"
+    assert_includes source, 'PGDATABASE="${DATABASE_URL}" DATABASE_URL=""'
     assert_includes source, "--single-transaction"
     assert_includes source, "local storage archive contains an unlisted file"
     assert_includes source, "Dry run only: no database, storage, or configuration was changed."
+    assert_includes source, "scripts/object-storage-archive.rb verify"
+    assert_includes source, "scripts/object-storage-archive.rb restore"
+    assert_includes source, "mcweb-recovery-evidence-v1"
+    assert_includes source, "EXTERNAL-RESTORE-DRILL:"
+    assert_includes source, "legacy private-S3 backup cannot be applied"
 
     apply_body = source.slice(source.index("apply_restore()")...source.index("parse_arguments()"))
     assert_ordered apply_body,
       "validate_apply_guards",
       "stage_local_storage",
+      "scripts/object-storage-archive.rb restore",
       "stage_secret_configuration",
       "pg_restore --exit-on-error"
+  end
+
+  test "scheduled backup maintenance verifies before bounded retention" do
+    source = script("backup-maintenance")
+    timer = ROOT.join("config", "templates", "mcweb-backup.timer").read
+    service = ROOT.join("config", "templates", "mcweb-backup.service").read
+
+    assert_includes source, "flock --nonblock"
+    assert_includes source, "MCWEB_BACKUP_RETENTION_DAYS"
+    assert_includes source, "scripts/prune-backups.rb"
+    assert_ordered source,
+      "flock --nonblock",
+      "bin/backup",
+      "bin/restore",
+      "scripts/prune-backups.rb"
+    assert_includes timer, "Persistent=true"
+    assert_includes timer, "OnCalendar="
+    assert_includes service, "NoNewPrivileges=true"
+    assert_includes service, "EnvironmentFile=/etc/mcweb/mcweb.env"
   end
 
   test "local backup inventory is derived from the completed archive" do

@@ -6,6 +6,13 @@ umask 077
 CONFIG_FILE="${MCWEB_CONFIG_FILE:-/etc/mcweb/mcweb.env}"
 APP_ROOT="${MCWEB_APPLICATION_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 STAGING_PATH=""
+BACKUP_STAGE="startup"
+BACKUP_ERROR_CODE="backup_failed"
+BACKUP_REPORT_ENABLED=0
+BACKUP_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+BACKUP_EVIDENCE_DIR="${MCWEB_BACKUP_EVIDENCE_DIR:-}"
+BACKUP_ID_FOR_REPORT=""
+BACKUP_STORAGE_MODE_FOR_REPORT="unknown"
 
 die() {
   echo "Backup failed: $*" >&2
@@ -20,6 +27,117 @@ report_failed_backup() {
   if [[ -n "${STAGING_PATH}" ]]; then
     echo "Backup staging directory retained for inspection: ${STAGING_PATH}" >&2
   fi
+}
+
+initialize_backup_evidence() {
+  local backup_dir="$1"
+  local canonical_evidence
+
+  BACKUP_ID_FOR_REPORT="$2"
+  if [[ -z "${BACKUP_EVIDENCE_DIR}" ]]; then
+    BACKUP_EVIDENCE_DIR="${backup_dir}/.backup-evidence"
+  fi
+  [[ "${BACKUP_EVIDENCE_DIR}" = /* ]] || die "backup evidence directory must be absolute"
+  canonical_evidence="$(realpath --canonicalize-missing -- "${BACKUP_EVIDENCE_DIR}")"
+  [[ "${BACKUP_EVIDENCE_DIR}" == "${canonical_evidence}" ]] ||
+    die "backup evidence directory must be canonical"
+  case "${canonical_evidence}" in
+    /|/etc|/opt|/usr|/var|/var/backups)
+      die "backup evidence directory is too broad"
+      ;;
+  esac
+  [[ ! -L "${BACKUP_EVIDENCE_DIR}" ]] ||
+    die "backup evidence directory must not be a symbolic link"
+  case "${canonical_evidence}/" in
+    "${backup_dir}/${BACKUP_ID_FOR_REPORT}/"*)
+      die "backup evidence directory must not be inside the immutable backup target"
+      ;;
+  esac
+
+  mkdir -p "${BACKUP_EVIDENCE_DIR}"
+  chmod 700 "${BACKUP_EVIDENCE_DIR}"
+  BACKUP_REPORT_ENABLED=1
+  trap finalize_backup EXIT
+}
+
+write_backup_report() {
+  local status="$1"
+  local outcome error_code error_class finished_at report_name report_tmp
+  local manifest_sha256=""
+
+  [[ "${BACKUP_REPORT_ENABLED}" == "1" ]] || return 0
+  outcome="failure"
+  error_code="${BACKUP_ERROR_CODE:-backup_failed}"
+  error_class="process_exit"
+  if [[ "${status}" == "0" ]]; then
+    outcome="success"
+    error_code=""
+    error_class=""
+  fi
+  if [[ "${outcome}" == "success" && -f "${MCWEB_BACKUP_DIR:-/var/backups/mcweb}/${BACKUP_ID_FOR_REPORT}/backup-manifest.json" ]]; then
+    manifest_sha256="$(
+      sha256sum "${MCWEB_BACKUP_DIR:-/var/backups/mcweb}/${BACKUP_ID_FOR_REPORT}/backup-manifest.json" |
+        awk '{print $1}'
+    )" || return 1
+    [[ "${manifest_sha256}" =~ ^[0-9a-f]{64}$ ]] || return 1
+  fi
+  finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  report_name="backup-${BACKUP_ID_FOR_REPORT}-$(date -u +%Y%m%dT%H%M%SZ)-$$.json"
+  report_tmp="$(mktemp "${BACKUP_EVIDENCE_DIR}/.backup-report.XXXXXX")" || return 1
+
+  REPORT_OUTCOME="${outcome}" \
+  REPORT_STAGE="${BACKUP_STAGE}" \
+  REPORT_ERROR_CODE="${error_code}" \
+  REPORT_ERROR_CLASS="${error_class}" \
+  REPORT_BACKUP_ID="${BACKUP_ID_FOR_REPORT}" \
+  REPORT_STORAGE_MODE="${BACKUP_STORAGE_MODE_FOR_REPORT}" \
+  REPORT_MANIFEST_SHA256="${manifest_sha256}" \
+  REPORT_STARTED_AT="${BACKUP_STARTED_AT}" \
+  REPORT_FINISHED_AT="${finished_at}" \
+    ruby -rjson -e '
+      payload = {
+        format: "mcweb-backup-run-evidence-v1",
+        outcome: ENV.fetch("REPORT_OUTCOME"),
+        stage: ENV.fetch("REPORT_STAGE"),
+        error_code: ENV.fetch("REPORT_ERROR_CODE").then { |value| value.empty? ? nil : value },
+        error_class: ENV.fetch("REPORT_ERROR_CLASS").then { |value| value.empty? ? nil : value },
+        backup_id: ENV.fetch("REPORT_BACKUP_ID"),
+        storage_mode: ENV.fetch("REPORT_STORAGE_MODE"),
+        manifest_sha256: ENV.fetch("REPORT_MANIFEST_SHA256").then { |value| value.empty? ? nil : value },
+        started_at: ENV.fetch("REPORT_STARTED_AT"),
+        finished_at: ENV.fetch("REPORT_FINISHED_AT")
+      }
+      File.binwrite(ARGV.fetch(0), JSON.pretty_generate(payload) << "\n")
+    ' "${report_tmp}" || {
+      rm --force -- "${report_tmp}"
+      return 1
+    }
+  chmod 600 "${report_tmp}" || {
+    rm --force -- "${report_tmp}"
+    return 1
+  }
+  mv --no-clobber --no-target-directory \
+    "${report_tmp}" "${BACKUP_EVIDENCE_DIR}/${report_name}" || {
+      rm --force -- "${report_tmp}"
+      return 1
+    }
+}
+
+finalize_backup() {
+  local status=$?
+  local report_status=0
+
+  trap - EXIT
+  report_failed_backup || report_status=$?
+  write_backup_report "${status}" || report_status=$?
+  if [[ "${status}" == "0" && "${report_status}" != "0" ]]; then
+    echo "Backup failed: backup evidence could not be persisted" >&2
+    exit "${report_status}"
+  fi
+  if [[ "${report_status}" != "0" ]]; then
+    echo "Backup evidence persistence also failed" >&2
+  fi
+  exit "${status}"
 }
 
 load_runtime_environment() {
@@ -41,6 +159,7 @@ write_safe_configuration() {
     RAILS_SERVE_STATIC_FILES
     BUNDLE_DEPLOYMENT
     BUNDLE_WITHOUT
+    MCWEB_DATABASE_USERNAME
     MCWEB_DATABASE_NAME
     MCWEB_DATABASE_HOST
     MCWEB_DATABASE_PORT
@@ -61,6 +180,13 @@ write_safe_configuration() {
     MCWEB_S3_REGION
     MCWEB_S3_ENDPOINT
     MCWEB_S3_FORCE_PATH_STYLE
+    MCWEB_BACKUP_S3_BUCKET
+    MCWEB_BACKUP_S3_REGION
+    MCWEB_BACKUP_S3_ENDPOINT
+    MCWEB_BACKUP_S3_FORCE_PATH_STYLE
+    MCWEB_BACKUP_S3_PREFIX
+    MCWEB_BACKUP_RETENTION_DAYS
+    MCWEB_BACKUP_RETENTION_COUNT
     MCWEB_ATTACHMENT_SCANNER
     MCWEB_CLAMAV_COMMAND
     MCWEB_CLAMD_HOST
@@ -76,7 +202,7 @@ write_safe_configuration() {
       value="${!key}"
       [[ "${value}" != *$'\n'* && "${value}" != *$'\r'* ]] ||
         die "refusing multiline value in non-secret configuration: ${key}"
-      if [[ "${key}" == "MCWEB_S3_ENDPOINT" &&
+      if [[ ( "${key}" == "MCWEB_S3_ENDPOINT" || "${key}" == "MCWEB_BACKUP_S3_ENDPOINT" ) &&
             -n "${value}" &&
             ! "${value}" =~ ^https://[A-Za-z0-9._:\[\]-]+/?$ ]]; then
         die "refusing a credential-bearing or invalid S3 endpoint in non-secret configuration"
@@ -127,43 +253,12 @@ write_secret_configuration_artifact() {
 
 write_object_storage_inventory() {
   local output="$1"
+  local backup_id="$2"
 
-  MCWEB_BACKUP_OBJECT_INVENTORY="${output}" \
-    MCWEB_BACKUP_EXPECTED_STORAGE_SERVICE="private_s3" \
-    RAILS_ENV="${RAILS_ENV:-production}" \
-    bundle exec rails runner - <<'RUBY'
-require "json"
-
-output = ENV.fetch("MCWEB_BACKUP_OBJECT_INVENTORY")
-expected_service = ENV.fetch("MCWEB_BACKUP_EXPECTED_STORAGE_SERVICE")
-missing = 0
-wrong_service = 0
-
-File.open(output, "wb", 0o600) do |file|
-  ActiveStorage::Blob.order(:id).find_each do |blob|
-    wrong_service += 1 unless blob.service_name == expected_service
-    service = blob.service
-    present = service.exist?(blob.key)
-    missing += 1 unless present
-    file.puts(
-      JSON.generate(
-        id: blob.id,
-        key: blob.key,
-        service_name: blob.service_name,
-        filename: blob.filename.to_s,
-        byte_size: blob.byte_size,
-        checksum: blob.checksum,
-        content_type: blob.content_type,
-        created_at: blob.created_at&.iso8601(6),
-        object_present: present
-      )
-    )
-  end
-end
-
-abort("Active Storage inventory contains #{missing} missing object(s)") if missing.positive?
-abort("Active Storage inventory contains #{wrong_service} object(s) on an unexpected service") if wrong_service.positive?
-RUBY
+  RAILS_ENV="${RAILS_ENV:-production}" \
+    bundle exec ruby scripts/object-storage-archive.rb snapshot \
+      --inventory "${output}" \
+      --backup-id "${backup_id}"
 }
 
 write_local_storage_inventory() {
@@ -246,28 +341,49 @@ write_backup_manifest() {
   local storage_mode="$4"
   local storage_inventory="$5"
   local storage_archive="$6"
+  local source_bucket="$7"
+  local backup_bucket="$8"
 
-  cat > "${target}/backup-manifest.json" <<JSON
-{
-  "format": "mcweb-backup-v1",
-  "backup_id": "${backup_id}",
-  "created_at": "${created_at}",
-  "database": {
-    "path": "database.dump",
-    "format": "postgresql-custom"
-  },
-  "active_storage": {
-    "mode": "${storage_mode}",
-    "inventory": "${storage_inventory}",
-    "archive": ${storage_archive}
-  },
-  "configuration": {
-    "non_secret": "configuration.env",
-    "secret_artifact": "${SECRET_ARTIFACT}",
-    "secret_artifact_kind": "${SECRET_ARTIFACT_KIND}"
-  }
-}
-JSON
+  MANIFEST_TARGET="${target}/backup-manifest.json" \
+  MANIFEST_BACKUP_ID="${backup_id}" \
+  MANIFEST_CREATED_AT="${created_at}" \
+  MANIFEST_STORAGE_MODE="${storage_mode}" \
+  MANIFEST_STORAGE_INVENTORY="${storage_inventory}" \
+  MANIFEST_STORAGE_ARCHIVE="${storage_archive}" \
+  MANIFEST_SOURCE_BUCKET="${source_bucket}" \
+  MANIFEST_BACKUP_BUCKET="${backup_bucket}" \
+  MANIFEST_SECRET_ARTIFACT="${SECRET_ARTIFACT}" \
+  MANIFEST_SECRET_KIND="${SECRET_ARTIFACT_KIND}" \
+    ruby -rjson -e '
+      mode = ENV.fetch("MANIFEST_STORAGE_MODE")
+      archive = ENV.fetch("MANIFEST_STORAGE_ARCHIVE")
+      remote_snapshot = if mode == "private_s3"
+        {
+          provider: "s3",
+          inventory_format: "mcweb-object-snapshot-v1",
+          source_bucket: ENV.fetch("MANIFEST_SOURCE_BUCKET"),
+          backup_bucket: ENV.fetch("MANIFEST_BACKUP_BUCKET")
+        }
+      end
+      payload = {
+        format: "mcweb-backup-v2",
+        backup_id: ENV.fetch("MANIFEST_BACKUP_ID"),
+        created_at: ENV.fetch("MANIFEST_CREATED_AT"),
+        database: { path: "database.dump", format: "postgresql-custom" },
+        active_storage: {
+          mode:,
+          inventory: ENV.fetch("MANIFEST_STORAGE_INVENTORY"),
+          archive: archive == "null" ? nil : archive,
+          remote_snapshot:
+        },
+        configuration: {
+          non_secret: "configuration.env",
+          secret_artifact: ENV.fetch("MANIFEST_SECRET_ARTIFACT"),
+          secret_artifact_kind: ENV.fetch("MANIFEST_SECRET_KIND")
+        }
+      }
+      File.binwrite(ENV.fetch("MANIFEST_TARGET"), JSON.pretty_generate(payload) << "\n")
+    '
 }
 
 write_checksums() {
@@ -295,6 +411,19 @@ write_checksums() {
   )
 }
 
+run_pg_dump() {
+  if [[ -n "${DATABASE_URL:-}" ]]; then
+    PGDATABASE="${DATABASE_URL}" DATABASE_URL="" pg_dump "$@"
+  else
+    PGHOST="${MCWEB_DATABASE_HOST:-${PGHOST:-}}" \
+    PGPORT="${MCWEB_DATABASE_PORT:-${PGPORT:-}}" \
+    PGUSER="${MCWEB_DATABASE_USERNAME:-${PGUSER:-}}" \
+    PGPASSWORD="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}" \
+    PGDATABASE="${MCWEB_DATABASE_NAME:-${PGDATABASE:-mcweb_production}}" \
+      pg_dump "$@"
+  fi
+}
+
 main() {
   require_command pg_dump
   require_command pg_restore
@@ -317,9 +446,9 @@ main() {
   local backup_dir="${MCWEB_BACKUP_DIR:-/var/backups/mcweb}"
   local backup_id="${MCWEB_BACKUP_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
   local created_at
-  local target staging database_target storage_mode storage_root
+  local target staging storage_mode storage_root
   local storage_inventory storage_archive latest_tmp canonical_backup_dir
-  local canonical_storage_root
+  local canonical_storage_root source_bucket backup_bucket
 
   [[ "${backup_id}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
     die "MCWEB_BACKUP_ID contains unsupported characters"
@@ -335,10 +464,21 @@ main() {
   [[ ! -L "${backup_dir}" ]] || die "MCWEB_BACKUP_DIR must not be a symbolic link"
 
   storage_mode="${MCWEB_ACTIVE_STORAGE_SERVICE:-private_s3}"
+  BACKUP_STORAGE_MODE_FOR_REPORT="${storage_mode}"
   case "${storage_mode}" in
     private_s3)
+      source_bucket="${MCWEB_S3_BUCKET:-}"
+      backup_bucket="${MCWEB_BACKUP_S3_BUCKET:-}"
+      [[ "${source_bucket}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+        die "MCWEB_S3_BUCKET is missing or invalid"
+      [[ "${backup_bucket}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+        die "MCWEB_BACKUP_S3_BUCKET is missing or invalid"
+      [[ "${source_bucket}" != "${backup_bucket}" ]] ||
+        die "MCWEB_BACKUP_S3_BUCKET must differ from MCWEB_S3_BUCKET"
       ;;
     local)
+      source_bucket=""
+      backup_bucket=""
       storage_root="${MCWEB_LOCAL_STORAGE_ROOT:-}"
       [[ -n "${storage_root}" ]] ||
         die "MCWEB_LOCAL_STORAGE_ROOT is required when Active Storage uses local disk"
@@ -374,18 +514,19 @@ main() {
 
   mkdir -p "${backup_dir}"
   chmod 700 "${backup_dir}"
+  initialize_backup_evidence "${backup_dir}" "${backup_id}"
   mkdir "${staging}"
   STAGING_PATH="${staging}"
-  trap report_failed_backup EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
   trap 'exit 129' HUP
 
-  database_target="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}"
-  pg_dump --format=custom --no-owner --no-privileges \
-    --file="${staging}/database.dump" --dbname="${database_target}"
+  BACKUP_STAGE="database_dump"
+  run_pg_dump --format=custom --no-owner --no-privileges \
+    --file="${staging}/database.dump"
   pg_restore --list "${staging}/database.dump" >/dev/null
 
+  BACKUP_STAGE="configuration_snapshot"
   write_safe_configuration "${staging}/configuration.env"
   SECRET_ARTIFACT=""
   SECRET_ARTIFACT_KIND=""
@@ -393,24 +534,30 @@ main() {
 
   case "${storage_mode}" in
     private_s3)
-      write_object_storage_inventory "${staging}/active_storage_objects.ndjson"
+      BACKUP_STAGE="object_snapshot"
+      write_object_storage_inventory "${staging}/active_storage_objects.ndjson" "${backup_id}"
       storage_inventory="active_storage_objects.ndjson"
       storage_archive="null"
       ;;
     local)
+      BACKUP_STAGE="local_storage_snapshot"
       write_local_storage_inventory "${storage_root}" "${staging}"
       storage_inventory="active_storage_files.sha256"
-      storage_archive='"active_storage.tar.gz"'
+      storage_archive="active_storage.tar.gz"
       ;;
   esac
 
+  BACKUP_STAGE="manifest_write"
   write_backup_manifest \
     "${staging}" "${backup_id}" "${created_at}" \
-    "${storage_mode}" "${storage_inventory}" "${storage_archive}"
+    "${storage_mode}" "${storage_inventory}" "${storage_archive}" \
+    "${source_bucket}" "${backup_bucket}"
+  BACKUP_STAGE="artifact_checksums"
   write_checksums "${staging}"
 
   chmod 700 "${staging}"
   find "${staging}" -type f -exec chmod 600 {} +
+  BACKUP_STAGE="publication"
   mv --no-clobber --no-target-directory "${staging}" "${target}"
   [[ ! -e "${staging}" ]] ||
     die "backup target appeared during publication: ${target}"
@@ -419,8 +566,10 @@ main() {
   printf '%s\n' "${target}" > "${latest_tmp}"
   chmod 600 "${latest_tmp}"
   mv --no-target-directory "${latest_tmp}" "${backup_dir}/latest"
-  trap - EXIT INT TERM HUP
+  trap - INT TERM HUP
   STAGING_PATH=""
+  BACKUP_STAGE="completed"
+  BACKUP_ERROR_CODE=""
 
   echo "Backup completed and verified: ${target}"
 }

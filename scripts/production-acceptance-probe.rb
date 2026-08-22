@@ -24,7 +24,9 @@ module ProductionAcceptanceProbe
 
     case ENV.fetch("MCWEB_ACCEPTANCE_ACTION")
     when "seed-fresh"
-      ensure_bucket!
+      ensure_bucket!(bucket)
+      ensure_bucket!(ENV.fetch("MCWEB_BACKUP_S3_BUCKET"))
+      ensure_bucket!(ENV.fetch("MCWEB_RESTORE_S3_BUCKET"))
       ensure_owner!
       SiteSetting.set(MARKER_KEY, MARKER_VALUE)
       blob = ActiveStorage::Blob.create_and_upload!(
@@ -37,6 +39,12 @@ module ProductionAcceptanceProbe
       abort("object upload did not reach S3") unless blob.service.exist?(blob.key)
       redis_round_trip!
       report(database:, blob_key: blob.key, phase: "fresh")
+    when "delete-primary-object"
+      blob = ActiveStorage::Blob.find_by(filename: "production-acceptance.txt")
+      abort("object metadata is missing before source deletion") unless blob
+      client.delete_object(bucket:, key: blob.key)
+      abort("primary object still exists after deletion") if blob.service.exist?(blob.key)
+      report(database:, phase: "primary-object-deleted")
     when "verify-fresh"
       verify_current_schema!
       verify_marker!
@@ -63,8 +71,8 @@ module ProductionAcceptanceProbe
     end
   end
 
-  def ensure_bucket!
-    client.create_bucket(bucket: bucket)
+  def ensure_bucket!(name)
+    client.create_bucket(bucket: name)
   rescue Aws::S3::Errors::BucketAlreadyOwnedByYou, Aws::S3::Errors::BucketAlreadyExists
     nil
   end

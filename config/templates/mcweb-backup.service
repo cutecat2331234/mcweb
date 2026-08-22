@@ -1,0 +1,22 @@
+[Unit]
+Description=McWeb verified backup and retention maintenance
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/mcweb/current
+EnvironmentFile=/etc/mcweb/mcweb.env
+Environment=PATH=/home/mcweb/.rbenv/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=MCWEB_RECOVERY_EVIDENCE_CLASS=operator_preflight
+ExecStart=/bin/bash /opt/mcweb/current/bin/backup-maintenance
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+ProtectHome=read-only
+ProtectSystem=full
+ReadWritePaths=/var/backups/mcweb /var/lib/mcweb /var/log/mcweb /run/lock
+
+[Install]
+WantedBy=multi-user.target

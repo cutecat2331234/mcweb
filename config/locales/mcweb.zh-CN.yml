@@ -1236,6 +1236,18 @@
         upload_quota_invalid: 无法核算本次上传。
         upload_quota_exceeded: 已达到上传存储容量或已接受上传次数配额。
         upload_cleanup_failed: 上传文件清理失败，系统将自动重试。
+        secure_evidence_subject_unavailable: 证据所属项目不存在或你无权访问。
+        secure_evidence_idempotency_key_invalid: 证据请求标识无效。
+        secure_evidence_idempotency_conflict: 该证据请求标识已用于其他内容。
+        secure_evidence_file_limit_exceeded: 此项目已达到证据文件数量上限。
+        secure_evidence_total_size_exceeded: 此项目已达到证据文件总容量上限。
+        secure_evidence_retention_invalid: 暂时无法确定证据保留策略。
+        secure_evidence_retention_active: 该证据仍在保留期内。
+        secure_evidence_retention_hold: 该证据受保留锁定保护。
+        secure_evidence_upload_missing: 证据上传记录不存在。
+        secure_evidence_creation_failed: 无法创建证据附件。
+        secure_evidence_cleanup_failed: 证据附件清理失败，系统将自动重试。
+        secure_evidence_account_closure_failed: 关户前无法确认安全证据的保留状态。
         inline_upload_expired: 内联图片在内容保存前已过期，请重新上传。
         post_moderation_unauthorized: 无权审核帖子。
         post_not_pending_approval: 帖子不在待审核状态。

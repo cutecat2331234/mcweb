@@ -34,6 +34,7 @@ schema 中尚未实现的模拟项单独列出；不得用活动计划中的目�
 | [`API.md`](API.md) | 现行 API 参考 | API、认证、权限范围和外部集成任务的契约依据 |
 | [`APPS_AND_PLUGINS.md`](APPS_AND_PLUGINS.md) | 现行架构参考 | 区分平台大应用、受信插件和扩展边界；文中的未来方向需先进入活动路线图再开发 |
 | [`ATTACHMENT_SECURITY.md`](ATTACHMENT_SECURITY.md) | 现行附件安全参考 | 内容识别、扫描、隔离、配额、清理、下载边界与上线检查 |
+| [`secure-evidence-attachments-contract.md`](secure-evidence-attachments-contract.md) | 现行安全证据合同 | 下游主体注册、幂等上传、授权下载、保留、审计与身份生命周期边界 |
 | [`code-completion-and-developer-mode-plan.md`](code-completion-and-developer-mode-plan.md) | 活动开发计划 | Developer Mode、代码闭环、阶段依赖与验收门禁 |
 | [`COMMUNITY_QUERY_PLAN_OPERATIONS.md`](COMMUNITY_QUERY_PLAN_OPERATIONS.md) | 现行数据库运维参考 | 社区高频查询的 PostgreSQL 计划基线、脱敏复核入口和容量边界 |
 | [`OPERATIONS_METRICS.md`](OPERATIONS_METRICS.md) | 现行运行指标参考 | 低基数采集、分钟原子累加、隐私合同、阈值、保留和后台趋势查询预算 |

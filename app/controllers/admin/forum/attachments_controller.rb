@@ -63,7 +63,7 @@ module Admin
       end
 
       def retry_scan
-        upload = ::Community::Upload.find(params[:id])
+        upload = forum_managed_uploads.find(params[:id])
         result = ::Community::RetryUploadScan.call(upload: upload)
         return redirect_retry_failure("scan") if result.failure?
 
@@ -82,7 +82,7 @@ module Admin
       end
 
       def retry_cleanup
-        upload = ::Community::Upload.find(params[:id])
+        upload = forum_managed_uploads.find(params[:id])
         result = ::Community::RetryUploadCleanup.call(upload: upload)
         return redirect_retry_failure("cleanup") if result.failure?
 
@@ -103,7 +103,7 @@ module Admin
       end
 
       def release_quarantine
-        upload = ::Community::Upload.find(params[:id])
+        upload = forum_managed_uploads.find(params[:id])
         result = ::Community::ReleaseQuarantinedUpload.call(
           upload: upload,
           actor: current_user,
@@ -142,7 +142,7 @@ module Admin
       end
 
       def revoke_release
-        upload = ::Community::Upload.find(params[:id])
+        upload = forum_managed_uploads.find(params[:id])
         result = ::Community::RevokeQuarantinedUploadRelease.call(
           upload: upload,
           actor: current_user,
@@ -205,7 +205,7 @@ module Admin
       end
 
       def filtered_uploads(filter)
-        scope = ::Community::Upload.all
+        scope = forum_managed_uploads
 
         case filter
         when "scan_pending"
@@ -226,7 +226,7 @@ module Admin
       end
 
       def quarantined_uploads
-        ::Community::Upload.where(
+        forum_managed_uploads.where(
           "scan_status = :infected OR " \
           "(scan_status = :error AND quarantined_at IS NOT NULL)",
           infected: "infected",
@@ -236,28 +236,28 @@ module Admin
 
       def filter_counts
         {
-          all: ::Community::Upload.count,
-          scan_pending: ::Community::Upload
+          all: forum_managed_uploads.count,
+          scan_pending: forum_managed_uploads
             .where(scan_status: %w[pending error], quarantined_at: nil)
             .count,
           quarantined: quarantined_uploads.count,
-          cleanup_failed: ::Community::Upload.where(status: "cleanup_failed").count,
-          cleaned: ::Community::Upload.where(status: "cleaned").count,
+          cleanup_failed: forum_managed_uploads.where(status: "cleanup_failed").count,
+          cleaned: forum_managed_uploads.where(status: "cleaned").count,
           orphans: ::Community::PostAttachment.unlinked.count
         }
       end
 
       def security_summary
-        active = ::Community::Upload.counted_toward_quota
+        active = forum_managed_uploads.counted_toward_quota
 
         {
           active: active.count,
-          scan_pending: ::Community::Upload
+          scan_pending: forum_managed_uploads
             .where(scan_status: %w[pending error], quarantined_at: nil)
             .count,
           quarantined: quarantined_uploads.count,
-          cleanup_failed: ::Community::Upload.where(status: "cleanup_failed").count,
-          cleaned: ::Community::Upload.where(status: "cleaned").count
+          cleanup_failed: forum_managed_uploads.where(status: "cleanup_failed").count,
+          cleaned: forum_managed_uploads.where(status: "cleaned").count
         }
       end
 
@@ -273,6 +273,10 @@ module Admin
           count: usage.fetch(:count),
           hourlyCount: usage.fetch(:hourly_count)
         }
+      end
+
+      def forum_managed_uploads
+        ::Community::Upload.where(kind: %w[inline_image post_attachment])
       end
 
       def cleanup_attachment!(attachment)

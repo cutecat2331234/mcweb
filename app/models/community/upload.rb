@@ -4,7 +4,7 @@ module Community
   class Upload < ApplicationRecord
     self.table_name = "forum_uploads"
 
-    KINDS = %w[inline_image post_attachment].freeze
+    KINDS = %w[inline_image post_attachment secure_evidence_attachment].freeze
     STATUSES = %w[reserved stored linked cleanup_pending cleanup_failed cleaned].freeze
     SCAN_STATUSES = %w[pending clean infected error].freeze
     MANUAL_REVIEW_STATUSES = %w[none released revoked].freeze
@@ -32,6 +32,10 @@ module Community
     belongs_to :manual_review_revoked_by,
       class_name: "User",
       optional: true
+    belongs_to :secure_evidence_attachment,
+      class_name: "SecureEvidence::Attachment",
+      optional: true,
+      inverse_of: :upload_record
 
     enum :kind, KINDS.index_by(&:itself), validate: true, prefix: true
     enum :status, STATUSES.index_by(&:itself), validate: true, prefix: true
@@ -56,7 +60,7 @@ module Community
         })
     }
     scope :scan_due, ->(at = Time.current) {
-      due = where(kind: "post_attachment", scan_status: %w[pending error])
+      due = where(kind: %w[post_attachment secure_evidence_attachment], scan_status: %w[pending error])
         .where(
           "next_scan_at <= :at OR " \
           "(scan_status = 'pending' AND scan_started_at <= :stale)",
@@ -69,7 +73,7 @@ module Community
       else
         due.or(
           where(
-            kind: "post_attachment",
+            kind: %w[post_attachment secure_evidence_attachment],
             scan_status: "clean",
             scanner: "developer_mode",
             scan_result_code: "dev_bypassed"

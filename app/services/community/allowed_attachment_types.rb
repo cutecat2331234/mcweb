@@ -38,9 +38,11 @@ module Community
       [ mb, 1 ].max.megabytes
     end
 
-    def inspect_file(filename:, io:)
+    def inspect_file(filename:, io:, allowed_extensions: extensions, max_bytes: max_size)
       ext = File.extname(filename.to_s).delete_prefix(".").downcase
       return Community::AttachmentContentInspector::Result.new(status: :unsupported) if ext.blank?
+      normalized_extensions = Array(allowed_extensions).map { |item| item.to_s.downcase.delete_prefix(".") }
+      return Community::AttachmentContentInspector::Result.new(status: :unsupported) unless normalized_extensions.include?(ext)
       return Community::AttachmentContentInspector::Result.new(status: :unsupported) unless extensions.include?(ext)
 
       # A configured extension has no generic fallback: formats without a
@@ -51,7 +53,7 @@ module Community
       Community::AttachmentContentInspector.call(
         extension: ext,
         io: io,
-        max_bytes: max_size,
+        max_bytes: max_bytes,
         content_type: content_type
       )
     end

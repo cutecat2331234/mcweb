@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_22_143000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1175,6 +1175,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.string "scan_status", default: "pending", null: false
     t.datetime "scanned_at"
     t.string "scanner"
+    t.bigint "secure_evidence_attachment_id"
     t.string "status", default: "reserved", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
@@ -1188,15 +1189,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.index ["public_id"], name: "index_forum_uploads_on_public_id", unique: true
     t.index ["quarantined_at"], name: "index_forum_uploads_on_quarantined_at"
     t.index ["scan_status", "next_scan_at"], name: "idx_forum_uploads_scan_due"
+    t.index ["secure_evidence_attachment_id"], name: "idx_forum_uploads_secure_evidence_attachment", unique: true
     t.index ["status", "expires_at"], name: "index_forum_uploads_on_status_and_expires_at"
     t.index ["user_id", "status"], name: "index_forum_uploads_on_user_id_and_status"
     t.index ["user_id"], name: "index_forum_uploads_on_user_id"
     t.check_constraint "byte_size > 0", name: "forum_uploads_positive_byte_size"
-    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying::text, 'post_attachment'::character varying::text])", name: "forum_uploads_valid_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying, 'post_attachment'::character varying, 'secure_evidence_attachment'::character varying]::text[])", name: "forum_uploads_valid_kind"
     t.check_constraint "manual_review_status::text = ANY (ARRAY['none'::character varying::text, 'released'::character varying::text, 'revoked'::character varying::text])", name: "forum_uploads_valid_manual_review_status"
     t.check_constraint "manual_review_version >= 0", name: "forum_uploads_nonnegative_manual_review_version"
     t.check_constraint "scan_attempts >= 0", name: "forum_uploads_nonnegative_scan_attempts"
     t.check_constraint "scan_status::text = ANY (ARRAY['pending'::character varying::text, 'clean'::character varying::text, 'infected'::character varying::text, 'error'::character varying::text])", name: "forum_uploads_valid_scan_status"
+    t.check_constraint "secure_evidence_attachment_id IS NULL OR kind::text = 'secure_evidence_attachment'::text", name: "forum_uploads_secure_evidence_kind"
     t.check_constraint "status::text = ANY (ARRAY['reserved'::character varying::text, 'stored'::character varying::text, 'linked'::character varying::text, 'cleanup_pending'::character varying::text, 'cleanup_failed'::character varying::text, 'cleaned'::character varying::text])", name: "forum_uploads_valid_status"
   end
 
@@ -2196,7 +2199,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.index ["provider", "provider_mode", "status", "created_at", "id"], name: "idx_payment_records_reconciliation_mode"
     t.index ["provider", "provider_payment_id"], name: "index_payment_records_on_provider_and_provider_payment_id", unique: true
     t.index ["provider", "status", "created_at", "id"], name: "idx_payment_records_reconciliation_local"
-    t.index ["store_order_id"], name: "idx_payment_records_one_active_per_order", unique: true, where: "((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]))"
+    t.index ["store_order_id"], name: "idx_payment_records_one_active_per_order", unique: true, where: "((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]))"
     t.index ["store_order_id"], name: "index_payment_records_on_store_order_id"
     t.check_constraint "provider_mode IS NULL OR (provider_mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text]))", name: "payment_records_provider_mode"
   end
@@ -2571,6 +2574,59 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.boolean "system_role", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_roles_on_key", unique: true
+  end
+
+  create_table "secure_evidence_attachment_events", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.string "idempotency_key", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "occurred_at", null: false
+    t.bigint "secure_evidence_attachment_id", null: false
+    t.index ["actor_id"], name: "index_secure_evidence_attachment_events_on_actor_id"
+    t.index ["idempotency_key"], name: "idx_secure_evidence_events_idempotency", unique: true
+    t.index ["secure_evidence_attachment_id", "occurred_at"], name: "idx_secure_evidence_events_timeline"
+    t.index ["secure_evidence_attachment_id"], name: "idx_secure_evidence_events_attachment"
+    t.check_constraint "event_type::text = ANY (ARRAY['created'::character varying, 'scan_clean'::character varying, 'scan_infected'::character varying, 'scan_error'::character varying, 'downloaded'::character varying, 'retention_extended'::character varying, 'cleanup_scheduled'::character varying, 'cleanup_failed'::character varying, 'purged'::character varying]::text[])", name: "secure_evidence_events_valid_type"
+    t.check_constraint "idempotency_key::text ~ '^[A-Za-z0-9:._-]{8,180}$'::text", name: "secure_evidence_events_idempotency_format"
+    t.check_constraint "jsonb_typeof(metadata) = 'object'::text", name: "secure_evidence_events_metadata_object"
+  end
+
+  create_table "secure_evidence_attachments", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.string "content_type", null: false
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "idempotency_key", null: false
+    t.string "public_id", null: false
+    t.datetime "purged_at"
+    t.datetime "quarantined_at"
+    t.string "request_fingerprint", limit: 64, null: false
+    t.datetime "retention_until", null: false
+    t.datetime "scanned_at"
+    t.string "sha256", limit: 64, null: false
+    t.string "state", default: "pending", null: false
+    t.bigint "subject_id", null: false
+    t.string "subject_key", null: false
+    t.string "subject_public_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "uploader_id", null: false
+    t.string "uploader_public_id_snapshot", null: false
+    t.index ["public_id"], name: "index_secure_evidence_attachments_on_public_id", unique: true
+    t.index ["state", "retention_until"], name: "idx_secure_evidence_attachments_retention"
+    t.index ["subject_key", "subject_id"], name: "idx_secure_evidence_attachments_subject"
+    t.index ["uploader_id", "subject_key", "subject_id", "idempotency_key"], name: "idx_secure_evidence_attachments_idempotency", unique: true
+    t.index ["uploader_id"], name: "index_secure_evidence_attachments_on_uploader_id"
+    t.check_constraint "(scanned_at IS NULL OR scanned_at >= created_at) AND (quarantined_at IS NULL OR scanned_at IS NOT NULL AND quarantined_at >= scanned_at) AND (purged_at IS NULL OR purged_at >= created_at)", name: "secure_evidence_attachments_timestamp_order"
+    t.check_constraint "(state::text <> 'available'::text OR scanned_at IS NOT NULL) AND (state::text <> 'quarantined'::text OR quarantined_at IS NOT NULL) AND (state::text = 'purged'::text) = (purged_at IS NOT NULL)", name: "secure_evidence_attachments_state_shape"
+    t.check_constraint "byte_size > 0 AND byte_size <= 10485760", name: "secure_evidence_attachments_bounded_size"
+    t.check_constraint "idempotency_key::text ~ '^[A-Za-z0-9:_-]{8,100}$'::text", name: "secure_evidence_attachments_idempotency_format"
+    t.check_constraint "retention_until >= (created_at + 'PT1H'::interval) AND retention_until <= (created_at + 'P10Y'::interval)", name: "secure_evidence_attachments_retention_window"
+    t.check_constraint "sha256::text ~ '^[0-9a-f]{64}$'::text AND request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "secure_evidence_attachments_digest_format"
+    t.check_constraint "state::text = ANY (ARRAY['pending'::character varying, 'available'::character varying, 'quarantined'::character varying, 'purge_pending'::character varying, 'purged'::character varying]::text[])", name: "secure_evidence_attachments_valid_state"
+    t.check_constraint "subject_id > 0", name: "secure_evidence_attachments_positive_subject_id"
+    t.check_constraint "subject_key::text ~ '^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$'::text", name: "secure_evidence_attachments_subject_key_format"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -3277,7 +3333,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.index ["user_id"], name: "index_store_product_answers_on_user_id"
     t.check_constraint "lock_version >= 0", name: "store_product_answers_lock_version_nonnegative"
     t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_product_answers_deleted_shape"
-    t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_product_answers_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['published'::character varying::text, 'hidden'::character varying::text, 'deleted'::character varying::text])", name: "store_product_answers_status_valid"
   end
 
   create_table "store_product_availability_alerts", force: :cascade do |t|
@@ -3318,7 +3374,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.index ["user_id"], name: "index_store_product_questions_on_user_id"
     t.check_constraint "lock_version >= 0", name: "store_product_questions_lock_version_nonnegative"
     t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_product_questions_deleted_shape"
-    t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_product_questions_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['published'::character varying::text, 'hidden'::character varying::text, 'deleted'::character varying::text])", name: "store_product_questions_status_valid"
   end
 
   create_table "store_product_variants", force: :cascade do |t|
@@ -3429,10 +3485,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.index ["store_order_id"], name: "index_store_refunds_on_store_order_id"
     t.index ["withdrawn_by_id"], name: "index_store_refunds_on_withdrawn_by_id"
     t.check_constraint "amount_cents > 0", name: "store_refunds_amount_cents_positive"
-    t.check_constraint "reason_kind IS NULL OR (reason_kind::text = ANY (ARRAY['customer_request'::character varying, 'admin_refund'::character varying, 'superseded_by_admin_refund'::character varying]::text[]))", name: "store_refunds_reason_kind_valid"
+    t.check_constraint "reason_kind IS NULL OR (reason_kind::text = ANY (ARRAY['customer_request'::character varying::text, 'admin_refund'::character varying::text, 'superseded_by_admin_refund'::character varying::text]))", name: "store_refunds_reason_kind_valid"
     t.check_constraint "restoration_status::text = ANY (ARRAY['pending'::character varying::text, 'processing'::character varying::text, 'failed'::character varying::text, 'completed'::character varying::text])", name: "store_refunds_restoration_status_valid"
     t.check_constraint "status::text = 'withdrawn'::text AND withdrawn_at IS NOT NULL AND withdrawn_by_id IS NOT NULL OR status::text <> 'withdrawn'::text AND withdrawn_at IS NULL AND withdrawn_by_id IS NULL", name: "store_refunds_withdrawn_shape"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'provider_unknown'::character varying, 'rejected'::character varying, 'failed'::character varying, 'completed'::character varying, 'withdrawn'::character varying]::text[])", name: "store_refunds_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'approved'::character varying::text, 'provider_unknown'::character varying::text, 'rejected'::character varying::text, 'failed'::character varying::text, 'completed'::character varying::text, 'withdrawn'::character varying::text])", name: "store_refunds_status_valid"
   end
 
   create_table "store_review_helpful_votes", force: :cascade do |t|
@@ -3463,7 +3519,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
     t.index ["user_id"], name: "index_store_reviews_on_user_id"
     t.check_constraint "lock_version >= 0", name: "store_reviews_lock_version_nonnegative"
     t.check_constraint "status::text = 'deleted'::text AND deleted_at IS NOT NULL OR status::text <> 'deleted'::text AND deleted_at IS NULL", name: "store_reviews_deleted_shape"
-    t.check_constraint "status::text = ANY (ARRAY['published'::character varying, 'hidden'::character varying, 'deleted'::character varying]::text[])", name: "store_reviews_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['published'::character varying::text, 'hidden'::character varying::text, 'deleted'::character varying::text])", name: "store_reviews_status_valid"
   end
 
   create_table "store_shipping_addresses", force: :cascade do |t|
@@ -3869,6 +3925,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
   add_foreign_key "forum_uploads", "active_storage_blobs", on_delete: :nullify
   add_foreign_key "forum_uploads", "forum_post_attachments", on_delete: :nullify
   add_foreign_key "forum_uploads", "forum_posts", on_delete: :nullify
+  add_foreign_key "forum_uploads", "secure_evidence_attachments", on_delete: :nullify
   add_foreign_key "forum_uploads", "users"
   add_foreign_key "forum_uploads", "users", column: "manual_review_revoked_by_id", on_delete: :nullify
   add_foreign_key "forum_uploads", "users", column: "manual_reviewed_by_id", on_delete: :nullify
@@ -3966,6 +4023,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
   add_foreign_key "plugin_setting_versions", "users", column: "actor_id"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
+  add_foreign_key "secure_evidence_attachment_events", "secure_evidence_attachments", on_delete: :cascade
+  add_foreign_key "secure_evidence_attachment_events", "users", column: "actor_id", on_delete: :nullify
+  add_foreign_key "secure_evidence_attachments", "users", column: "uploader_id"
   add_foreign_key "sessions", "users"
   add_foreign_key "store_cart_items", "store_carts"
   add_foreign_key "store_cart_items", "store_product_variants"
@@ -4648,6 +4708,73 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.secure_evidence_attachment_events_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'secure_evidence_attachment_events is append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.secure_evidence_attachments_guard_update()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF NEW.public_id IS DISTINCT FROM OLD.public_id
+         OR NEW.uploader_id IS DISTINCT FROM OLD.uploader_id
+         OR NEW.uploader_public_id_snapshot IS DISTINCT FROM OLD.uploader_public_id_snapshot
+         OR NEW.subject_key IS DISTINCT FROM OLD.subject_key
+         OR NEW.subject_id IS DISTINCT FROM OLD.subject_id
+         OR NEW.subject_public_id IS DISTINCT FROM OLD.subject_public_id
+         OR NEW.idempotency_key IS DISTINCT FROM OLD.idempotency_key
+         OR NEW.request_fingerprint IS DISTINCT FROM OLD.request_fingerprint
+         OR NEW.filename IS DISTINCT FROM OLD.filename
+         OR NEW.content_type IS DISTINCT FROM OLD.content_type
+         OR NEW.byte_size IS DISTINCT FROM OLD.byte_size
+         OR NEW.sha256 IS DISTINCT FROM OLD.sha256
+         OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'secure evidence attachment identity is immutable';
+      END IF;
+
+      IF NEW.retention_until < OLD.retention_until THEN
+        RAISE EXCEPTION 'secure evidence retention cannot be shortened';
+      END IF;
+
+      IF NOT (
+        (OLD.state = 'pending' AND NEW.state IN ('pending', 'available', 'quarantined', 'purge_pending'))
+        OR (OLD.state = 'available' AND NEW.state IN ('available', 'purge_pending'))
+        OR (OLD.state = 'quarantined' AND NEW.state IN ('quarantined', 'purge_pending'))
+        OR (OLD.state = 'purge_pending' AND NEW.state IN ('purge_pending', 'purged'))
+        OR (OLD.state = 'purged' AND NEW.state = 'purged')
+      ) THEN
+        RAISE EXCEPTION 'secure evidence attachment state transition is invalid';
+      END IF;
+
+      IF OLD.state = 'purged' AND NEW IS DISTINCT FROM OLD THEN
+        RAISE EXCEPTION 'purged secure evidence metadata is immutable';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.secure_evidence_attachments_reject_delete()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'secure_evidence_attachments metadata cannot be deleted';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER identity_auth_group_memberships_bump_delete AFTER DELETE ON public.community_group_memberships REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_group_memberships();
   MCWEB_SCHEMA_SQL
 
@@ -4729,6 +4856,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_092000) do
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER identity_auth_role_permissions_lock BEFORE INSERT OR DELETE OR UPDATE OF role_id, permission_id ON public.role_permissions FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER secure_evidence_attachment_events_immutable BEFORE DELETE OR UPDATE ON public.secure_evidence_attachment_events FOR EACH ROW EXECUTE FUNCTION secure_evidence_attachment_events_reject_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER secure_evidence_attachments_guard_update BEFORE UPDATE ON public.secure_evidence_attachments FOR EACH ROW EXECUTE FUNCTION secure_evidence_attachments_guard_update();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER secure_evidence_attachments_reject_delete BEFORE DELETE ON public.secure_evidence_attachments FOR EACH ROW EXECUTE FUNCTION secure_evidence_attachments_reject_delete();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

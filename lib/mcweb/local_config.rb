@@ -37,7 +37,8 @@ module Mcweb
 
       def complete?
         db = load["database"] || {}
-        %w[host port username password].all? { |key| db[key].present? } &&
+        %w[host port username].all? { |key| db[key].present? } &&
+          db.key?("password") &&
           load["secret_key_base"].present? &&
           load["lockbox_master_key"].present?
       end

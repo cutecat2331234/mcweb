@@ -17,9 +17,11 @@ module Identity
         handler_key: EmailChangeDelivery::HANDLER_KEY,
         source_id: request_ids
       )
-      Operations::DurableEnqueueEvent.where(intent_id: intents.select(:id)).delete_all
-      Operations::DurableEnqueueAttempt.where(intent_id: intents.select(:id)).delete_all
-      intents.delete_all
+      with_mutable_durable_ledger do
+        Operations::DurableEnqueueEvent.where(intent_id: intents.select(:id)).delete_all
+        Operations::DurableEnqueueAttempt.where(intent_id: intents.select(:id)).delete_all
+        intents.delete_all
+      end
       AuditLog.where(actor_id: @users.map(&:id)).delete_all
       EmailChangeRequest.where(id: request_ids).delete_all
       Session.where(user_id: @users.map(&:id)).delete_all
@@ -55,6 +57,35 @@ module Identity
       assert_equal 1, responses.count(&:success?)
       assert_equal 1, responses.count { |result| result.failure? && result.code == "email_not_available" }
       assert_equal 1, EmailChangeRequest.pending.where("LOWER(requested_email) = ?", @target).count
+    end
+
+    private
+
+    def with_mutable_durable_ledger
+      triggers = {
+        operations_durable_enqueue_events: :operations_durable_events_immutable,
+        operations_durable_enqueue_attempts: :operations_durable_attempts_immutable,
+        operations_durable_enqueue_intents: :operations_durable_intents_immutable
+      }
+      connection = ApplicationRecord.connection
+      disabled = []
+
+      triggers.each do |table, trigger|
+        connection.execute(<<~SQL.squish)
+          ALTER TABLE #{connection.quote_table_name(table)}
+          DISABLE TRIGGER #{connection.quote_column_name(trigger)}
+        SQL
+        disabled << [ table, trigger ]
+      end
+
+      yield
+    ensure
+      Array(disabled).reverse_each do |table, trigger|
+        connection.execute(<<~SQL.squish)
+          ALTER TABLE #{connection.quote_table_name(table)}
+          ENABLE TRIGGER #{connection.quote_column_name(trigger)}
+        SQL
+      end
     end
   end
 end

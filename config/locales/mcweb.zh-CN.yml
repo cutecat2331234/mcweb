@@ -422,6 +422,8 @@
       notification_unavailable: 此通知关联的内容已不可用。
       notification_deleted: 通知已删除。
       report_submitted: 举报已提交。
+      report_supplement_added: 补充说明已添加。
+      report_withdrawn: 举报已撤回。
       report_rate_limited: 举报过于频繁，请稍后再试。
       content_not_found: 内容不存在或无权访问。
       draft_saved: 草稿已保存。
@@ -983,6 +985,20 @@
         report_detail_too_long: 举报说明不能超过 2,000 个字符。
         report_already_submitted: 你已经提交过一条待处理的相同举报。
         report_create_failed: 举报暂时无法保存，请重试。
+        report_supplement_blank: 请先填写补充说明。
+        report_supplement_too_long: 补充说明不能超过 2,000 个字符。
+        report_idempotency_key_invalid: 请刷新此举报后重试。
+        report_idempotency_key_reused: 此请求标识已用于另一项请求。
+        report_version_required: 请刷新此举报后再进行更改。
+        report_version_conflict: 此举报已发生变化，请查看最新状态后重试。
+        report_not_pending: 此举报已不再等待审核。
+        report_state_invalid: 请求的举报状态无效。
+        report_state_conflict: 此举报已有不同的最终状态。
+        report_not_found: 此举报不可用。
+        report_reviewer_required: 必须指定审核人。
+        report_internal_note_too_long: 内部说明过长。
+        report_target_mutation_failed: 无法完成此次举报决定。
+        report_mutation_failed: 无法更改此举报，请重试。
         message_revision_required: 编辑前请刷新当前私信会话。
         message_revision_conflict: 编辑期间私信已发生变化，请刷新后重试。
         post_revision_required: 编辑前请刷新当前主题。
@@ -1791,6 +1807,20 @@
           offensive: 辱骂 / 不当内容
           off_topic: 跑题 / 无关内容
           other: 其他
+        targets:
+          topic: 论坛主题
+          post: 论坛帖子
+          private_message: 私信
+          profile_post: 资料墙留言
+          profile_post_comment: 资料墙留言评论
+          review: 商城评价
+          user: 社区成员
+          content: 社区内容
+        public_outcomes:
+          withdrawn: 举报人已撤回
+          review_complete: 审核已完成
+          not_upheld: 未因本次举报采取措施
+          action_taken: 已依据社区规则采取措施
       stats:
         topics: 主题
         posts: 帖子
@@ -1996,6 +2026,9 @@
         assign: 此主题已指派给管理成员。
         unassign: 此主题已取消指派。
       in_app:
+        report_outcome:
+          title: 你的举报已有处理结果
+          body: "处理结果：%{outcome}"
         profile_post:
           title: "%{author} 在你的主页留言"
           body: "%{excerpt}"
@@ -2799,6 +2832,11 @@
           action_uphold_all: 采纳全部举报
           action_uphold_all_private_messages: 采纳全部举报并保留证据
           action_resolve_target_dismiss: 驳回全部举报
+          confirm_actioned: 确认应用此决定并通知举报人？
+          confirm_reviewed: 确认将此举报标记为已审核并通知举报人？
+          confirm_dismissed: 确认驳回此举报并通知举报人？
+          confirm_bulk_actioned: 确认对该对象的全部待处理举报应用此决定？
+          confirm_bulk_dismissed: 确认驳回该对象的全部待处理举报？
           target_topic: "主题：%{title}"
           target_post: "帖子 #%{floor}（%{title}）"
           target_review: "评价 #%{id}（%{product}）"
@@ -3546,6 +3584,7 @@
         ever_purchased: 曾购买过
         active: 仍在有效期
       notification_types:
+        forum.report_outcome: 举报处理结果
         forum.topic_reply: 主题回复
         forum.mention: "@提及"
         forum.section_topic: 分区新主题

@@ -239,6 +239,7 @@ module Community
         reportables = reports.filter_map(&:reportable)
         posts = (sources + reportables).grep(Community::Post)
         topics = (sources + reportables).grep(Community::Topic) + posts.filter_map(&:topic)
+        profile_posts = reportables.grep(Community::ProfilePost)
         users = sources.grep(User) +
           sources.filter_map { |source| target_user_for_lock(source) }
 
@@ -253,6 +254,7 @@ module Community
           additional_sections: destination_sections
         )
         Community::Post.with_discarded.where(id: posts.map(&:id).uniq.sort).order(:id).lock.load
+        Community::ProfilePost.where(id: profile_posts.map(&:id).uniq.sort).order(:id).lock.load
         Community::Report.where(id: reports.map(&:id).uniq.sort).order(:id).lock.load
         Community::Upload.where(id: sources.grep(Community::Upload).map(&:id).uniq.sort).order(:id).lock.load
         Community::UserWarning.where(
@@ -378,7 +380,8 @@ module Community
           decide_report(source, status: :dismissed, mutate_reportable: false)
         when "delete_content"
           if source.is_a?(Community::Report) && source.status == "pending"
-            source.review!(reviewer: @actor, note: @reason, status: :actioned)
+            result = decide_report(source, status: :actioned, mutate_reportable: false)
+            return result if result.failure?
           end
           ServiceResult.success(source)
         else
@@ -387,20 +390,16 @@ module Community
       end
 
       def decide_report(report, status:, mutate_reportable: true)
-        return failure("report_not_pending") unless report.status == "pending"
-
-        report.review!(reviewer: @actor, note: @reason, status: status)
-        return ServiceResult.success(report) unless mutate_reportable
-
-        result =
-          if status == :actioned
-            Community::HideReportable.call(reportable: report.reportable)
-          else
-            Community::ClearReportableHide.call(reportable: report.reportable)
-          end
-        return result if result.failure?
-
-        ServiceResult.success(report)
+        Community::DecideReport.call(
+          report: report,
+          reviewer: @actor,
+          desired_status: status,
+          idempotency_key: @request_id,
+          internal_note: @reason,
+          expected_version: report.lock_version,
+          require_expected_version: false,
+          mutate_reportable: mutate_reportable
+        )
       end
 
       def delete_content(source, target)
@@ -419,7 +418,8 @@ module Community
         return result if result.failure?
 
         if source.is_a?(Community::Report) && source.status == "pending"
-          source.review!(reviewer: @actor, note: @reason, status: :actioned)
+          report_result = decide_report(source, status: :actioned, mutate_reportable: false)
+          return report_result if report_result.failure?
         end
         ServiceResult.success(target)
       end

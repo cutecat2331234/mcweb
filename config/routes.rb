@@ -680,7 +680,12 @@ Rails.application.routes.draw do
         post :reject
       end
     end
-    resources :reports, only: %i[new create]
+    resources :reports, only: %i[index show new create] do
+      member do
+        post :supplements
+        patch :withdraw
+      end
+    end
     resources :notifications, only: %i[index destroy] do
       member do
         patch :mark_read

@@ -14,6 +14,7 @@ module Community
     BOOKMARK_REMINDER_TYPE = "forum.bookmark_reminder"
     PROFILE_POST_TYPE = "forum.profile_post"
     PROFILE_POST_COMMENT_TYPE = "forum.profile_post_comment"
+    REPORT_OUTCOME_TYPE = "forum.report_outcome"
     TAG_SUBSCRIBABLE_TYPE = "Community::Tag"
     CONVERSATION_RESOURCE_TYPES = %w[
       forum.conversation_invite
@@ -123,6 +124,7 @@ module Community
       preload_saved_searches
       preload_profile_posts
       preload_tag_access
+      preload_report_outcomes
     end
 
     def visible?(notification)
@@ -136,6 +138,7 @@ module Community
       return false unless saved_search_match_visible?(notification)
       return false unless bookmark_reminder_visible?(notification)
       return false unless profile_post_visible?(notification)
+      return false unless report_outcome_visible?(notification)
 
       true
     end
@@ -229,6 +232,18 @@ module Community
         .where(forum_topic_id: topic_ids, forum_tag_id: tag_ids)
         .pluck(:forum_topic_id, :forum_tag_id)
         .to_set
+    end
+
+    def preload_report_outcomes
+      notification_ids = @notifications.filter_map do |notification|
+        notification.id if notification.notification_type == REPORT_OUTCOME_TYPE
+      end
+      @report_outcome_deliveries_by_notification_id = Community::ReportOutcomeDelivery
+        .includes(:report)
+        .where(notification_id: notification_ids)
+        .index_by(&:notification_id)
+    rescue ActiveRecord::ActiveRecordError
+      @report_outcome_deliveries_by_notification_id = {}
     end
 
     def topic_visible?(notification)
@@ -350,6 +365,25 @@ module Community
       else
         true
       end
+    end
+
+    def report_outcome_visible?(notification)
+      return true unless notification.notification_type == REPORT_OUTCOME_TYPE
+
+      delivery = @report_outcome_deliveries_by_notification_id[notification.id]
+      report = delivery&.report
+      values = metadata(notification)
+      report_id = positive_metadata_id(notification, "report_id")
+      outcome = values["public_outcome_code"] || values[:public_outcome_code]
+      return false unless report && report_id == report.id
+      return false unless report.reporter_id == @user.id
+      return false unless report.status.in?(Community::Report::STAFF_FINAL_STATUSES)
+      return false unless outcome.to_s == report.public_outcome_code
+      return false unless delivery.public_outcome_code == report.public_outcome_code
+
+      notification.destination_path == Rails.application.routes.url_helpers.forum_report_path(report)
+    rescue ActiveRecord::ActiveRecordError, ActionController::UrlGenerationError
+      false
     end
 
     def visible_profile_post?(profile_post)

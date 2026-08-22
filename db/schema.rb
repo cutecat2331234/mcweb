@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -812,9 +812,54 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_100000) do
     t.check_constraint "subject_revision > 0", name: "forum_report_evidences_positive_revision"
   end
 
+  create_table "forum_report_outcome_deliveries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_report_id", null: false
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.bigint "notification_id"
+    t.string "public_outcome_code", null: false
+    t.index ["forum_report_id"], name: "idx_forum_report_outcome_deliveries_report", unique: true
+    t.index ["notification_id"], name: "idx_forum_report_outcome_deliveries_notification", unique: true, where: "(notification_id IS NOT NULL)"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_outcome_deliveries_idempotency_digest"
+    t.check_constraint "public_outcome_code::text = ANY (ARRAY['review_complete'::text, 'not_upheld'::text, 'action_taken'::text])", name: "forum_report_outcome_deliveries_outcome"
+  end
+
+  create_table "forum_report_decision_batches", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "decided_count", null: false
+    t.string "desired_status", null: false
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.bigint "reportable_id", null: false
+    t.string "reportable_type", null: false
+    t.jsonb "report_ids", default: [], null: false
+    t.string "request_fingerprint", limit: 64, null: false
+    t.bigint "reviewer_id", null: false
+    t.index ["idempotency_key_digest"], name: "idx_forum_report_decision_batches_idempotency", unique: true
+    t.index ["reportable_type", "reportable_id", "created_at"], name: "idx_forum_report_decision_batches_target"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_decision_batches_idempotency_digest"
+    t.check_constraint "jsonb_typeof(report_ids) = 'array'::text AND decided_count = jsonb_array_length(report_ids) AND decided_count >= 0", name: "forum_report_decision_batches_result_shape"
+    t.check_constraint "request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_decision_batches_request_fingerprint"
+    t.check_constraint "desired_status::text = ANY (ARRAY['reviewed'::text, 'dismissed'::text, 'actioned'::text])", name: "forum_report_decision_batches_status"
+  end
+
+  create_table "forum_report_supplements", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "forum_report_id", null: false
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.bigint "reporter_id", null: false
+    t.index ["forum_report_id", "created_at"], name: "idx_forum_report_supplements_report_created"
+    t.index ["forum_report_id", "idempotency_key_digest"], name: "idx_forum_report_supplements_idempotency", unique: true
+    t.index ["reporter_id"], name: "index_forum_report_supplements_on_reporter_id"
+    t.check_constraint "char_length(btrim(body)) >= 1 AND char_length(btrim(body)) <= 2000", name: "forum_report_supplements_body_length"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_supplements_idempotency_digest"
+  end
+
   create_table "forum_reports", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "dedupe_key", limit: 64
+    t.integer "lock_version", default: 0, null: false
+    t.string "public_outcome_code"
     t.text "reason", null: false
     t.string "reason_code"
     t.bigint "reportable_id", null: false
@@ -823,14 +868,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_100000) do
     t.text "review_note"
     t.datetime "reviewed_at"
     t.bigint "reviewer_id"
+    t.datetime "state_changed_at", null: false
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
+    t.string "withdrawal_idempotency_key_digest", limit: 64
+    t.datetime "withdrawn_at"
     t.index ["dedupe_key"], name: "idx_forum_reports_pending_dedupe", unique: true, where: "((dedupe_key IS NOT NULL) AND ((status)::text = 'pending'::text))"
     t.index ["reason_code"], name: "index_forum_reports_on_reason_code"
     t.index ["reportable_type", "reportable_id"], name: "index_forum_reports_on_reportable_type_and_reportable_id"
     t.index ["reporter_id"], name: "index_forum_reports_on_reporter_id"
+    t.index ["reporter_id", "created_at"], name: "idx_forum_reports_reporter_created"
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
     t.check_constraint "dedupe_key IS NULL OR dedupe_key::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_dedupe_key_format"
+    t.check_constraint "status::text = 'pending'::text AND public_outcome_code IS NULL AND withdrawn_at IS NULL OR status::text = 'withdrawn'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'withdrawn'::text AND withdrawn_at IS NOT NULL OR status::text = 'reviewed'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'review_complete'::text AND withdrawn_at IS NULL OR status::text = 'dismissed'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'not_upheld'::text AND withdrawn_at IS NULL OR status::text = 'actioned'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'action_taken'::text AND withdrawn_at IS NULL", name: "forum_reports_public_outcome_shape"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::text, 'withdrawn'::text, 'reviewed'::text, 'dismissed'::text, 'actioned'::text])", name: "forum_reports_status_vocabulary"
+    t.check_constraint "withdrawal_idempotency_key_digest IS NULL OR withdrawal_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_withdrawal_digest"
   end
 
   create_table "forum_saved_search_webhook_deliveries", force: :cascade do |t|
@@ -3883,6 +3935,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_100000) do
   add_foreign_key "forum_reply_drafts", "forum_topics"
   add_foreign_key "forum_reply_drafts", "users"
   add_foreign_key "forum_report_evidences", "forum_reports"
+  add_foreign_key "forum_report_decision_batches", "users", column: "reviewer_id", on_delete: :restrict
+  add_foreign_key "forum_report_outcome_deliveries", "forum_reports", on_delete: :restrict
+  add_foreign_key "forum_report_outcome_deliveries", "notifications", on_delete: :nullify
+  add_foreign_key "forum_report_supplements", "forum_reports", on_delete: :restrict
+  add_foreign_key "forum_report_supplements", "users", column: "reporter_id", on_delete: :restrict
   add_foreign_key "forum_reports", "users", column: "reporter_id"
   add_foreign_key "forum_reports", "users", column: "reviewer_id"
   add_foreign_key "forum_saved_search_webhook_deliveries", "forum_saved_searches", column: "saved_search_id"
@@ -4142,6 +4199,139 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_100000) do
 
   # User-defined PostgreSQL trigger functions and triggers.
   # These database invariants must also exist after db:schema:load.
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_reports_guard_state_transition()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.status <> 'pending'
+         AND NEW.status IS DISTINCT FROM OLD.status THEN
+        RAISE EXCEPTION 'terminal forum report status cannot change';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_decision_batches_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report decision batches are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_supplements_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report supplements are append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_supplements_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      owner_id bigint;
+      report_status text;
+    BEGIN
+      SELECT reporter_id, status
+      INTO owner_id, report_status
+      FROM forum_reports
+      WHERE id = NEW.forum_report_id
+      FOR UPDATE;
+
+      IF owner_id IS NULL
+         OR owner_id <> NEW.reporter_id
+         OR report_status <> 'pending' THEN
+        RAISE EXCEPTION 'forum report supplement owner or state is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_outcome_deliveries_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'UPDATE'
+         AND OLD.notification_id IS NOT NULL
+         AND NEW.notification_id IS NULL
+         AND NEW.forum_report_id = OLD.forum_report_id
+         AND NEW.public_outcome_code = OLD.public_outcome_code
+         AND NEW.idempotency_key_digest = OLD.idempotency_key_digest
+         AND NEW.created_at = OLD.created_at THEN
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION 'forum report outcome delivery receipts are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_outcome_deliveries_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      report_status text;
+      report_outcome text;
+      report_owner_id bigint;
+      notification_owner_id bigint;
+      notification_kind text;
+      notification_metadata jsonb;
+    BEGIN
+      SELECT reports.status,
+             reports.public_outcome_code,
+             reports.reporter_id,
+             notifications.user_id,
+             notifications.notification_type,
+             notifications.metadata
+      INTO report_status,
+           report_outcome,
+           report_owner_id,
+           notification_owner_id,
+           notification_kind,
+           notification_metadata
+      FROM forum_reports reports
+      INNER JOIN notifications ON notifications.id = NEW.notification_id
+      WHERE reports.id = NEW.forum_report_id
+      FOR UPDATE OF reports;
+
+      IF NEW.notification_id IS NULL
+         OR report_status IS NULL
+         OR report_status NOT IN ('reviewed', 'dismissed', 'actioned')
+         OR report_outcome IS NULL
+         OR NEW.public_outcome_code IS DISTINCT FROM report_outcome
+         OR notification_owner_id IS DISTINCT FROM report_owner_id
+         OR notification_kind IS DISTINCT FROM 'forum.report_outcome'
+         OR notification_metadata ->> 'report_id' IS DISTINCT FROM NEW.forum_report_id::text
+         OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM NEW.public_outcome_code
+         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/reports/' || NEW.forum_report_id::text THEN
+        RAISE EXCEPTION 'forum report outcome delivery contract is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.forum_message_revisions_dequeue_backfill()
      RETURNS trigger
@@ -4820,6 +5010,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_100000) do
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER forum_report_evidences_immutable BEFORE DELETE OR UPDATE ON public.forum_report_evidences FOR EACH ROW EXECUTE FUNCTION forum_report_evidences_reject_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_outcome_deliveries_immutable BEFORE DELETE OR UPDATE ON public.forum_report_outcome_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_outcome_deliveries_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_decision_batches_immutable BEFORE DELETE OR UPDATE ON public.forum_report_decision_batches FOR EACH ROW EXECUTE FUNCTION forum_report_decision_batches_reject_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_outcome_deliveries_insert_contract BEFORE INSERT ON public.forum_report_outcome_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_outcome_deliveries_validate_insert();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_supplements_immutable BEFORE DELETE OR UPDATE ON public.forum_report_supplements FOR EACH ROW EXECUTE FUNCTION forum_report_supplements_reject_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_supplements_insert_contract BEFORE INSERT ON public.forum_report_supplements FOR EACH ROW EXECUTE FUNCTION forum_report_supplements_validate_insert();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_reports_state_transition_guard BEFORE UPDATE OF status ON public.forum_reports FOR EACH ROW EXECUTE FUNCTION forum_reports_guard_state_transition();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

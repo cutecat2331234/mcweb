@@ -3,6 +3,9 @@
 module Admin
   module Forum
     class ReportsController < BaseController
+      include PrivateNoStoreResponse
+
+      before_action :set_report_privacy_headers
       before_action :require_report_access
       before_action :set_report, only: %i[show update claim resolve_target reveal_evidence]
       before_action :authorize_report, only: %i[show update claim resolve_target reveal_evidence]
@@ -35,7 +38,7 @@ module Admin
               url: admin_forum_report_path(report)
             )
           end
-        }
+        }, encrypt_history: true
       end
 
       def show
@@ -86,30 +89,30 @@ module Admin
           fields: fields,
           backUrl: admin_forum_reports_path,
           actions: report_actions + evidence_actions(reveal_evidence: reveal_evidence) + reportable_actions
-        }
+        }, encrypt_history: true
       end
 
       def update
-        status = report_params[:status].presence || params[:status].presence || "reviewed"
-        @report.review!(
+        status = report_params[:status].to_s
+        unless Community::Report::STAFF_FINAL_STATUSES.include?(status)
+          return redirect_to admin_forum_report_path(@report), alert: service_error_message(
+            ServiceResult.failure(error: "report_state_invalid")
+          )
+        end
+
+        result = Community::DecideReport.call(
+          report: @report,
           reviewer: current_user,
-          note: report_params[:review_note],
-          status: status.to_sym
+          internal_note: report_params[:review_note],
+          desired_status: status,
+          expected_version: report_params[:lock_version],
+          idempotency_key: report_params[:idempotency_key]
         )
-
-        Administration::AuditLogger.call(
-          actor: current_user,
-          action: "admin.forum_report_reviewed",
-          resource: @report,
-          metadata: { disposition: report_disposition(@report, status: @report.status) }
-        )
-
-        Community::ClearReportableHide.call(reportable: @report.reportable) if @report.dismissed?
-        hide_actioned_reportable(@report) if @report.actioned?
+        unless result.success?
+          return redirect_to admin_forum_report_path(@report), alert: service_error_message(result)
+        end
 
         redirect_to admin_forum_report_path(@report), notice: t("mcweb.flash.report_resolved")
-      rescue ActiveRecord::RecordInvalid => e
-        redirect_to admin_forum_report_path(@report), alert: e.record.errors.full_messages.to_sentence
       end
 
       # Claim a report for review without resolving it (assign reviewer).
@@ -120,27 +123,39 @@ module Admin
 
       # Resolve ALL pending reports for the same reported target at once.
       def resolve_target
-        status = %w[reviewed dismissed actioned].include?(params[:status].to_s) ? params[:status].to_sym : :actioned
-        pending = authorized_reports_scope.pending_review.where(
-          reportable_type: @report.reportable_type,
-          reportable_id: @report.reportable_id
-        )
-        count = pending.count
-        pending.find_each { |report| report.review!(reviewer: current_user, status: status) }
+        status = report_params[:status].to_s
+        unless Community::Report::STAFF_FINAL_STATUSES.include?(status)
+          return redirect_to admin_forum_report_path(@report), alert: service_error_message(
+            ServiceResult.failure(error: "report_state_invalid")
+          )
+        end
 
-        hide_actioned_reportable(@report) if status == :actioned
-        Community::ClearReportableHide.call(reportable: @report.reportable) if status == :dismissed
-
-        Administration::AuditLogger.call(
-          actor: current_user,
-          action: "admin.forum_reports_bulk_resolved",
-          resource: @report.reportable,
-          metadata: {
-            count: count,
-            status: status,
-            disposition: report_disposition(@report, status: status)
-          }
+        result = Community::DecideReports.call(
+          scope: authorized_reports_scope,
+          reportable: @report.reportable,
+          reviewer: current_user,
+          desired_status: status,
+          internal_note: report_params[:review_note],
+          idempotency_key: report_params[:idempotency_key]
         )
+        unless result.success?
+          return redirect_to admin_forum_report_path(@report), alert: service_error_message(result)
+        end
+
+        count = result.value.fetch(:count)
+
+        unless result.value.fetch(:replayed)
+          Administration::AuditLogger.call(
+            actor: current_user,
+            action: "admin.forum_reports_bulk_resolved",
+            resource: @report.reportable,
+            metadata: {
+              count: count,
+              status: status,
+              disposition: report_disposition(@report, status: status)
+            }
+          )
+        end
         redirect_to admin_forum_reports_path, notice: t("mcweb.flash.reports_bulk_resolved", count: count)
       end
 
@@ -188,7 +203,12 @@ module Admin
       end
 
       def report_params
-        params.fetch(:report, {}).permit(:status, :review_note)
+        params.fetch(:report, {}).permit(
+          :status,
+          :review_note,
+          :lock_version,
+          :idempotency_key
+        )
       end
 
       def report_actions
@@ -199,21 +219,24 @@ module Admin
             label: forum_t(report_action_label_key),
             href: admin_forum_report_path(@report),
             method: "patch",
-            data: { report: { status: "actioned" } }
+            confirm: forum_t("reports.confirm_actioned"),
+            data: report_decision_data("actioned")
           },
           {
             label: forum_t("reports.action_reviewed"),
             href: admin_forum_report_path(@report),
             method: "patch",
             variant: "outline",
-            data: { report: { status: "reviewed" } }
+            confirm: forum_t("reports.confirm_reviewed"),
+            data: report_decision_data("reviewed")
           },
           {
             label: forum_t("reports.action_dismiss"),
             href: admin_forum_report_path(@report),
             method: "patch",
             variant: "outline",
-            data: { report: { status: "dismissed" } }
+            confirm: forum_t("reports.confirm_dismissed"),
+            data: report_decision_data("dismissed")
           },
           {
             label: forum_t("reports.action_claim"),
@@ -226,14 +249,16 @@ module Admin
             href: resolve_target_admin_forum_report_path(@report),
             method: "patch",
             variant: "outline",
-            data: { status: "actioned" }
+            confirm: forum_t("reports.confirm_bulk_actioned"),
+            data: report_decision_data("actioned", include_version: false)
           },
           {
             label: forum_t("reports.action_resolve_target_dismiss"),
             href: resolve_target_admin_forum_report_path(@report),
             method: "patch",
             variant: "outline",
-            data: { status: "dismissed" }
+            confirm: forum_t("reports.confirm_bulk_dismissed"),
+            data: report_decision_data("dismissed", include_version: false)
           }
         ]
       end
@@ -257,6 +282,21 @@ module Admin
         else
           "#{@report.reportable_type} ##{@report.reportable_id}"
         end
+      end
+
+      def report_decision_data(status, include_version: true)
+        payload = {
+          status: status,
+          idempotency_key: SecureRandom.uuid
+        }
+        payload[:lock_version] = @report.lock_version if include_version
+        { report: payload }
+      end
+
+      def set_report_privacy_headers
+        response.set_header("Cache-Control", "private, no-store")
+        response.set_header("Pragma", "no-cache")
+        response.set_header("X-Robots-Tag", "noindex, nofollow")
       end
 
       def report_reason_summary(report)
@@ -305,12 +345,6 @@ module Admin
             variant: "outline"
           }
         ]
-      end
-
-      def hide_actioned_reportable(report)
-        return unless hideable_reportable?(report)
-
-        Community::HideReportable.call(reportable: report.reportable)
       end
 
       def report_disposition(report, status:)

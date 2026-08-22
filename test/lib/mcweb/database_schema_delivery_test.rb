@@ -62,5 +62,39 @@ module Mcweb
         assert_includes schema, "CREATE TRIGGER #{trigger}"
       end
     end
+
+    test "fresh database schema includes reporter case lifecycle guards" do
+      schema = Rails.root.join("db/schema.rb").read
+
+      %w[
+        forum_report_supplements
+        forum_report_outcome_deliveries
+        forum_report_decision_batches
+      ].each do |table|
+        assert_includes schema, %(create_table "#{table}")
+      end
+
+      %w[
+        forum_reports_guard_state_transition
+        forum_report_supplements_reject_change
+        forum_report_supplements_validate_insert
+        forum_report_outcome_deliveries_guard_change
+        forum_report_outcome_deliveries_validate_insert
+        forum_report_decision_batches_reject_change
+      ].each do |function|
+        assert_includes schema, "CREATE OR REPLACE FUNCTION public.#{function}()"
+      end
+
+      %w[
+        forum_reports_state_transition_guard
+        forum_report_supplements_immutable
+        forum_report_supplements_insert_contract
+        forum_report_outcome_deliveries_immutable
+        forum_report_outcome_deliveries_insert_contract
+        forum_report_decision_batches_immutable
+      ].each do |trigger|
+        assert_includes schema, "CREATE TRIGGER #{trigger}"
+      end
+    end
   end
 end

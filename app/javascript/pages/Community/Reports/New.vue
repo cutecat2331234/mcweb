@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { Link, useForm } from '@inertiajs/vue3'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import {
+  Alert,
+  Breadcrumb,
+  BreadcrumbItem,
+  Button,
+  Card,
+  Form,
+  FormItem,
+  PageHeader,
+  Select,
+  Space,
+  Textarea,
+} from '@mcweb/ui'
 import PortalLayout from '@/layouts/PortalLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
-import Alert from '@/components/ui/Alert.vue'
+import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
@@ -18,7 +26,9 @@ const props = defineProps<{
   reportableType: string
   reportableId: string
   reasonOptions: Array<{ value: string; label: string }>
-  form_errors?: Record<string, string>
+  formAction: string
+  indexUrl: string
+  form_errors?: Record<string, string> | null
 }>()
 
 const form = useForm({
@@ -33,6 +43,7 @@ const form = useForm({
 watch(
   () => props.form_errors,
   (errors) => {
+    form.clearErrors()
     if (!errors) return
     Object.entries(errors).forEach(([key, message]) => {
       form.setError(key as keyof typeof form.errors, message)
@@ -41,43 +52,82 @@ watch(
   { immediate: true },
 )
 
-const formError = computed(() => {
-  if (form.errors.base) return form.errors.base
-  return props.form_errors?.base || ''
-})
+const formError = computed(() => form.errors.base || props.form_errors?.base || '')
 
 function fieldError(key: string) {
-  return form.errors[`report.${key}` as keyof typeof form.errors] || props.form_errors?.[`report.${key}`] || ''
+  return form.errors[`report.${key}` as keyof typeof form.errors]
+    || props.form_errors?.[`report.${key}`]
+    || ''
 }
 
 function submit() {
-  form.post('/app/forum/reports')
+  form.post(props.formAction)
 }
 </script>
 
 <template>
-  <PageHeader :title="t('forum.reports.title')" />
+  <Head :title="t('forum.reports.title')">
+    <meta name="robots" content="noindex,nofollow">
+  </Head>
 
-  <Alert v-if="formError" variant="destructive" class="mb-4 max-w-lg">
-    {{ formError }}
-  </Alert>
+  <Space direction="vertical" fill size="large">
+    <PageHeader
+      :title="t('forum.reports.title')"
+      :subtitle="t('forum.reports.newSubtitle')"
+      :show-back="false"
+    >
+      <template #breadcrumb>
+        <Breadcrumb>
+          <BreadcrumbItem><Link :href="routes.forum">{{ t('breadcrumb.forum') }}</Link></BreadcrumbItem>
+          <BreadcrumbItem><Link :href="indexUrl">{{ t('forum.reports.caseCenter') }}</Link></BreadcrumbItem>
+          <BreadcrumbItem>{{ t('forum.reports.newCase') }}</BreadcrumbItem>
+        </Breadcrumb>
+      </template>
+    </PageHeader>
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="reason_code">{{ t('forum.reports.reasonType') }}</Label>
-      <Select id="reason_code" v-model="form.report.reason_code" :options="reasonOptions" block />
-    </div>
-    <div class="space-y-2">
-      <Label for="reason_detail">{{ t('forum.reports.reasonDetail') }}</Label>
-      <Textarea id="reason_detail" v-model="form.report.reason_detail" rows="4" :placeholder="t('forum.reports.reasonPlaceholder')" />
-      <p v-if="fieldError('reason')" class="text-sm text-destructive">{{ fieldError('reason') }}</p>
-      <p v-else-if="fieldError('reason_detail')" class="text-sm text-destructive">{{ fieldError('reason_detail') }}</p>
-    </div>
-    <div class="flex gap-3">
-      <Button type="submit" :disabled="form.processing">{{ t('forum.reports.submit') }}</Button>
-      <Button as-child variant="outline">
-        <Link href="/" preserve-state>{{ t('forum.reports.cancel') }}</Link>
-      </Button>
-    </div>
-  </form>
+    <Alert v-if="formError" type="error" show-icon aria-live="polite">
+      {{ formError }}
+    </Alert>
+
+    <Card :title="t('forum.reports.newCase')" :bordered="true">
+      <Form :model="form.report" layout="vertical" @submit="submit">
+        <FormItem
+          field="reason_code"
+          :label="t('forum.reports.reasonType')"
+          required
+        >
+          <Select v-model="form.report.reason_code" :options="reasonOptions" />
+        </FormItem>
+        <FormItem
+          field="reason_detail"
+          :label="t('forum.reports.reasonDetail')"
+          :help="fieldError('reason') || fieldError('reason_detail')"
+          :validate-status="fieldError('reason') || fieldError('reason_detail') ? 'error' : undefined"
+        >
+          <Textarea
+            v-model="form.report.reason_detail"
+            :max-length="2000"
+            :placeholder="t('forum.reports.reasonPlaceholder')"
+            show-word-limit
+          />
+        </FormItem>
+        <Space wrap>
+          <Button
+            type="primary"
+            html-type="submit"
+            :loading="form.processing"
+            :disabled="form.processing"
+          >
+            {{ t('forum.reports.submit') }}
+          </Button>
+          <Button type="secondary" html-type="button" @click="router.visit(indexUrl)">
+            {{ t('forum.reports.caseCenter') }}
+          </Button>
+          <Button type="text" html-type="button" @click="router.visit(routes.forum)">
+            {{ t('forum.reports.cancel') }}
+          </Button>
+        </Space>
+      </Form>
+    </Card>
+  </Space>
 </template>

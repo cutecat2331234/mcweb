@@ -106,7 +106,12 @@ module Admin
         refute_includes labels, I18n.t("mcweb.admin.forum.reports.action_resolve_target_action")
 
         patch admin_forum_report_path(@private_report), params: {
-          report: { status: "actioned", review_note: "Confirmed policy violation" }
+          report: {
+            status: "actioned",
+            review_note: "Confirmed policy violation",
+            lock_version: @private_report.lock_version,
+            idempotency_key: SecureRandom.uuid
+          }
         }
 
         assert_redirected_to admin_forum_report_path(@private_report)
@@ -114,9 +119,9 @@ module Admin
         assert Community::Message.exists?(@message.id)
         assert_equal @secret_body, @message.reload.body
         assert_predicate @private_report.evidence, :persisted?
-        audit = AuditLog.by_action("admin.forum_report_reviewed")
+        audit = AuditLog.by_action("community.report_decided")
           .find_by!(resource_type: "Community::Report", resource_id: @private_report.id)
-        assert_equal "upheld_private_message_evidence_retained", audit.metadata.fetch("disposition")
+        assert_equal "action_taken", audit.metadata.fetch("public_outcome_code")
       end
 
       test "private-message workbench cases target the sender without exposing message content" do
@@ -143,7 +148,9 @@ module Admin
       test "bulk upholding private-message reports retains the message and immutable evidence" do
         sign_in_as(@private_reviewer)
 
-        patch resolve_target_admin_forum_report_path(@private_report), params: { status: "actioned" }
+        patch resolve_target_admin_forum_report_path(@private_report), params: {
+          report: { status: "actioned", idempotency_key: SecureRandom.uuid }
+        }
 
         assert_redirected_to admin_forum_reports_path
         assert_predicate @private_report.reload, :actioned?

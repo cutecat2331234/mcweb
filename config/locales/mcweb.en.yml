@@ -422,6 +422,8 @@ en:
       notification_unavailable: The content for this notification is no longer available.
       notification_deleted: Notification deleted.
       report_submitted: Report submitted.
+      report_supplement_added: Additional information added.
+      report_withdrawn: Report withdrawn.
       report_rate_limited: You are submitting reports too quickly. Please wait a while and try again.
       content_not_found: Content not found or access denied.
       draft_saved: Draft saved.
@@ -983,6 +985,20 @@ en:
         report_detail_too_long: Report details cannot exceed 2,000 characters.
         report_already_submitted: You already have a pending report for this content.
         report_create_failed: The report could not be saved. Try again.
+        report_supplement_blank: Enter additional information before submitting.
+        report_supplement_too_long: Additional information cannot exceed 2,000 characters.
+        report_idempotency_key_invalid: Refresh this report and try again.
+        report_idempotency_key_reused: This request identifier was already used for another request.
+        report_version_required: Refresh this report before changing it.
+        report_version_conflict: This report changed. Review the latest status and try again.
+        report_not_pending: This report is no longer pending.
+        report_state_invalid: The requested report status is invalid.
+        report_state_conflict: This report already has a different final status.
+        report_not_found: This report is unavailable.
+        report_reviewer_required: A reviewer is required.
+        report_internal_note_too_long: The internal note is too long.
+        report_target_mutation_failed: The report decision could not be completed.
+        report_mutation_failed: The report could not be changed. Try again.
         message_revision_required: Refresh the conversation before editing this message.
         message_revision_conflict: This message changed while you were editing it. Refresh and try again.
         post_revision_required: Refresh the topic before editing this post.
@@ -1791,6 +1807,20 @@ en:
           offensive: Abuse / inappropriate content
           off_topic: Off-topic / irrelevant content
           other: Other
+        targets:
+          topic: Forum topic
+          post: Forum post
+          private_message: Private message
+          profile_post: Profile post
+          profile_post_comment: Profile post comment
+          review: Store review
+          user: Community member
+          content: Community content
+        public_outcomes:
+          withdrawn: Withdrawn by the reporter
+          review_complete: Review completed
+          not_upheld: No action was taken based on this report
+          action_taken: Action was taken under the community rules
       stats:
         topics: Topics
         posts: Posts
@@ -1996,6 +2026,9 @@ en:
         assign: This topic has been assigned.
         unassign: Assignment removed from this topic.
       in_app:
+        report_outcome:
+          title: Your report has been reviewed
+          body: "Outcome: %{outcome}"
         profile_post:
           title: "%{author} posted on your profile"
           body: "%{excerpt}"
@@ -2799,6 +2832,11 @@ en:
           action_uphold_all: Uphold all reports
           action_uphold_all_private_messages: Uphold all reports and retain evidence
           action_resolve_target_dismiss: Dismiss all flags
+          confirm_actioned: Apply this decision and notify the reporter?
+          confirm_reviewed: Mark this report reviewed and notify the reporter?
+          confirm_dismissed: Dismiss this report and notify the reporter?
+          confirm_bulk_actioned: Apply this decision to every pending report for this target?
+          confirm_bulk_dismissed: Dismiss every pending report for this target?
           target_topic: "Topic: %{title}"
           target_post: "Post #%{floor} (%{title})"
           target_review: "Review #%{id} (%{product})"
@@ -3546,6 +3584,7 @@ en:
         ever_purchased: Ever purchased
         active: Still active
       notification_types:
+        forum.report_outcome: Report outcome
         forum.topic_reply: Topic reply
         forum.mention: Mention
         forum.section_topic: New section topic

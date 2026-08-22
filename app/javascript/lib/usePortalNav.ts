@@ -138,12 +138,20 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
         key: 'portal-personal',
         label: t('common.mine'),
         defaultExpanded: false,
-        items: [ {
-          label: t('nav.personal'),
-          href: routes.account,
-          loginRequired: true,
-          icon: 'user',
-        } ],
+        items: [
+          {
+            label: t('nav.personal'),
+            href: routes.account,
+            loginRequired: true,
+            icon: 'user',
+          },
+          ...(features.value.forum ? [ {
+            label: t('forum.reports.caseCenter'),
+            href: routes.forumReports,
+            loginRequired: true,
+            icon: 'file-text',
+          } ] : []),
+        ],
       })
     }
 

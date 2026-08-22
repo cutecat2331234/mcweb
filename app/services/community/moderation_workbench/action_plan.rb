@@ -233,6 +233,7 @@ module Community
         when Community::Report
           base.merge(
             status: source.status,
+            lock_version: source.lock_version,
             reviewer_id: source.reviewer_id,
             reviewed_at: source.reviewed_at&.iso8601(6),
             reportable_type: source.reportable_type,

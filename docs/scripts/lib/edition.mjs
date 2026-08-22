@@ -15,6 +15,17 @@ function readMarker(path) {
   if (!marker.label?.['zh-CN'] || !marker.label?.en) {
     throw new Error(`Edition marker requires zh-CN and en labels: ${path}`)
   }
+  if (!Array.isArray(marker.sections)) {
+    throw new Error(`Edition marker requires a sections array: ${path}`)
+  }
+  for (const section of marker.sections) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(section.directory ?? '')) {
+      throw new Error(`Edition section requires a safe directory: ${path}`)
+    }
+    if (!section.label?.['zh-CN'] || !section.label?.en) {
+      throw new Error(`Edition section requires zh-CN and en labels: ${path}`)
+    }
+  }
   return marker
 }
 
@@ -36,6 +47,11 @@ export function loadEditionMarkers(docsRoot = DEFAULT_DOCS_ROOT) {
       throw new Error('Edition markers must form the uninterrupted CE -> EE -> EE-PVP chain')
     }
   })
+
+  const directories = markers.flatMap((marker) => marker.sections.map((section) => section.directory))
+  if (new Set(directories).size !== directories.length) {
+    throw new Error('Documentation section directories must be unique across edition markers')
+  }
 
   return markers
 }

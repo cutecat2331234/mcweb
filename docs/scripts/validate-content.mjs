@@ -1,11 +1,14 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { currentEdition, EDITION_RANK } from './lib/edition.mjs'
+import { currentEdition, EDITION_RANK, loadEditionMarkers } from './lib/edition.mjs'
 
 const docsRoot = fileURLToPath(new URL('..', import.meta.url))
 const contentRoot = join(docsRoot, 'src', 'content', 'docs')
 const edition = currentEdition(docsRoot)
+const sectionDirectories = new Set(
+  loadEditionMarkers(docsRoot).flatMap((marker) => marker.sections.map((section) => section.directory)),
+)
 
 const forbiddenPathTerms = /(backlog|roadmap|remediation|production[-_ ]contract|ownership|development[-_ ]plan|quality[-_ ]acceptance)/i
 const forbiddenContentTerms = /(子代理派发|开发任务清单|后续开发清单|未实现功能路线|production readiness backlog|ownership decision)/i
@@ -39,6 +42,8 @@ for (const path of files) {
   const source = readFileSync(path, 'utf8')
   const yaml = frontmatter(source, local)
   const pageEdition = scalar(yaml, 'edition', local)
+  const localized = local.startsWith('en/') ? local.slice(3) : local
+  const topLevel = localized.split('/')[0]
 
   scalar(yaml, 'title', local)
   scalar(yaml, 'description', local)
@@ -51,6 +56,9 @@ for (const path of files) {
   }
   if (forbiddenPathTerms.test(local)) throw new Error(`Internal-target path is not allowed in formal docs: ${local}`)
   if (forbiddenContentTerms.test(source)) throw new Error(`Internal-target copy is not allowed in formal docs: ${local}`)
+  if (localized !== 'index.md' && !sectionDirectories.has(topLevel)) {
+    throw new Error(`Documentation page is outside an edition-owned section: ${local}`)
+  }
 }
 
 for (const required of ['index.md', 'getting-started/edition-and-language.md', 'en/index.md', 'en/getting-started/edition-and-language.md']) {

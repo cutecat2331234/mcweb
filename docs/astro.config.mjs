@@ -1,18 +1,10 @@
 import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
-import { currentEdition } from './scripts/lib/edition.mjs'
+import { currentEdition, loadEditionMarkers } from './scripts/lib/edition.mjs'
 
 const edition = currentEdition()
 const site = process.env.MCWEB_DOCS_SITE?.trim()
-
-const sections = [
-  ['开始', 'Getting started', 'getting-started'],
-  ['用户指南', 'User guide', 'user'],
-  ['工作人员指南', 'Staff guide', 'staff'],
-  ['管理员指南', 'Administrator guide', 'admin'],
-  ['运维指南', 'Operations guide', 'operations'],
-  ['插件开发', 'Plugin development', 'plugin-development'],
-]
+const sections = loadEditionMarkers().flatMap((marker) => marker.sections)
 
 export default defineConfig({
   ...(site ? { site } : {}),
@@ -33,9 +25,9 @@ export default defineConfig({
         root: { label: '简体中文', lang: 'zh-CN' },
         en: { label: 'English', lang: 'en' },
       },
-      sidebar: sections.map(([label, english, directory]) => ({
-        label,
-        translations: { en: english },
+      sidebar: sections.map(({ label, directory }) => ({
+        label: label['zh-CN'],
+        translations: { en: label.en },
         items: [{ autogenerate: { directory } }],
       })),
       lastUpdated: true,

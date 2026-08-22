@@ -4,5 +4,13 @@
   "label": {
     "zh-CN": "CE 社区版",
     "en": "Community Edition"
-  }
+  },
+  "sections": [
+    { "directory": "getting-started", "label": { "zh-CN": "开始", "en": "Getting started" } },
+    { "directory": "user", "label": { "zh-CN": "用户指南", "en": "User guide" } },
+    { "directory": "staff", "label": { "zh-CN": "工作人员指南", "en": "Staff guide" } },
+    { "directory": "admin", "label": { "zh-CN": "管理员指南", "en": "Administrator guide" } },
+    { "directory": "operations", "label": { "zh-CN": "运维指南", "en": "Operations guide" } },
+    { "directory": "plugin-development", "label": { "zh-CN": "插件开发", "en": "Plugin development" } }
+  ]
 }

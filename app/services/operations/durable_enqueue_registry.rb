@@ -12,12 +12,14 @@ module Operations
       :heartbeat_seconds,
       :max_attempts,
       :retry_delays,
+      :manual_reopen_permission,
       :argument_schema,
       :executor
     )
 
     KEY_PATTERN = /\A[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\z/
     SOURCE_KIND_PATTERN = /\A[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*\z/
+    PERMISSION_KEY_PATTERN = /\A[a-z][a-z0-9_.]*\z/
     ARGUMENT_TYPES = %w[integer string boolean integer_list].freeze
     MAX_ARGUMENT_BYTES = 8.kilobytes
     MAX_STRING_LENGTH = 2_000
@@ -38,6 +40,7 @@ module Operations
       heartbeat: 1.minute,
       max_attempts: 5,
       retry_delays: [ 1.minute, 5.minutes, 30.minutes, 2.hours ],
+      manual_reopen_permission: "system.jobs.manage",
       argument_schema: {},
       &executor
     )
@@ -47,11 +50,15 @@ module Operations
       normalized_source_kind = source_kind.to_s
       normalized_queue = queue.to_s
       normalized_replay_contract = replay_contract.to_s
+      normalized_manual_reopen_permission = manual_reopen_permission.to_s
       raise ArgumentError, "durable_enqueue_key_invalid" unless normalized_key.match?(KEY_PATTERN)
       raise ArgumentError, "durable_enqueue_source_kind_invalid" unless normalized_source_kind.match?(SOURCE_KIND_PATTERN)
       raise ArgumentError, "durable_enqueue_queue_invalid" unless normalized_queue.in?(ApplicationJob::QUEUE_NAMES.values)
       unless normalized_replay_contract.in?(REPLAY_CONTRACTS)
         raise ArgumentError, "durable_enqueue_replay_contract_invalid"
+      end
+      unless normalized_manual_reopen_permission.match?(PERMISSION_KEY_PATTERN)
+        raise ArgumentError, "durable_enqueue_manual_reopen_permission_invalid"
       end
       raise ArgumentError, "durable_enqueue_handler_duplicate" if @entries.key?(normalized_key)
       raise ArgumentError, "durable_enqueue_executor_required" unless executor
@@ -88,6 +95,7 @@ module Operations
         heartbeat_seconds: normalized_heartbeat,
         max_attempts: normalized_max_attempts,
         retry_delays: normalized_retry_delays,
+        manual_reopen_permission: normalized_manual_reopen_permission.freeze,
         argument_schema: normalize_schema(argument_schema).freeze,
         executor:
       )

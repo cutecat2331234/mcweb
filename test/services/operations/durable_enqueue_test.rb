@@ -63,6 +63,35 @@ module Operations
       end
     end
 
+    test "registry defaults and validates handler-owned manual reopen permissions" do
+      registry = Operations::DurableEnqueueRegistry.new
+      default_entry = registry.register(
+        key: "test.default_reopen",
+        source_kind: "safe_source",
+        queue: "maintenance",
+        replay_contract: "idempotent"
+      ) { Operations::DurableEnqueueResult.succeeded }
+      custom_entry = registry.register(
+        key: "test.custom_reopen",
+        source_kind: "safe_source",
+        queue: "maintenance",
+        replay_contract: "idempotent",
+        manual_reopen_permission: "product.notifications.retry"
+      ) { Operations::DurableEnqueueResult.succeeded }
+
+      assert_equal "system.jobs.manage", default_entry.manual_reopen_permission
+      assert_equal "product.notifications.retry", custom_entry.manual_reopen_permission
+      assert_raises(ArgumentError) do
+        registry.register(
+          key: "test.invalid_reopen",
+          source_kind: "safe_source",
+          queue: "maintenance",
+          replay_contract: "idempotent",
+          manual_reopen_permission: "Product Notifications Retry"
+        ) { Operations::DurableEnqueueResult.succeeded }
+      end
+    end
+
     test "record requires a business transaction and rejects conflicting replays" do
       connection = ApplicationRecord.connection
       connection.stub(:transaction_open?, false) do
@@ -489,6 +518,114 @@ module Operations
       assert_equal 1, intent.events.where(event_type: "reopened").count
     end
 
+    test "handler-owned permission reopens only its registered durable intent" do
+      entry = custom_reopen_entry(
+        key: "test.product_notification",
+        permission: "product.notifications.retry"
+      )
+      intent = create_intent_for_entry(
+        entry,
+        source_id: 62,
+        dedupe_key: "test:custom-reopen:62"
+      )
+      dead_letter_intent!(intent)
+      actor = create_user
+      grant_permission(actor, "product.notifications.retry")
+
+      Operations::DurableEnqueueCatalog.stub(:entry, ->(_) { entry }) do
+        assert_enqueued_with(
+          job: Operations::DispatchDurableIntentJob,
+          args: [ intent.id, 2, "manual" ]
+        ) do
+          result = Operations::RecoverDurableEnqueue.call(
+            intent_public_ids: [ intent.public_id ],
+            trigger: "manual",
+            actor:,
+            reopen: true,
+            reason: "Product operator approved a bounded recovery"
+          )
+
+          assert_predicate result, :success?
+          assert_equal 1, result.value.fetch(:enqueued_count)
+        end
+      end
+
+      assert_equal 1, intent.events.where(event_type: "reopened").count
+      assert AuditLog.for_resource(intent).exists?(action: "operations.durable_enqueue.reopened")
+      refute actor.permission?("system.jobs.manage")
+    end
+
+    test "mixed reopen selection is rejected atomically before any side effect" do
+      entries = {
+        "test.product_notification" => custom_reopen_entry(
+          key: "test.product_notification",
+          permission: "product.notifications.retry"
+        ),
+        "test.global_notification" => custom_reopen_entry(
+          key: "test.global_notification",
+          permission: "system.jobs.manage"
+        )
+      }
+      allowed = create_intent_for_entry(
+        entries.fetch("test.product_notification"),
+        source_id: 63,
+        dedupe_key: "test:mixed-reopen:allowed"
+      )
+      protected = create_intent_for_entry(
+        entries.fetch("test.global_notification"),
+        source_id: 64,
+        dedupe_key: "test:mixed-reopen:protected"
+      )
+      dead_letter_intent!(allowed)
+      dead_letter_intent!(protected)
+      actor = create_user
+      grant_permission(actor, "product.notifications.retry")
+
+      Operations::DurableEnqueueCatalog.stub(:entry, ->(key) { entries[key] }) do
+        assert_no_enqueued_jobs do
+          assert_no_difference -> { Operations::DurableEnqueueEvent.count } do
+            assert_no_difference -> { AuditLog.count } do
+              result = Operations::RecoverDurableEnqueue.call(
+                intent_public_ids: [ allowed.public_id, protected.public_id ],
+                trigger: "manual",
+                actor:,
+                reopen: true,
+                reason: "This mixed selection must not partially reopen"
+              )
+
+              assert_predicate result, :failure?
+              assert_equal "durable_enqueue_reopen_forbidden", result.code
+            end
+          end
+        end
+      end
+
+      refute allowed.events.exists?(event_type: "reopened")
+      refute protected.events.exists?(event_type: "reopened")
+    end
+
+    test "unknown reopen selection is rejected without audit or enqueue" do
+      actor = create_user
+      grant_permission(actor, "system.jobs.manage")
+
+      assert_no_enqueued_jobs do
+        assert_no_difference -> { Operations::DurableEnqueueEvent.count } do
+          assert_no_difference -> { AuditLog.count } do
+            result = Operations::RecoverDurableEnqueue.call(
+              intent_public_ids: [ SecureRandom.uuid ],
+              trigger: "manual",
+              actor:,
+              reopen: true,
+              reason: "The selected operation must exist"
+            )
+
+            assert_predicate result, :failure?
+            assert_equal "durable_enqueue_reopen_selection_invalid", result.code
+          end
+        end
+      end
+    end
+
     test "status snapshot and manual task schemas expose no source or payload" do
       intent = create_intent(source_id: 71, dedupe_key: "test:status:71")
       snapshot = Operations::DurableEnqueueStatus.call(intent)
@@ -824,6 +961,42 @@ module Operations
         end
       end
       intent
+    end
+
+    def dead_letter_intent!(intent)
+      Operations::DurableEnqueueLedger.append!(
+        intent:,
+        event_type: "dead_lettered",
+        generation: 1,
+        error_code: "test_delivery_failed",
+        occurred_at: Time.current
+      )
+    end
+
+    def create_intent_for_entry(entry, source_id:, dedupe_key:)
+      intent = nil
+      Operations::DurableEnqueueCatalog.stub(:entry, ->(_) { entry }) do
+        collect_after_commit do
+          Operations::DurableEnqueueIntent.transaction do
+            intent = Operations::DurableEnqueue.record!(
+              handler: entry.key,
+              source_id:,
+              dedupe_key:
+            )
+          end
+        end
+      end
+      intent
+    end
+
+    def custom_reopen_entry(key:, permission:)
+      core_entry = Operations::DurableEnqueueCatalog.entry("community.web_push")
+      Operations::DurableEnqueueRegistry::Entry.new(
+        **core_entry.to_h.merge(
+          key:,
+          manual_reopen_permission: permission
+        )
+      )
     end
 
     def collect_after_commit(&block)

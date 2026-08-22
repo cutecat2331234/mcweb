@@ -13,6 +13,7 @@ require "action_text/engine"
 require "action_view/railtie"
 require "rails/test_unit/railtie"
 require_relative "../lib/mcweb/request_performance_middleware"
+require_relative "../lib/mcweb/settings_namespace_registry"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.

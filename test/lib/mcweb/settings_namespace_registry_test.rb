@@ -4,6 +4,13 @@ require "test_helper"
 
 module Mcweb
   class SettingsNamespaceRegistryTest < ActiveSupport::TestCase
+    test "the registry is loaded before downstream initializers run" do
+      source = Rails.root.join("config/application.rb").read
+
+      assert_includes source, 'require_relative "../lib/mcweb/settings_namespace_registry"'
+      assert defined?(Mcweb::SettingsNamespaceRegistry::DEFAULT)
+    end
+
     test "longest matching namespace owns a setting" do
       registry = SettingsNamespaceRegistry::Registry.new
       registry.register(prefix: "product.", owner: "platform")

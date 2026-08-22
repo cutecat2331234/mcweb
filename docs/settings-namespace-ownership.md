@@ -13,14 +13,14 @@ policy concepts.
 
 ## Task checklist
 
-- [ ] Add a process-wide, boot-time registry for owned setting prefixes.
-- [ ] Validate prefixes and owner identifiers and make duplicate registration
+- [x] Add a process-wide, boot-time registry for owned setting prefixes.
+- [x] Validate prefixes and owner identifiers and make duplicate registration
       idempotent while rejecting conflicting ownership.
-- [ ] Exclude owned keys from the generic System settings response.
-- [ ] Reject an entire generic update when any submitted key is owned.
-- [ ] Record a value-free audit event for each rejected request.
-- [ ] Keep ordinary, unowned settings behavior unchanged.
-- [ ] Add CE registry and controller regression coverage.
+- [x] Exclude owned keys from the generic System settings response.
+- [x] Reject an entire generic update when any submitted key is owned.
+- [x] Record a value-free audit event for each rejected request.
+- [x] Keep ordinary, unowned settings behavior unchanged.
+- [x] Add CE registry and controller regression coverage.
 - [ ] Merge CE history through EE into EE-PVP.
 - [ ] Register `pvp.*` in EE-PVP and prove the generic route cannot read or
       write those keys.

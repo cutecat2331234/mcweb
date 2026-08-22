@@ -2157,6 +2157,7 @@
         community_report_created: "已提交社区举报"
         community_topic_forked_from_post: "已从帖子分拆论坛主题"
         admin_settings_updated: "系统设置已更新"
+        admin_settings_protected_write_rejected: "受保护配置更新已被拒绝"
         admin_feature_toggles_updated: "功能开关已更新"
         admin_rate_limit_settings_updated: "频率限制设置已更新"
         admin_user_updated: "管理员已更新用户账号"
@@ -2326,6 +2327,7 @@
         settings:
           custom_label: 自定义配置项
           portal_required: 论坛和商城至少需要保留一个开启。
+          protected_namespace: 此配置由专用配置页面管理，本次未作任何更改。
           labels:
             features.forum.enabled: 社区功能
             features.minecraft.enabled: Minecraft 功能

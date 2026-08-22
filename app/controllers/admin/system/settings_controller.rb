@@ -166,6 +166,12 @@ module Admin
       end
 
       def update_system_settings
+        protected_keys = submitted_protected_setting_keys
+        if protected_keys.any?
+          reject_protected_setting_update(protected_keys)
+          return
+        end
+
         updates = settings_params.except(*READ_ONLY_SETTING_KEYS)
         updates.reject! { |key, value| sensitive_key?(key) && value.blank? }
 
@@ -215,7 +221,9 @@ module Admin
         label_maps = translation_maps("labels")
         hint_maps = translation_maps("hints")
 
-        SiteSetting.where.not(key: BASIC_SETTING_KEYS).order(:key).map do |setting|
+        SiteSetting.where.not(key: BASIC_SETTING_KEYS).order(:key).filter_map do |setting|
+          next if Mcweb::SettingsNamespaceRegistry.protected?(setting.key)
+
           sensitive = sensitive_key?(setting.key)
           {
             key: setting.key,
@@ -318,8 +326,37 @@ module Admin
       end
 
       def settings_params
-        allowed_keys = SiteSetting.where.not(key: BASIC_SETTING_KEYS).pluck(:key)
+        allowed_keys = SiteSetting.where.not(key: BASIC_SETTING_KEYS).pluck(:key).reject do |key|
+          Mcweb::SettingsNamespaceRegistry.protected?(key)
+        end
         params.fetch(:settings, {}).permit(*allowed_keys).to_h
+      end
+
+      def submitted_protected_setting_keys
+        submitted = params[:settings]
+        return [] unless submitted.respond_to?(:keys)
+
+        submitted.keys
+          .map(&:to_s)
+          .select { |key| Mcweb::SettingsNamespaceRegistry.protected?(key) }
+          .uniq
+          .sort
+      end
+
+      def reject_protected_setting_update(keys)
+        owners = keys.index_with do |key|
+          Mcweb::SettingsNamespaceRegistry.owner_for(key)
+        end
+        Administration::AuditLogger.call(
+          actor: current_user,
+          action: "admin.settings_protected_write_rejected",
+          metadata: { keys:, owners: },
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
+        )
+
+        redirect_to admin_system_settings_path,
+          alert: t("mcweb.admin.system.settings.protected_namespace")
       end
 
       def translation_maps(kind)

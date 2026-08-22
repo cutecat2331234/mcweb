@@ -1,6 +1,6 @@
 ---
-title: McWeb CE Documentation
-description: Formal documentation for McWeb CE users, staff, administrators, operators, and plugin developers.
+title: McWeb Documentation
+description: Formal documentation for users, staff, administrators, operators, and plugin developers of the current McWeb edition.
 edition: ce
 audience:
   - user
@@ -10,8 +10,8 @@ audience:
   - plugin-developer
 template: splash
 hero:
-  title: McWeb CE Documentation
-  tagline: Current Community Edition guidance for everyday use, administration, operations, and plugin development.
+  title: McWeb Documentation
+  tagline: Guidance for the capabilities available in the currently installed edition.
   actions:
     - text: Edition and language
       link: /docs/en/getting-started/edition-and-language/
@@ -28,3 +28,5 @@ hero:
 - Plugin developers: Developer Mode, the SDK, REST API, and marketplace operations.
 
 English pages are translated progressively. If an English page is missing, Starlight displays the Simplified Chinese source with a fallback notice instead of silently presenting it as a completed translation.
+
+This site is built from the current product repository. The site title identifies the edition, and build checks reject pages that belong to a higher downstream edition.

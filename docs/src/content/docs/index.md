@@ -1,6 +1,6 @@
 ---
-title: McWeb CE 文档
-description: McWeb CE 用户、工作人员、管理员、运维和插件开发者的正式使用文档。
+title: McWeb 文档
+description: McWeb 当前版本面向用户、工作人员、管理员、运维和插件开发者的正式使用文档。
 edition: ce
 audience:
   - user
@@ -10,8 +10,8 @@ audience:
   - plugin-developer
 template: splash
 hero:
-  title: McWeb CE 文档
-  tagline: 从日常使用到生产运维，按角色查找当前社区版已经提供的功能。
+  title: McWeb 文档
+  tagline: 从日常使用到生产运维，按角色查找当前安装版本已经提供的功能。
   actions:
     - text: 开始使用
       link: /docs/getting-started/edition-and-language/
@@ -32,6 +32,6 @@ hero:
 
 ## 适用范围
 
-本网站由 CE 仓库中的 Markdown/MDX 构建，只描述 CE 当前可用能力。EE 的实时频道、企业协作能力以及 EE-PVP 的测试、Tier 和排行流程不属于本版本。
+本网站由当前产品仓库中的 Markdown/MDX 构建，只描述站点标题所示版本以及它从上游版本继承的可用能力。
 
-每个页面顶部的版本归属由构建检查校验。若你使用的是 EE 或 EE-PVP，请打开随该版本构建的文档站。
+每个页面的版本归属由构建检查校验。请始终使用随当前安装版本构建和发布的文档站。

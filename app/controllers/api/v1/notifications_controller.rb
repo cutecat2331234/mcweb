@@ -15,7 +15,7 @@ module Api
         scope = scope.unread if params[:unread].to_s == "true"
 
         pagy, notifications = api_paginate(scope)
-        notification_access = Community::NotificationAccess.new(
+        notification_access = Account::NotificationAccess.new(
           user: api_user,
           notifications: notifications
         )
@@ -51,7 +51,7 @@ module Api
       end
 
       def serialize_notification(notification, notification_access: nil)
-        access = notification_access || Community::NotificationAccess.new(
+        access = notification_access || Account::NotificationAccess.new(
           user: api_user,
           notifications: [ notification ]
         )

@@ -18,7 +18,7 @@ class PersonalSensitiveResponseTest < ActionDispatch::IntegrationTest
       store_orders_path,
       store_wallet_path,
       forum_conversations_path,
-      forum_notifications_path,
+      account_notifications_path,
       minecraft_link_path
     ]
 

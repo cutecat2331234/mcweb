@@ -30,8 +30,9 @@ class Notification < ApplicationRecord
   end
 
   def destination_path
-    raw = metadata["path"].presence || metadata[:path].presence ||
-      metadata["url"].presence || metadata[:url].presence
+    values = metadata.is_a?(Hash) ? metadata : {}
+    raw = values["path"].presence || values[:path].presence ||
+      values["url"].presence || values[:url].presence
     Mcweb::Paths.normalize(raw)
   end
 

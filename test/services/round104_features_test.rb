@@ -25,7 +25,7 @@ class Round104NotificationThisWeekFilterTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications index supports this week period filter" do
-    get forum_notifications_path(period: "this_week")
+    get account_notifications_path(period: "this_week")
     assert_response :success
     assert_includes response.body, "activePeriod"
     assert_includes response.body, '"period":"this_week"'

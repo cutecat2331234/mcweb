@@ -314,9 +314,9 @@ class NotificationMarkReadRedirectTest < ActionDispatch::IntegrationTest
   end
 
   test "mark read preserves notification filters" do
-    patch mark_read_forum_notification_path(@notification, category: "forum", read: "unread")
+    patch mark_read_account_notification_path(@notification, category: "forum", read: "unread")
 
-    assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
+    assert_redirected_to account_notifications_path(category: "forum", read: "unread")
   end
 
   test "mark all read preserves notification filters" do
@@ -328,9 +328,9 @@ class NotificationMarkReadRedirectTest < ActionDispatch::IntegrationTest
       metadata: {}
     )
 
-    patch mark_all_read_forum_notifications_path(category: "forum", read: "unread")
+    patch mark_all_read_account_notifications_path(category: "forum", read: "unread")
 
-    assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
+    assert_redirected_to account_notifications_path(category: "forum", read: "unread")
   end
 end
 

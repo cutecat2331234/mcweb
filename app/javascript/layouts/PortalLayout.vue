@@ -192,7 +192,7 @@ const sidebarProps = computed(() => ({
                 <Moon v-else class="h-4 w-4" />
               </Button>
 
-              <Button v-if="features.forum && auth.user && notifications" as-child variant="ghost" size="icon" class="relative">
+              <Button v-if="auth.user && notifications" as-child variant="ghost" size="icon" class="relative">
                 <Link :href="notifications.url" :aria-label="t('common.notifications')">
                   <Bell class="h-4 w-4" />
                   <Badge

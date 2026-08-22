@@ -23,11 +23,17 @@ module InertiaSharedProps
     }
 
     append_store_shared_props(share) if store_shared_props_required?
-    if logged_in? && FeatureFlags.enabled?(:forum)
-      share[:staff_workspace] = InertiaRails.defer(
+    if logged_in? && frontend_template_scope_for_request == "portal"
+      share[:notifications] = InertiaRails.defer(
         group: "portal_navigation",
         rescue: true
-      ) { staff_workspace_navigation_payload }
+      ) { account_notification_navigation_payload }
+      if FeatureFlags.enabled?(:forum)
+        share[:staff_workspace] = InertiaRails.defer(
+          group: "portal_navigation",
+          rescue: true
+        ) { staff_workspace_navigation_payload }
+      end
     end
     append_forum_shared_props(share) if inertia_feature_domain == :forum
     append_minecraft_shared_props(share) if inertia_feature_domain == :minecraft
@@ -37,6 +43,13 @@ module InertiaSharedProps
     share.merge!(share_active_template)
     share[:csrf_token] = form_authenticity_token
     share
+  end
+
+  def account_notification_navigation_payload
+    {
+      unread_count: current_user.notifications.unread.count,
+      url: account_notifications_path
+    }
   end
 
   def staff_workspace_navigation_payload
@@ -108,7 +121,6 @@ module InertiaSharedProps
   def append_forum_shared_props(share)
     if logged_in?
       %i[
-        notifications
         forum_unread
         forum_new
         forum_assigned
@@ -165,10 +177,6 @@ module InertiaSharedProps
       end
 
       {
-        notifications: {
-          unread_count: current_user.notifications.unread.count,
-          url: forum_notifications_path
-        },
         forum_unread: {
           count: Community::ReadState
             .with_unread_for(current_user)

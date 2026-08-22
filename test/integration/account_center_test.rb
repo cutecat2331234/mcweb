@@ -29,11 +29,14 @@ class AccountCenterTest < ActionDispatch::IntegrationTest
     assert_equal false, props.dig(:security, :totp_enabled)
     assert_operator props.dig(:security, :active_sessions_count), :>=, 1
 
+    assert_equal %i[topic_drafts unread_messages unread_notifications],
+                 props.fetch(:activity).keys.sort
     if props.fetch(:forum_enabled)
-      assert_equal %i[topic_drafts unread_messages unread_notifications],
-                   props.fetch(:activity).keys.sort
+      assert_kind_of Integer, props.dig(:activity, :unread_messages)
+      assert_kind_of Integer, props.dig(:activity, :topic_drafts)
     else
-      assert_nil props.fetch(:activity)
+      assert_nil props.dig(:activity, :unread_messages)
+      assert_nil props.dig(:activity, :topic_drafts)
     end
     if props.fetch(:minecraft_enabled)
       assert_equal false, props.dig(:minecraft, :bound)
@@ -52,6 +55,8 @@ class AccountCenterTest < ActionDispatch::IntegrationTest
     assert_response :success
     props = inertia.props.deep_symbolize_keys
     assert_equal false, props.fetch(:forum_enabled)
-    assert_nil props.fetch(:activity)
+    assert_equal 0, props.dig(:activity, :unread_notifications)
+    assert_nil props.dig(:activity, :unread_messages)
+    assert_nil props.dig(:activity, :topic_drafts)
   end
 end

@@ -25,7 +25,7 @@ class Round105NotificationThisMonthFilterTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications index supports this month period filter" do
-    get forum_notifications_path(period: "this_month")
+    get account_notifications_path(period: "this_month")
     assert_response :success
     assert_includes response.body, "activePeriod"
     assert_includes response.body, '"period":"this_month"'

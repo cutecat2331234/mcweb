@@ -43,7 +43,7 @@ module Community
       end
 
       result = with_developer_mode(enabled: true) do
-        with_singleton_method(Community::NotificationAccess, :visible?, visible) do
+        with_singleton_method(Account::NotificationAccess, :visible?, visible) do
           with_singleton_method(
             Mcweb::DeveloperModeCapture,
             :capture_web_push!,
@@ -123,7 +123,7 @@ module Community
       end
 
       result = with_developer_mode(enabled: true) do
-        with_singleton_method(Community::NotificationAccess, :visible?, denied) do
+        with_singleton_method(Account::NotificationAccess, :visible?, denied) do
           with_singleton_method(
             Mcweb::DeveloperModeCapture,
             :capture_web_push!,

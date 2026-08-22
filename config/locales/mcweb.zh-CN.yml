@@ -415,6 +415,7 @@
       bookmark_updated: 书签已更新。
       marked_read: 已标记为已读。
       alerts_dismissed: 提醒已清除。
+      notification_filters_invalid: 筛选条件无效，未更改任何通知。
       notification_unavailable: 此通知关联的内容已不可用。
       notification_deleted: 通知已删除。
       report_submitted: 举报已提交。
@@ -1746,6 +1747,34 @@
         variant_name: 默认
         cancel_reason: 测试取消
       product_duplicate_suffix: " (副本)"
+    account:
+      notifications:
+        content_unavailable: 内容不可用
+        content_unavailable_body: 此通知关联的内容已不可用。
+        grouped_body: "共 %{count} 条相关通知"
+        order_title: "订单 %{number}"
+        unread_only: 仅未读
+        categories:
+          forum: 论坛
+          commerce: 商城
+          system: 系统
+        periods:
+          today: 仅今日
+          this_week: 本周
+          this_month: 本月
+          last_month: 上月
+          last_year: 去年
+      notification_timeline:
+        today: 今天
+        yesterday: 昨天
+        this_week: 本周
+        this_month: 本月
+        last_month: 上月
+        last_year: 去年
+        earlier: 更早
+      notification_read_state:
+        unread: 未读
+        read: 已读
     forum:
       topic_delete:
         author_reason: 主题作者主动删除
@@ -1832,20 +1861,6 @@
       poll_meta:
         title_suffix: 投票
         description_prefix: "投票："
-      notifications:
-        content_unavailable: 内容不可用
-        content_unavailable_body: 此通知关联的内容已不可用。
-        grouped_body: "共 %{count} 条相关通知"
-        order_title: "订单 %{number}"
-        category_forum: 论坛
-        category_commerce: 商城
-        unread_only: 仅未读
-        periods:
-          today: 仅今日
-          this_week: 本周
-          this_month: 本月
-          last_month: 上月
-          last_year: 去年
       badges:
         manual: 手动授予
         first_topic: 发布首个主题
@@ -1975,17 +1990,6 @@
         unarchive: 此主题已取消归档。
         assign: 此主题已指派给管理成员。
         unassign: 此主题已取消指派。
-      notification_timeline:
-        today: 今天
-        yesterday: 昨天
-        this_week: 本周
-        this_month: 本月
-        last_month: 上月
-        last_year: 去年
-        earlier: 更早
-      notification_read_state:
-        unread: 未读
-        read: 已读
       in_app:
         profile_post:
           title: "%{author} 在你的主页留言"

@@ -25,7 +25,7 @@ class Round106NotificationLastMonthFilterTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications index supports last month period filter" do
-    get forum_notifications_path(period: "last_month")
+    get account_notifications_path(period: "last_month")
     assert_response :success
     assert_includes response.body, "activePeriod"
     assert_includes response.body, '"period":"last_month"'

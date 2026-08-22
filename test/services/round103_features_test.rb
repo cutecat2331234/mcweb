@@ -26,7 +26,7 @@ class Round103NotificationPeriodFilterTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications index supports today period filter" do
-    get forum_notifications_path(period: "today")
+    get account_notifications_path(period: "today")
     assert_response :success
     assert_includes response.body, "activePeriod"
     assert_includes response.body, "periodFilters"

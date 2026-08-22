@@ -72,7 +72,7 @@ class Round98NotificationVisitTest < ActionDispatch::IntegrationTest
   end
 
   test "visit redirects legacy notification paths to app scope" do
-    get visit_forum_notification_path(@notification)
+    get visit_account_notification_path(@notification)
     assert_redirected_to "/app/forum/topics/legacy1"
   end
 end

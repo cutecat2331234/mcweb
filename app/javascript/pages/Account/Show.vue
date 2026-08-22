@@ -64,9 +64,9 @@ const props = defineProps<{
   }
   activity: {
     unread_notifications: number
-    unread_messages: number
-    topic_drafts: number
-  } | null
+    unread_messages: number | null
+    topic_drafts: number | null
+  }
   minecraft: {
     bound: boolean
     username?: string | null
@@ -92,23 +92,28 @@ const primaryActions = computed<DashboardAction[]>(() => {
   return actions
 })
 
-const activityItems = computed(() => props.activity ? [
-  {
+const activityItems = computed(() => {
+  const items = [{
     key: 'notifications',
     value: props.activity.unread_notifications,
-    href: routes.forumNotifications,
-  },
-  {
-    key: 'messages',
-    value: props.activity.unread_messages,
-    href: routes.forumMessages,
-  },
-  {
-    key: 'drafts',
-    value: props.activity.topic_drafts,
-    href: routes.forumDrafts,
-  },
-] : [])
+    href: routes.accountNotifications,
+  }]
+  if (props.forum_enabled) {
+    items.push(
+      {
+        key: 'messages',
+        value: props.activity.unread_messages ?? 0,
+        href: routes.forumMessages,
+      },
+      {
+        key: 'drafts',
+        value: props.activity.topic_drafts ?? 0,
+        href: routes.forumDrafts,
+      },
+    )
+  }
+  return items
+})
 
 const communityActions = computed<DashboardAction[]>(() => props.forum_enabled ? [
   { key: 'newTopics', href: routes.forumNew, icon: IconNotification },
@@ -213,7 +218,7 @@ function formatJoinedAt(value: string) {
       </GridItem>
     </Grid>
 
-    <Card v-if="activity" :title="t('accountCenter.activity.title')" :bordered="true">
+    <Card :title="t('accountCenter.activity.title')" :bordered="true">
       <Grid :cols="{ xs: 1, sm: 3 }" :col-gap="16" :row-gap="16">
         <GridItem v-for="item in activityItems" :key="item.key">
           <Space direction="vertical" fill>

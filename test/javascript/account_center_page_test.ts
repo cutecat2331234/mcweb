@@ -25,7 +25,8 @@ test('account center is a state dashboard built from the shared Arco UI library'
   assert.match(page, /routes\.securityPassword/)
   assert.match(page, /routes\.security/)
   assert.match(page, /routes\.minecraftLink/)
-  assert.match(page, /routes\.forumNotifications/)
+  assert.match(page, /routes\.accountNotifications/)
+  assert.doesNotMatch(page, /routes\.forumNotifications/)
   assert.match(page, /routes\.forumMessages/)
   assert.match(page, /routes\.forumDrafts/)
   assert.match(page, /routes\.forumFollowing/)
@@ -43,6 +44,7 @@ test('account center is a state dashboard built from the shared Arco UI library'
 
 test('account and identity self-service routes are application-level destinations', () => {
   assert.match(routes, /account: `\$\{appPrefix\}\/account`/)
+  assert.match(routes, /accountNotifications: `\$\{appPrefix\}\/account\/notifications`/)
   assert.match(routes, /identityProfile: `\$\{appPrefix\}\/identity\/profile`/)
   assert.match(routes, /securityPassword: `\$\{appPrefix\}\/identity\/security\/password`/)
   assert.equal((staffLayout.match(/visit\(routes\.app\)/g) || []).length, 2)

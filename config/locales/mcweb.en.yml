@@ -415,6 +415,7 @@ en:
       bookmark_updated: Bookmark updated.
       marked_read: Marked as read.
       alerts_dismissed: Alerts dismissed.
+      notification_filters_invalid: No notifications were changed because a filter was invalid.
       notification_unavailable: The content for this notification is no longer available.
       notification_deleted: Notification deleted.
       report_submitted: Report submitted.
@@ -1746,6 +1747,34 @@ en:
         variant_name: Default
         cancel_reason: Test cancellation
       product_duplicate_suffix: " (copy)"
+    account:
+      notifications:
+        content_unavailable: Content unavailable
+        content_unavailable_body: The content linked to this notification is no longer available.
+        grouped_body: "%{count} related notifications"
+        order_title: "Order %{number}"
+        unread_only: Unread only
+        categories:
+          forum: Forum
+          commerce: Store
+          system: System
+        periods:
+          today: Today only
+          this_week: This week
+          this_month: This month
+          last_month: Last month
+          last_year: Last year
+      notification_timeline:
+        today: Today
+        yesterday: Yesterday
+        this_week: This week
+        this_month: This month
+        last_month: Last month
+        last_year: Last year
+        earlier: Earlier
+      notification_read_state:
+        unread: Unread
+        read: Read
     forum:
       topic_delete:
         author_reason: Deleted by the topic author
@@ -1832,20 +1861,6 @@ en:
       poll_meta:
         title_suffix: Poll
         description_prefix: "Poll: "
-      notifications:
-        content_unavailable: Content unavailable
-        content_unavailable_body: The content linked to this notification is no longer available.
-        grouped_body: "%{count} related notifications"
-        order_title: "Order %{number}"
-        category_forum: Forum
-        category_commerce: Store
-        unread_only: Unread only
-        periods:
-          today: Today only
-          this_week: This week
-          this_month: This month
-          last_month: Last month
-          last_year: Last year
       badges:
         manual: Manual grant
         first_topic: First topic
@@ -1975,17 +1990,6 @@ en:
         unarchive: This topic has been unarchived.
         assign: This topic has been assigned.
         unassign: Assignment removed from this topic.
-      notification_timeline:
-        today: Today
-        yesterday: Yesterday
-        this_week: This week
-        this_month: This month
-        last_month: Last month
-        last_year: Last year
-        earlier: Earlier
-      notification_read_state:
-        unread: Unread
-        read: Read
       in_app:
         profile_post:
           title: "%{author} posted on your profile"

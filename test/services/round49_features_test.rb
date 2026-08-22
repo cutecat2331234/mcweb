@@ -99,12 +99,12 @@ class BannedSessionIntegrationTest < ActionDispatch::IntegrationTest
     user = create_user
     sign_in_as(user)
 
-    get forum_notifications_path
+    get account_notifications_path
     assert_response :success
 
     user.update!(status: :banned, banned_at: Time.current)
 
-    get forum_notifications_path
+    get account_notifications_path
     assert_redirected_to identity_sign_in_path
   end
 end

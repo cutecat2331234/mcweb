@@ -12,7 +12,7 @@ module Community
       return skipped("source_missing") unless notification
 
       user = User.find_by(id: notification.user_id)
-      unless user&.session_eligible? && Community::NotificationAccess.visible?(
+      unless user&.session_eligible? && Account::NotificationAccess.visible?(
         notification:,
         user:
       )

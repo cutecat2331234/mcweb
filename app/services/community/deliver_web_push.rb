@@ -46,7 +46,7 @@ module Community
 
     def deliverable_notification?
       @user&.session_eligible? &&
-        Community::NotificationAccess.visible?(
+        Account::NotificationAccess.visible?(
           notification: @notification,
           user: @user
         )

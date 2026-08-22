@@ -128,7 +128,7 @@ class CommunityForumAccessTest < ActionDispatch::IntegrationTest
       forum_watching_path,
       forum_watched_tag_topics_path,
       forum_assigned_path,
-      forum_notifications_path
+      account_notifications_path
     ].each do |path|
       get path
       assert_response :success

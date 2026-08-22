@@ -4,6 +4,7 @@ export const routes = {
   home: '/',
   app: appPrefix,
   account: `${appPrefix}/account`,
+  accountNotifications: `${appPrefix}/account/notifications`,
   forum: `${appPrefix}/forum/sections`,
   forumLatest: `${appPrefix}/forum/latest`,
   forumTop: `${appPrefix}/forum/top`,

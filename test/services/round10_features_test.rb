@@ -199,7 +199,7 @@ class Community::NotificationVisitTest < ActionDispatch::IntegrationTest
   end
 
   test "visit marks notification read and redirects" do
-    get visit_forum_notification_path(@notification)
+    get visit_account_notification_path(@notification)
     assert_response :redirect
     assert @notification.reload.read?
   end
@@ -207,9 +207,9 @@ class Community::NotificationVisitTest < ActionDispatch::IntegrationTest
   test "visit rejects unsafe notification destinations" do
     @notification.update!(metadata: { path: "//evil.com" })
 
-    get visit_forum_notification_path(@notification)
+    get visit_account_notification_path(@notification)
 
-    assert_redirected_to forum_notifications_path
+    assert_redirected_to account_notifications_path
     assert @notification.reload.read?
   end
 end

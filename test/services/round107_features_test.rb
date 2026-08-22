@@ -13,7 +13,7 @@ class Round107NotificationLastYearFilterTest < ActionDispatch::IntegrationTest
 
   test "notifications index supports last year period filter" do
     travel_to Time.zone.local(2026, 6, 14, 12, 0, 0) do
-      get forum_notifications_path(period: "last_year")
+      get account_notifications_path(period: "last_year")
       assert_response :success
       assert_includes response.body, '"period":"last_year"'
       assert_includes response.body, "LastYearNotify"

@@ -305,7 +305,7 @@ class Community::HiddenTopicNotificationDisplayTest < ActionDispatch::Integratio
 
   test "notification list redacts hidden topic content for subscriber" do
     sign_in_as(@subscriber)
-    get forum_notifications_path
+    get account_notifications_path
 
     assert_response :success
     assert_not_includes response.body, "Secret hidden notification topic"

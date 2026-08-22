@@ -54,14 +54,14 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
     )
     participant.destroy!
 
-    get forum_notifications_path, headers: inertia_headers
+    get account_notifications_path, headers: inertia_headers
     assert_response :success
     assert_not_includes response.body, "PRIVATE-CONVERSATION-TITLE"
     assert_not_includes response.body, "PRIVATE-CONVERSATION-BODY"
     assert_not_includes response.body, "/app/forum/conversations/#{conversation.id}"
 
-    get visit_forum_notification_path(notification)
-    assert_redirected_to forum_notifications_path
+    get visit_account_notification_path(notification)
+    assert_redirected_to account_notifications_path
   end
 
   test "notification list does not expose tag names after unsubscribe" do
@@ -87,7 +87,7 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
     )
     subscription.destroy!
 
-    get forum_notifications_path, headers: inertia_headers
+    get account_notifications_path, headers: inertia_headers
     assert_response :success
     assert_not_includes response.body, tag.name
     assert_not_includes response.body, "TAG-NOTIFICATION-TITLE"
@@ -148,7 +148,7 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
     )
     post.soft_delete!
 
-    get forum_notifications_path, headers: inertia_headers
+    get account_notifications_path, headers: inertia_headers
     assert_response :success
     assert_not_includes response.body, "SOFT-DELETED-POST-TITLE"
     assert_not_includes response.body, "SOFT-DELETED-POST-BODY"
@@ -181,13 +181,15 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
       )
     end
 
-    get forum_notifications_path(page: 2), headers: inertia_headers
+    get account_notifications_path(page: 2), headers: inertia_headers
 
     assert_response :success
     props = inertia.props.deep_symbolize_keys
     assert_equal 2, props.dig(:pagination, :page)
     assert_equal 55, props.dig(:pagination, :count)
-    titles = props.fetch(:flat_notifications).map { |notification| notification[:title] }
+    titles = props.fetch(:notificationGroups)
+      .flat_map { |group| group.fetch(:items) }
+      .map { |notification| notification[:title] }
     assert_includes titles, "PAGEABLE-00"
     refute_includes titles, "PAGEABLE-54"
   end
@@ -202,22 +204,22 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
       title: "Do not delete this notification"
     )
 
-    delete forum_notification_path(own), params: {
-      category: "forum",
+    delete account_notification_path(own), params: {
+      category: "system",
       read: "unread",
       type: "system.notice",
-      period: "month",
+      period: "this_month",
       page: "2"
     }
-    assert_redirected_to forum_notifications_path(
-      category: "forum",
+    assert_redirected_to account_notifications_path(
+      category: "system",
       read: "unread",
       type: "system.notice",
-      period: "month"
+      period: "this_month"
     )
     refute Notification.exists?(own.id)
 
-    delete forum_notification_path(foreign)
+    delete account_notification_path(foreign)
     assert_response :not_found
     assert Notification.exists?(foreign.id)
   end
@@ -232,14 +234,14 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
     end
     only_last_page_item = notifications.first
 
-    delete forum_notification_path(only_last_page_item), params: {
-      category: "forum",
+    delete account_notification_path(only_last_page_item), params: {
+      category: "system",
       type: "system.notice",
       page: "2"
     }
 
-    assert_redirected_to forum_notifications_path(
-      category: "forum",
+    assert_redirected_to account_notifications_path(
+      category: "system",
       type: "system.notice"
     )
     refute Notification.exists?(only_last_page_item.id)

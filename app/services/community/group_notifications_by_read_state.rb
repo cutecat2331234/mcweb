@@ -29,7 +29,7 @@ module Community
     def read_state_section(key, groups, default_expanded:)
       {
         key: key,
-        label: I18n.t("mcweb.forum.notification_read_state.#{key}"),
+        label: I18n.t("mcweb.account.notification_read_state.#{key}"),
         count: groups.size,
         groups: groups,
         timeline_sections: GroupNotificationTimeline.call(groups),

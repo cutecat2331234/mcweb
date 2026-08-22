@@ -48,7 +48,7 @@ module Community
           key: filter[:key],
           label: NotificationTypeLabels.label_for(filter[:type]),
           type: filter[:type],
-          href: Rails.application.routes.url_helpers.forum_notifications_path(tab_params(filter[:type])),
+          href: Rails.application.routes.url_helpers.account_notifications_path(tab_params(filter[:type])),
           active: @active_type == filter[:type],
           count: count,
           unread_count: unread_counts[filter[:type]].to_i
@@ -59,14 +59,7 @@ module Community
   private
 
     def apply_category(scope)
-      case @category
-      when "forum"
-        scope.where("notification_type NOT LIKE ?", "commerce.%")
-      when "commerce"
-        scope.where("notification_type LIKE ?", "commerce.%")
-      else
-        scope
-      end
+      Account::NotificationCategory.apply(scope, @category)
     end
 
     def tab_params(type)

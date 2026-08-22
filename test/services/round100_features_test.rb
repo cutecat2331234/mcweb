@@ -39,7 +39,7 @@ class Round100NotificationTypeTabsUnreadTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications include quick filters and unread counts on type tabs" do
-    get forum_notifications_path
+    get account_notifications_path
     assert_response :success
     assert_includes response.body, "quickFilters"
     assert_includes response.body, "unread_count"

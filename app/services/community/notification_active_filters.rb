@@ -16,10 +16,10 @@ module Community
     def chips
       items = []
       if @category.present? && @category != "all"
-        label = @category == "commerce" ? I18n.t("mcweb.forum.notifications.category_commerce") : I18n.t("mcweb.forum.notifications.category_forum")
+        label = Account::NotificationCategory.label(@category)
         items << { param: "category", label: label, value: @category }
       end
-      items << { param: "read", label: I18n.t("mcweb.forum.notifications.unread_only"), value: "unread" } if @read == "unread"
+      items << { param: "read", label: I18n.t("mcweb.account.notifications.unread_only"), value: "unread" } if @read == "unread"
       items << { param: "period", label: period_label(@period), value: @period } if @period.present?
       if @type.present?
         items << { param: "type", label: NotificationTypeLabels.label_for(@type), value: @type }
@@ -30,7 +30,7 @@ module Community
   private
 
     def period_label(period)
-      I18n.t("mcweb.forum.notifications.periods.#{period}", default: period)
+      I18n.t("mcweb.account.notifications.periods.#{period}", default: period)
     end
   end
 end

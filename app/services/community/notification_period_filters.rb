@@ -26,9 +26,9 @@ module Community
 
         {
           key: period,
-          label: I18n.t("mcweb.forum.notifications.periods.#{period}"),
+          label: I18n.t("mcweb.account.notifications.periods.#{period}"),
           period: period,
-          href: Rails.application.routes.url_helpers.forum_notifications_path(tab_params(period)),
+          href: Rails.application.routes.url_helpers.account_notifications_path(tab_params(period)),
           active: @active_period == period,
           count: count
         }
@@ -46,14 +46,7 @@ module Community
     end
 
     def apply_category(scope)
-      case @category
-      when "forum"
-        scope.where("notification_type NOT LIKE ?", "commerce.%")
-      when "commerce"
-        scope.where("notification_type LIKE ?", "commerce.%")
-      else
-        scope
-      end
+      Account::NotificationCategory.apply(scope, @category)
     end
 
     def tab_params(period)

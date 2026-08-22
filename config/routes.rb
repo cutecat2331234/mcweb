@@ -510,6 +510,18 @@ Rails.application.routes.draw do
 
   scope path: "app" do
     get "account", to: "account#show", as: :account
+    namespace :account do
+      resources :notifications, only: %i[index destroy] do
+        member do
+          patch :mark_read
+          get :visit
+        end
+        collection do
+          patch :mark_all_read
+          patch :dismiss_alerts
+        end
+      end
+    end
 
     namespace :identity do
       get "sign-in", to: "sessions#new", as: :sign_in

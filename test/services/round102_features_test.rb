@@ -29,7 +29,7 @@ class Round102NotificationTimelineSectionsTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications index includes timeline sections" do
-    get forum_notifications_path
+    get account_notifications_path
     assert_response :success
     assert_includes response.body, "timeline_sections"
     assert_includes response.body, '"key":"today"'

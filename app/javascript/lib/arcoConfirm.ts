@@ -9,10 +9,10 @@ export interface ConfirmOptions {
 }
 
 /**
- * Admin-only confirmation facade backed by Arco Modal.
+ * Application confirmation facade backed by Arco Modal.
  *
  * It intentionally keeps the existing Promise<boolean> contract so admin
- * mutations can await a decision without falling back to the portal dialog.
+ * mutations can await a decision without falling back to a local dialog.
  */
 export function confirm(options: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {

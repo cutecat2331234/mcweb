@@ -117,7 +117,7 @@ module Community
         Community::GroupDigestNotifications.call(@notifications)
       end
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
-      @unread_notifications_url = "#{root_url.chomp('/')}#{forum_notifications_path(read: 'unread')}"
+      @unread_notifications_url = "#{root_url.chomp('/')}#{account_notifications_path(read: 'unread')}"
       @mention_unsubscribe_url = mention_unsubscribe_url_for(@user)
       @unsubscribe_url = "#{root_url.chomp('/')}#{forum_unsubscribe_forum_digest_path(token: Community::ForumDigestUnsubscribeToken.generate(@user))}"
 

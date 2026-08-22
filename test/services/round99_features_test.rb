@@ -55,7 +55,7 @@ class Round99NotificationsTypeTabsTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications index includes type tabs and active filters" do
-    get forum_notifications_path(read: "unread", type: "forum.mention")
+    get account_notifications_path(read: "unread", type: "forum.mention")
     assert_response :success
     assert_includes response.body, "typeTabs"
     assert_includes response.body, "activeFilters"

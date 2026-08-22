@@ -204,7 +204,7 @@ class NavigationReceiptIntegrationTest < ActionDispatch::IntegrationTest
     )
     sign_in_as(user)
 
-    get forum_notifications_path, headers: inertia_headers
+    get account_notifications_path, headers: inertia_headers
 
     assert_response :success
     assert_nil notification.reload.read_at

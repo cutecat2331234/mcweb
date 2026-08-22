@@ -44,12 +44,10 @@ class AccountController < ApplicationController
   end
 
   def activity_props(forum_enabled)
-    return nil unless forum_enabled
-
     {
       unread_notifications: current_user.notifications.unread.count,
-      unread_messages: Community::Conversation.total_unread_count_for(current_user),
-      topic_drafts: Community::Topic.where(user: current_user, status: :draft).count
+      unread_messages: forum_enabled ? Community::Conversation.total_unread_count_for(current_user) : nil,
+      topic_drafts: forum_enabled ? Community::Topic.where(user: current_user, status: :draft).count : nil
     }
   end
 

@@ -40,7 +40,7 @@ class Round101NotificationSectionsTest < ActionDispatch::IntegrationTest
   end
 
   test "notifications index includes grouped sections" do
-    get forum_notifications_path
+    get account_notifications_path
     assert_response :success
     assert_includes response.body, "notificationSections"
     assert_includes response.body, '"key":"unread"'

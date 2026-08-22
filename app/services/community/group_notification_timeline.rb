@@ -46,7 +46,7 @@ module Community
 
       {
         key: key,
-        label: I18n.t("mcweb.forum.notification_timeline.#{key}"),
+        label: I18n.t("mcweb.account.notification_timeline.#{key}"),
         count: groups.size,
         groups: groups,
         default_expanded: default_expanded

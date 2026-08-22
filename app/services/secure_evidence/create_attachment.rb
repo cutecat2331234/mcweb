@@ -213,8 +213,9 @@ module SecureEvidence
     def subject_limit_failure(entry:, subject:, requested_bytes:)
       relation = Attachment.where(
         subject_key: entry.key,
-        subject_id: subject.id
-      ).where.not(state: "purged")
+        subject_id: subject.id,
+        state: Attachment::ACTIVE_STATES
+      )
       return failure("secure_evidence_file_limit_exceeded") if relation.count >= entry.max_files
       if relation.sum(:byte_size) + requested_bytes > entry.max_total_bytes
         return failure("secure_evidence_total_size_exceeded")

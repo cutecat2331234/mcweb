@@ -96,5 +96,16 @@ module Mcweb
         assert_includes schema, "CREATE TRIGGER #{trigger}"
       end
     end
+
+    test "fresh database schema accepts immutable secure evidence discard events" do
+      schema = Rails.root.join("db/schema.rb").read
+
+      assert_includes schema, "secure_evidence_events_valid_type"
+      assert_match(
+        /'discarded'.*name: "secure_evidence_events_valid_type"/,
+        schema
+      )
+      assert_includes schema, "secure_evidence_attachment_events_immutable"
+    end
   end
 end

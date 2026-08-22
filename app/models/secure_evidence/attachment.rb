@@ -7,6 +7,7 @@ module SecureEvidence
     include HasPublicId
 
     STATES = %w[pending available quarantined purge_pending purged].freeze
+    ACTIVE_STATES = %w[pending available quarantined].freeze
     IMMUTABLE_FIELDS = %w[
       public_id uploader_id uploader_public_id_snapshot subject_key subject_id
       subject_public_id idempotency_key request_fingerprint filename content_type

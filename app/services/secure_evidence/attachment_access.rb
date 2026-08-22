@@ -34,5 +34,24 @@ module SecureEvidence
       upload = attachment.upload_record
       upload&.status_linked? == true && upload.scan_clean? && upload.blob.present?
     end
+
+    def discard_allowed?(attachment, actor:, catalog: SubjectCatalog)
+      return false unless actor&.persisted?
+      return false unless attachment.uploader_id == actor.id
+
+      entry = catalog.entry_for_key(attachment.subject_key)
+      return false unless entry
+
+      subject = SubjectPolicy.resolve(entry:, public_id: attachment.subject_public_id)
+      return false unless subject && subject.id == attachment.subject_id
+
+      SubjectPolicy.discard_allowed?(entry:, actor:, subject:, attachment:)
+    rescue StandardError => error
+      Rails.logger.warn(
+        "[SecureEvidence::AttachmentAccess] discard denied " \
+        "attachment_id=#{attachment.id} error=#{error.class}"
+      )
+      false
+    end
   end
 end

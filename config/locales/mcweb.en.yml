@@ -1270,6 +1270,8 @@ en:
         secure_evidence_upload_missing: The managed evidence upload record is unavailable.
         secure_evidence_creation_failed: The evidence attachment could not be created.
         secure_evidence_cleanup_failed: The evidence attachment could not be cleaned up and will be retried.
+        secure_evidence_discard_failed: The evidence attachment could not be discarded. Please try again.
+        secure_evidence_discard_unavailable: This evidence attachment is unavailable.
         secure_evidence_account_closure_failed: Evidence retention could not be verified for account closure.
         inline_upload_expired: An inline image expired before the content was saved. Upload it again.
         post_moderation_unauthorized: You are not allowed to moderate posts.

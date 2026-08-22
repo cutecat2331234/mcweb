@@ -31,6 +31,7 @@ An uploader can create an evidence attachment that fails scanning, remains quara
 ## Safety requirements
 
 - Keep the existing lock order used by scanning and cleanup: managed upload first, then secure-evidence attachment.
+- The discard callback runs while that attachment row is locked; downstream link writers must acquire the same attachment row lock before creating their durable association, so “link” and “discard” cannot both win.
 - Record the discard event and state transition atomically; enqueue cleanup only after commit.
 - Never delete immutable attachment metadata or event rows.
 - Never use Git LFS as blob storage or dependency cache.

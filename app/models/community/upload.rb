@@ -61,6 +61,7 @@ module Community
     }
     scope :scan_due, ->(at = Time.current) {
       due = where(kind: %w[post_attachment secure_evidence_attachment], scan_status: %w[pending error])
+        .where.not(status: %w[cleanup_pending cleanup_failed cleaned])
         .where(
           "next_scan_at <= :at OR " \
           "(scan_status = 'pending' AND scan_started_at <= :stale)",
@@ -74,6 +75,7 @@ module Community
         due.or(
           where(
             kind: %w[post_attachment secure_evidence_attachment],
+            status: STATUSES - %w[cleanup_pending cleanup_failed cleaned],
             scan_status: "clean",
             scanner: "developer_mode",
             scan_result_code: "dev_bypassed"

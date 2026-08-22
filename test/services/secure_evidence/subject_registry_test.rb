@@ -10,6 +10,7 @@ module SecureEvidence
 
       assert_equal "test.evidence_case", entry.key
       assert_equal %w[pdf txt], entry.allowed_extensions
+      assert_nil entry.discard_authorizer
       assert_raises(ArgumentError) { registry.register(**valid_registration) }
       assert_raises(ArgumentError) do
         registry.register(**valid_registration.merge(key: "invalid"))
@@ -23,12 +24,32 @@ module SecureEvidence
       assert_raises(ArgumentError) do
         registry.register(**valid_registration.merge(allowed_extensions: %w[exe]))
       end
+      assert_raises(ArgumentError) do
+        registry.register(**valid_registration.merge(discard_authorizer: true))
+      end
 
       registry.freeze!
       assert_predicate registry, :frozen?
       assert_raises(FrozenError) do
         registry.register(**valid_registration.merge(key: "test.other_case", model_name: "Role"))
       end
+    end
+
+    test "optional discard authorization remains explicit and fail closed" do
+      callback = ->(actor:, subject:, attachment:) {
+        actor == subject && attachment.uploader_id == actor.id
+      }
+      entry = SubjectRegistry.new.register(
+        **valid_registration.merge(discard_authorizer: callback)
+      )
+
+      assert_same callback, entry.discard_authorizer
+      refute SubjectPolicy.discard_allowed?(
+        entry: SubjectRegistry.new.register(**valid_registration),
+        actor: Object.new,
+        subject: Object.new,
+        attachment: Object.new
+      )
     end
 
     test "boot catalog is frozen even when CE has no product subjects" do

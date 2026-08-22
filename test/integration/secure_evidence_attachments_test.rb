@@ -7,6 +7,7 @@ class SecureEvidenceAttachmentsTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
     @allowed = true
+    @linked = false
     @entry = SecureEvidence::SubjectRegistry.new.register(
       key: "test.evidence_case",
       model_name: "User",
@@ -14,6 +15,12 @@ class SecureEvidenceAttachmentsTest < ActionDispatch::IntegrationTest
       upload_authorizer: ->(actor:, subject:) { @allowed && actor.id == subject.id },
       download_authorizer: ->(actor:, subject:, attachment:) {
         @allowed && actor.id == subject.id && attachment.subject_id == subject.id
+      },
+      discard_authorizer: ->(actor:, subject:, attachment:) {
+        @allowed &&
+          !@linked &&
+          actor.id == subject.id &&
+          attachment.subject_id == subject.id
       },
       retention: ->(subject:, attached_at:) { attached_at + 30.days if subject.persisted? },
       max_files: 4,
@@ -38,15 +45,20 @@ class SecureEvidenceAttachmentsTest < ActionDispatch::IntegrationTest
     payload = response.parsed_body
     assert_match(%r{\A/app/evidence/attachments/}, payload.fetch("download_url"))
     assert_match(%r{\A/app/evidence/attachments/}, payload.fetch("scan_status_url"))
+    assert_match(%r{\A/app/evidence/attachments/}, payload.fetch("discard_url"))
+    assert Time.iso8601(payload.fetch("updated_at"))
     refute_includes response.body, "/rails/active_storage/"
     refute_includes response.body, "blob"
 
     attachment = SecureEvidence::Attachment.find_by!(public_id: payload.fetch("public_id"))
+    newer_upload_time = 1.minute.from_now.change(usec: 123_456)
+    attachment.upload_record.update!(updated_at: newer_upload_time)
     SecureEvidence::SubjectCatalog.stub(:entry_for_key, @entry) do
       get scan_status_secure_evidence_attachment_path(attachment)
     end
     assert_response :ok
     assert_equal "pending", response.parsed_body.fetch("state")
+    assert_equal newer_upload_time.iso8601(6), response.parsed_body.fetch("updated_at")
 
     SecureEvidence::SubjectCatalog.stub(:entry_for_key, @entry) do
       get secure_evidence_attachment_path(attachment)
@@ -78,6 +90,61 @@ class SecureEvidenceAttachmentsTest < ActionDispatch::IntegrationTest
       action: "secure_evidence.downloaded",
       resource_public_id: attachment.public_id
     )
+  ensure
+    @temporary_file&.close!
+  end
+
+  test "generic API discards only uploader-owned unlinked evidence with private idempotent responses" do
+    result = SecureEvidence::CreateAttachment.call(
+      actor: @user,
+      subject_key: @entry.key,
+      subject_public_id: @user.public_id,
+      file: upload("discard through API"),
+      idempotency_key: "integration-evidence-discard-1",
+      catalog: Struct.new(:entry) {
+        def entry_for_key(_key) = entry
+      }.new(@entry)
+    )
+    attachment = result.value.fetch(:attachment)
+
+    SecureEvidence::SubjectCatalog.stub(:entry_for_key, @entry) do
+      delete secure_evidence_attachment_path(attachment)
+    end
+    assert_response :ok
+    assert_match(/private/, response.headers.fetch("Cache-Control"))
+    assert_match(/no-store/, response.headers.fetch("Cache-Control"))
+    assert_equal "no-cache", response.headers.fetch("Pragma")
+    assert_equal "purge_pending", response.parsed_body.fetch("state")
+    assert_equal false, response.parsed_body.fetch("idempotent")
+    assert Time.iso8601(response.parsed_body.fetch("updated_at"))
+
+    SecureEvidence::SubjectCatalog.stub(:entry_for_key, @entry) do
+      delete secure_evidence_attachment_path(attachment)
+    end
+    assert_response :ok
+    assert_equal true, response.parsed_body.fetch("idempotent")
+    assert_equal 1, attachment.events.where(event_type: "discarded").count
+
+    denied = SecureEvidence::CreateAttachment.call(
+      actor: @user,
+      subject_key: @entry.key,
+      subject_public_id: @user.public_id,
+      file: upload("linked evidence"),
+      idempotency_key: "integration-evidence-discard-2",
+      catalog: Struct.new(:entry) {
+        def entry_for_key(_key) = entry
+      }.new(@entry)
+    ).value.fetch(:attachment)
+    @linked = true
+    SecureEvidence::SubjectCatalog.stub(:entry_for_key, @entry) do
+      delete secure_evidence_attachment_path(denied)
+    end
+    assert_response :not_found
+    assert_match(/no-store/, response.headers.fetch("Cache-Control"))
+
+    delete secure_evidence_attachment_path("missing-evidence")
+    assert_response :not_found
+    assert_match(/no-store/, response.headers.fetch("Cache-Control"))
   ensure
     @temporary_file&.close!
   end

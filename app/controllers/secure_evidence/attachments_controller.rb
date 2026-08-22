@@ -2,9 +2,10 @@
 
 module SecureEvidence
   class AttachmentsController < ApplicationController
+    before_action :set_private_no_store!, only: %i[create scan_status destroy]
     before_action :require_login
     before_action :rate_limit_upload!, only: :create
-    before_action :set_attachment, only: %i[show scan_status]
+    before_action :set_attachment, only: %i[show scan_status destroy]
 
     def create
       result = SecureEvidence::CreateAttachment.call(
@@ -39,14 +40,33 @@ module SecureEvidence
     def scan_status
       return head :not_found unless authorized_subject?
 
-      response.set_header("Cache-Control", "private, no-store")
       render json: serialize_attachment(@attachment, idempotent: true)
+    end
+
+    def destroy
+      result = SecureEvidence::DiscardAttachment.call(
+        attachment: @attachment,
+        actor: current_user
+      )
+      return head :not_found if result.code == "secure_evidence_discard_unavailable"
+      return render_service_error(result) if result.failure?
+
+      render json: serialize_attachment(
+        result.value.fetch(:attachment),
+        idempotent: result.value.fetch(:idempotent)
+      )
     end
 
     private
 
     def set_attachment
-      @attachment = Attachment.find_by!(public_id: params[:id])
+      @attachment = Attachment.find_by(public_id: params[:id])
+      head :not_found unless @attachment
+    end
+
+    def set_private_no_store!
+      response.set_header("Cache-Control", "private, no-store")
+      response.set_header("Pragma", "no-cache")
     end
 
     def authorized_subject?
@@ -95,7 +115,7 @@ module SecureEvidence
 
     def serialize_attachment(attachment, idempotent:)
       upload = attachment.upload_record
-      {
+      payload = {
         public_id: attachment.public_id,
         filename: attachment.filename,
         content_type: attachment.content_type,
@@ -104,10 +124,15 @@ module SecureEvidence
         state: attachment.state,
         scan_status: upload&.scan_status || "pending",
         retention_until: attachment.retention_until.iso8601,
+        updated_at: [ attachment.updated_at, upload&.updated_at ].compact.max.iso8601(6),
         idempotent:,
         download_url: secure_evidence_attachment_path(attachment),
         scan_status_url: scan_status_secure_evidence_attachment_path(attachment)
       }
+      if AttachmentAccess.discard_allowed?(attachment, actor: current_user)
+        payload[:discard_url] = secure_evidence_attachment_path(attachment)
+      end
+      payload
     end
 
     def rate_limit_upload!

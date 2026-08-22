@@ -9,6 +9,8 @@ module SecureEvidence
       raise ActiveRecord::RecordNotFound, "secure_evidence_attachment_missing" unless attachment
 
       attachment.lock!
+      return attachment if attachment.state_purge_pending? || attachment.state_purged?
+
       attributes = state_attributes(status:, retryable:, at:)
       attachment.update!(attributes)
       EventRecorder.record!(

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2640,7 +2640,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_110000) do
     t.index ["idempotency_key"], name: "idx_secure_evidence_events_idempotency", unique: true
     t.index ["secure_evidence_attachment_id", "occurred_at"], name: "idx_secure_evidence_events_timeline"
     t.index ["secure_evidence_attachment_id"], name: "idx_secure_evidence_events_attachment"
-    t.check_constraint "event_type::text = ANY (ARRAY['created'::character varying, 'scan_clean'::character varying, 'scan_infected'::character varying, 'scan_error'::character varying, 'downloaded'::character varying, 'retention_extended'::character varying, 'cleanup_scheduled'::character varying, 'cleanup_failed'::character varying, 'purged'::character varying]::text[])", name: "secure_evidence_events_valid_type"
+    t.check_constraint "event_type::text = ANY (ARRAY['created'::character varying, 'scan_clean'::character varying, 'scan_infected'::character varying, 'scan_error'::character varying, 'downloaded'::character varying, 'retention_extended'::character varying, 'discarded'::character varying, 'cleanup_scheduled'::character varying, 'cleanup_failed'::character varying, 'purged'::character varying]::text[])", name: "secure_evidence_events_valid_type"
     t.check_constraint "idempotency_key::text ~ '^[A-Za-z0-9:._-]{8,180}$'::text", name: "secure_evidence_events_idempotency_format"
     t.check_constraint "jsonb_typeof(metadata) = 'object'::text", name: "secure_evidence_events_metadata_object"
   end

@@ -8,6 +8,8 @@ module SecureEvidence
     setup do
       @actor = create_user
       @download_allowed = true
+      @discard_allowed = true
+      @attachment_linked = false
       @retention_period = 30.days
       @registry = build_registry
       @temporary_files = []
@@ -62,6 +64,235 @@ module SecureEvidence
       )
       assert_predicate total_exceeded, :failure?
       assert_equal "secure_evidence_total_size_exceeded", total_exceeded.code
+    end
+
+    test "uploader can idempotently discard an unlinked draft and release subject quota" do
+      registry = build_registry(max_files: 1)
+      attachment = create_attachment(
+        file: uploaded_file("replace me"),
+        registry:,
+        key: "evidence-discard-0001"
+      ).value.fetch(:attachment)
+
+      callbacks = []
+      discarded = nil
+      ActiveRecord.stub(:after_all_transactions_commit, ->(&callback) { callbacks << callback }) do
+        discarded = DiscardAttachment.call(
+          attachment:,
+          actor: @actor,
+          catalog: registry
+        )
+      end
+      assert_predicate discarded, :success?
+      assert_equal false, discarded.value.fetch(:idempotent)
+      assert_equal 1, callbacks.length
+      refute enqueued_jobs.any? { |job| job[:job] == Maintenance::CleanupForumUploadsJob }
+      assert_enqueued_jobs 1, only: Maintenance::CleanupForumUploadsJob do
+        callbacks.each(&:call)
+      end
+
+      assert_equal "purge_pending", attachment.reload.state
+      assert_equal "cleanup_pending", attachment.upload_record.reload.status
+      assert Community::Upload.cleanup_due(Time.current).exists?(attachment.upload_record.id)
+      assert_equal 1, attachment.events.where(event_type: "discarded").count
+      assert AuditLog.exists?(
+        action: "secure_evidence.discarded",
+        resource_public_id: attachment.public_id
+      )
+
+      replay_callbacks = []
+      replay = nil
+      ActiveRecord.stub(:after_all_transactions_commit, ->(&callback) { replay_callbacks << callback }) do
+        replay = DiscardAttachment.call(
+          attachment:,
+          actor: @actor,
+          catalog: registry
+        )
+      end
+      assert_predicate replay, :success?
+      assert_equal true, replay.value.fetch(:idempotent)
+      assert_equal 1, replay_callbacks.length
+      assert_equal 1, attachment.events.where(event_type: "discarded").count
+
+      replacement = create_attachment(
+        file: uploaded_file("replacement"),
+        registry:,
+        key: "evidence-discard-0002"
+      )
+      assert_predicate replacement, :success?
+    end
+
+    test "discard fails closed for another uploader linked evidence and an unregistered callback" do
+      attachment = create_attachment(
+        file: uploaded_file("private draft"),
+        key: "evidence-discard-denied-1"
+      ).value.fetch(:attachment)
+      another_user = create_user
+
+      non_owner = DiscardAttachment.call(
+        attachment:,
+        actor: another_user,
+        catalog: @registry
+      )
+      assert_predicate non_owner, :failure?
+      assert_equal "secure_evidence_discard_unavailable", non_owner.code
+
+      @attachment_linked = true
+      linked = DiscardAttachment.call(
+        attachment:,
+        actor: @actor,
+        catalog: @registry
+      )
+      assert_predicate linked, :failure?
+      assert_equal "secure_evidence_discard_unavailable", linked.code
+
+      no_callback = build_registry(discard_authorizer: nil)
+      @attachment_linked = false
+      unregistered = DiscardAttachment.call(
+        attachment:,
+        actor: @actor,
+        catalog: no_callback
+      )
+      assert_predicate unregistered, :failure?
+      assert_equal "secure_evidence_discard_unavailable", unregistered.code
+      assert_equal "pending", attachment.reload.state
+    end
+
+    test "late scan completion cannot revive a discarded attachment or cleanup upload" do
+      attachment = create_attachment(
+        file: uploaded_file("racing scan"),
+        key: "evidence-discard-race-1"
+      ).value.fetch(:attachment)
+      scanner_result = Community::AttachmentMalwareScanner::Result.new(
+        status: :clean,
+        scanner: "race_scanner",
+        code: "clean",
+        error_message: nil
+      )
+      scanner = lambda do |blob:|
+        assert blob
+        discard = DiscardAttachment.call(
+          attachment:,
+          actor: @actor,
+          catalog: @registry
+        )
+        assert_predicate discard, :success?
+        scanner_result
+      end
+
+      result = Community::ScanPostAttachment.call(
+        upload: attachment.upload_record,
+        scanner:,
+        now: Time.current
+      )
+
+      assert_predicate result, :success?
+      assert_equal "stale_scan_result", result.value.fetch(:skipped)
+      assert_equal "purge_pending", attachment.reload.state
+      assert_equal "cleanup_pending", attachment.upload_record.reload.status
+      refute attachment.events.where(event_type: "scan_clean").exists?
+
+      claimed_again = Community::ScanPostAttachment.call(
+        upload: attachment.upload_record,
+        scanner: clean_scanner,
+        force: true,
+        now: 1.minute.from_now
+      )
+      assert_predicate claimed_again, :success?
+      assert_equal "cleanup_started", claimed_again.value.fetch(:skipped)
+    end
+
+    test "discard cleanup removes the blob but preserves immutable metadata and replay" do
+      attachment = create_attachment(
+        file: uploaded_file("discard and retain"),
+        key: "evidence-discard-retain-1"
+      ).value.fetch(:attachment)
+      blob_id = attachment.blob.id
+      metadata = attachment.attributes.slice(
+        "public_id",
+        "uploader_id",
+        "subject_key",
+        "subject_id",
+        "filename",
+        "sha256"
+      )
+
+      discarded = DiscardAttachment.call(
+        attachment:,
+        actor: @actor,
+        catalog: @registry
+      )
+      assert_predicate discarded, :success?
+      cleanup = Community::CleanupUpload.call(
+        upload: attachment.upload_record,
+        now: Time.current
+      )
+
+      assert_predicate cleanup, :success?
+      assert_equal "purged", attachment.reload.state
+      assert_equal metadata, attachment.attributes.slice(*metadata.keys)
+      refute ActiveStorage::Blob.exists?(blob_id)
+      assert_equal %w[created discarded purged], attachment.events.timeline.pluck(:event_type)
+
+      replay = DiscardAttachment.call(
+        attachment:,
+        actor: @actor,
+        catalog: @registry
+      )
+      assert_predicate replay, :success?
+      assert_equal true, replay.value.fetch(:idempotent)
+    end
+
+    test "duplicate cleanup claims wait for the active worker and stale claims remain recoverable" do
+      attachment = create_attachment(
+        file: uploaded_file("single cleanup worker"),
+        key: "evidence-discard-worker-1"
+      ).value.fetch(:attachment)
+      DiscardAttachment.call(attachment:, actor: @actor, catalog: @registry)
+      upload = attachment.upload_record
+      upload.update!(cleanup_started_at: Time.current)
+
+      duplicate = Community::CleanupUpload.call(upload:, now: Time.current)
+      assert_predicate duplicate, :success?
+      assert_equal "not_due", duplicate.value.fetch(:skipped)
+      assert attachment.blob.present?
+
+      upload.update!(cleanup_started_at: 31.minutes.ago)
+      recovered = Community::CleanupUpload.call(upload:, now: Time.current)
+      assert_predicate recovered, :success?
+      assert_equal "purged", attachment.reload.state
+    end
+
+    test "discard replay repairs cleaned upload metadata left in purge pending" do
+      attachment = create_attachment(
+        file: uploaded_file("repair metadata"),
+        key: "evidence-discard-repair-1"
+      ).value.fetch(:attachment)
+      DiscardAttachment.call(attachment:, actor: @actor, catalog: @registry)
+      upload = attachment.upload_record
+      blob = upload.blob
+      blob.purge
+      cleaned_at = 1.minute.from_now
+      upload.update!(
+        status: "cleaned",
+        blob: nil,
+        expires_at: nil,
+        cleanup_started_at: nil,
+        cleaned_at:
+      )
+
+      replay = DiscardAttachment.call(
+        attachment:,
+        actor: @actor,
+        catalog: @registry,
+        now: cleaned_at
+      )
+
+      assert_predicate replay, :success?
+      assert_equal true, replay.value.fetch(:idempotent)
+      assert_equal "purged", attachment.reload.state
+      assert_equal cleaned_at.to_i, attachment.purged_at.to_i
+      assert_equal 1, attachment.events.where(event_type: "purged").count
     end
 
     test "subject limits cannot widen the site attachment size limit" do
@@ -403,7 +634,8 @@ module SecureEvidence
     def build_registry(
       max_files: 4,
       max_file_bytes: 1.megabyte,
-      max_total_bytes: 4.megabytes
+      max_total_bytes: 4.megabytes,
+      discard_authorizer: :default
     )
       registry = SubjectRegistry.new
       registry.register(
@@ -414,6 +646,12 @@ module SecureEvidence
         download_authorizer: ->(actor:, subject:, attachment:) {
           @download_allowed && actor.id == subject.id && attachment.subject_id == subject.id
         },
+        discard_authorizer: discard_authorizer == :default ? ->(actor:, subject:, attachment:) {
+          @discard_allowed &&
+            !@attachment_linked &&
+            actor.id == subject.id &&
+            attachment.subject_id == subject.id
+        } : discard_authorizer,
         retention: ->(subject:, attached_at:) {
           attached_at + @retention_period if subject.persisted?
         },

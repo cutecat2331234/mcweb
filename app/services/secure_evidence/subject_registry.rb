@@ -14,6 +14,7 @@ module SecureEvidence
       :resolver,
       :upload_authorizer,
       :download_authorizer,
+      :discard_authorizer,
       :retention,
       :max_files,
       :max_file_bytes,
@@ -37,7 +38,8 @@ module SecureEvidence
       max_files:,
       max_file_bytes:,
       max_total_bytes:,
-      allowed_extensions:
+      allowed_extensions:,
+      discard_authorizer: nil
     )
       raise FrozenError, "secure_evidence_subject_registry_frozen" if frozen?
 
@@ -47,6 +49,7 @@ module SecureEvidence
       validate_callable!(:resolver, resolver)
       validate_callable!(:upload_authorizer, upload_authorizer)
       validate_callable!(:download_authorizer, download_authorizer)
+      validate_optional_callable!(:discard_authorizer, discard_authorizer)
       validate_callable!(:retention, retention)
 
       limits = validate_limits!(
@@ -62,6 +65,7 @@ module SecureEvidence
         resolver:,
         upload_authorizer:,
         download_authorizer:,
+        discard_authorizer:,
         retention:,
         **limits,
         allowed_extensions: extensions
@@ -103,6 +107,12 @@ module SecureEvidence
       return if callable.respond_to?(:call)
 
       raise ArgumentError, "secure_evidence_subject_#{name}_invalid"
+    end
+
+    def validate_optional_callable!(name, callable)
+      return if callable.nil?
+
+      validate_callable!(name, callable)
     end
 
     def validate_limits!(max_files:, max_file_bytes:, max_total_bytes:)

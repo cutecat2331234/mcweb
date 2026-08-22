@@ -1270,6 +1270,8 @@
         secure_evidence_upload_missing: 证据上传记录不存在。
         secure_evidence_creation_failed: 无法创建证据附件。
         secure_evidence_cleanup_failed: 证据附件清理失败，系统将自动重试。
+        secure_evidence_discard_failed: 无法丢弃该证据附件，请重试。
+        secure_evidence_discard_unavailable: 该证据附件不可用。
         secure_evidence_account_closure_failed: 关户前无法确认安全证据的保留状态。
         inline_upload_expired: 内联图片在内容保存前已过期，请重新上传。
         post_moderation_unauthorized: 无权审核帖子。

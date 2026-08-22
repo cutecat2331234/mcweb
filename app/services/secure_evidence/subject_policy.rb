@@ -35,6 +35,12 @@ module SecureEvidence
       strict_authorization(entry.download_authorizer, actor:, subject:, attachment:)
     end
 
+    def discard_allowed?(entry:, actor:, subject:, attachment:)
+      return false unless entry.discard_authorizer
+
+      strict_authorization(entry.discard_authorizer, actor:, subject:, attachment:)
+    end
+
     def retention_until(entry:, subject:, attached_at:)
       value = entry.retention.call(subject:, attached_at:)
       timestamp = value.respond_to?(:to_time) ? value.to_time : nil

@@ -94,6 +94,9 @@ module Community
         attachment = SecureEvidence::Attachment.lock.find_by(
           id: @upload.secure_evidence_attachment_id
         )
+        return false if @upload.status_cleanup_pending? &&
+          @upload.cleanup_started_at&.>(@now - 30.minutes)
+
         return attachment&.state_purge_pending? == true &&
           (@upload.status_cleanup_pending? || @upload.status_cleanup_failed?) &&
           @upload.expires_at&.<=(@now)

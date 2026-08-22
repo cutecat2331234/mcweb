@@ -37,6 +37,10 @@ module Community
           skipped = "not_downloadable_attachment"
           next
         end
+        if cleanup_started?
+          skipped = "cleanup_started"
+          next
+        end
         if terminal_scan_status?
           skipped = "scan_terminal"
           next
@@ -217,7 +221,14 @@ module Community
 
     def current_claim?(claim)
       @upload.scan_status_pending? &&
+        !cleanup_started? &&
         @upload.scan_attempts == claim.fetch(:scan_attempt)
+    end
+
+    def cleanup_started?
+      @upload.status_cleanup_pending? ||
+        @upload.status_cleanup_failed? ||
+        @upload.status_cleaned?
     end
 
     def secure_evidence_upload?

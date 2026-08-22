@@ -6,7 +6,7 @@ module SecureEvidence
 
     EVENT_TYPES = %w[
       created scan_clean scan_infected scan_error downloaded retention_extended
-      cleanup_scheduled cleanup_failed purged
+      discarded cleanup_scheduled cleanup_failed purged
     ].freeze
 
     belongs_to :attachment,

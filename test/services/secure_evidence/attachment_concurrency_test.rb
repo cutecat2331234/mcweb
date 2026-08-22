@@ -18,6 +18,9 @@ module SecureEvidence
         download_authorizer: ->(actor:, subject:, attachment:) {
           actor.id == subject.id && attachment.subject_id == subject.id
         },
+        discard_authorizer: ->(actor:, subject:, attachment:) {
+          actor.id == subject.id && attachment.subject_id == subject.id
+        },
         retention: ->(subject:, attached_at:) { attached_at + 30.days if subject.persisted? },
         max_files: 4,
         max_file_bytes: 1.megabyte,
@@ -73,6 +76,51 @@ module SecureEvidence
         kind: "secure_evidence_attachment"
       ).count
       assert_equal 1, responses.map { |item| item.value.fetch(:attachment).public_id }.uniq.length
+    end
+
+    test "concurrent discard requests create one transition and one immutable event" do
+      file = uploaded_file("concurrent discard")
+      created = CreateAttachment.call(
+        actor: @user,
+        subject_key: "test.concurrent_case",
+        subject_public_id: @user.public_id,
+        file:,
+        idempotency_key: "concurrent-discard-0001",
+        catalog: @registry
+      )
+      attachment = created.value.fetch(:attachment)
+      file.tempfile.close!
+
+      ready = Queue.new
+      gate = Queue.new
+      results = Queue.new
+      threads = 2.times.map do
+        Thread.new do
+          ActiveRecord::Base.connection_pool.with_connection do
+            ready << true
+            gate.pop
+            results << DiscardAttachment.call(
+              attachment: Attachment.find(attachment.id),
+              actor: User.find(@user.id),
+              catalog: @registry
+            )
+          end
+        rescue StandardError => error
+          results << error
+        end
+      end
+
+      2.times { ready.pop }
+      2.times { gate << true }
+      responses = 2.times.map { results.pop }
+      threads.each(&:join)
+
+      responses.each { |response| assert_instance_of ServiceResult, response }
+      assert responses.all?(&:success?)
+      assert_equal 1, responses.count { |item| item.value.fetch(:idempotent) }
+      assert_equal 1, responses.count { |item| !item.value.fetch(:idempotent) }
+      assert_equal "purge_pending", attachment.reload.state
+      assert_equal 1, attachment.events.where(event_type: "discarded").count
     end
 
     private

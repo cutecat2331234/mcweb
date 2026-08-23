@@ -10,7 +10,14 @@ module Commerce
     def call
       order = @order_item.order
       return ServiceResult.failure(error: :order_not_accessible) unless order.user_id == @user.id
-      return ServiceResult.failure(error: :order_not_paid) unless %w[paid processing fulfilling fulfilled completed].include?(order.status)
+      unless Commerce::Disputes::OrderRightsAccess::DELIVERY_ORDER_STATUSES.include?(
+        order.status
+      )
+        return ServiceResult.failure(error: :order_not_paid)
+      end
+      if Commerce::Disputes::OrderRightsAccess.restricted?(order)
+        return ServiceResult.failure(error: :order_rights_restricted)
+      end
 
       snapshot = @order_item.fulfillment_snapshot || {}
       config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}

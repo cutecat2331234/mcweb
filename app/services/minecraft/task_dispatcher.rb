@@ -34,12 +34,26 @@ module Minecraft
         pending = Minecraft::ConnectorTask
           .lock
           .where(server: @server, status: "pending")
-          .order(:created_at)
-          .limit(10)
+          .order(:created_at, :id)
+          .limit(100)
+          .to_a
+        claimed_ordering_keys = Minecraft::ConnectorTask
+          .where(server: @server, status: "claimed")
+          .pluck(:payload)
+          .each_with_object({}) do |payload, keys|
+            key = payload.to_h["ordering_key"].to_s.presence
+            keys[key] = true if key
+          end
 
         pending.each do |task|
+          break if tasks.size >= 10
+
+          ordering_key = task.payload.to_h["ordering_key"].to_s.presence
+          next if ordering_key && claimed_ordering_keys[ordering_key]
+
           task.update!(status: "claimed", claimed_at: Time.current)
           tasks << task
+          claimed_ordering_keys[ordering_key] = true if ordering_key
         end
       end
 

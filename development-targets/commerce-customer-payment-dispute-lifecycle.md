@@ -24,6 +24,8 @@ CE can ingest provider disputes and gives staff an internal dispute workbench, b
 - Creation is blocked while a refund is pending, approved, or provider-unknown. Refund requests are likewise blocked while an active dispute owns financial exposure.
 - A bounded request id plus immutable request fingerprint makes retries converge. The mutation locks order, payment, refunds, and disputes in the established financial order and permits at most one customer-origin case per payment.
 - Creation records the customer origin explicitly on the existing `Commerce::Dispute`, creates an immutable customer event and audit entry, allocates only the available exposure, freezes order-derived rights through `RightsPolicy`, and creates one localized durable in-app notification.
+- Entitlements or memberships granted after case creation inherit every current order-dispute hold under the order lock. Per-subject protection is idempotent, and a held membership never dispatches a new external grant command.
+- Download-token issuance and redemption plus queued Minecraft/plugin fulfillment recheck the order-level hold at the side-effect boundary. Pending fulfillment remains resumable and is re-enqueued only after the final dispute hold is restored.
 - A later provider webhook binds its provider dispute identity to the unique unbound customer case under the same payment lock. It must update the existing case rather than create a second dispute, liability, timeline, or rights hold.
 
 ### Public timeline and privacy
@@ -56,15 +58,15 @@ CE can ingest provider disputes and gives staff an internal dispute workbench, b
 
 ## Implementation task list
 
-- [ ] Add explicit customer-origin identity, timestamps, foreign key, and uniqueness/index contracts to `Commerce::Dispute`.
-- [ ] Add idempotent create and withdraw services with financial locks, refund/exposure checks, rights policy calls, immutable events, auditing, and notifications.
-- [ ] Bind provider channel events to the unique unbound customer case and notify the owner only for newly applied public state changes.
-- [ ] Prevent refund requests from racing an active dispute; preserve refund-owned revocation when dispute exposure is restored after a completed full refund.
-- [ ] Register the Commerce dispute SecureEvidence subject with owner/state authorization, staff-sensitive download access, limits, and seven-year retention.
-- [ ] Add order-owned controller/routes and a strict customer serializer that omits every internal note and protected identifier.
-- [ ] Add the Commerce order-detail case panel using shared Arco `@mcweb/ui`, including create, status/timeline, evidence upload/status, and conditional withdrawal.
-- [ ] Add Commerce-scoped Simplified Chinese and English copy without modifying shared application-boundary locale files.
-- [ ] Add service/request/model/serializer/component test source for ownership, retry conflict, refund/webhook/rights convergence, evidence authorization, notification dedupe, and internal-note non-disclosure.
+- [x] Add explicit customer-origin identity, timestamps, foreign key, and uniqueness/index contracts to `Commerce::Dispute`.
+- [x] Add idempotent create and withdraw services with financial locks, refund/exposure checks, rights policy calls, immutable events, auditing, and notifications.
+- [x] Bind provider channel events to the unique unbound customer case and notify the owner only for newly applied public state changes.
+- [x] Prevent refund requests from racing an active dispute; preserve refund-owned revocation when dispute exposure is restored after a completed full refund.
+- [x] Register the Commerce dispute SecureEvidence subject with owner/state authorization, staff-sensitive download access, limits, and seven-year retention.
+- [x] Add order-owned controller/routes and a strict customer serializer that omits every internal note and protected identifier.
+- [x] Add the Commerce order-detail case panel using shared Arco `@mcweb/ui`, including create, status/timeline, evidence upload/status, and conditional withdrawal.
+- [x] Add Commerce-scoped Simplified Chinese and English copy without modifying shared application-boundary locale files.
+- [x] Add service/request/model/serializer/component test source for ownership, retry conflict, refund/webhook/rights convergence, evidence authorization, notification dedupe, and internal-note non-disclosure.
 - [ ] Leave database, concurrency, test, build, and browser execution to CNB and the main task; do not push.
 
 ## Acceptance matrix

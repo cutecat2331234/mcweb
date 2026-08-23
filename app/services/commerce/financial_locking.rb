@@ -43,5 +43,17 @@ module Commerce
 
       [ order, payment, disputes ]
     end
+
+    def lock_order_payment_refunds_disputes!(order_id:, payment_record_id:)
+      order, payment = lock_order_payment!(order_id:, payment_record_id:)
+      refunds = payment.refunds.order(:created_at, :id).lock.to_a
+      disputes = payment.disputes.order(:created_at, :id).lock.to_a
+      if refunds.any? { |refund| refund.store_order_id != order.id } ||
+          disputes.any? { |dispute| dispute.store_order_id != order.id }
+        raise BindingMismatch
+      end
+
+      [ order, payment, refunds, disputes ]
+    end
   end
 end

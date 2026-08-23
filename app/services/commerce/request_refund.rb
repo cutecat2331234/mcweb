@@ -30,6 +30,11 @@ module Commerce
           payment_record_id: payment.id
         )
 
+        if Commerce::Disputes::CustomerPolicy.active_financial_dispute?(payment)
+          failure_error = :refund_blocked_by_active_dispute
+          raise ActiveRecord::Rollback
+        end
+
         if @order.refunds.provider_unknown.exists?
           failure_error = :refund_reconciliation_required
           raise ActiveRecord::Rollback

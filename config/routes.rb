@@ -914,6 +914,10 @@ Rails.application.routes.draw do
       delete :clear, on: :member
     end
     resources :orders, only: %i[index show] do
+      resources :disputes,
+                controller: "order_disputes",
+                only: %i[create destroy],
+                param: :public_id
       collection do
         get :export
       end

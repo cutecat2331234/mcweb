@@ -18,6 +18,11 @@ module Commerce
     RIGHTS_STATUSES = %w[unchanged frozen revoked restored].freeze
     RESOLUTIONS = %w[won lost withdrawn accepted_loss].freeze
     RETENTION_PERIOD = 7.years
+    CUSTOMER_PROVIDER_ID_PREFIX = "customer:".freeze
+    CUSTOMER_EVIDENCE_STATUSES = %w[
+      open evidence_required evidence_submitted under_review
+    ].freeze
+    CUSTOMER_WITHDRAW_STATUSES = %w[open evidence_required].freeze
 
     belongs_to :order,
                class_name: "Commerce::Order",
@@ -27,6 +32,7 @@ module Commerce
     belongs_to :assigned_to, class_name: "User", optional: true
     belongs_to :accepted_loss_by, class_name: "User", optional: true
     belongs_to :closed_by, class_name: "User", optional: true
+    belongs_to :customer_opened_by, class_name: "User", optional: true
 
     has_many :events,
              class_name: "Commerce::DisputeEvent",
@@ -56,6 +62,7 @@ module Commerce
     validate :currency_matches_payment
     validate :amount_within_payment
     validate :amount_is_conserved
+    validate :customer_origin_shape
 
     scope :recent, -> { order(created_at: :desc, id: :desc) }
     scope :active_exposure, lambda {
@@ -71,6 +78,10 @@ module Commerce
       where(status: %w[open evidence_required])
         .where(evidence_due_at: Time.current..48.hours.from_now)
     }
+    scope :customer_origin, -> { where.not(customer_opened_by_id: nil) }
+    scope :customer_provider_pending, lambda {
+      customer_origin.where("provider_dispute_id LIKE ?", "#{CUSTOMER_PROVIDER_ID_PREFIX}%")
+    }
 
     def terminal?
       TERMINAL_STATUSES.include?(status)
@@ -80,6 +91,24 @@ module Commerce
       evidence_due_at.present? &&
         evidence_due_at.past? &&
         %w[open evidence_required].include?(status)
+    end
+
+    def customer_origin?
+      customer_opened_by_id.present?
+    end
+
+    def customer_provider_pending?
+      customer_origin? && provider_dispute_id.to_s.start_with?(CUSTOMER_PROVIDER_ID_PREFIX)
+    end
+
+    def customer_evidence_allowed?
+      CUSTOMER_EVIDENCE_STATUSES.include?(status)
+    end
+
+    def customer_withdrawable_by?(user)
+      customer_opened_by_id == user&.id &&
+        customer_provider_pending? &&
+        CUSTOMER_WITHDRAW_STATUSES.include?(status)
     end
 
     def sensitive_reference
@@ -126,6 +155,14 @@ module Commerce
       return if liability_cents + offset_cents == amount_cents
 
       errors.add(:base, I18n.t("mcweb.validation_errors.dispute_amount_is_not_conserved"))
+    end
+
+    def customer_origin_shape
+      origin_values = [ customer_opened_by_id, customer_opened_at, customer_withdrawn_at ]
+      return if origin_values.all?(&:blank?)
+      return if customer_opened_by_id.present? && customer_opened_at.present?
+
+      errors.add(:customer_opened_at, :invalid)
     end
   end
 end

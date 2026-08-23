@@ -1,0 +1,97 @@
+en:
+  mcweb:
+    flash:
+      customer_dispute_opened: "Payment dispute opened."
+      customer_dispute_withdrawn: "Payment dispute withdrawn."
+    labels:
+      notification_types:
+        commerce.payment_dispute_update: "Payment dispute update"
+    services:
+      errors:
+        customer_dispute_order_unavailable: "This order is unavailable."
+        customer_dispute_payment_unavailable: "No eligible completed payment was found for this order."
+        customer_dispute_payment_binding_mismatch: "The payment no longer belongs to this order."
+        customer_dispute_request_id_invalid: "The dispute request identifier is invalid."
+        customer_dispute_reason_invalid: "Choose a valid payment problem type."
+        customer_dispute_description_too_short: "Describe the payment issue in at least 10 characters."
+        customer_dispute_description_too_long: "The payment issue description is too long."
+        customer_dispute_amount_invalid: "Enter a valid amount within the available payment balance."
+        customer_dispute_refund_in_flight: "A refund is already being processed for this payment."
+        customer_dispute_already_exists: "A customer payment dispute already exists for this payment."
+        customer_dispute_payment_already_disputed: "This payment already has an active dispute."
+        customer_dispute_unavailable: "A payment dispute cannot be opened for this order."
+        customer_dispute_idempotency_conflict: "This request identifier was already used with different dispute details."
+        customer_dispute_rights_failed: "Order rights could not be updated for this dispute."
+        customer_dispute_notification_failed: "The dispute notification could not be recorded."
+        customer_dispute_withdraw_reason_too_long: "The withdrawal reason is too long."
+        customer_dispute_withdraw_unavailable: "This dispute can no longer be withdrawn."
+        refund_blocked_by_active_dispute: "Withdraw or resolve the active payment dispute before requesting a refund."
+        order_rights_restricted: "This order's downloads and external fulfillment are paused while its payment dispute is active."
+    commerce:
+      payment_disputes:
+        statuses:
+          open: "Open"
+          evidence_required: "Evidence required"
+          evidence_submitted: "Evidence submitted"
+          under_review: "Under review"
+          won: "Resolved in your favor"
+          lost: "Resolved against the claim"
+          withdrawn: "Withdrawn"
+          closed: "Closed"
+        rights_statuses:
+          unchanged: "Unchanged"
+          frozen: "Temporarily restricted"
+          revoked: "Revoked"
+          restored: "Restored"
+        reasons:
+          unauthorized: "I did not authorize this payment"
+          duplicate: "I was charged more than once"
+          incorrect_amount: "The charged amount is incorrect"
+          product_not_received: "The paid product or service was not received"
+          other: "Another payment problem"
+        evidence:
+          statuses:
+            pending: "Pending scan"
+            clean: "Available"
+            infected: "Quarantined"
+            error: "Scan needs attention"
+            available: "Available"
+            quarantined: "Quarantined"
+            purge_pending: "Removal pending"
+            purged: "Removed"
+        timeline:
+          customer_opened: "Payment dispute opened"
+          customer_withdrawn: "Payment dispute withdrawn"
+          customer_refund_resolved: "Resolved by a completed refund"
+          provider_opened: "Payment provider opened the case"
+          provider_bound: "Payment provider began handling the case"
+          status_changed: "Status changed to %{status}"
+          rights_changed: "Order rights changed to %{status}"
+          evidence_added: "Evidence added: %{filename}"
+        notifications:
+          customer_opened:
+            body: "Payment dispute for order %{number} was opened."
+          customer_withdrawn:
+            body: "Payment dispute for order %{number} was withdrawn."
+          customer_refund_resolved:
+            body: "Payment dispute for order %{number} was resolved by the completed refund."
+          evidence_required:
+            body: "Payment dispute for order %{number} needs additional evidence."
+          provider_opened:
+            body: "The payment provider opened a dispute for order %{number}."
+          provider_bound:
+            body: "The payment provider began handling the dispute for order %{number}."
+          status_changed:
+            body: "Payment dispute for order %{number} is now %{status}."
+          rights_changed:
+            body: "Order rights for payment dispute %{number} are now %{rights_status}."
+    admin:
+      store:
+        disputes:
+          customer_evidence_title: "Customer SecureEvidence attachment"
+          reason_codes:
+            customer_reported: "Customer-reported payment problem"
+          event_types:
+            customer_opened: "Customer opened dispute"
+            customer_withdrawn: "Customer withdrew dispute"
+            customer_refund_resolved: "Resolved by completed refund"

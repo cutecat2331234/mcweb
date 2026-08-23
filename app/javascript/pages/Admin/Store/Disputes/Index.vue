@@ -117,6 +117,7 @@ type DisputeDetail = {
     retentionUntil?: string | null
     purgedAt?: string | null
     downloadTokenUrl?: string | null
+    downloadUrl?: string | null
   }>
   permissions: Permissions
   paths: {
@@ -297,6 +298,15 @@ async function submitSimpleAction() {
 }
 
 async function downloadEvidence(item: DisputeDetail['evidence'][number]) {
+  if (item.downloadUrl) {
+    const anchor = document.createElement('a')
+    anchor.href = item.downloadUrl
+    anchor.rel = 'noopener'
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    return
+  }
   if (!item.downloadTokenUrl) return
   downloadingId.value = item.publicId
   try {
@@ -720,7 +730,7 @@ function rightsColor(status: string) {
                   <TypographyText v-if="item.sha256" code>
                     {{ item.sha256 }}
                   </TypographyText>
-                  <Space v-if="item.downloadTokenUrl">
+                  <Space v-if="item.downloadTokenUrl || item.downloadUrl">
                     <Button
                       size="small"
                       :loading="downloadingId === item.publicId"

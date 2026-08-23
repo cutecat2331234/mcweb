@@ -1,0 +1,97 @@
+zh-CN:
+  mcweb:
+    flash:
+      customer_dispute_opened: "支付争议已发起。"
+      customer_dispute_withdrawn: "支付争议已撤回。"
+    labels:
+      notification_types:
+        commerce.payment_dispute_update: "支付争议进展"
+    services:
+      errors:
+        customer_dispute_order_unavailable: "该订单不可用。"
+        customer_dispute_payment_unavailable: "该订单没有可用于争议的已完成付款。"
+        customer_dispute_payment_binding_mismatch: "付款记录已不再属于该订单。"
+        customer_dispute_request_id_invalid: "争议请求标识无效。"
+        customer_dispute_reason_invalid: "请选择有效的支付问题类型。"
+        customer_dispute_description_too_short: "请至少使用 10 个字符说明支付问题。"
+        customer_dispute_description_too_long: "支付问题说明过长。"
+        customer_dispute_amount_invalid: "请输入不超过可用付款余额的有效金额。"
+        customer_dispute_refund_in_flight: "该付款已有正在处理的退款。"
+        customer_dispute_already_exists: "该付款已经有用户发起的支付争议。"
+        customer_dispute_payment_already_disputed: "该付款已有有效争议。"
+        customer_dispute_unavailable: "当前订单无法发起支付争议。"
+        customer_dispute_idempotency_conflict: "该请求标识已被用于不同的争议内容。"
+        customer_dispute_rights_failed: "无法为该争议更新订单权益。"
+        customer_dispute_notification_failed: "无法记录争议通知。"
+        customer_dispute_withdraw_reason_too_long: "撤回原因过长。"
+        customer_dispute_withdraw_unavailable: "该争议已无法撤回。"
+        refund_blocked_by_active_dispute: "请先撤回或解决有效支付争议，再申请退款。"
+        order_rights_restricted: "支付争议处理期间，该订单的下载和外部履约已暂停。"
+    commerce:
+      payment_disputes:
+        statuses:
+          open: "已发起"
+          evidence_required: "需要补充证据"
+          evidence_submitted: "证据已提交"
+          under_review: "处理中"
+          won: "已支持你的诉求"
+          lost: "未支持该项诉求"
+          withdrawn: "已撤回"
+          closed: "已关闭"
+        rights_statuses:
+          unchanged: "未变更"
+          frozen: "暂时受限"
+          revoked: "已撤销"
+          restored: "已恢复"
+        reasons:
+          unauthorized: "该付款未经我授权"
+          duplicate: "同一笔款项被重复扣款"
+          incorrect_amount: "扣款金额不正确"
+          product_not_received: "未收到已付款的商品或服务"
+          other: "其他支付问题"
+        evidence:
+          statuses:
+            pending: "等待扫描"
+            clean: "可用"
+            infected: "已隔离"
+            error: "扫描需要处理"
+            available: "可用"
+            quarantined: "已隔离"
+            purge_pending: "等待移除"
+            purged: "已移除"
+        timeline:
+          customer_opened: "支付争议已发起"
+          customer_withdrawn: "支付争议已撤回"
+          customer_refund_resolved: "已由完成的退款解决"
+          provider_opened: "支付渠道已发起案件"
+          provider_bound: "支付渠道已开始处理案件"
+          status_changed: "状态已变更为%{status}"
+          rights_changed: "订单权益已变更为%{status}"
+          evidence_added: "已添加证据：%{filename}"
+        notifications:
+          customer_opened:
+            body: "订单 %{number} 的支付争议已发起。"
+          customer_withdrawn:
+            body: "订单 %{number} 的支付争议已撤回。"
+          customer_refund_resolved:
+            body: "订单 %{number} 的支付争议已由完成的退款解决。"
+          evidence_required:
+            body: "订单 %{number} 的支付争议需要补充证据。"
+          provider_opened:
+            body: "支付渠道已为订单 %{number} 发起支付争议。"
+          provider_bound:
+            body: "支付渠道已开始处理订单 %{number} 的支付争议。"
+          status_changed:
+            body: "订单 %{number} 的支付争议状态已变更为%{status}。"
+          rights_changed:
+            body: "订单 %{number} 的支付争议权益状态已变更为%{rights_status}。"
+    admin:
+      store:
+        disputes:
+          customer_evidence_title: "用户 SecureEvidence 附件"
+          reason_codes:
+            customer_reported: "用户报告的支付问题"
+          event_types:
+            customer_opened: "用户发起争议"
+            customer_withdrawn: "用户撤回争议"
+            customer_refund_resolved: "已由完成的退款解决"

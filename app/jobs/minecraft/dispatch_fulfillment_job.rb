@@ -11,82 +11,82 @@ module Minecraft
       return if fulfillment.next_attempt_at.present? && fulfillment.next_attempt_at.future?
 
       order = fulfillment.order
-      return if order.refunded? || order.cancelled?
-
-      provider_id = plugin_provider_id(fulfillment)
-      if provider_id.present?
-        dispatch_plugin_provider!(fulfillment, provider_id)
-        return
-      end
-
-      existing = Minecraft::ConnectorTask.find_by(fulfillment: fulfillment)
-      if existing&.completed?
-        reconcile_completed_fulfillment!(fulfillment)
-        return
-      end
-
-      if Minecraft::ConnectorTask.where(fulfillment: fulfillment, status: %w[pending claimed]).exists?
-        return
-      end
-
-      order_item = fulfillment.order_item
-      snapshot = order_item.fulfillment_snapshot || {}
-      config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
-      server_public_id = config["server_id"] || config[:server_id] || config["minecraft_server_id"] || config[:minecraft_server_id]
-
-      server =
-        if server_public_id.present?
-          Minecraft::Server.find_by(public_id: server_public_id.to_s) ||
-            Minecraft::Server.find_by(id: server_public_id.to_i)
+      Commerce::Disputes::OrderRightsAccess.with_delivery_access(order) do
+        provider_id = plugin_provider_id(fulfillment)
+        if provider_id.present?
+          dispatch_plugin_provider!(fulfillment, provider_id)
+          next
         end
 
-      unless server
-        Rails.logger.error("[DispatchFulfillmentJob] No Minecraft server found for fulfillment #{fulfillment_id} (server_id=#{server_public_id.inspect})")
-        record_dispatch_failure!(fulfillment, "server_not_found")
-        return
-      end
+        existing = Minecraft::ConnectorTask.find_by(fulfillment: fulfillment)
+        if existing&.completed?
+          reconcile_completed_fulfillment!(fulfillment)
+          next
+        end
 
-      if maintenance_blocks_fulfillment?(server)
-        Rails.logger.info("[DispatchFulfillmentJob] Deferred fulfillment #{fulfillment_id} — server in maintenance")
-        Minecraft::DispatchFulfillmentJob.set(wait: 10.minutes).perform_later(fulfillment_id)
-        return
-      end
+        if Minecraft::ConnectorTask.where(fulfillment: fulfillment, status: %w[pending claimed]).exists?
+          next
+        end
 
-      payload_result = Commerce::BuildConnectorTaskPayload.call(fulfillment: fulfillment)
-      unless payload_result.success?
-        record_dispatch_failure!(fulfillment, payload_result.code || payload_result.error)
-        return
-      end
+        order_item = fulfillment.order_item
+        snapshot = order_item.fulfillment_snapshot || {}
+        config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
+        server_public_id = config["server_id"] || config[:server_id] || config["minecraft_server_id"] || config[:minecraft_server_id]
 
-      task_payload = payload_result.value
-      task_type = config["task_type"] || config[:task_type] || "deliver_item"
-      Commerce::Fulfillment.transaction do
-        fulfillment.lock!
-        return unless fulfillment.pending? && fulfillment.retryable?
+        server =
+          if server_public_id.present?
+            Minecraft::Server.find_by(public_id: server_public_id.to_s) ||
+              Minecraft::Server.find_by(id: server_public_id.to_i)
+          end
 
-        fulfillment.begin_dispatch_attempt!
-        existing = Minecraft::ConnectorTask.lock.find_by(fulfillment: fulfillment)
-        if existing
-          return unless existing.failed?
+        unless server
+          Rails.logger.error("[DispatchFulfillmentJob] No Minecraft server found for fulfillment #{fulfillment_id} (server_id=#{server_public_id.inspect})")
+          record_dispatch_failure!(fulfillment, "server_not_found")
+          next
+        end
 
-          existing.update!(
-            server: server,
-            status: "pending",
-            claimed_at: nil,
-            completed_at: nil,
-            result: {},
-            payload: task_payload,
-            task_type: task_type
-          )
-        else
-          Minecraft::ConnectorTask.create!(
-            server: server,
-            fulfillment: fulfillment,
-            task_type: task_type,
-            delivery_id: fulfillment.delivery_id,
-            status: "pending",
-            payload: task_payload
-          )
+        if maintenance_blocks_fulfillment?(server)
+          Rails.logger.info("[DispatchFulfillmentJob] Deferred fulfillment #{fulfillment_id} — server in maintenance")
+          Minecraft::DispatchFulfillmentJob.set(wait: 10.minutes).perform_later(fulfillment_id)
+          next
+        end
+
+        payload_result = Commerce::BuildConnectorTaskPayload.call(fulfillment: fulfillment)
+        unless payload_result.success?
+          record_dispatch_failure!(fulfillment, payload_result.code || payload_result.error)
+          next
+        end
+
+        task_payload = payload_result.value
+        task_type = config["task_type"] || config[:task_type] || "deliver_item"
+        Commerce::Fulfillment.transaction do
+          fulfillment.lock!
+          next unless fulfillment.pending? && fulfillment.retryable?
+
+          fulfillment.begin_dispatch_attempt!
+          existing = Minecraft::ConnectorTask.lock.find_by(fulfillment: fulfillment)
+          if existing
+            next unless existing.failed?
+
+            existing.update!(
+              server: server,
+              status: "pending",
+              claimed_at: nil,
+              completed_at: nil,
+              result: {},
+              payload: task_payload,
+              task_type: task_type
+            )
+          else
+            Minecraft::ConnectorTask.create!(
+              server: server,
+              fulfillment: fulfillment,
+              task_type: task_type,
+              delivery_id: fulfillment.delivery_id,
+              status: "pending",
+              payload: task_payload
+            )
+          end
         end
       end
     rescue ActiveRecord::RecordNotUnique

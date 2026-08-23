@@ -5,18 +5,29 @@ module Commerce
     class RightsPolicy < ApplicationService
       ACTIONS = %w[freeze revoke restore].freeze
 
-      def initialize(dispute:, action:, idempotency_prefix:, actor: nil, reason: nil)
+      def initialize(
+        dispute:,
+        action:,
+        idempotency_prefix:,
+        actor: nil,
+        reason: nil,
+        subjects: nil
+      )
         @dispute = dispute
         @action = action.to_s
         @idempotency_prefix = idempotency_prefix.to_s
         @actor = actor
         @reason = reason.to_s.presence
+        @limited_subjects = subjects.nil? ? nil : Array(subjects).compact.uniq
         @membership_syncs = []
       end
 
       def call
         return ServiceResult.failure(error: "dispute_rights_action_invalid") unless ACTIONS.include?(@action)
         return ServiceResult.failure(error: "dispute_idempotency_invalid") if @idempotency_prefix.blank?
+        unless limited_subjects_valid?
+          return ServiceResult.failure(error: "dispute_rights_subject_invalid")
+        end
 
         changed = 0
         replayed = 0
@@ -30,6 +41,11 @@ module Commerce
 
           subject.lock!
           subject.reload
+          if Commerce::DisputeRightsAction.exists?(idempotency_key:)
+            replayed += 1
+            next
+          end
+
           before = subject_state(subject)
           apply_to_subject!(subject)
           after = subject_state(subject)
@@ -52,8 +68,13 @@ module Commerce
           schedule_membership_sync(subject, before:, after:)
         end
 
+        previous_rights_status = @dispute.rights_status
         @dispute.update!(rights_status: resulting_rights_status)
         enqueue_membership_syncs
+        enqueue_pending_fulfillment_resume(
+          previous_rights_status:,
+          current_rights_status: @dispute.rights_status
+        )
 
         ServiceResult.success(
           changed: changed,
@@ -67,6 +88,8 @@ module Commerce
       private
 
       def subjects
+        return @limited_subjects.sort_by { |subject| [ subject.class.name, subject.id ] } if @limited_subjects
+
         item_ids = @dispute.order.items.order(:id).pluck(:id)
         entitlements = Commerce::UserEntitlement
           .where(source_order_item_id: item_ids)
@@ -81,6 +104,19 @@ module Commerce
           .to_a
 
         entitlements + memberships
+      end
+
+      def limited_subjects_valid?
+        return true unless @limited_subjects
+
+        item_ids = @dispute.order.items.pluck(:id)
+        @limited_subjects.all? do |subject|
+          (subject.is_a?(Commerce::UserEntitlement) ||
+            subject.is_a?(Commerce::UserMembership)) &&
+            subject.persisted? &&
+            item_ids.include?(subject.source_order_item_id) &&
+            subject.user_id == @dispute.order.user_id
+        end
       end
 
       def apply_to_subject!(subject)
@@ -154,6 +190,12 @@ module Commerce
       end
 
       def restored_attributes(subject, original)
+        if @dispute.order.refunded?
+          return subject.is_a?(Commerce::UserEntitlement) ?
+            { revoked_at: subject.revoked_at || Time.current } :
+            { status: "revoked" }
+        end
+
         if subject.is_a?(Commerce::UserEntitlement)
           { revoked_at: parse_time(original["revoked_at"]) }
         else
@@ -198,6 +240,25 @@ module Commerce
               idempotency_key
             )
           end
+        end
+      end
+
+      def enqueue_pending_fulfillment_resume(
+        previous_rights_status:,
+        current_rights_status:
+      )
+        return unless @action == "restore"
+        return if previous_rights_status == current_rights_status
+        return if @dispute.order.refunded? || @dispute.order.cancelled?
+        return if Commerce::Disputes::OrderRightsAccess.restricted?(@dispute.order)
+
+        order_id = @dispute.store_order_id
+        ActiveRecord.after_all_transactions_commit do
+          Commerce::Fulfillment
+            .where(store_order_id: order_id, status: "pending")
+            .find_each do |fulfillment|
+              Minecraft::EnsureInstanceRunningJob.perform_later(fulfillment.id)
+            end
         end
       end
 

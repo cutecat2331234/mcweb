@@ -34,6 +34,7 @@ module Commerce
     def currently_active?
       active? &&
         risk_held_at.nil? &&
+        starts_at <= Time.current &&
         (expires_at.nil? || expires_at > Time.current)
     end
 

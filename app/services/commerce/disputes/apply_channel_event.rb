@@ -82,6 +82,7 @@ module Commerce
           dispute.reload
 
           from_status = dispute.status
+          from_rights_status = dispute.rights_status
           target_status = mapped_status(dispute)
           stale = stale_event?(dispute, target_status)
 
@@ -90,6 +91,13 @@ module Commerce
             rebalance_dispute!(dispute)
             apply_rights_policy!(dispute)
           end
+          customer_event_kind = public_customer_event_kind(
+            stale:,
+            from_status:,
+            from_rights_status:,
+            dispute:
+          )
+          customer_visible = customer_event_kind.present?
 
           event = Commerce::DisputeEvent.create!(
             dispute: dispute,
@@ -104,7 +112,13 @@ module Commerce
             provider_occurred_at: @occurred_at,
             provider_sequence: @sequence,
             payload_digest: @payload_digest,
-            metadata: event_metadata(dispute, stale:)
+            metadata: event_metadata(
+              dispute,
+              stale:,
+              customer_visible:,
+              customer_event_kind:,
+              previous_rights_status: from_rights_status
+            )
           )
 
           Administration::AuditLogger.call(
@@ -128,6 +142,16 @@ module Commerce
               stale: stale
             }
           )
+          if customer_visible
+            notification = Commerce::Disputes::CustomerNotifier.call(event:)
+            unless notification.success?
+              dispute.errors.add(
+                :base,
+                notification.error.presence || "customer dispute notification failed"
+              )
+              raise ActiveRecord::RecordInvalid.new(dispute)
+            end
+          end
 
           result = ServiceResult.success(
             dispute: dispute,
@@ -180,33 +204,55 @@ module Commerce
       end
 
       def find_or_create_dispute!(order)
-        Commerce::Dispute.find_or_initialize_by(
+        existing = Commerce::Dispute.find_by(
           provider: @provider,
           provider_dispute_id: @provider_dispute_id
-        ).tap do |dispute|
-          if dispute.new_record?
-            dispute.assign_attributes(
-              order: order,
-              payment_record: @payment_record,
-              kind: @kind,
-              status: "open",
-              provider_status: @provider_status,
-              risk_level: @risk_level,
-              reason_code: @reason_code,
-              amount_cents: @amount_cents,
-              liability_cents: @amount_cents,
-              offset_cents: 0,
-              currency: @currency,
-              evidence_due_at: @evidence_due_at,
-              metadata: {}
-            )
-            dispute.save!
-          elsif dispute.payment_record_id != @payment_record.id ||
-              dispute.store_order_id != order.id
-            raise ActiveRecord::RecordInvalid.new(dispute)
+        )
+        if existing
+          if existing.payment_record_id != @payment_record.id ||
+              existing.store_order_id != order.id
+            raise ActiveRecord::RecordInvalid.new(existing)
           end
-          dispute
+          return existing
         end
+
+        customer_case = @payment_record.disputes
+          .customer_provider_pending
+          .where(provider: @provider, status: Commerce::Dispute::CUSTOMER_EVIDENCE_STATUSES)
+          .order(:created_at, :id)
+          .lock
+          .first
+        if customer_case
+          customer_case.update!(
+            provider_dispute_id: @provider_dispute_id,
+            kind: @kind,
+            provider_status: @provider_status,
+            metadata: customer_case.metadata.merge(
+              "customer_provider_bound_at" => Time.current.iso8601(6)
+            )
+          )
+          @bound_customer_case = true
+          return customer_case
+        end
+
+        @created_dispute = true
+        Commerce::Dispute.create!(
+          order: order,
+          payment_record: @payment_record,
+          provider: @provider,
+          provider_dispute_id: @provider_dispute_id,
+          kind: @kind,
+          status: "open",
+          provider_status: @provider_status,
+          risk_level: @risk_level,
+          reason_code: @reason_code,
+          amount_cents: @amount_cents,
+          liability_cents: @amount_cents,
+          offset_cents: 0,
+          currency: @currency,
+          evidence_due_at: @evidence_due_at,
+          metadata: {}
+        )
       end
 
       def assign_channel_state!(dispute, target_status)
@@ -309,9 +355,18 @@ module Commerce
         false
       end
 
-      def event_metadata(dispute, stale:)
+      def event_metadata(
+        dispute,
+        stale:,
+        customer_visible:,
+        customer_event_kind:,
+        previous_rights_status:
+      )
         {
           "stale" => stale,
+          "customer_visible" => customer_visible,
+          "customer_event_kind" => customer_event_kind,
+          "previous_rights_status" => previous_rights_status,
           "amount_cents" => dispute.amount_cents,
           "liability_cents" => dispute.liability_cents,
           "offset_cents" => dispute.offset_cents,
@@ -319,6 +374,19 @@ module Commerce
           "risk_level" => dispute.risk_level,
           "rights_status" => dispute.rights_status
         }
+      end
+
+      def public_customer_event_kind(
+        stale:,
+        from_status:,
+        from_rights_status:,
+        dispute:
+      )
+        return if stale
+        return "provider_bound" if @bound_customer_case == true
+        return "provider_opened" if @created_dispute == true
+        return "status_changed" if from_status != dispute.status
+        return "rights_changed" if from_rights_status != dispute.rights_status
       end
 
       def event_idempotency_key

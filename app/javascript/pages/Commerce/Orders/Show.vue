@@ -19,6 +19,8 @@ import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 import { resolveStoreFeatures } from '@/lib/storeFeatures'
 import { confirm } from '@/lib/useConfirm'
+import PaymentDisputePanel from '@/components/commerce/orders/PaymentDisputePanel.vue'
+import type { CustomerPaymentDisputes } from '@/types/commercePaymentDisputes'
 
 defineOptions({ layout: PortalLayout })
 
@@ -132,6 +134,7 @@ const props = defineProps<{
       last_error?: string | null
     }>
   }
+  paymentDisputes: CustomerPaymentDisputes
 }>()
 
 const payForm = useForm({
@@ -483,6 +486,8 @@ async function withdrawRefund(refund: { id: number; withdraw_url?: string | null
       </li>
     </ul>
   </div>
+
+  <PaymentDisputePanel :payment-disputes="paymentDisputes" />
 
   <div v-if="order.restorations?.length" class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
     <h2 class="mb-3 text-sm font-semibold text-green-900 dark:text-green-100">{{ t('commerce.orderShow.restorationDetails') }}</h2>

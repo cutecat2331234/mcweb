@@ -120,7 +120,6 @@ module SecureEvidence
         filename: attachment.filename,
         content_type: attachment.content_type,
         byte_size: attachment.byte_size,
-        sha256: attachment.sha256,
         state: attachment.state,
         scan_status: upload&.scan_status || "pending",
         retention_until: attachment.retention_until.iso8601,

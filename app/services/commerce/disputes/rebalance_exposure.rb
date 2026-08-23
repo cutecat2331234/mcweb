@@ -31,10 +31,16 @@ module Commerce
                 [ dispute.amount_cents, available_cents ].min
               end
             available_cents -= target_liability
-            next if dispute.liability_cents == target_liability
+            resolve_by_refund = customer_resolved_by_full_refund?(
+              dispute,
+              payment:,
+              refunded_cents:,
+              target_liability:
+            )
+            next if dispute.liability_cents == target_liability && !resolve_by_refund
 
             before = exposure_state(dispute)
-            dispute.update!(
+            attributes = {
               liability_cents: target_liability,
               offset_cents: dispute.amount_cents - target_liability,
               metadata: dispute.metadata.merge(
@@ -42,7 +48,18 @@ module Commerce
                 "completed_refund_cents" => refunded_cents,
                 "unallocated_payment_cents" => available_cents
               )
-            )
+            }
+            if resolve_by_refund
+              attributes.merge!(
+                status: "won",
+                resolution: "won",
+                retention_until: [
+                  dispute.retention_until,
+                  Time.current + Commerce::Dispute::RETENTION_PERIOD
+                ].compact.max
+              )
+            end
+            dispute.update!(attributes)
 
             if target_liability.zero? &&
                 (dispute.rights_frozen? || dispute.rights_revoked?)
@@ -63,8 +80,10 @@ module Commerce
               dispute: dispute,
               idempotency_key: event_key(dispute),
               source: "system",
-              event_type: "exposure_rebalanced",
-              from_status: dispute.status,
+              event_type: resolve_by_refund ?
+                "customer_refund_resolved" :
+                "exposure_rebalanced",
+              from_status: before.fetch("status"),
               to_status: dispute.status,
               metadata: {
                 "before" => before,
@@ -82,6 +101,16 @@ module Commerce
                 trigger: @trigger_idempotency
               }
             )
+            if resolve_by_refund
+              notification = Commerce::Disputes::CustomerNotifier.call(event:)
+              unless notification.success?
+                dispute.errors.add(
+                  :base,
+                  notification.error.presence || "customer dispute notification failed"
+                )
+                raise ActiveRecord::RecordInvalid.new(dispute)
+              end
+            end
             changed += 1
           end
 
@@ -115,6 +144,8 @@ module Commerce
 
       def exposure_state(dispute)
         {
+          "status" => dispute.status,
+          "resolution" => dispute.resolution,
           "amount_cents" => dispute.amount_cents,
           "liability_cents" => dispute.liability_cents,
           "offset_cents" => dispute.offset_cents,
@@ -124,6 +155,14 @@ module Commerce
 
       def event_key(dispute)
         "dispute-rebalance:#{Digest::SHA256.hexdigest(@trigger_idempotency).first(24)}:#{dispute.id}"
+      end
+
+      def customer_resolved_by_full_refund?(dispute, payment:, refunded_cents:, target_liability:)
+        target_liability.zero? &&
+          refunded_cents >= payment.amount_cents &&
+          dispute.customer_origin? &&
+          dispute.customer_provider_pending? &&
+          Commerce::Dispute::CUSTOMER_EVIDENCE_STATUSES.include?(dispute.status)
       end
     end
   end

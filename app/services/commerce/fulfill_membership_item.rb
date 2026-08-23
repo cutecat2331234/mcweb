@@ -22,7 +22,8 @@ module Commerce
         user: @order.user,
         membership_type: membership_type,
         source: "purchase",
-        source_order_item: @order_item
+        source_order_item: @order_item,
+        idempotency_key: "order-item:#{@order_item.id}:membership-grant"
       )
       return grant_result if grant_result.failure?
 

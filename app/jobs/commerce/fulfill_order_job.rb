@@ -60,9 +60,24 @@ module Commerce
           end
 
           fulfillment = result.value
+          entitlement_result = Commerce::GrantProductEntitlement.call(
+            order_item: order_item
+          )
+          unless entitlement_result.success?
+            fulfillment_failures += 1
+            error = entitlement_result.error ||
+              entitlement_result.errors&.values&.flatten&.first ||
+              "entitlement_grant_failed"
+            fulfillment.mark_failed!(error: error)
+            Rails.logger.warn(
+              "[FulfillOrderJob] Entitlement grant failed " \
+              "for order_item=#{order_item.id}: #{error}"
+            )
+            next
+          end
+
           fulfillment.mark_fulfilled! unless fulfillment.fulfilled?
           Commerce::SyncOrderFulfillmentStatus.call(order: order_item.order)
-          Commerce::GrantProductEntitlement.call(order_item: order_item)
           next
         end
 
@@ -72,12 +87,21 @@ module Commerce
           next
         end
 
-        Minecraft::EnsureInstanceRunningJob.perform_later(result.value.id)
-
         entitlement_result = Commerce::GrantProductEntitlement.call(order_item: order_item)
         if entitlement_result.failure?
-          Rails.logger.warn("[FulfillOrderJob] Entitlement grant failed for order_item=#{order_item.id}")
+          fulfillment_failures += 1
+          error = entitlement_result.error ||
+            entitlement_result.errors&.values&.flatten&.first ||
+            "entitlement_grant_failed"
+          result.value.mark_failed!(error: error)
+          Rails.logger.warn(
+            "[FulfillOrderJob] Entitlement grant failed " \
+            "for order_item=#{order_item.id}: #{error}"
+          )
+          next
         end
+
+        Minecraft::EnsureInstanceRunningJob.perform_later(result.value.id)
       end
 
       order.reload

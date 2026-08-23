@@ -142,6 +142,11 @@ module Commerce
 
           before = audit_state
           action_result = apply_action!
+          customer_event_kind = if before.fetch(:status) != @dispute.status
+            "status_changed"
+          elsif before.fetch(:rights_status) != @dispute.rights_status
+            "rights_changed"
+          end
           event = Commerce::DisputeEvent.create!(
             dispute: @dispute,
             actor: @actor,
@@ -157,7 +162,10 @@ module Commerce
               "action" => @action,
               "evidence_id" => action_result[:evidence]&.id,
               "assignee_id" => @dispute.assigned_to_id,
+              "previous_rights_status" => before.fetch(:rights_status),
               "rights_status" => @dispute.rights_status,
+              "customer_visible" => customer_event_kind.present?,
+              "customer_event_kind" => customer_event_kind,
               "confirmation_method" => ("signed_typed_challenge" if dangerous?)
             }.compact
           )
@@ -177,6 +185,16 @@ module Commerce
             ip_address: @ip_address,
             user_agent: @user_agent
           )
+          if customer_event_kind.present?
+            notification = Commerce::Disputes::CustomerNotifier.call(event:)
+            unless notification.success?
+              @dispute.errors.add(
+                :base,
+                notification.error.presence || "customer dispute notification failed"
+              )
+              raise ActiveRecord::RecordInvalid.new(@dispute)
+            end
+          end
 
           result = ServiceResult.success(
             dispute: @dispute,

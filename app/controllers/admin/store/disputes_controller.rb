@@ -281,7 +281,7 @@ module Admin
                 ) :
                 nil
             }
-          end,
+          end + (sensitive ? secure_evidence_props(dispute) : []),
           permissions: permission_props,
           paths: {
             authorizeAction: authorize_action_admin_store_dispute_path(dispute),
@@ -300,6 +300,46 @@ module Admin
           close: current_user.permission?("store.disputes.close"),
           rightsManage: current_user.permission?("store.disputes.rights_manage")
         }
+      end
+
+      def secure_evidence_props(dispute)
+        SecureEvidence::Attachment
+          .includes(:uploader, :upload_record)
+          .where(
+            subject_key: Commerce::SecureEvidenceSubjects::SUBJECT_KEY,
+            subject_id: dispute.id,
+            subject_public_id: dispute.public_id
+          )
+          .order(created_at: :desc, id: :desc)
+          .map do |attachment|
+            status = attachment.state_pending? ?
+              attachment.scan_status :
+              attachment.state
+            downloadable = SecureEvidence::AttachmentAccess.download_allowed?(
+              attachment,
+              actor: current_user
+            )
+            {
+              publicId: attachment.public_id,
+              title: t("mcweb.admin.store.disputes.customer_evidence_title"),
+              filename: attachment.filename,
+              byteSize: attachment.byte_size,
+              sha256: attachment.sha256,
+              status:,
+              statusLabel: t(
+                "mcweb.commerce.payment_disputes.evidence.statuses.#{status}",
+                default: status.to_s.humanize
+              ),
+              submittedBy: attachment.uploader.username,
+              submittedAt: attachment.created_at.iso8601,
+              retentionUntil: attachment.retention_until.iso8601,
+              purgedAt: attachment.purged_at&.iso8601,
+              downloadTokenUrl: nil,
+              downloadUrl: downloadable ?
+                secure_evidence_attachment_path(attachment) :
+                nil
+            }
+          end
       end
 
       def action_params

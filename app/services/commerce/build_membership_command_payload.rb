@@ -34,7 +34,10 @@ module Commerce
           .gsub(DURATION_PLACEHOLDER, duration)
       end
 
-      ServiceResult.success(commands: substituted)
+      ServiceResult.success(
+        commands: substituted,
+        ordering_key: membership_ordering_key
+      )
     end
 
     private
@@ -44,6 +47,13 @@ module Commerce
       return unless link
 
       Minecraft::PlayerRef.new(link.player_profile)
+    end
+
+    def membership_ordering_key
+      digest = Digest::SHA256.hexdigest(
+        [ @user.id, @membership_type.id ].join(":")
+      ).first(32)
+      "membership-state:#{digest}"
     end
   end
 end

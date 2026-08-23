@@ -9,6 +9,9 @@ module Minecraft
       return unless fulfillment&.pending?
       return unless fulfillment.retryable?
       return if fulfillment.next_attempt_at.present? && fulfillment.next_attempt_at.future?
+      return unless Commerce::Disputes::OrderRightsAccess.delivery_allowed_under_lock?(
+        fulfillment.order
+      )
 
       server = resolve_server(fulfillment)
       if server && maintenance_blocks_fulfillment?(server)

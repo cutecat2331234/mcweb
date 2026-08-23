@@ -1153,6 +1153,8 @@ module InertiaSerializable
     return false unless %w[paid fulfilled completed].include?(order.status)
     return false if max_refundable_cents(order) <= 0
     return false unless within_refund_window?(order)
+    payment = succeeded_payment_for(order)
+    return false if payment && Commerce::Disputes::CustomerPolicy.active_financial_dispute?(payment)
 
     !order.refunds.in_flight.exists?
   end

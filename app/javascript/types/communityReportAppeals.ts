@@ -1,13 +1,6 @@
-export interface SecureEvidenceAttachment {
-  public_id: string
-  filename: string
-  byte_size: number
-  sha256: string
-  state: string
-  scan_status: string | null
-  scan_status_url: string
-  download_url: string
-  discard_url?: string
+import type { SecureEvidenceAttachment as BaseSecureEvidenceAttachment } from '@/types/secureEvidence'
+
+export interface SecureEvidenceAttachment extends BaseSecureEvidenceAttachment {
   sealed?: boolean
   audience?: 'appellant' | 'reviewers'
 }

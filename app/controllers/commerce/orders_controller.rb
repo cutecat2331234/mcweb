@@ -68,7 +68,11 @@ module Commerce
 
     def show
       render inertia: "Commerce/Orders/Show", props: {
-        order: serialize_order_detail(@order)
+        order: serialize_order_detail(@order),
+        paymentDisputes: Commerce::Disputes::CustomerOrderProps.new(
+          order: @order,
+          viewer: current_user
+        ).call
       }
     end
 

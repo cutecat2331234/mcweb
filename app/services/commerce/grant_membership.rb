@@ -15,11 +15,15 @@ module Commerce
     def call
       if @source_order_item && Commerce::UserMembership.exists?(source_order_item_id: @source_order_item.id)
         existing = Commerce::UserMembership.find_by!(source_order_item_id: @source_order_item.id)
+        protection = protect_dispute_rights(existing)
+        return protection if protection.failure?
+
         return ServiceResult.success(existing)
       end
 
       membership = nil
       command_result = nil
+      protection_result = nil
 
       Commerce::UserMembership.transaction do
         @user.lock!
@@ -35,6 +39,9 @@ module Commerce
           source_order_item: @source_order_item
         )
 
+        protection_result = protect_dispute_rights(membership)
+        raise ActiveRecord::Rollback if protection_result.failure?
+
         if @source_order_item
           Commerce::OrderEvent.create!(
             order: @source_order_item.order,
@@ -48,8 +55,10 @@ module Commerce
         end
 
         if @grant_game_permissions && @membership_type.game_permission_enabled?
-          grant_on_purchase = !@membership_type.game_permission_website_managed? ||
-            first_active_membership_for_type?(membership)
+          grant_on_purchase = membership.currently_active? && (
+            !@membership_type.game_permission_website_managed? ||
+              first_active_membership_for_type?(membership)
+          )
           if grant_on_purchase
             command_result = Commerce::DispatchMembershipCommands.call(
               user: @user,
@@ -62,13 +71,19 @@ module Commerce
         end
       end
 
+      return protection_result if protection_result&.failure?
       return command_result if command_result&.failure?
 
       ServiceResult.success(membership)
     rescue ActiveRecord::RecordNotUnique
       if @source_order_item
         existing = Commerce::UserMembership.find_by(source_order_item_id: @source_order_item.id)
-        return ServiceResult.success(existing) if existing
+        if existing
+          protection = protect_dispute_rights(existing)
+          return protection if protection.failure?
+
+          return ServiceResult.success(existing)
+        end
       end
 
       raise
@@ -107,6 +122,15 @@ module Commerce
         .where(user: @user, store_membership_type_id: @membership_type.id)
         .where.not(id: membership.id)
         .none?
+    end
+
+    def protect_dispute_rights(membership)
+      return ServiceResult.success(skipped: true) unless @source_order_item
+
+      Commerce::Disputes::ProtectGrantedSubject.call(
+        order: @source_order_item.order,
+        subject: membership
+      )
     end
   end
 end

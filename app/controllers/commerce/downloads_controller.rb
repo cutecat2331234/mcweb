@@ -12,6 +12,11 @@ module Commerce
       order_item = Commerce::OrderItem.find_by(id: payload["order_item_id"])
       return head :not_found unless order_item
       return head :forbidden unless order_item.order.user_id == current_user.id
+      unless Commerce::Disputes::OrderRightsAccess.delivery_allowed_under_lock?(
+        order_item.order
+      )
+        return head :locked
+      end
 
       snapshot = order_item.fulfillment_snapshot || {}
       config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}

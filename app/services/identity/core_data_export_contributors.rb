@@ -18,6 +18,10 @@ module Identity
         contributor: DataExporting::CommunityContentContributor
       )
       registry.register(
+        key: "community.activity",
+        contributor: DataExporting::CommunityActivityContributor
+      )
+      registry.register(
         key: "community.uploads",
         contributor: DataExporting::CommunityUploadsContributor
       )
@@ -28,6 +32,10 @@ module Identity
       registry.register(
         key: "commerce.account",
         contributor: DataExporting::CommerceAccountContributor
+      )
+      registry.register(
+        key: "commerce.activity",
+        contributor: DataExporting::CommerceActivityContributor
       )
       registry.register(
         key: "minecraft.accounts",

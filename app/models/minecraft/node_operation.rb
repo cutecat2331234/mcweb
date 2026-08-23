@@ -22,6 +22,11 @@ module Minecraft
       foreign_key: :minecraft_node_operation_id,
       inverse_of: :node_operation,
       dependent: :restrict_with_error
+    has_one :world_restore_resolution,
+      class_name: "Minecraft::WorldRestoreResolution",
+      foreign_key: :minecraft_node_operation_id,
+      inverse_of: :node_operation,
+      dependent: :restrict_with_error
 
     enum :status, {
       queued: "queued",

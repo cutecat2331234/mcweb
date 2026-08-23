@@ -60,11 +60,14 @@ module Minecraft
       end
     end
 
-    def initialize(plan:, actor:, password:, code: nil)
+    RATE_LIMIT_SCOPE = "minecraft_world_restore_authorize"
+
+    def initialize(plan:, actor:, password:, code: nil, ip_address: nil)
       @plan = plan
       @actor = actor
       @password = password
       @code = code
+      @ip_address = ip_address
     end
 
     def call
@@ -83,15 +86,29 @@ module Minecraft
           next
         end
 
+        throttle = sensitive_action_limit(:check)
+        if throttle.failure?
+          audit_authorization_failure(rate_limited: true)
+          result = ServiceResult.failure(
+            error: :world_restore_authorization_rate_limited,
+            code: :rate_limited,
+            retry_after: throttle.retry_after
+          )
+          next
+        end
+
         verification = Identity::SensitiveActionVerifier.call(
           user: @actor,
           password: @password,
           code: @code
         )
         if verification.failure?
-          result = verification
+          sensitive_action_limit(:failure)
+          audit_authorization_failure(rate_limited: false)
+          result = failure(:world_restore_authorization_failed)
           next
         end
+        sensitive_action_limit(:success)
 
         method = verification.value.fetch(:method)
         authorized_at = Time.current
@@ -174,6 +191,29 @@ module Minecraft
         request_id: @plan.request_id,
         status: @plan.status
       }
+    end
+
+    def sensitive_action_limit(action)
+      Administration::SensitiveActionRateLimit.call(
+        scope: RATE_LIMIT_SCOPE,
+        user: @actor,
+        ip_address: @ip_address,
+        action: action
+      )
+    end
+
+    def audit_authorization_failure(rate_limited:)
+      AuditLog.record!(
+        action: "minecraft.world_restore.authorization_failed",
+        actor: @actor,
+        resource: @plan,
+        reason: @plan.reason,
+        request_id: @plan.request_id,
+        metadata: safe_metadata.merge(
+          rate_limited: rate_limited,
+          ip_digest: Digest::SHA256.hexdigest(@ip_address.to_s)[0, 12]
+        )
+      )
     end
 
     def failure(code)

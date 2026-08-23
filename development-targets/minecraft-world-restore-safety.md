@@ -502,6 +502,12 @@ Implementation must re-run status after the follow-up and stop again if any pros
 - [ ] Commit directly to CE main with no feature branch and no push.
 - [ ] Report exact checks, commit ID, remaining CNB/platform gaps, and unchanged unrelated work.
 
+### Phase 5A — independent P1 safety-review closure
+
+- [x] P1-1 recovery resolution: add a dedicated permission, step-up authorization, explicit reason, optimistic lock contract, idempotency key, append-only event/audit trail, and Arco Admin action for resolving `recovery_required`. Resolution must be driven by a v2 node reconciliation operation and may reach a non-blocking terminal state only after the node durably proves the live world is the selected tree, the pre-restore tree is restored, or the original absent state is restored; database-only clearing is forbidden and every ambiguous/error state remains fail-closed.
+- [x] P1-2 sensitive-action throttling: reuse or extract a CE-owned backend limiter for world-restore authorization failures keyed by user, request IP, and action scope. Password, TOTP, and recovery-code failures share the same non-disclosing counter; escalating/fixed-window lockout is enforced before credential verification, successful verification clears or decays the bucket, and audit plus Simplified Chinese/English errors are provided.
+- [x] P1-3 execute/configuration serialization: enforce one stable database lock order for restore plan then server, repeat the complete node/server/backup/stopped/capability/configuration contract inside that transaction, and bind the node operation plus consume authorization while those locks remain held. Server restore-target updates must take the mutually exclusive server lock/optimistic-lock contract so no stale configuration can commit between final validation and enqueue binding; add concurrency-race test source without running it locally.
+
 ### Phase 6 — downstream handoff outside this CE task
 
 - [ ] After the parent confirms the wider development set is ready, merge the exact CE commit into EE and then EE-PVP by ordinary merges only.

@@ -250,6 +250,9 @@
       minecraft_world_restores_execute:
         name: "执行 Minecraft 世界恢复"
         description: "规划、升阶授权并执行带审计、失败关闭的 Minecraft 世界恢复。"
+      minecraft_world_restores_resolve_recovery:
+        name: "解除 Minecraft 世界恢复阻断"
+        description: "通过独立授权，让节点以可验证的恢复收敛结果解除世界恢复阻断。"
       minecraft_players_view:
         name: "查看 Minecraft 玩家"
         description: "查看在线玩家及其当前服务器活动。"
@@ -904,6 +907,7 @@
         world_restore_stale: 恢复计划刚刚发生变化，请刷新后重试。
         world_restore_authorization_invalid: 恢复授权无效，或已不再匹配当前计划。
         world_restore_authorization_failed: 无法完成此次恢复授权。
+        world_restore_authorization_rate_limited: 恢复授权尝试过多，请稍后再试。
         world_restore_plan_not_authorized: 执行恢复前请先完成升阶授权。
         world_restore_confirmation_mismatch: 输入的确认文字与当前服务器、备份及计划不一致。
         world_restore_authorization_expired: 恢复授权已过期，请重新授权。
@@ -917,6 +921,34 @@
         world_restore_node_failed: 节点在切换前执行恢复失败。
         world_restore_ambiguous_node_result: 节点结果无法证明旧世界或新世界是否已安全安装。
         world_restore_unreported_node_failure: 节点操作结束时没有返回完整恢复结果。
+        world_restore_recovery_unauthorized: 你没有解除世界恢复阻断所需的独立权限。
+        world_restore_recovery_not_required: 此恢复当前不处于需要恢复处理状态。
+        world_restore_recovery_action_invalid: 请选择继续恢复、回滚或核验收敛。
+        world_restore_recovery_reason_required: 请填写相关事故、工单或运维处理原因。
+        world_restore_recovery_reason_too_long: 恢复处理原因不能超过 1,000 个字符。
+        world_restore_recovery_request_id_invalid: 恢复处理请求 ID 无效。
+        world_restore_recovery_lock_version_required: 请刷新恢复状态并提交其精确锁版本。
+        world_restore_recovery_stale: 恢复处理记录刚刚发生变化，请刷新后继续。
+        world_restore_recovery_active: 此世界恢复已有进行中的恢复处理尝试。
+        world_restore_recovery_capability_required: 节点未完整声明 v2 恢复处理能力。
+        world_restore_recovery_not_confirmed_by_node: 节点账本当前没有确认此恢复仍需人工处理。
+        world_restore_recovery_pre_snapshot_required: 此处理动作需要可验证的恢复前快照。
+        world_restore_recovery_idempotency_conflict: 此恢复处理请求 ID 已被用于不同输入。
+        world_restore_recovery_not_authorizable: 此恢复处理尝试已无法授权。
+        world_restore_recovery_capability_changed: 冻结处理方案后，节点恢复能力发生了变化。
+        world_restore_recovery_authorization_rate_limited: 恢复处理授权尝试过多，请稍后再试。
+        world_restore_recovery_authorization_failed: 恢复处理授权失败；系统不会透露失败的凭据类型。
+        world_restore_recovery_authorization_invalid: 恢复处理授权无效，或已不再匹配当前精确方案。
+        world_restore_recovery_confirmation_mismatch: 输入的确认文字与当前恢复处理动作不一致。
+        world_restore_recovery_not_authorized: 执行恢复处理前请先完成升阶授权。
+        world_restore_recovery_authorization_expired: 恢复处理授权已过期，请重新授权。
+        world_restore_recovery_pre_snapshot_changed: 冻结处理方案后，恢复前快照发生了变化。
+        world_restore_recovery_enqueue_failed: 无法排队节点恢复处理操作。
+        world_restore_recovery_resolution_not_found: 找不到此节点操作对应的恢复处理记录。
+        world_restore_recovery_result_invalid: 节点返回的恢复处理证明无效，服务器启动仍被阻断。
+        world_restore_recovery_unresolved: 节点无法证明世界已安全收敛，服务器启动仍被阻断。
+        world_restore_recovery_state_changed: 应用节点证明时恢复状态发生变化，服务器启动仍被阻断。
+        world_restore_recovery_unreported_node_failure: 节点操作结束时没有返回完整的恢复处理结果。
         minecraft_world_restore_blocks_server_start: 进行中或待恢复处理的世界恢复会阻止启动和重启服务器。
         world_operation_reconciliation_action_invalid: 世界操作对账动作无效。
         world_operation_target_result_required: 缺少世界操作目标结果。
@@ -2397,6 +2429,14 @@
         minecraft_world_restore_rolled_back: "Minecraft 世界恢复已回滚"
         minecraft_world_restore_recovery_required: "Minecraft 世界恢复需要人工处理"
         minecraft_world_restore_expired: "Minecraft 世界恢复计划已过期"
+        minecraft_world_restore_authorization_failed: "Minecraft 世界恢复授权失败"
+        minecraft_world_restore_recovery_resolution_planned: "已规划 Minecraft 世界恢复处理"
+        minecraft_world_restore_recovery_resolution_authorized: "Minecraft 世界恢复处理已授权"
+        minecraft_world_restore_recovery_resolution_authorization_failed: "Minecraft 世界恢复处理授权失败"
+        minecraft_world_restore_recovery_resolution_queued: "Minecraft 世界恢复处理已排队"
+        minecraft_world_restore_recovery_resolution_started: "Minecraft 世界恢复处理已开始"
+        minecraft_world_restore_recovery_resolution_completed: "Minecraft 世界恢复处理已由节点证明完成"
+        minecraft_world_restore_recovery_resolution_failed: "Minecraft 世界恢复处理仍保持阻断"
         community_topic_created: "已创建论坛主题"
         community_post_created: "已发布论坛帖子"
         community_post_approved: "论坛帖子已通过审核"
@@ -3274,6 +3314,7 @@
         secret_not_generated: 未生成
         world_backup_queued: 托管世界备份已排队。
         world_restore_queued: 世界恢复及其恢复前快照已排队。
+        world_restore_recovery_queued: 恢复处理已排队；在节点证明被确认前，服务器启动仍保持阻断。
         action_edit: 编辑
         action_rotate_secret: 轮换密钥
         action_delete: 删除

@@ -23,7 +23,7 @@ module Minecraft
       "completed" => %w[completed],
       "failed" => %w[failed],
       "rolled_back" => %w[rolled_back],
-      "recovery_required" => %w[recovery_required],
+      "recovery_required" => %w[recovery_required completed rolled_back],
       "expired" => %w[expired],
       "cancelled" => %w[cancelled]
     }.freeze
@@ -46,6 +46,11 @@ module Minecraft
     belongs_to :actor, class_name: "User"
     has_many :events,
       class_name: "Minecraft::WorldRestoreEvent",
+      foreign_key: :minecraft_world_restore_plan_id,
+      inverse_of: :restore_plan,
+      dependent: :restrict_with_error
+    has_many :recovery_resolutions,
+      class_name: "Minecraft::WorldRestoreResolution",
       foreign_key: :minecraft_world_restore_plan_id,
       inverse_of: :restore_plan,
       dependent: :restrict_with_error

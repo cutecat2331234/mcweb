@@ -43,6 +43,14 @@ module Minecraft
           result = failure(:world_restore_plan_not_authorized)
           next
         end
+
+        server = Minecraft::Server.lock.find(@plan.server_id)
+        node = Minecraft::Node.lock.find(@plan.node_id)
+        backup = Minecraft::WorldBackup.lock.find(@plan.minecraft_world_backup_id)
+        server.association(:node).target = node
+        @plan.association(:server).target = server
+        @plan.association(:node).target = node
+        @plan.association(:world_backup).target = backup
         if @plan.authorization_expires_at.blank? || @plan.authorization_expires_at <= Time.current
           result = failure(:world_restore_authorization_expired)
           next
@@ -57,21 +65,27 @@ module Minecraft
           result = verification
           next
         end
-        if (error = Minecraft::PlanWorldRestore.current_contract_error(@plan, actor: @actor))
+        if (error = Minecraft::PlanWorldRestore.current_contract_error(
+          @plan,
+          actor: @actor,
+          server: server,
+          node: node,
+          backup: backup
+        ))
           result = failure(error)
           next
         end
 
-        pre_restore_backup = create_pre_restore_backup!
+        pre_restore_backup = create_pre_restore_backup!(server: server, node: node)
         operation_result = Minecraft::EnqueueNodeOperation.call(
           operation_type: "world_restore_execute",
-          servers: [ @plan.server ],
+          servers: [ server ],
           payload: {
             protocol_version: 2,
             plan_id: @plan.public_id,
             plan_digest: @plan.plan_digest,
-            node_id: @plan.node.public_id,
-            backup_id: @plan.world_backup.public_id,
+            node_id: node.public_id,
+            backup_id: backup.public_id,
             backup_manifest_digest: @plan.backup_manifest_digest,
             pre_restore_backup_id: pre_restore_backup.public_id,
             world_relative_path: @plan.world_relative_path,
@@ -121,15 +135,15 @@ module Minecraft
 
     class ExecutionError < StandardError; end
 
-    def create_pre_restore_backup!
+    def create_pre_restore_backup!(server:, node:)
       request_id = deterministic_uuid("pre-restore:#{@plan.public_id}")
       existing = Minecraft::WorldBackup.find_by(request_id: request_id)
       return existing if existing&.request_digest == @plan.plan_digest
       raise ActiveRecord::RecordNotUnique if existing
 
       Minecraft::WorldBackup.create!(
-        server: @plan.server,
-        node: @plan.node,
+        server: server,
+        node: node,
         created_by: @actor,
         purpose: "pre_restore",
         status: "requested",

@@ -17,10 +17,11 @@ const (
 )
 
 var supportedOperationTypes = map[string]struct{}{
-	"collect_metrics":       {},
-	"sync_files":            {},
-	"world_backup_create":   {},
-	"world_restore_execute": {},
+	"collect_metrics":         {},
+	"sync_files":              {},
+	"world_backup_create":     {},
+	"world_restore_execute":   {},
+	"world_restore_reconcile": {},
 }
 
 type Batch struct {
@@ -84,7 +85,8 @@ func (b Batch) Validate() error {
 	if err != nil || expectedDigest != b.PayloadDigest {
 		return fmt.Errorf("operation payload digest mismatch")
 	}
-	if (b.OperationType == "world_backup_create" || b.OperationType == "world_restore_execute") && len(b.Targets) != 1 {
+	if (b.OperationType == "world_backup_create" || b.OperationType == "world_restore_execute" ||
+		b.OperationType == "world_restore_reconcile") && len(b.Targets) != 1 {
 		return fmt.Errorf("managed world operation requires exactly one target")
 	}
 

@@ -7,8 +7,9 @@ module Minecraft
       sync_files
       world_backup_create
       world_restore_execute
+      world_restore_reconcile
     ].freeze
-    WORLD_OPERATION_TYPES = %w[world_backup_create world_restore_execute].freeze
+    WORLD_OPERATION_TYPES = %w[world_backup_create world_restore_execute world_restore_reconcile].freeze
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/i
     MANAGED_ID_PATTERN = /\A[A-Za-z0-9_-]{8,128}\z/
     FORBIDDEN_WORLD_PAYLOAD_KEYS = %w[
@@ -105,7 +106,7 @@ module Minecraft
           Minecraft::WorldBackup::PURPOSES.include?(payload["purpose"].to_s)
         return operation_failure(:world_backup_node_capability_required) unless
           server.node.supports_managed_world_backups_v2?
-      else
+      elsif @operation_type == "world_restore_execute"
         %w[plan_id backup_id pre_restore_backup_id].each do |key|
           return operation_failure(:world_restore_managed_id_invalid) unless managed_id?(payload[key])
         end
@@ -116,6 +117,34 @@ module Minecraft
           payload["expected_process_state"] == "stopped"
         return operation_failure(:world_restore_node_capability_required) unless
           server.node.supports_managed_world_backups_v2? && server.node.supports_world_restore_v2?
+      else
+        %w[resolution_id plan_id backup_id].each do |key|
+          return operation_failure(:world_restore_managed_id_invalid) unless managed_id?(payload[key])
+        end
+        return operation_failure(:world_restore_recovery_action_invalid) unless
+          Minecraft::WorldRestoreResolution::ACTIONS.include?(payload["resolution_action"].to_s)
+        %w[
+          reason_digest plan_digest backup_manifest_digest server_configuration_digest
+          recovery_capability_digest
+        ].each do |key|
+          return operation_failure(:world_restore_digest_invalid) unless sha256?(payload[key])
+        end
+        if payload["pre_restore_backup_id"].present?
+          return operation_failure(:world_restore_managed_id_invalid) unless
+            managed_id?(payload["pre_restore_backup_id"])
+        end
+        if payload["pre_restore_manifest_digest"].present?
+          return operation_failure(:world_restore_digest_invalid) unless
+            sha256?(payload["pre_restore_manifest_digest"])
+        end
+        if payload["resolution_action"].to_s.in?(%w[resume rollback])
+          return operation_failure(:world_restore_recovery_pre_snapshot_required) unless
+            managed_id?(payload["pre_restore_backup_id"]) && sha256?(payload["pre_restore_manifest_digest"])
+        end
+        return operation_failure(:world_restore_expected_state_invalid) unless
+          payload["expected_process_state"] == "stopped"
+        return operation_failure(:world_restore_recovery_capability_required) unless
+          server.node.supports_world_restore_recovery_v2?
       end
 
       ServiceResult.success(true)

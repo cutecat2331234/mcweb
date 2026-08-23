@@ -2,7 +2,9 @@
 
 module Minecraft
   class ReconcileWorldOperation < ApplicationService
-    WORLD_OPERATION_TYPES = %w[world_backup_create world_restore_execute].freeze
+    WORLD_OPERATION_TYPES = %w[
+      world_backup_create world_restore_execute world_restore_reconcile
+    ].freeze
     RESTORE_PHASES = %w[
       accepted process_stopped pre_snapshot_started pre_snapshot_durable archive_validated
       staging_started staging_verified live_preserved replacement_installed post_install_verified
@@ -48,7 +50,7 @@ module Minecraft
         backup.with_lock do
           backup.update!(status: "creating") if backup.status_queued?
         end
-      else
+      elsif @operation.operation_type == "world_restore_execute"
         plan = @operation.world_restore_plan
         return ServiceResult.success(ignored: true) unless plan
 
@@ -61,6 +63,28 @@ module Minecraft
           end
         end
         audit_restore("minecraft.world_restore.started", plan) if changed
+      else
+        resolution = @operation.world_restore_resolution
+        return ServiceResult.success(ignored: true) unless resolution
+
+        plan = resolution.restore_plan
+        changed = false
+        plan.with_lock do
+          resolution.lock!
+          if resolution.status_queued?
+            resolution.update!(status: "running", started_at: resolution.started_at || Time.current)
+            append_event!(
+              plan,
+              "minecraft.world_restore.recovery_resolution_started",
+              "recovery_required",
+              resolution_id: resolution.public_id,
+              resolution_action: resolution.resolution_action,
+              operation_id: @operation.public_id
+            )
+            changed = true
+          end
+        end
+        audit_resolution("minecraft.world_restore.recovery_resolution_started", resolution) if changed
       end
 
       ServiceResult.success(operation: @operation)
@@ -69,7 +93,11 @@ module Minecraft
     def apply_target_result
       raise ReconciliationError, "world_operation_target_result_required" unless @target_result
 
-      @operation.operation_type == "world_backup_create" ? apply_backup_result : apply_restore_result
+      case @operation.operation_type
+      when "world_backup_create" then apply_backup_result
+      when "world_restore_execute" then apply_restore_result
+      else apply_recovery_resolution_result
+      end
     end
 
     def apply_backup_result
@@ -156,6 +184,159 @@ module Minecraft
       end
       audit_restore(restore_event_type(status), plan) if changed
       ServiceResult.success(plan: plan)
+    end
+
+    def apply_recovery_resolution_result
+      resolution = @operation.world_restore_resolution
+      return failure(:world_restore_recovery_resolution_not_found) unless resolution
+
+      plan = resolution.restore_plan
+      raw = @target_result.result.to_h.deep_stringify_keys["recovery_resolution"]
+      summary = normalize_recovery_resolution_summary(raw, resolution)
+      return mark_resolution_recovery_required(resolution, "world_restore_recovery_result_invalid") unless summary
+
+      pre_backup_result = apply_pre_restore_backup(plan, summary["pre_restore_backup"])
+      if pre_backup_result.failure? && summary["phase"] == "rolled_back"
+        return mark_resolution_recovery_required(resolution, "world_restore_pre_snapshot_invalid")
+      end
+      if summary["recovery_required"] || !summary["recovery_resolution_proof"]
+        return mark_resolution_recovery_required(
+          resolution,
+          summary["error_code"] || "world_restore_recovery_unresolved",
+          summary: summary
+        )
+      end
+
+      changed = false
+      Minecraft::WorldRestorePlan.transaction do
+        plan.lock!
+        resolution.lock!
+        next if resolution.status_completed? && plan.terminal?
+        unless plan.status_recovery_required? && resolution.status.in?(%w[queued running])
+          raise ReconciliationError, "world_restore_recovery_state_changed"
+        end
+
+        status = summary.fetch("phase")
+        now = Time.current
+        public_summary = public_recovery_resolution_summary(summary)
+        resolution.update!(
+          status: "completed",
+          result_summary: public_summary,
+          error_code: summary["error_code"],
+          started_at: resolution.started_at || parse_time(summary["started_at"]) || now,
+          completed_at: now
+        )
+        plan.update!(
+          status: status,
+          result_summary: public_summary.merge(
+            "pre_restore_backup_id" => plan.pre_restore_world_backup&.public_id
+          ).compact,
+          error_code: summary["error_code"],
+          completed_at: now,
+          failed_at: status == "completed" ? nil : now
+        )
+        append_event!(
+          plan,
+          "minecraft.world_restore.recovery_resolution_completed",
+          status,
+          public_summary
+        )
+        changed = true
+      end
+      audit_resolution("minecraft.world_restore.recovery_resolution_completed", resolution) if changed
+      ServiceResult.success(plan: plan, resolution: resolution)
+    end
+
+    def normalize_recovery_resolution_summary(value, resolution)
+      return unless value.is_a?(Hash)
+
+      summary = value.deep_stringify_keys
+      plan = resolution.restore_plan
+      return unless summary["resolution_id"] == resolution.public_id
+      return unless summary["resolution_action"] == resolution.resolution_action
+      return unless summary["plan_id"] == plan.public_id && summary["plan_digest"] == plan.plan_digest
+      return unless summary["server_configuration_digest"] == plan.server_configuration_digest
+      return unless summary["world_relative_path"] == plan.world_relative_path
+      return unless %w[completed rolled_back recovery_required].include?(summary["phase"].to_s)
+      return unless [ true, false ].include?(summary["rolled_back"])
+      return unless [ true, false ].include?(summary["recovery_required"])
+      return unless [ true, false ].include?(summary["recovery_resolution_proof"])
+
+      started_at = parse_time(summary["started_at"])
+      completed_at = parse_time(summary["completed_at"])
+      return unless started_at && completed_at && completed_at >= started_at
+      return if completed_at > 5.minutes.from_now
+
+      installed_digest = summary["installed_manifest_digest"].to_s
+      if summary["phase"] == "completed"
+        return unless @target_result.status_completed?
+        return unless summary["recovery_resolution_proof"] && !summary["recovery_required"] &&
+          !summary["rolled_back"] && summary["verified_world_state"] == "selected"
+        return unless installed_digest == plan.backup_manifest_digest
+        return if summary["error_code"].present? || @target_result.error_code.present?
+      elsif summary["phase"] == "rolled_back"
+        return unless summary["recovery_resolution_proof"] && !summary["recovery_required"] &&
+          summary["rolled_back"] && summary["verified_world_state"].in?(%w[pre_restore original_absent])
+        return if summary["error_code"].blank?
+      else
+        return if summary["recovery_resolution_proof"] || !summary["recovery_required"]
+      end
+
+      {
+        "resolution_id" => resolution.public_id,
+        "resolution_action" => resolution.resolution_action,
+        "plan_id" => plan.public_id,
+        "plan_digest" => plan.plan_digest,
+        "phase" => summary["phase"],
+        "installed_manifest_digest" => installed_digest.presence,
+        "rolled_back" => summary["rolled_back"],
+        "recovery_required" => summary["recovery_required"],
+        "recovery_resolution_proof" => summary["recovery_resolution_proof"],
+        "verified_world_state" => summary["verified_world_state"].to_s.presence,
+        "server_configuration_digest" => plan.server_configuration_digest,
+        "world_relative_path" => plan.world_relative_path,
+        "error_code" => stable_error_code(summary["error_code"] || @target_result.error_code, nil),
+        "started_at" => started_at.utc.iso8601(6),
+        "completed_at" => completed_at.utc.iso8601(6),
+        "pre_restore_backup" => summary["pre_restore_backup"]
+      }.compact
+    end
+
+    def mark_resolution_recovery_required(resolution, code, summary: nil)
+      changed = false
+      plan = resolution.restore_plan
+      plan.with_lock do
+        resolution.lock!
+        unless resolution.terminal?
+          normalized = stable_error_code(code, "world_restore_recovery_unresolved")
+          public_summary = summary ? public_recovery_resolution_summary(summary) : {
+            "resolution_id" => resolution.public_id,
+            "resolution_action" => resolution.resolution_action,
+            "plan_id" => plan.public_id,
+            "phase" => "recovery_required",
+            "rolled_back" => false,
+            "recovery_required" => true,
+            "recovery_resolution_proof" => false,
+            "error_code" => normalized
+          }
+          resolution.update!(
+            status: "recovery_required",
+            result_summary: public_summary,
+            error_code: normalized,
+            started_at: resolution.started_at || Time.current,
+            completed_at: Time.current
+          )
+          append_event!(
+            plan,
+            "minecraft.world_restore.recovery_resolution_failed",
+            "recovery_required",
+            public_summary
+          )
+          changed = true
+        end
+      end
+      audit_resolution("minecraft.world_restore.recovery_resolution_failed", resolution) if changed
+      ServiceResult.success(plan: plan, resolution: resolution, recovery_required: true)
     end
 
     def apply_pre_restore_backup(plan, raw_manifest)
@@ -288,11 +469,16 @@ module Minecraft
         return ServiceResult.success(ignored: true) unless backup && !backup.status_available? && !backup.status_failed?
 
         fail_backup(backup, "world_backup_unreported_node_failure")
-      else
+      elsif @operation.operation_type == "world_restore_execute"
         plan = @operation.world_restore_plan
         return ServiceResult.success(ignored: true) unless plan && !plan.terminal? && !plan.status_recovery_required?
 
         mark_restore_recovery_required(plan, "world_restore_unreported_node_failure")
+      else
+        resolution = @operation.world_restore_resolution
+        return ServiceResult.success(ignored: true) unless resolution && !resolution.terminal?
+
+        mark_resolution_recovery_required(resolution, "world_restore_recovery_unreported_node_failure")
       end
     end
 
@@ -367,6 +553,23 @@ module Minecraft
       )
     end
 
+    def audit_resolution(action, resolution)
+      plan = resolution.restore_plan
+      AuditLog.record!(
+        action: action,
+        actor: resolution.actor,
+        resource: plan,
+        reason: resolution.reason,
+        request_id: resolution.request_id,
+        metadata: restore_audit_metadata(plan).merge(
+          resolution_id: resolution.public_id,
+          resolution_action: resolution.resolution_action,
+          resolution_status: resolution.status,
+          resolution_operation_id: resolution.node_operation&.public_id
+        )
+      )
+    end
+
     def backup_audit_metadata(backup)
       {
         backup_id: backup.public_id,
@@ -403,6 +606,26 @@ module Minecraft
         "started_at" => summary["started_at"],
         "completed_at" => summary["completed_at"],
         "pre_restore_backup_id" => @operation.world_restore_plan.pre_restore_world_backup&.public_id
+      }.compact
+    end
+
+    def public_recovery_resolution_summary(summary)
+      {
+        "resolution_id" => summary["resolution_id"],
+        "resolution_action" => summary["resolution_action"],
+        "plan_id" => summary["plan_id"],
+        "plan_digest" => summary["plan_digest"],
+        "phase" => summary["phase"],
+        "installed_manifest_digest" => summary["installed_manifest_digest"],
+        "rolled_back" => summary["rolled_back"],
+        "recovery_required" => summary["recovery_required"],
+        "recovery_resolution_proof" => summary["recovery_resolution_proof"],
+        "verified_world_state" => summary["verified_world_state"],
+        "server_configuration_digest" => summary["server_configuration_digest"],
+        "world_relative_path" => summary["world_relative_path"],
+        "error_code" => summary["error_code"],
+        "started_at" => summary["started_at"],
+        "completed_at" => summary["completed_at"]
       }.compact
     end
 

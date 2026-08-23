@@ -94,6 +94,13 @@ module Minecraft
       )
     end
 
+    def supports_world_restore_recovery_v2?
+      world_capability_valid?(
+        "world_restore_reconcile",
+        required_flags: %w[stopped_required durable_ledger live_tree_proof resume rollback reconcile]
+      )
+    end
+
     def world_safety_capability_snapshot
       raw_capabilities = metadata["operation_capabilities"]
       capabilities = raw_capabilities.is_a?(Hash) ? raw_capabilities : {}
@@ -102,6 +109,7 @@ module Minecraft
         "operation_types" => Array(metadata["operation_types"]).map(&:to_s).sort,
         "world_backup_create" => normalized_capability(capabilities["world_backup_create"]),
         "world_restore_execute" => normalized_capability(capabilities["world_restore_execute"]),
+        "world_restore_reconcile" => normalized_capability(capabilities["world_restore_reconcile"]),
         "world_restore_recovery_required" => ActiveModel::Type::Boolean.new.cast(
           metadata["world_restore_recovery_required"]
         )
@@ -112,6 +120,19 @@ module Minecraft
       Minecraft::NodeOperationDigest.call(world_safety_capability_snapshot)
     end
 
+    def world_recovery_capability_digest
+      Minecraft::NodeOperationDigest.call(
+        "node_protocol_versions" => Array(metadata["node_protocol_versions"]).map(&:to_i).sort,
+        "operation_types" => Array(metadata["operation_types"]).map(&:to_s).sort,
+        "world_restore_reconcile" => normalized_capability(
+          metadata.dig("operation_capabilities", "world_restore_reconcile")
+        ),
+        "world_restore_recovery_required" => ActiveModel::Type::Boolean.new.cast(
+          metadata["world_restore_recovery_required"]
+        )
+      )
+    end
+
     private
 
     def world_capability_valid?(operation_type, required_flags:)
@@ -120,13 +141,13 @@ module Minecraft
       capability = normalized_capability(metadata.dig("operation_capabilities", operation_type))
       return false if capability.empty?
       expected_keys = WORLD_CAPABILITY_COMMON_KEYS + required_flags
-      expected_keys += [ "local_limits" ] if operation_type == "world_restore_execute"
+      expected_keys += [ "local_limits" ] if operation_type.in?(%w[world_restore_execute world_restore_reconcile])
       return false unless capability.keys.sort == expected_keys.sort
       return false unless capability["protocol_version"].to_i == 2
       return false unless Array(capability["manifest_versions"]).map(&:to_i) == [ 1 ]
       return false unless Array(capability["archive_formats"]).map(&:to_s) == [ "tar.gz" ]
       return false unless capability["safety_profile"] == Minecraft::WorldBackupManifest::SAFETY_PROFILE
-      return false if operation_type == "world_restore_execute" && !world_restore_limits_valid?(
+      return false if operation_type.in?(%w[world_restore_execute world_restore_reconcile]) && !world_restore_limits_valid?(
         capability["local_limits"]
       )
 

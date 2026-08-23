@@ -204,7 +204,15 @@ module Admin
       end
 
       def update
-        if @server.update(parsed_server_params)
+        updated = false
+        ::Minecraft::Server.transaction do
+          @server.lock!
+          @server.assign_attributes(parsed_server_params)
+          updated = @server.save
+          raise ActiveRecord::Rollback unless updated
+        end
+
+        if updated
           redirect_to admin_minecraft_server_path(@server), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.server"))
         else
           render inertia: "Admin/Minecraft/Servers/Form", props: form_props(@server), status: :unprocessable_entity
@@ -341,7 +349,8 @@ module Admin
       def world_safety_props(server)
         can_backup = current_user.permission?("minecraft.world_backups.manage")
         can_restore = current_user.permission?("minecraft.world_restores.execute")
-        visible = can_backup || can_restore
+        can_resolve_recovery = current_user.permission?("minecraft.world_restores.resolve_recovery")
+        visible = can_backup || can_restore || can_resolve_recovery
         node = server.node
         recovery_required = ActiveModel::Type::Boolean.new.cast(
           node&.metadata.to_h.fetch("world_restore_recovery_required", false)
@@ -362,19 +371,27 @@ module Admin
         restore_blockers << "restore_capability_missing" if node && !(
           node.supports_managed_world_backups_v2? && node.supports_world_restore_v2?
         )
+        recovery_blockers = []
+        recovery_blockers << "node_unmanaged" unless node
+        recovery_blockers << "server_not_stopped" unless server.process_state_stopped?
+        recovery_blockers << "working_directory_missing" if server.working_directory.blank?
+        recovery_blockers << "node_stale" if node && !node.fresh_heartbeat?
+        recovery_blockers << "recovery_capability_missing" if node && !node.supports_world_restore_recovery_v2?
 
         {
           visible: visible,
           can_create_backup: can_backup,
           can_restore: can_restore,
+          can_resolve_recovery: can_resolve_recovery,
           create_backup_url: can_backup ? admin_minecraft_server_world_backups_path(server) : nil,
           create_restore_url: can_restore ? admin_minecraft_server_world_restores_path(server) : nil,
           refresh_url: admin_minecraft_server_path(server),
           start_blocked: server.world_restore_blocks_start?,
           backup_blockers: backup_blockers.uniq,
           restore_blockers: restore_blockers.uniq,
+          recovery_blockers: recovery_blockers.uniq,
           backups: visible ? server.world_backups.recent.limit(50).map { |backup| serialize_world_backup(backup) } : [],
-          plans: can_restore ? server.world_restore_plans.recent.limit(20).map { |plan| serialize_world_restore_plan(server, plan) } : []
+          plans: (can_restore || can_resolve_recovery) ? server.world_restore_plans.recent.limit(20).map { |plan| serialize_world_restore_plan(server, plan) } : []
         }
       end
 
@@ -399,11 +416,14 @@ module Admin
 
       def serialize_world_restore_plan(server, plan)
         own_action = plan.actor_id == current_user.id
+        can_resolve = current_user.permission?("minecraft.world_restores.resolve_recovery")
+        resolution = plan.recovery_resolutions.recent.first
         {
           id: plan.public_id,
           backup_id: plan.world_backup.public_id,
           pre_restore_backup_id: plan.pre_restore_world_backup&.public_id,
           status: plan.status,
+          lock_version: plan.lock_version,
           reason: plan.reason,
           created_at: plan.created_at&.utc&.iso8601(6),
           expires_at: plan.expires_at&.utc&.iso8601(6),
@@ -412,7 +432,32 @@ module Admin
           recovery_required: plan.result_summary.to_h["recovery_required"],
           error_code: plan.error_code,
           authorize_url: own_action ? authorize_admin_minecraft_server_world_restore_path(server, plan) : nil,
-          execute_url: own_action ? execute_admin_minecraft_server_world_restore_path(server, plan) : nil
+          execute_url: own_action ? execute_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          plan_recovery_url: can_resolve && plan.status_recovery_required? ?
+            plan_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          recovery_resolution: serialize_world_restore_resolution(server, plan, resolution, can_resolve: can_resolve)
+        }.compact
+      end
+
+      def serialize_world_restore_resolution(server, plan, resolution, can_resolve:)
+        return unless resolution
+
+        own_action = resolution.actor_id == current_user.id
+        {
+          id: resolution.public_id,
+          status: resolution.status,
+          resolution_action: resolution.resolution_action,
+          reason: resolution.reason,
+          lock_version: resolution.lock_version,
+          created_at: resolution.created_at&.utc&.iso8601(6),
+          authorization_expires_at: resolution.authorization_expires_at&.utc&.iso8601(6),
+          error_code: resolution.error_code,
+          recovery_resolution_proof: resolution.result_summary.to_h["recovery_resolution_proof"],
+          verified_world_state: resolution.result_summary.to_h["verified_world_state"],
+          authorize_url: can_resolve && own_action && resolution.status.in?(%w[planned authorized]) ?
+            authorize_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          execute_url: can_resolve && own_action && resolution.status_authorized? ?
+            execute_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil
         }.compact
       end
 

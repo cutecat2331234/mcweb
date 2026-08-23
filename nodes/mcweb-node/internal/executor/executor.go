@@ -56,6 +56,8 @@ func (e *Executor) Run(ctx context.Context, task map[string]interface{}) map[str
 		return e.createManagedWorldBackup(ctx, payload)
 	case "world_restore_execute":
 		return e.executeManagedWorldRestore(ctx, payload)
+	case "world_restore_reconcile":
+		return e.reconcileManagedWorldRestore(ctx, payload)
 	case "sync_files":
 		return e.syncFiles(ctx, payload)
 	default:
@@ -258,6 +260,47 @@ func (e *Executor) executeManagedWorldRestore(ctx context.Context, payload map[s
 		"status":  "completed",
 		"message": "managed world restore completed",
 		"restore": result,
+	}
+}
+
+func (e *Executor) reconcileManagedWorldRestore(ctx context.Context, payload map[string]interface{}) map[string]interface{} {
+	if e.worldStore == nil {
+		return failCode("managed_world_store_unavailable")
+	}
+	if strVal(payload, "safety_profile") != worldstore.SafetyProfile || numberVal(payload, "protocol_version") != 2 ||
+		strVal(payload, "expected_process_state") != "stopped" {
+		return failCode("managed_world_protocol_invalid")
+	}
+	result, err := e.worldStore.ResolveRecovery(ctx, worldstore.RecoveryResolutionRequest{
+		ResolutionID:              strVal(payload, "resolution_id"),
+		ResolutionAction:          strVal(payload, "resolution_action"),
+		ReasonDigest:              strVal(payload, "reason_digest"),
+		OperationDeliveryID:       strVal(payload, "operation_delivery_id"),
+		OperationPayloadDigest:    strVal(payload, "operation_payload_digest"),
+		RecoveryCapabilityDigest:  strVal(payload, "recovery_capability_digest"),
+		PlanID:                    strVal(payload, "plan_id"),
+		PlanDigest:                strVal(payload, "plan_digest"),
+		ServerID:                  strVal(payload, "server_id"),
+		NodeID:                    strVal(payload, "node_id"),
+		BackupID:                  strVal(payload, "backup_id"),
+		BackupManifestDigest:      strVal(payload, "backup_manifest_digest"),
+		PreRestoreBackupID:        strVal(payload, "pre_restore_backup_id"),
+		PreRestoreManifestDigest:  strVal(payload, "pre_restore_manifest_digest"),
+		ServerConfigurationDigest: strVal(payload, "server_configuration_digest"),
+		ProcessDriver:             strVal(payload, "process_driver"),
+		ProcessConfig:             mapVal(payload, "process_config"),
+		WorkingDirectory:          strVal(payload, "working_directory"),
+		WorldRelativePath:         strVal(payload, "world_relative_path"),
+		CheckStopped:              stoppedCheck(payload),
+	})
+	if err != nil {
+		return worldOperationFailure(err, result, "recovery_resolution")
+	}
+	return map[string]interface{}{
+		"success":             true,
+		"status":              "completed",
+		"message":             "managed world restore recovery resolved",
+		"recovery_resolution": result,
 	}
 }
 

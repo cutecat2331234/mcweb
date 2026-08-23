@@ -9,6 +9,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     clear_enqueued_jobs
     @actor = create_user
     grant_permission(@actor, "minecraft.world_restores.execute")
+    grant_permission(@actor, "minecraft.world_restores.resolve_recovery")
     @node = Minecraft::Node.create!(
       name: "World Safety Node",
       status: :online,
@@ -240,6 +241,115 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     assert_nil plan.reload.node_operation
   end
 
+  test "authorization failures share a generic user and IP throttle across credential types" do
+    plan = plan_restore
+
+    5.times do
+      result = Minecraft::AuthorizeWorldRestore.call(
+        plan: plan,
+        actor: @actor,
+        password: "wrong-password",
+        code: "wrong-code",
+        ip_address: "203.0.113.20"
+      )
+      assert_predicate result, :failure?
+      assert_equal :world_restore_authorization_failed, result.code
+    end
+
+    blocked = Minecraft::AuthorizeWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      password: "password123",
+      code: "000000",
+      ip_address: "203.0.113.20"
+    )
+    assert_predicate blocked, :failure?
+    assert_equal :rate_limited, blocked.code
+    assert_operator blocked.retry_after, :>, 0
+    assert_equal 2, RateLimitCounter.where("key LIKE ?", "sensitive:minecraft_world_restore_authorize:%").count
+  end
+
+  test "node-proven recovery resolution is the only path out of recovery required" do
+    plan, = execute_restore_into_recovery
+
+    planned = Minecraft::PlanWorldRestoreRecovery.call(
+      plan: plan,
+      actor: @actor,
+      resolution_action: "reconcile",
+      reason: "Reviewed node ledger and incident INC-43",
+      request_id: SecureRandom.uuid,
+      expected_plan_lock_version: plan.reload.lock_version
+    )
+    assert_predicate planned, :success?
+    resolution = planned.value.fetch(:resolution)
+
+    authorization = Minecraft::AuthorizeWorldRestoreRecovery.call(
+      resolution: resolution,
+      actor: @actor,
+      password: "password123",
+      ip_address: "203.0.113.21",
+      expected_lock_version: resolution.lock_version
+    )
+    assert_predicate authorization, :success?
+    resolution.reload
+
+    execution = Minecraft::ExecuteWorldRestoreRecovery.call(
+      resolution: resolution,
+      actor: @actor,
+      authorization_token: authorization.value.fetch(:authorization_token),
+      confirmation: authorization.value.fetch(:confirmation),
+      expected_lock_version: resolution.lock_version
+    )
+    assert_predicate execution, :success?
+    operation = execution.value.fetch(:operation)
+    assert_equal "world_restore_reconcile", operation.operation_type
+    assert plan.reload.status_recovery_required?
+
+    reconciled = Minecraft::ReconcileWorldOperation.call(
+      operation: operation,
+      action: :target_result,
+      target_result: completed_recovery_resolution_result(plan, resolution)
+    )
+    assert_predicate reconciled, :success?
+    assert plan.reload.status_completed?
+    assert resolution.reload.status_completed?
+    assert_equal true, resolution.result_summary.fetch("recovery_resolution_proof")
+    assert_equal 1, plan.events.where(
+      event_type: "minecraft.world_restore.recovery_resolution_completed"
+    ).count
+
+    @node.update!(metadata: @node.metadata.merge("world_restore_recovery_required" => false))
+    assert_not @server.reload.world_restore_blocks_start?
+  end
+
+  test "final execute validation rejects a server configuration committed before its lock" do
+    plan = plan_restore
+    authorization = Minecraft::AuthorizeWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      password: "password123",
+      ip_address: "203.0.113.23"
+    )
+    assert_predicate authorization, :success?
+
+    @server.update_columns(
+      working_directory: "/srv/minecraft/concurrent-change",
+      updated_at: Time.current
+    )
+    result = Minecraft::ExecuteWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      authorization_token: authorization.value.fetch(:authorization_token),
+      confirmation: authorization.value.fetch(:confirmation)
+    )
+
+    assert_predicate result, :failure?
+    assert_equal :world_restore_configuration_changed, result.code
+    assert_nil plan.reload.node_operation
+    assert_nil plan.pre_restore_world_backup
+    assert plan.status_authorized?
+  end
+
   private
 
   def plan_restore
@@ -323,6 +433,106 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     )
   end
 
+  def execute_restore_into_recovery
+    plan = plan_restore
+    authorization = Minecraft::AuthorizeWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      password: "password123",
+      ip_address: "203.0.113.22"
+    )
+    execution = Minecraft::ExecuteWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      authorization_token: authorization.value.fetch(:authorization_token),
+      confirmation: authorization.value.fetch(:confirmation)
+    )
+    operation = execution.value.fetch(:operation)
+    now = Time.current.utc.iso8601(6)
+    result_class = Struct.new(:result, :error_code, keyword_init: true) do
+      def status_completed?
+        false
+      end
+    end
+    target_result = result_class.new(
+      error_code: "restore_recovery_paths_unreadable",
+      result: {
+        "restore" => {
+          "plan_id" => plan.public_id,
+          "phase" => "recovery_required",
+          "rolled_back" => false,
+          "recovery_required" => true,
+          "error_code" => "restore_recovery_paths_unreadable",
+          "started_at" => now,
+          "completed_at" => now,
+          "pre_restore_backup" => pre_restore_manifest(plan, now)
+        }
+      }
+    )
+    result = Minecraft::ReconcileWorldOperation.call(
+      operation: operation,
+      action: :target_result,
+      target_result: target_result
+    )
+    assert_predicate result, :success?
+    assert plan.reload.status_recovery_required?
+    [ plan, operation ]
+  end
+
+  def completed_recovery_resolution_result(plan, resolution)
+    now = Time.current.utc.iso8601(6)
+    result_class = Struct.new(:result, :error_code, keyword_init: true) do
+      def status_completed?
+        true
+      end
+    end
+    result_class.new(
+      error_code: nil,
+      result: {
+        "recovery_resolution" => {
+          "resolution_id" => resolution.public_id,
+          "resolution_action" => resolution.resolution_action,
+          "plan_id" => plan.public_id,
+          "plan_digest" => plan.plan_digest,
+          "phase" => "completed",
+          "installed_manifest_digest" => plan.backup_manifest_digest,
+          "rolled_back" => false,
+          "recovery_required" => false,
+          "recovery_resolution_proof" => true,
+          "verified_world_state" => "selected",
+          "server_configuration_digest" => plan.server_configuration_digest,
+          "world_relative_path" => plan.world_relative_path,
+          "started_at" => now,
+          "completed_at" => now,
+          "pre_restore_backup" => pre_restore_manifest(plan, now)
+        }
+      }
+    )
+  end
+
+  def pre_restore_manifest(plan, now)
+    pre_backup = plan.pre_restore_world_backup
+    {
+      "manifest_version" => 1,
+      "safety_profile" => Minecraft::WorldBackupManifest::SAFETY_PROFILE,
+      "backup_id" => pre_backup.public_id,
+      "server_id" => @server.public_id,
+      "node_id" => @node.public_id,
+      "purpose" => "pre_restore",
+      "request_digest" => plan.plan_digest,
+      "created_at" => now,
+      "archive_format" => Minecraft::WorldBackupManifest::ARCHIVE_FORMAT,
+      "archive_sha256" => "d" * 64,
+      "manifest_digest" => "e" * 64,
+      "archive_bytes" => 1,
+      "uncompressed_bytes" => 1,
+      "entry_count" => 1,
+      "world_relative_path" => "world",
+      "source_process_state" => "stopped",
+      "source_world_state" => "present"
+    }
+  end
+
   def world_safety_metadata
     common = {
       "protocol_version" => 2,
@@ -332,7 +542,9 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     }
     {
       "node_protocol_versions" => [ 1, 2 ],
-      "operation_types" => %w[collect_metrics sync_files world_backup_create world_restore_execute],
+      "operation_types" => %w[
+        collect_metrics sync_files world_backup_create world_restore_execute world_restore_reconcile
+      ],
       "world_restore_recovery_required" => false,
       "operation_capabilities" => {
         "world_backup_create" => common.merge(
@@ -346,6 +558,25 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
           "durable_ledger" => true,
           "crash_recovery" => true,
           "rollback" => true,
+          "local_limits" => {
+            "max_archive_bytes" => 64.gigabytes,
+            "max_manifest_bytes" => 256.megabytes,
+            "max_uncompressed_bytes" => 256.gigabytes,
+            "max_file_bytes" => 64.gigabytes,
+            "max_entries" => 2_000_000,
+            "max_directories" => 1_000_000,
+            "max_depth" => 64,
+            "max_path_bytes" => 1_024,
+            "max_expansion_ratio" => 200
+          }
+        ),
+        "world_restore_reconcile" => common.merge(
+          "stopped_required" => true,
+          "durable_ledger" => true,
+          "live_tree_proof" => true,
+          "resume" => true,
+          "rollback" => true,
+          "reconcile" => true,
           "local_limits" => {
             "max_archive_bytes" => 64.gigabytes,
             "max_manifest_bytes" => 256.megabytes,

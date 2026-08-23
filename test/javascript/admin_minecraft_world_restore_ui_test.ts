@@ -13,6 +13,7 @@ const lifecycle = source('app/javascript/components/admin/minecraft/WorldRestore
 const serverShow = source('app/javascript/pages/Admin/Minecraft/Servers/Show.vue')
 const serverController = source('app/controllers/admin/minecraft/servers_controller.rb')
 const routes = source('config/routes.rb')
+const executeService = source('app/services/minecraft/execute_world_restore.rb')
 
 test('managed world restore uses the shared Arco UI and an explicit three-phase safety flow', () => {
   assert.match(lifecycle, /from '@mcweb\/ui'/)
@@ -39,6 +40,24 @@ test('server controls expose managed lifecycle props and remain blocked during r
   assert.doesNotMatch(serverController, /def backup_world|def restore_world|backup_directory:/)
   assert.match(routes, /resources :world_backups, only: :create/)
   assert.match(routes, /resources :world_restores, only: :create[\s\S]*post :authorize[\s\S]*post :execute/)
+  assert.match(routes, /post :plan_recovery[\s\S]*post :authorize_recovery[\s\S]*post :execute_recovery/)
+})
+
+test('recovery resolution uses Arco controls and node-proven step-up execution', () => {
+  assert.match(lifecycle, /recoveryRiskBody/)
+  assert.match(lifecycle, /expected_plan_lock_version: recoveryPlan\.value\.lock_version/)
+  assert.match(lifecycle, /expected_lock_version: recoveryResolution\.value\.lock_version/)
+  assert.match(lifecycle, /resolution_action: recoveryAction\.value/)
+  assert.match(lifecycle, /authorization_token: recoveryAuthorizationToken\.value/)
+  assert.match(lifecycle, /<a-select[\s\S]*<a-input-password[\s\S]*<a-textarea/)
+  assert.doesNotMatch(lifecycle, /<(?:input|select|button|table)(?:\s|>)/)
+})
+
+test('execute serializes the final contract check with plan and server configuration locks', () => {
+  assert.match(executeService, /@plan\.lock![\s\S]*Minecraft::Server\.lock\.find/)
+  assert.match(executeService, /Minecraft::Server\.lock\.find[\s\S]*Minecraft::Node\.lock\.find[\s\S]*Minecraft::WorldBackup\.lock\.find/)
+  assert.match(executeService, /current_contract_error\([\s\S]*server: server[\s\S]*node: node[\s\S]*backup: backup[\s\S]*EnqueueNodeOperation\.call/)
+  assert.match(serverController, /def update[\s\S]*@server\.lock![\s\S]*@server\.assign_attributes/)
 })
 
 test('world safety status, phase, blocker, and purpose vocabularies stay symmetric', () => {

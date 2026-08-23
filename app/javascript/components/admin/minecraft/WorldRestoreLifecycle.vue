@@ -7,6 +7,7 @@ import { createIdempotencyKey } from '@/lib/idempotency'
 import { HttpError, postJson } from '@/lib/http'
 import type {
   WorldRestorePlanRow,
+  WorldRestoreResolutionRow,
   WorldSafetyProps,
 } from './worldRestoreTypes'
 
@@ -23,6 +24,23 @@ interface AuthorizationResponse {
   request_id: string
   expires_in: number
   plan: WorldRestorePlanRow
+}
+
+interface RecoveryPlanResponse {
+  plan: WorldRestorePlanRow
+  resolution: WorldRestoreResolutionRow
+  confirmation: string
+  idempotent: boolean
+}
+
+interface RecoveryAuthorizationResponse {
+  authorization_token: string
+  authorization_method: string
+  confirmation: string
+  request_id: string
+  expires_in: number
+  plan: WorldRestorePlanRow
+  resolution: WorldRestoreResolutionRow
 }
 
 const props = defineProps<{ model: WorldSafetyProps }>()
@@ -44,6 +62,24 @@ const executing = ref(false)
 const creatingBackup = ref(false)
 const executionQueued = ref(false)
 const errorMessage = ref('')
+const recoveryPlan = computed(() => props.model.plans.find((candidate) => (
+  candidate.status === 'recovery_required' && Boolean(candidate.plan_recovery_url)
+)) || null)
+const recoveryResolution = ref<WorldRestoreResolutionRow | null>(
+  recoveryPlan.value?.recovery_resolution || null,
+)
+const recoveryAction = ref<'resume' | 'rollback' | 'reconcile'>('reconcile')
+const recoveryReason = ref('')
+const recoveryRequestId = ref(createIdempotencyKey())
+const recoveryPassword = ref('')
+const recoveryCode = ref('')
+const recoveryAuthorizationToken = ref('')
+const recoveryRequiredConfirmation = ref('')
+const recoveryConfirmation = ref('')
+const recoveryPlanning = ref(false)
+const recoveryAuthorizing = ref(false)
+const recoveryExecuting = ref(false)
+const recoveryQueued = ref(false)
 
 const availableBackups = computed(() => props.model.backups.filter((backup) => (
   backup.restorable && backup.target_compatible
@@ -77,9 +113,38 @@ const canExecute = computed(() => (
   && !executing.value
   && !executionQueued.value
 ))
+const canPlanRecovery = computed(() => (
+  Boolean(recoveryPlan.value?.plan_recovery_url)
+  && props.model.recovery_blockers.length === 0
+  && recoveryReason.value.trim().length > 0
+  && recoveryReason.value.trim().length <= 1000
+  && !recoveryPlanning.value
+))
+const canAuthorizeRecovery = computed(() => (
+  Boolean(recoveryResolution.value?.authorize_url)
+  && recoveryPassword.value.length > 0
+  && !recoveryAuthorizing.value
+))
+const canExecuteRecovery = computed(() => (
+  Boolean(recoveryResolution.value?.execute_url)
+  && recoveryAuthorizationToken.value.length > 0
+  && recoveryConfirmation.value === recoveryRequiredConfirmation.value
+  && !recoveryExecuting.value
+  && !recoveryQueued.value
+))
 
 watch([selectedBackupId, reason], () => {
   if (!plan.value) requestId.value = createIdempotencyKey()
+})
+
+watch(() => recoveryPlan.value?.recovery_resolution, (value) => {
+  if (!recoveryAuthorizationToken.value) recoveryResolution.value = value || null
+})
+
+watch([recoveryAction, recoveryReason], () => {
+  if (!recoveryResolution.value || ['failed', 'recovery_required'].includes(recoveryResolution.value.status)) {
+    recoveryRequestId.value = createIdempotencyKey()
+  }
 })
 
 function initialOwnedPlan() {
@@ -103,6 +168,10 @@ function translatePhase(phase: string) {
 
 function translateBlocker(blocker: string) {
   return t(`adminMinecraft.worldSafety.blockers.${blocker}`)
+}
+
+function translateRecoveryAction(action: string) {
+  return t(`adminMinecraft.worldSafety.recoveryActions.${action}`)
 }
 
 function formatBytes(value?: number) {
@@ -229,6 +298,84 @@ async function executeRestore() {
     executing.value = false
   }
 }
+
+async function planRecoveryResolution() {
+  if (!canPlanRecovery.value || !recoveryPlan.value?.plan_recovery_url) return
+  recoveryPlanning.value = true
+  errorMessage.value = ''
+  try {
+    const result = await postJson<RecoveryPlanResponse>(recoveryPlan.value.plan_recovery_url, {
+      resolution_action: recoveryAction.value,
+      reason: recoveryReason.value.trim(),
+      request_id: recoveryRequestId.value,
+      expected_plan_lock_version: recoveryPlan.value.lock_version,
+    })
+    recoveryResolution.value = result.resolution
+    recoveryRequiredConfirmation.value = result.confirmation
+    recoveryPassword.value = ''
+    recoveryCode.value = ''
+  } catch (error) {
+    errorMessage.value = errorText(error)
+  } finally {
+    recoveryPlanning.value = false
+  }
+}
+
+async function authorizeRecoveryResolution() {
+  if (!canAuthorizeRecovery.value || !recoveryResolution.value?.authorize_url) return
+  recoveryAuthorizing.value = true
+  errorMessage.value = ''
+  try {
+    const result = await postJson<RecoveryAuthorizationResponse>(
+      recoveryResolution.value.authorize_url,
+      {
+        resolution_id: recoveryResolution.value.id,
+        password: recoveryPassword.value,
+        code: recoveryCode.value,
+        expected_lock_version: recoveryResolution.value.lock_version,
+      },
+    )
+    recoveryResolution.value = result.resolution
+    recoveryAuthorizationToken.value = result.authorization_token
+    recoveryRequiredConfirmation.value = result.confirmation
+    recoveryConfirmation.value = ''
+    recoveryPassword.value = ''
+    recoveryCode.value = ''
+  } catch (error) {
+    errorMessage.value = errorText(error)
+  } finally {
+    recoveryAuthorizing.value = false
+  }
+}
+
+async function executeRecoveryResolution() {
+  if (!canExecuteRecovery.value || !recoveryResolution.value?.execute_url) return
+  recoveryExecuting.value = true
+  errorMessage.value = ''
+  try {
+    const result = await postJson<{
+      message?: string
+      plan: WorldRestorePlanRow
+      resolution: WorldRestoreResolutionRow
+    }>(recoveryResolution.value.execute_url, {
+      resolution_id: recoveryResolution.value.id,
+      authorization_token: recoveryAuthorizationToken.value,
+      confirmation: recoveryConfirmation.value,
+      expected_lock_version: recoveryResolution.value.lock_version,
+    })
+    recoveryResolution.value = result.resolution
+    recoveryQueued.value = true
+    recoveryAuthorizationToken.value = ''
+    recoveryPassword.value = ''
+    recoveryCode.value = ''
+    Message.success(result.message || t('adminMinecraft.worldSafety.recoveryQueued'))
+    refresh()
+  } catch (error) {
+    errorMessage.value = errorText(error)
+  } finally {
+    recoveryExecuting.value = false
+  }
+}
 </script>
 
 <template>
@@ -315,15 +462,16 @@ async function executeRestore() {
         <template #empty>{{ t('adminMinecraft.worldSafety.noBackups') }}</template>
       </a-table>
 
-      <template v-if="model.can_restore">
-        <a-divider />
-        <a-steps :current="currentStep" size="small">
+      <template v-if="model.can_restore || model.can_resolve_recovery">
+        <template v-if="model.can_restore">
+          <a-divider />
+          <a-steps :current="currentStep" size="small">
           <a-step :title="t('adminMinecraft.worldSafety.stepPlan')" />
           <a-step :title="t('adminMinecraft.worldSafety.stepAuthorize')" />
           <a-step :title="t('adminMinecraft.worldSafety.stepExecute')" />
-        </a-steps>
+          </a-steps>
 
-        <a-form layout="vertical" class="world-restore-form">
+          <a-form layout="vertical" class="world-restore-form">
           <template v-if="!plan">
             <a-form-item field="backup" :label="t('adminMinecraft.worldSafety.selectBackup')" required>
               <a-select v-model="selectedBackupId" :disabled="model.restore_blockers.length > 0">
@@ -399,7 +547,135 @@ async function executeRestore() {
               {{ t('adminMinecraft.worldSafety.execute') }}
             </a-button>
           </template>
-        </a-form>
+          </a-form>
+        </template>
+
+        <a-card
+          v-if="model.can_resolve_recovery && recoveryPlan"
+          :title="t('adminMinecraft.worldSafety.recoveryTitle')"
+          :bordered="true"
+          class="recovery-resolution-card"
+        >
+          <a-space direction="vertical" fill :size="16">
+            <a-alert type="error" show-icon :closable="false">
+              <template #title>{{ t('adminMinecraft.worldSafety.recoveryRiskTitle') }}</template>
+              {{ t('adminMinecraft.worldSafety.recoveryRiskBody') }}
+            </a-alert>
+            <a-alert
+              v-for="blocker in model.recovery_blockers"
+              :key="`recovery-${blocker}`"
+              type="error"
+              show-icon
+              :closable="false"
+            >
+              {{ translateBlocker(blocker) }}
+            </a-alert>
+            <a-descriptions :column="1" bordered size="small">
+              <a-descriptions-item :label="t('adminMinecraft.worldSafety.planId')">
+                <a-typography-text code>{{ recoveryPlan.id }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item :label="t('adminMinecraft.worldSafety.status')">
+                {{ translateStatus(recoveryPlan.status) }}
+              </a-descriptions-item>
+              <a-descriptions-item
+                v-if="recoveryResolution"
+                :label="t('adminMinecraft.worldSafety.recoveryResolutionStatus')"
+              >
+                {{ translateStatus(recoveryResolution.status) }} ·
+                {{ translateRecoveryAction(recoveryResolution.resolution_action) }}
+              </a-descriptions-item>
+              <a-descriptions-item
+                v-if="recoveryResolution?.verified_world_state"
+                :label="t('adminMinecraft.worldSafety.verifiedWorldState')"
+              >
+                {{ recoveryResolution.verified_world_state }}
+              </a-descriptions-item>
+            </a-descriptions>
+
+            <a-form layout="vertical">
+              <template v-if="!recoveryResolution || ['failed', 'recovery_required'].includes(recoveryResolution.status)">
+                <a-form-item field="recoveryAction" :label="t('adminMinecraft.worldSafety.recoveryAction')" required>
+                  <a-select v-model="recoveryAction" :disabled="recoveryPlanning">
+                    <a-option value="reconcile">{{ translateRecoveryAction('reconcile') }}</a-option>
+                    <a-option value="resume">{{ translateRecoveryAction('resume') }}</a-option>
+                    <a-option value="rollback">{{ translateRecoveryAction('rollback') }}</a-option>
+                  </a-select>
+                </a-form-item>
+                <a-form-item field="recoveryReason" :label="t('adminMinecraft.worldSafety.recoveryReason')" required>
+                  <a-textarea
+                    v-model="recoveryReason"
+                    :max-length="1000"
+                    show-word-limit
+                    :auto-size="{ minRows: 3, maxRows: 6 }"
+                    :placeholder="t('adminMinecraft.worldSafety.recoveryReasonPlaceholder')"
+                    :disabled="recoveryPlanning"
+                  />
+                </a-form-item>
+                <a-button
+                  type="primary"
+                  status="danger"
+                  :loading="recoveryPlanning"
+                  :disabled="!canPlanRecovery"
+                  @click="planRecoveryResolution"
+                >
+                  {{ t('adminMinecraft.worldSafety.planRecovery') }}
+                </a-button>
+              </template>
+
+              <template v-else-if="!recoveryAuthorizationToken && !recoveryQueued && ['planned', 'authorized'].includes(recoveryResolution.status)">
+                <a-form-item field="recoveryPassword" :label="t('adminMinecraft.worldSafety.password')" required>
+                  <a-input-password
+                    v-model="recoveryPassword"
+                    autocomplete="current-password"
+                    :disabled="recoveryAuthorizing"
+                  />
+                </a-form-item>
+                <a-form-item
+                  field="recoveryCode"
+                  :label="t('adminMinecraft.worldSafety.verificationCode')"
+                  :extra="t('adminMinecraft.worldSafety.verificationCodeHint')"
+                >
+                  <a-input
+                    v-model="recoveryCode"
+                    autocomplete="one-time-code"
+                    inputmode="numeric"
+                    :disabled="recoveryAuthorizing"
+                  />
+                </a-form-item>
+                <a-button
+                  type="primary"
+                  status="danger"
+                  :loading="recoveryAuthorizing"
+                  :disabled="!canAuthorizeRecovery"
+                  @click="authorizeRecoveryResolution"
+                >
+                  {{ t('adminMinecraft.worldSafety.authorizeRecovery') }}
+                </a-button>
+              </template>
+
+              <template v-else-if="!recoveryQueued && recoveryAuthorizationToken">
+                <a-form-item field="recoveryConfirmation" :label="t('adminMinecraft.worldSafety.confirmation')" required>
+                  <a-input v-model="recoveryConfirmation" autocomplete="off" :disabled="recoveryExecuting" />
+                  <template #extra>
+                    <a-space direction="vertical" :size="8" fill>
+                      <span>{{ t('adminMinecraft.worldSafety.confirmationHint') }}</span>
+                      <a-typography-text code copyable>{{ recoveryRequiredConfirmation }}</a-typography-text>
+                    </a-space>
+                  </template>
+                </a-form-item>
+                <a-button
+                  type="primary"
+                  status="danger"
+                  :loading="recoveryExecuting"
+                  :disabled="!canExecuteRecovery"
+                  @click="executeRecoveryResolution"
+                >
+                  {{ t('adminMinecraft.worldSafety.executeRecovery') }}
+                </a-button>
+              </template>
+            </a-form>
+          </a-space>
+        </a-card>
 
         <a-table :data="model.plans" :pagination="false" row-key="id" :scroll="{ x: 900 }">
           <template #columns>
@@ -433,5 +709,9 @@ async function executeRestore() {
 <style scoped>
 .world-restore-form {
   max-width: 760px;
+}
+
+.recovery-resolution-card {
+  border-color: rgb(var(--danger-6));
 }
 </style>

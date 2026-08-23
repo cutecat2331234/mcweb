@@ -204,7 +204,12 @@ func (a *Agent) heartbeat(ctx context.Context) bool {
 	operationCapabilities := map[string]interface{}{}
 	recoveryRequired := true
 	if a.worldSafetyReady && a.worldStore != nil {
-		operationTypes = append(operationTypes, "world_backup_create", "world_restore_execute")
+		operationTypes = append(
+			operationTypes,
+			"world_backup_create",
+			"world_restore_execute",
+			"world_restore_reconcile",
+		)
 		recoveryRequired = a.worldStore.RecoveryRequired()
 		common := map[string]interface{}{
 			"protocol_version":  2,
@@ -225,6 +230,14 @@ func (a *Agent) heartbeat(ctx context.Context) bool {
 		restoreCapability["local_limits"] = a.worldStore.Limits()
 		operationCapabilities["world_backup_create"] = backupCapability
 		operationCapabilities["world_restore_execute"] = restoreCapability
+		recoveryCapability := copyStringInterfaceMap(common)
+		for _, flag := range []string{
+			"stopped_required", "durable_ledger", "live_tree_proof", "resume", "rollback", "reconcile",
+		} {
+			recoveryCapability[flag] = true
+		}
+		recoveryCapability["local_limits"] = a.worldStore.Limits()
+		operationCapabilities["world_restore_reconcile"] = recoveryCapability
 	}
 	body := map[string]interface{}{
 		"hostname": a.hostname,

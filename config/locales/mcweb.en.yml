@@ -250,6 +250,9 @@ en:
       minecraft_world_restores_execute:
         name: "Execute Minecraft world restores"
         description: "Plan, step-up authorize, and execute audited fail-closed Minecraft world restores."
+      minecraft_world_restores_resolve_recovery:
+        name: "Resolve Minecraft world-restore recovery"
+        description: "Independently authorize node-proven recovery convergence for a blocked world restore."
       minecraft_players_view:
         name: "View Minecraft players"
         description: "View connected players and their current server activity."
@@ -904,6 +907,7 @@ en:
         world_restore_stale: The restore plan changed concurrently. Refresh and try again.
         world_restore_authorization_invalid: The restore authorization is invalid or no longer matches this plan.
         world_restore_authorization_failed: The restore authorization could not be completed.
+        world_restore_authorization_rate_limited: Too many restore authorization attempts. Wait before trying again.
         world_restore_plan_not_authorized: Complete step-up authorization before executing this restore.
         world_restore_confirmation_mismatch: The typed confirmation does not match this exact server, backup, and plan.
         world_restore_authorization_expired: The restore authorization expired. Authorize again.
@@ -917,6 +921,34 @@ en:
         world_restore_node_failed: The node failed the restore before cutover.
         world_restore_ambiguous_node_result: The node result cannot prove whether the old or new world is safely installed.
         world_restore_unreported_node_failure: The node operation ended without a complete restore result.
+        world_restore_recovery_unauthorized: You do not have the independent permission required to resolve world-restore recovery.
+        world_restore_recovery_not_required: This restore is not in the recovery-required state.
+        world_restore_recovery_action_invalid: Select resume, rollback, or reconcile.
+        world_restore_recovery_reason_required: Enter an incident, ticket, or operational reason for recovery resolution.
+        world_restore_recovery_reason_too_long: The recovery-resolution reason cannot exceed 1,000 characters.
+        world_restore_recovery_request_id_invalid: The recovery-resolution request ID is invalid.
+        world_restore_recovery_lock_version_required: Refresh the restore state and submit its exact lock version.
+        world_restore_recovery_stale: The recovery record changed concurrently. Refresh before continuing.
+        world_restore_recovery_active: A recovery-resolution attempt is already active for this restore.
+        world_restore_recovery_capability_required: The node does not advertise the complete v2 recovery-resolution capability.
+        world_restore_recovery_not_confirmed_by_node: The node ledger does not currently report this restore as recovery-required.
+        world_restore_recovery_pre_snapshot_required: This recovery action requires a proven pre-restore snapshot.
+        world_restore_recovery_idempotency_conflict: This recovery request ID was already used for different input.
+        world_restore_recovery_not_authorizable: This recovery-resolution attempt can no longer be authorized.
+        world_restore_recovery_capability_changed: The node recovery capability changed after the resolution was frozen.
+        world_restore_recovery_authorization_rate_limited: Too many recovery authorization attempts. Wait before trying again.
+        world_restore_recovery_authorization_failed: Recovery authorization failed. Credential type is intentionally not disclosed.
+        world_restore_recovery_authorization_invalid: The recovery authorization is invalid or no longer matches this exact resolution.
+        world_restore_recovery_confirmation_mismatch: The typed confirmation does not match this exact recovery action.
+        world_restore_recovery_not_authorized: Complete step-up authorization before executing recovery resolution.
+        world_restore_recovery_authorization_expired: The recovery authorization expired. Authorize again.
+        world_restore_recovery_pre_snapshot_changed: The pre-restore snapshot changed after recovery resolution was frozen.
+        world_restore_recovery_enqueue_failed: The node recovery-resolution operation could not be queued.
+        world_restore_recovery_resolution_not_found: The recovery-resolution record for this node operation is missing.
+        world_restore_recovery_result_invalid: The node returned an invalid recovery proof. Server start remains blocked.
+        world_restore_recovery_unresolved: The node could not prove a safe converged world state. Server start remains blocked.
+        world_restore_recovery_state_changed: Recovery state changed while applying node proof. Server start remains blocked.
+        world_restore_recovery_unreported_node_failure: The node operation ended without a complete recovery-resolution result.
         minecraft_world_restore_blocks_server_start: An active or recovery-required world restore blocks server start and restart.
         world_operation_reconciliation_action_invalid: The world operation reconciliation action is invalid.
         world_operation_target_result_required: The world operation target result is missing.
@@ -2397,6 +2429,14 @@ en:
         minecraft_world_restore_rolled_back: "Minecraft world restore rolled back"
         minecraft_world_restore_recovery_required: "Minecraft world restore requires recovery"
         minecraft_world_restore_expired: "Minecraft world restore plan expired"
+        minecraft_world_restore_authorization_failed: "Minecraft world restore authorization failed"
+        minecraft_world_restore_recovery_resolution_planned: "Minecraft world restore recovery resolution planned"
+        minecraft_world_restore_recovery_resolution_authorized: "Minecraft world restore recovery resolution authorized"
+        minecraft_world_restore_recovery_resolution_authorization_failed: "Minecraft world restore recovery authorization failed"
+        minecraft_world_restore_recovery_resolution_queued: "Minecraft world restore recovery resolution queued"
+        minecraft_world_restore_recovery_resolution_started: "Minecraft world restore recovery resolution started"
+        minecraft_world_restore_recovery_resolution_completed: "Minecraft world restore recovery resolution completed"
+        minecraft_world_restore_recovery_resolution_failed: "Minecraft world restore recovery resolution remains blocked"
         community_topic_created: "Forum topic created"
         community_post_created: "Forum post created"
         community_post_approved: "Forum post approved"
@@ -3274,6 +3314,7 @@ en:
         secret_not_generated: Not generated
         world_backup_queued: Managed world backup queued.
         world_restore_queued: World restore queued with its pre-restore snapshot.
+        world_restore_recovery_queued: Recovery-resolution operation queued; server start remains blocked until node proof is acknowledged.
         action_edit: Edit
         action_rotate_secret: Rotate secret
         action_delete: Delete

@@ -223,6 +223,74 @@ func TestInterruptedCutoverDoesNotMutateWorldWhenStoppedCheckFails(t *testing.T)
 	}
 }
 
+func TestRecoveryResolutionRequiresDurableNodeProofBeforeUnblocking(t *testing.T) {
+	store, workingDirectory, livePath := newTestWorldStore(t)
+	stopped := func(context.Context) error { return nil }
+	writeWorldFile(t, livePath, "level.dat", "selected-world")
+	selected, err := store.CreateBackup(context.Background(), BackupRequest{
+		BackupID:          "backup_test_01",
+		ServerID:          "server_test_01",
+		NodeID:            "node_test_01",
+		Purpose:           "manual",
+		RequestDigest:     strings.Repeat("a", 64),
+		WorkingDirectory:  workingDirectory,
+		WorldRelativePath: "world",
+		CheckStopped:      stopped,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeWorldFile(t, livePath, "level.dat", "previous-world")
+	preRestore, err := store.CreateBackup(context.Background(), BackupRequest{
+		BackupID:          "prebackup_test_01",
+		ServerID:          "server_test_01",
+		NodeID:            "node_test_01",
+		Purpose:           "pre_restore",
+		RequestDigest:     strings.Repeat("c", 64),
+		WorkingDirectory:  workingDirectory,
+		WorldRelativePath: "world",
+		CheckStopped:      stopped,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	restore := restoreRequest(t, workingDirectory, selected.ManifestDigest, stopped)
+	ledger := store.newLedger(restore, livePath)
+	ledger.PreRestoreManifestDigest = preRestore.ManifestDigest
+	if err := renameDirectory(livePath, ledger.RollbackPath); err != nil {
+		t.Fatal(err)
+	}
+	writeWorldFile(t, livePath, "level.dat", "selected-world")
+	if _, markErr := store.markRecoveryRequired(
+		ledger,
+		preRestore,
+		fail("restore_interrupted_cutover", nil),
+	); markErr == nil {
+		t.Fatal("expected recovery-required marker error")
+	}
+	if !store.RecoveryRequired() || !store.BlocksServer("server_test_01") {
+		t.Fatal("recovery ledger did not block world operations")
+	}
+
+	request := recoveryResolutionRequest(restore, preRestore.ManifestDigest, stopped)
+	result, err := store.ResolveRecovery(context.Background(), request)
+	if err != nil {
+		t.Fatalf("ResolveRecovery: result=%+v err=%v", result, err)
+	}
+	if result == nil || !result.RecoveryResolutionProof || result.ResolutionID != request.ResolutionID ||
+		result.VerifiedWorldState != "selected" || result.Phase != "completed" {
+		t.Fatalf("invalid recovery proof: %+v", result)
+	}
+	if store.RecoveryRequired() || store.BlocksServer("server_test_01") {
+		t.Fatal("durably proven recovery result remained blocked")
+	}
+	replayed, replayErr := store.ResolveRecovery(context.Background(), request)
+	if replayErr != nil || replayed.CompletedAt != result.CompletedAt {
+		t.Fatalf("recovery proof replay was not idempotent: result=%+v err=%v", replayed, replayErr)
+	}
+}
+
 func TestManagedBackupIdempotencyBindsRequestDigest(t *testing.T) {
 	store, workingDirectory, livePath := newTestWorldStore(t)
 	writeWorldFile(t, livePath, "level.dat", "known-good")
@@ -397,6 +465,35 @@ func restoreRequest(
 		ProcessConfig:             processConfig,
 		WorkingDirectory:          workingDirectory,
 		WorldRelativePath:         "world",
+		CheckStopped:              checkStopped,
+	}
+}
+
+func recoveryResolutionRequest(
+	restore RestoreRequest,
+	preRestoreManifestDigest string,
+	checkStopped CheckStopped,
+) RecoveryResolutionRequest {
+	return RecoveryResolutionRequest{
+		ResolutionID:              "resolution_test_01",
+		ResolutionAction:          "reconcile",
+		ReasonDigest:              strings.Repeat("e", 64),
+		OperationDeliveryID:       "resolution_delivery_01",
+		OperationPayloadDigest:    strings.Repeat("f", 64),
+		RecoveryCapabilityDigest:  strings.Repeat("9", 64),
+		PlanID:                    restore.PlanID,
+		PlanDigest:                restore.PlanDigest,
+		ServerID:                  restore.ServerID,
+		NodeID:                    restore.NodeID,
+		BackupID:                  restore.BackupID,
+		BackupManifestDigest:      restore.BackupManifestDigest,
+		PreRestoreBackupID:        restore.PreRestoreBackupID,
+		PreRestoreManifestDigest:  preRestoreManifestDigest,
+		ServerConfigurationDigest: restore.ServerConfigurationDigest,
+		ProcessDriver:             restore.ProcessDriver,
+		ProcessConfig:             restore.ProcessConfig,
+		WorkingDirectory:          restore.WorkingDirectory,
+		WorldRelativePath:         restore.WorldRelativePath,
 		CheckStopped:              checkStopped,
 	}
 }

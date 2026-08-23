@@ -650,6 +650,18 @@ module Identity
         ]
       ),
       build_entry.call(
+        "minecraft.world_restores.resolve_recovery",
+        "解除 Minecraft 世界恢复阻断",
+        execution_points: [
+          "app/controllers/admin/minecraft/world_restores_controller.rb#plan_recovery",
+          "app/controllers/admin/minecraft/world_restores_controller.rb#authorize_recovery",
+          "app/controllers/admin/minecraft/world_restores_controller.rb#execute_recovery",
+          "app/services/minecraft/plan_world_restore_recovery.rb",
+          "app/services/minecraft/authorize_world_restore_recovery.rb",
+          "app/services/minecraft/execute_world_restore_recovery.rb"
+        ]
+      ),
+      build_entry.call(
         "minecraft.players.view",
         "查看在线玩家",
         execution_points: [

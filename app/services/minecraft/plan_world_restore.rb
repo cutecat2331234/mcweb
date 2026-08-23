@@ -25,12 +25,12 @@ module Minecraft
         Minecraft::NodeOperationDigest.call(server_configuration_snapshot(server, world_relative_path))
       end
 
-      def current_contract_error(plan, actor:)
+      def current_contract_error(plan, actor:, server: nil, node: nil, backup: nil)
         return :world_restore_unauthorized unless actor&.id == plan.actor_id && actor.permission?("minecraft.world_restores.execute")
 
-        server = plan.server.reload
-        node = server.node
-        backup = plan.world_backup.reload
+        server ||= plan.server.reload
+        node ||= server.node
+        backup ||= plan.world_backup.reload
         return :world_restore_plan_expired if plan.expires_at <= Time.current
         return :world_restore_server_must_be_stopped unless server.process_state_stopped?
         return :world_restore_node_changed unless node&.id == plan.node_id

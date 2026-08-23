@@ -106,6 +106,29 @@ type RestoreRequest struct {
 	CheckStopped              CheckStopped
 }
 
+type RecoveryResolutionRequest struct {
+	ResolutionID              string
+	ResolutionAction          string
+	ReasonDigest              string
+	OperationDeliveryID       string
+	OperationPayloadDigest    string
+	RecoveryCapabilityDigest  string
+	PlanID                    string
+	PlanDigest                string
+	ServerID                  string
+	NodeID                    string
+	BackupID                  string
+	BackupManifestDigest      string
+	PreRestoreBackupID        string
+	PreRestoreManifestDigest  string
+	ServerConfigurationDigest string
+	ProcessDriver             string
+	ProcessConfig             map[string]interface{}
+	WorkingDirectory          string
+	WorldRelativePath         string
+	CheckStopped              CheckStopped
+}
+
 func ServerConfigurationDigest(
 	serverID string,
 	nodeID string,
@@ -144,15 +167,22 @@ func railsCanonicalJSON(value interface{}) ([]byte, error) {
 }
 
 type RestoreResult struct {
-	PlanID                  string    `json:"plan_id"`
-	Phase                   string    `json:"phase"`
-	InstalledManifestDigest string    `json:"installed_manifest_digest,omitempty"`
-	PreRestoreBackup        *Manifest `json:"pre_restore_backup,omitempty"`
-	RolledBack              bool      `json:"rolled_back"`
-	RecoveryRequired        bool      `json:"recovery_required"`
-	ErrorCode               string    `json:"error_code,omitempty"`
-	StartedAt               time.Time `json:"started_at"`
-	CompletedAt             time.Time `json:"completed_at"`
+	PlanID                    string    `json:"plan_id"`
+	PlanDigest                string    `json:"plan_digest,omitempty"`
+	Phase                     string    `json:"phase"`
+	InstalledManifestDigest   string    `json:"installed_manifest_digest,omitempty"`
+	PreRestoreBackup          *Manifest `json:"pre_restore_backup,omitempty"`
+	RolledBack                bool      `json:"rolled_back"`
+	RecoveryRequired          bool      `json:"recovery_required"`
+	RecoveryResolutionProof   bool      `json:"recovery_resolution_proof,omitempty"`
+	ResolutionID              string    `json:"resolution_id,omitempty"`
+	ResolutionAction          string    `json:"resolution_action,omitempty"`
+	VerifiedWorldState        string    `json:"verified_world_state,omitempty"`
+	ServerConfigurationDigest string    `json:"server_configuration_digest,omitempty"`
+	WorldRelativePath         string    `json:"world_relative_path,omitempty"`
+	ErrorCode                 string    `json:"error_code,omitempty"`
+	StartedAt                 time.Time `json:"started_at"`
+	CompletedAt               time.Time `json:"completed_at"`
 }
 
 type Error struct {

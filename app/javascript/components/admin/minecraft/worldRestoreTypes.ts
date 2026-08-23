@@ -19,6 +19,7 @@ export interface WorldRestorePlanRow {
   backup_id: string
   pre_restore_backup_id?: string
   status: string
+  lock_version: number
   reason: string
   created_at?: string
   expires_at?: string
@@ -28,18 +29,37 @@ export interface WorldRestorePlanRow {
   error_code?: string
   authorize_url?: string
   execute_url?: string
+  plan_recovery_url?: string
+  recovery_resolution?: WorldRestoreResolutionRow
+}
+
+export interface WorldRestoreResolutionRow {
+  id: string
+  status: string
+  resolution_action: 'resume' | 'rollback' | 'reconcile'
+  reason: string
+  lock_version: number
+  created_at?: string
+  authorization_expires_at?: string
+  error_code?: string
+  recovery_resolution_proof?: boolean
+  verified_world_state?: string
+  authorize_url?: string
+  execute_url?: string
 }
 
 export interface WorldSafetyProps {
   visible: boolean
   can_create_backup: boolean
   can_restore: boolean
+  can_resolve_recovery: boolean
   create_backup_url?: string
   create_restore_url?: string
   refresh_url: string
   start_blocked: boolean
   backup_blockers: string[]
   restore_blockers: string[]
+  recovery_blockers: string[]
   backups: ManagedWorldBackup[]
   plans: WorldRestorePlanRow[]
 }

@@ -22,30 +22,36 @@ var restorePhases = map[string]struct{}{
 }
 
 type RestoreLedger struct {
-	Version                   int            `json:"version"`
-	PlanID                    string         `json:"plan_id"`
-	PlanDigest                string         `json:"plan_digest"`
-	OperationDeliveryID       string         `json:"operation_delivery_id"`
-	OperationPayloadDigest    string         `json:"operation_payload_digest"`
-	ServerID                  string         `json:"server_id"`
-	NodeID                    string         `json:"node_id"`
-	BackupID                  string         `json:"backup_id"`
-	BackupManifestDigest      string         `json:"backup_manifest_digest"`
-	PreRestoreBackupID        string         `json:"pre_restore_backup_id"`
-	ServerConfigurationDigest string         `json:"server_configuration_digest"`
-	LocalConfigurationDigest  string         `json:"local_configuration_digest"`
-	WorkingDirectory          string         `json:"working_directory"`
-	WorldRelativePath         string         `json:"world_relative_path"`
-	LivePath                  string         `json:"live_path"`
-	StagingPath               string         `json:"staging_path"`
-	RollbackPath              string         `json:"rollback_path"`
-	FailedReplacementPath     string         `json:"failed_replacement_path"`
-	LiveWasAbsent             bool           `json:"live_was_absent"`
-	Phase                     string         `json:"phase"`
-	PreRestoreManifestDigest  string         `json:"pre_restore_manifest_digest,omitempty"`
-	Result                    *RestoreResult `json:"result,omitempty"`
-	CreatedAt                 time.Time      `json:"created_at"`
-	UpdatedAt                 time.Time      `json:"updated_at"`
+	Version                      int            `json:"version"`
+	PlanID                       string         `json:"plan_id"`
+	PlanDigest                   string         `json:"plan_digest"`
+	OperationDeliveryID          string         `json:"operation_delivery_id"`
+	OperationPayloadDigest       string         `json:"operation_payload_digest"`
+	ServerID                     string         `json:"server_id"`
+	NodeID                       string         `json:"node_id"`
+	BackupID                     string         `json:"backup_id"`
+	BackupManifestDigest         string         `json:"backup_manifest_digest"`
+	PreRestoreBackupID           string         `json:"pre_restore_backup_id"`
+	ServerConfigurationDigest    string         `json:"server_configuration_digest"`
+	LocalConfigurationDigest     string         `json:"local_configuration_digest"`
+	WorkingDirectory             string         `json:"working_directory"`
+	WorldRelativePath            string         `json:"world_relative_path"`
+	LivePath                     string         `json:"live_path"`
+	StagingPath                  string         `json:"staging_path"`
+	RollbackPath                 string         `json:"rollback_path"`
+	FailedReplacementPath        string         `json:"failed_replacement_path"`
+	LiveWasAbsent                bool           `json:"live_was_absent"`
+	Phase                        string         `json:"phase"`
+	PreRestoreManifestDigest     string         `json:"pre_restore_manifest_digest,omitempty"`
+	Result                       *RestoreResult `json:"result,omitempty"`
+	LastResolutionID             string         `json:"last_resolution_id,omitempty"`
+	LastResolutionAction         string         `json:"last_resolution_action,omitempty"`
+	LastResolutionReasonDigest   string         `json:"last_resolution_reason_digest,omitempty"`
+	LastResolutionDeliveryID     string         `json:"last_resolution_delivery_id,omitempty"`
+	LastResolutionPayloadDigest  string         `json:"last_resolution_payload_digest,omitempty"`
+	LastRecoveryCapabilityDigest string         `json:"last_recovery_capability_digest,omitempty"`
+	CreatedAt                    time.Time      `json:"created_at"`
+	UpdatedAt                    time.Time      `json:"updated_at"`
 }
 
 func (store *Store) loadLedgers() error {
@@ -160,8 +166,41 @@ func (store *Store) validateLedger(ledger *RestoreLedger) error {
 		ledger.PreRestoreManifestDigest == "" {
 		return fail("restore_ledger_pre_snapshot_missing", nil)
 	}
+	if err := validateResolutionBinding(ledger); err != nil {
+		return err
+	}
 	if err := validateLedgerResult(ledger); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateResolutionBinding(ledger *RestoreLedger) error {
+	values := []string{
+		ledger.LastResolutionID,
+		ledger.LastResolutionAction,
+		ledger.LastResolutionReasonDigest,
+		ledger.LastResolutionDeliveryID,
+		ledger.LastResolutionPayloadDigest,
+		ledger.LastRecoveryCapabilityDigest,
+	}
+	present := 0
+	for _, value := range values {
+		if value != "" {
+			present++
+		}
+	}
+	if present == 0 {
+		return nil
+	}
+	if present != len(values) || validateManagedID(ledger.LastResolutionID) != nil ||
+		(ledger.LastResolutionAction != "resume" && ledger.LastResolutionAction != "rollback" &&
+			ledger.LastResolutionAction != "reconcile") ||
+		validateSHA256(ledger.LastResolutionReasonDigest) != nil ||
+		validateSHA256(ledger.LastResolutionPayloadDigest) != nil ||
+		validateSHA256(ledger.LastRecoveryCapabilityDigest) != nil ||
+		len(ledger.LastResolutionDeliveryID) > 128 {
+		return fail("restore_ledger_resolution_binding_invalid", nil)
 	}
 	return nil
 }
@@ -191,6 +230,29 @@ func validateLedgerResult(ledger *RestoreLedger) error {
 			validateSHA256(manifest.ManifestDigest) != nil || len(manifest.Entries) != 0 {
 			return fail("restore_ledger_result_pre_snapshot_invalid", nil)
 		}
+	}
+	if result.RecoveryResolutionProof {
+		if result.ResolutionID != ledger.LastResolutionID ||
+			result.ResolutionAction != ledger.LastResolutionAction ||
+			result.PlanDigest != ledger.PlanDigest ||
+			result.ServerConfigurationDigest != ledger.ServerConfigurationDigest ||
+			result.WorldRelativePath != ledger.WorldRelativePath || result.RecoveryRequired {
+			return fail("restore_ledger_resolution_proof_invalid", nil)
+		}
+		if result.Phase == "completed" {
+			if result.VerifiedWorldState != "selected" || result.RolledBack {
+				return fail("restore_ledger_resolution_selected_proof_invalid", nil)
+			}
+		} else if result.Phase == "rolled_back" {
+			if (result.VerifiedWorldState != "pre_restore" && result.VerifiedWorldState != "original_absent") ||
+				!result.RolledBack {
+				return fail("restore_ledger_resolution_rollback_proof_invalid", nil)
+			}
+		} else {
+			return fail("restore_ledger_resolution_phase_invalid", nil)
+		}
+	} else if result.ResolutionID != "" && result.ResolutionID != ledger.LastResolutionID {
+		return fail("restore_ledger_resolution_result_invalid", nil)
 	}
 
 	switch {
@@ -271,7 +333,7 @@ func (store *Store) RecoveryRequired() bool {
 	store.ledgerMu.RLock()
 	defer store.ledgerMu.RUnlock()
 	for _, ledger := range store.ledgers {
-		if ledger.Result == nil || ledger.Result.RecoveryRequired {
+		if ledgerRequiresRecovery(ledger) {
 			return true
 		}
 	}
@@ -282,11 +344,18 @@ func (store *Store) BlocksServer(serverID string) bool {
 	store.ledgerMu.RLock()
 	defer store.ledgerMu.RUnlock()
 	for _, ledger := range store.ledgers {
-		if ledger.ServerID == serverID && (ledger.Result == nil || ledger.Result.RecoveryRequired) {
+		if ledger.ServerID == serverID && ledgerRequiresRecovery(ledger) {
 			return true
 		}
 	}
 	return false
+}
+
+func ledgerRequiresRecovery(ledger *RestoreLedger) bool {
+	if ledger.Result == nil || ledger.Result.RecoveryRequired {
+		return true
+	}
+	return ledger.LastResolutionID != "" && !ledger.Result.RecoveryResolutionProof
 }
 
 func (store *Store) newLedger(request RestoreRequest, livePath string) *RestoreLedger {

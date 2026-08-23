@@ -21,7 +21,7 @@ module Minecraft
       "queued" => %w[queued creating available failed],
       "creating" => %w[creating available failed],
       "available" => %w[available quarantined],
-      "failed" => %w[failed],
+      "failed" => %w[failed available],
       "quarantined" => %w[quarantined]
     }.freeze
 
@@ -59,6 +59,7 @@ module Minecraft
     validate :operation_binding_is_immutable, on: :update
     validate :verified_manifest_is_immutable, on: :update
     validate :status_transition_is_valid, on: :update
+    validate :failed_pre_restore_recovery_is_node_bound, on: :update
 
     scope :recent, -> { order(created_at: :desc) }
     scope :restorable, -> { where(status: :available) }
@@ -102,6 +103,16 @@ module Minecraft
     def status_transition_is_valid
       previous = status_in_database
       return if previous.blank? || STATUS_TRANSITIONS.fetch(previous, []).include?(status)
+
+      errors.add(:status, :invalid_transition)
+    end
+
+    def failed_pre_restore_recovery_is_node_bound
+      return unless status_in_database == "failed" && status == "available"
+      return if purpose_pre_restore? && pre_restore_plans
+        .joins(:recovery_resolutions)
+        .merge(Minecraft::WorldRestoreResolution.active)
+        .exists?
 
       errors.add(:status, :invalid_transition)
     end

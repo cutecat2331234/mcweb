@@ -1,0 +1,5 @@
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.conversation_invitation.body", inviter: @inviter.username, title: @conversation.title) %></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.forum.conversation_invitation.respond") %></a></p>
+<p><%= t("mcweb.mail.forum.conversation_invitation.expires", time: l(@invitation.expires_at, format: :short)) %></p>
+<%= render "notification_unsubscribe" %>

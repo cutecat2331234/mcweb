@@ -16,6 +16,7 @@ class GroupInvitePmPolicyTest < ActiveSupport::TestCase
   test "respects the invitee's everyone policy" do
     @invitee.update!(forum_pm_policy: "everyone")
     assert Community::AddConversationParticipant.call(actor: @creator, conversation: @conversation, username: @invitee.username).success?
+    assert @conversation.invitations.where(user: @invitee, status: "pending").exists?
   end
 
   test "blocks adding someone whose policy is staff_only when the adder is not staff" do
@@ -29,5 +30,6 @@ class GroupInvitePmPolicyTest < ActiveSupport::TestCase
     @invitee.update!(forum_pm_policy: "staff_only")
     grant_permission(@creator, "forum.topics.lock")
     assert Community::AddConversationParticipant.call(actor: @creator, conversation: @conversation, username: @invitee.username).success?
+    assert_not @conversation.participant?(@invitee)
   end
 end

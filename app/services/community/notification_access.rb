@@ -65,6 +65,22 @@ module Community
       conversation.participants.exists?(user_id: user.id)
     end
 
+    def self.conversation_invitation_visible?(user:, invitation:)
+      return false unless user&.session_eligible? && invitation
+      return false unless invitation.user_id == user.id
+      return false unless invitation.actionable?
+      return false unless invitation.conversation&.is_group?
+      return false if invitation.blocked_by_participant?
+
+      Community::ConversationInvitationEligibility.call(
+        actor: invitation.invited_by,
+        conversation: invitation.conversation,
+        invitee: user,
+        require_participant_actor: false,
+        enforce_recipient_policy: false
+      ).success?
+    end
+
     # Notification surfaces are aggregate discovery surfaces, not direct-link
     # readers. Preserve the established rule that an unlisted topic is only
     # exposed to its owner or a global moderator, even though a user who already
@@ -122,6 +138,7 @@ module Community
       preload_topics
       preload_posts
       preload_conversations
+      preload_conversation_invitations
       preload_messages
       preload_saved_searches
       preload_profile_posts
@@ -175,6 +192,16 @@ module Community
         .where(user_id: @user&.id, forum_conversation_id: ids)
         .pluck(:forum_conversation_id)
         .to_set
+    end
+
+    def preload_conversation_invitations
+      public_ids = @notifications.filter_map do |notification|
+        conversation_invitation_public_id(notification)
+      end.uniq
+      @conversation_invitations_by_public_id = Community::ConversationInvitation
+        .includes(conversation: :participants)
+        .where(public_id: public_ids, user_id: @user&.id)
+        .index_by(&:public_id)
     end
 
     def preload_posts
@@ -298,7 +325,17 @@ module Community
         return true
       end
 
-      @conversations_by_id.key?(id) && @conversation_ids.include?(id)
+      return false unless @conversations_by_id.key?(id)
+      invitation_public_id = conversation_invitation_public_id(notification)
+      if notification.notification_type == "forum.conversation_invite" && invitation_public_id
+        invitation = @conversation_invitations_by_public_id[invitation_public_id]
+        return invitation&.forum_conversation_id == id && self.class.conversation_invitation_visible?(
+          user: @user,
+          invitation: invitation
+        )
+      end
+
+      @conversation_ids.include?(id)
     end
 
     def private_message_visible?(notification)
@@ -488,6 +525,12 @@ module Community
       value = values["conversation_id"] || values[:conversation_id]
       id = Integer(value, exception: false)
       id if id&.positive?
+    end
+
+    def conversation_invitation_public_id(notification)
+      values = metadata(notification)
+      value = values["conversation_invitation_public_id"] || values[:conversation_invitation_public_id]
+      value.to_s.presence
     end
 
     def notification_tag_ids(notification)

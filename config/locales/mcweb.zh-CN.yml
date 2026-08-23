@@ -509,6 +509,9 @@
       session_revoked_current: 当前会话已撤销，请重新登录。
       session_revoked: 会话已撤销。
       participant_added: 已添加成员。
+      conversation_invitation_sent: 群组邀请已发送。
+      conversation_invitation_accepted: 已接受群组邀请。
+      conversation_invitation_declined: 已拒绝群组邀请。
       participant_removed: 已移除成员。
       left_group: 你已离开群组。
       minecraft_linked: Minecraft 账号已成功绑定。
@@ -652,6 +655,8 @@
       conversation_restored: 会话已恢复。
       conversation_marked_unread: 会话已标记为未读。
       conversation_labeled: 会话标签已更新。
+      conversation_invites_locked: 已设为仅群主可发送新邀请。
+      conversation_invites_unlocked: 已允许群组成员发送新邀请。
       conversation_muted: 已静音此会话。
       conversation_unmuted: 已取消静音。
       report_resolved: 举报已处理。
@@ -1134,6 +1139,12 @@
         cannot_message_blocked_user: 无法向已拉黑的用户发送私信。
         user_silenced: 该用户已被禁言。
         user_cannot_pm: 该用户无法参与私信。
+        conversation_invitation_not_found: 找不到该群组邀请。
+        conversation_invitation_not_pending: 该群组邀请已处理，无法再次操作。
+        conversation_invitation_expired: 该群组邀请已过期。
+        conversation_invitation_blocked: 该群组邀请因屏蔽关系已撤销。
+        conversation_invitation_conflict: 群组成员状态已变化，请刷新后重试。
+        direct_conversation_membership_unauthorized: 无权绕过群组邀请直接添加成员。
         cart_empty: 购物车是空的。
         cart_unauthorized: 无法使用该购物车结账。
         order_created: 订单已创建。
@@ -1985,10 +1996,16 @@
         unread: 未读
         read: 已读
     forum:
+      system_actor: 系统
       topic_delete:
         author_reason: 主题作者主动删除
       messages:
         author_delete_reason: 私信作者主动删除
+        direct_fallback: 私信
+        group_add_restrictions:
+          creator_only: 仅群主可邀请新成员。
+          full: 群组已没有可用的邀请名额。
+          trust_level: 当前信任等级暂时无法邀请群组成员。
       reports:
         reasons:
           spam: 垃圾广告 / 刷屏
@@ -2243,6 +2260,9 @@
         added_to_conversation:
           title: 你被加入了一个会话
           body: "%{adder} 把你加入了一个群组会话。"
+        conversation_invite:
+          title: "%{inviter} 邀请你加入群组"
+          body: "群组：%{title}。接受前不会显示消息历史。"
         topic_reply:
           title: "主题有新回复：%{title}"
           body: "%{author}：%{excerpt}"
@@ -3886,7 +3906,7 @@
         forum.mention: "@提及"
         forum.section_topic: 分区新主题
         forum.private_message: 私信
-        forum.conversation_invite: 被加入会话
+        forum.conversation_invite: 群组会话邀请
         forum.followed_topic: 关注用户新主题
         forum.followed_reply: 关注用户回复
         forum.tag_topic: 标签新主题
@@ -4037,6 +4057,7 @@
         subjects:
           topic_reply: "主题有新回复：%{title}"
           private_message: "来自 %{sender} 的私信"
+          conversation_invitation: "%{inviter} 邀请你加入群组会话"
           mention: "%{author} 在主题中提到了你"
           here: "%{author} 使用 @here 提及了你"
           section_topic: "关注分区有新主题：%{title}"
@@ -4101,6 +4122,10 @@
         private_message:
           body: "%{sender} 给你发送了私信："
           view_message: "查看私信"
+        conversation_invitation:
+          body: "%{inviter} 邀请你加入群组会话「%{title}」。接受前不会向你显示任何消息历史。"
+          respond: "查看并回应邀请"
+          expires: "此邀请将于 %{time} 失效。"
         user_warning:
           body: "你收到了一条社区警告（%{points} 点）："
           total_points: "累计警告积分：%{points} 点"

@@ -100,6 +100,12 @@ close_expired_polls:
   queue: maintenance
   active_job: true
 
+expire_conversation_invitations:
+  cron: "*/15 * * * *"
+  class: "Community::ExpireConversationInvitationsJob"
+  queue: maintenance
+  active_job: true
+
 gift_card_expiry_reminders:
   cron: "0 9 * * *"
   class: "Commerce::GiftCardExpiryReminderJob"

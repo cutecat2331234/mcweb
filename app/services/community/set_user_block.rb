@@ -19,6 +19,13 @@ module Community
       )
       return mutation if mutation.failure?
 
+      if mutation.value[:active]
+        Community::RevokeBlockedConversationInvitations.call(
+          first_user: @blocker,
+          second_user: @blocked
+        )
+      end
+
       ServiceResult.success(blocked: mutation.value[:active], changed: mutation.value[:changed])
     end
   end

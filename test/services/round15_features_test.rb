@@ -9,9 +9,11 @@ class Community::CreateGroupConversationTest < ActiveSupport::TestCase
     enable_forum_pm!(@sender)
     @alice = create_user(username: "alice_#{SecureRandom.hex(3)}")
     @bob = create_user(username: "bob_#{SecureRandom.hex(3)}")
+    enable_forum_pm!(@alice)
+    enable_forum_pm!(@bob)
   end
 
-  test "creates group conversation with participants" do
+  test "creates group conversation with pending recipient invitations" do
     result = Community::CreateGroupConversation.call(
       sender: @sender,
       title: "项目讨论",
@@ -23,7 +25,8 @@ class Community::CreateGroupConversationTest < ActiveSupport::TestCase
     conversation = result.value[:conversation]
     assert conversation.is_group?
     assert_equal "项目讨论", conversation.title
-    assert_equal 3, conversation.users.count
+    assert_equal [ @sender.id ], conversation.users.pluck(:id)
+    assert_equal 2, conversation.invitations.where(status: "pending").count
     assert_equal @sender.id, conversation.creator_id
   end
 
@@ -44,6 +47,7 @@ class Community::CreateConversationGroupIsolationTest < ActiveSupport::TestCase
     @sender = create_user
     enable_forum_pm!(@sender)
     @recipient = create_user
+    enable_forum_pm!(@recipient)
   end
 
   test "does not reuse group conversation for direct message" do

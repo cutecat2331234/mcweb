@@ -111,6 +111,7 @@ class Community::CreateGroupConversationSelfTest < ActiveSupport::TestCase
     sender = create_user
     enable_forum_pm!(sender)
     alice = create_user(username: "alice_#{SecureRandom.hex(3)}")
+    enable_forum_pm!(alice)
 
     result = Community::CreateGroupConversation.call(
       sender: sender,
@@ -120,7 +121,8 @@ class Community::CreateGroupConversationSelfTest < ActiveSupport::TestCase
     )
 
     assert result.success?
-    assert_equal 2, result.value[:conversation].users.count
+    assert_equal [ sender.id ], result.value[:conversation].users.pluck(:id)
+    assert_equal [ alice.id ], result.value[:conversation].invitations.pending.pluck(:user_id)
   end
 end
 

@@ -82,6 +82,8 @@ class Round71GroupCreatorOnlyAddTest < ActionDispatch::IntegrationTest
       body: "Hi"
     )
     conv = result.value[:conversation]
+    invitation = conv.invitations.find_by!(user: member, status: "pending")
+    assert Community::AcceptConversationInvitation.call(user: member, invitation: invitation).success?
 
     add = Community::AddConversationParticipant.call(
       actor: member,
@@ -129,6 +131,8 @@ class Round71GroupCreatorOnlyAddTest < ActionDispatch::IntegrationTest
       body: "Hi"
     )
     conv = result.value[:conversation]
+    invitation = conv.invitations.find_by!(user: member, status: "pending")
+    assert Community::AcceptConversationInvitation.call(user: member, invitation: invitation).success?
 
     sign_in_as(member)
     get forum_conversation_path(conv)

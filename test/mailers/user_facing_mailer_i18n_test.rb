@@ -8,7 +8,7 @@ class UserFacingMailerI18nTest < ActionMailer::TestCase
     email_change_confirmation email_change_security_notice
   ].freeze
   FORUM_SUBJECTS = %w[
-    topic_reply private_message mention here section_topic tag_topic
+    topic_reply private_message conversation_invitation mention here section_topic tag_topic
     followed_topic followed_reply digest saved_search_digest post_edited
     bookmark_reminder user_warning badge_earned topic_assigned trust_level_up
     post_reaction post_quoted topic_solved topic_invite poll_closed

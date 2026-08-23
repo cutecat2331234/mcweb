@@ -14,11 +14,12 @@ class ConversationInviteLockTest < ActiveSupport::TestCase
     @conversation.participants.create!(user: @member)
   end
 
-  test "any participant can add a member when invites are unlocked" do
+  test "any participant can invite a member when invites are unlocked" do
     @conversation.update!(invites_locked: false)
     result = Community::AddConversationParticipant.call(actor: @member, conversation: @conversation, username: @newcomer.username)
     assert result.success?, result.error
-    assert @conversation.participant?(@newcomer)
+    assert_not @conversation.participant?(@newcomer)
+    assert @conversation.invitations.where(user: @newcomer, status: "pending").exists?
   end
 
   test "only the creator can add a member when invites are locked" do
@@ -30,6 +31,7 @@ class ConversationInviteLockTest < ActiveSupport::TestCase
 
     allowed = Community::AddConversationParticipant.call(actor: @creator, conversation: @conversation, username: @newcomer.username)
     assert allowed.success?, allowed.error
-    assert @conversation.participant?(@newcomer)
+    assert_not @conversation.participant?(@newcomer)
+    assert @conversation.invitations.where(user: @newcomer, status: "pending").exists?
   end
 end

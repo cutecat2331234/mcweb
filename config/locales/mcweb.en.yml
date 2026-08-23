@@ -509,6 +509,9 @@ en:
       session_revoked_current: Current session revoked. Please sign in again.
       session_revoked: Session revoked.
       participant_added: Participant added.
+      conversation_invitation_sent: Group invitation sent.
+      conversation_invitation_accepted: Group invitation accepted.
+      conversation_invitation_declined: Group invitation declined.
       participant_removed: Participant removed.
       left_group: You left the group.
       minecraft_linked: Minecraft account linked successfully.
@@ -652,6 +655,8 @@ en:
       conversation_restored: Conversation restored.
       conversation_marked_unread: Conversation marked as unread.
       conversation_labeled: Conversation label updated.
+      conversation_invites_locked: Only the group owner can send new invitations.
+      conversation_invites_unlocked: Group members can send new invitations.
       conversation_muted: Conversation muted.
       conversation_unmuted: Conversation unmuted.
       report_resolved: Report resolved.
@@ -1134,6 +1139,12 @@ en:
         cannot_message_blocked_user: Cannot message blocked user.
         user_silenced: User is silenced.
         user_cannot_pm: User cannot participate in private messages.
+        conversation_invitation_not_found: Group invitation not found.
+        conversation_invitation_not_pending: This group invitation has already been resolved.
+        conversation_invitation_expired: This group invitation has expired.
+        conversation_invitation_blocked: This group invitation was revoked because of a block relationship.
+        conversation_invitation_conflict: Group membership changed. Refresh and try again.
+        direct_conversation_membership_unauthorized: You cannot bypass a group invitation to add this member directly.
         cart_empty: Your cart is empty.
         cart_unauthorized: You cannot checkout with this cart.
         order_created: Order created.
@@ -1985,10 +1996,16 @@ en:
         unread: Unread
         read: Read
     forum:
+      system_actor: System
       topic_delete:
         author_reason: Deleted by the topic author
       messages:
         author_delete_reason: Deleted by the message author
+        direct_fallback: Private conversation
+        group_add_restrictions:
+          creator_only: Only the group owner can invite new members.
+          full: This group has no available invitation slots.
+          trust_level: Your current trust level cannot invite group members yet.
       reports:
         reasons:
           spam: Spam / flooding
@@ -2243,6 +2260,9 @@ en:
         added_to_conversation:
           title: "Added to a conversation"
           body: "%{adder} added you to a group conversation."
+        conversation_invite:
+          title: "%{inviter} invited you to a group"
+          body: "Group: %{title}. Message history stays hidden until you accept."
         topic_reply:
           title: "New reply: %{title}"
           body: "%{author}: %{excerpt}"
@@ -3886,7 +3906,7 @@ en:
         forum.mention: Mention
         forum.section_topic: New section topic
         forum.private_message: Private message
-        forum.conversation_invite: Added to a conversation
+        forum.conversation_invite: Group conversation invitation
         forum.followed_topic: Followed user topic
         forum.followed_reply: Followed user reply
         forum.tag_topic: New tag topic
@@ -4037,6 +4057,7 @@ en:
         subjects:
           topic_reply: "New reply: %{title}"
           private_message: "Private message from %{sender}"
+          conversation_invitation: "%{inviter} invited you to a group conversation"
           mention: "%{author} mentioned you in a topic"
           here: "%{author} mentioned you with @here"
           section_topic: "New topic in a watched section: %{title}"
@@ -4101,6 +4122,10 @@ en:
         private_message:
           body: "%{sender} sent you a private message:"
           view_message: "View message"
+        conversation_invitation:
+          body: "%{inviter} invited you to join the group conversation \"%{title}\". No message history is shown before you accept."
+          respond: "View and respond to invitation"
+          expires: "This invitation expires %{time}."
         user_warning:
           body: "You received a community warning (%{points} points):"
           total_points: "Total warning points: %{points}"

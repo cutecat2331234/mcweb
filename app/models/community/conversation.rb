@@ -4,6 +4,11 @@ module Community
   class Conversation < ApplicationRecord
     has_many :participants, class_name: "Community::ConversationParticipant", foreign_key: :forum_conversation_id, dependent: :destroy
     has_many :users, through: :participants
+    has_many :invitations,
+      class_name: "Community::ConversationInvitation",
+      foreign_key: :forum_conversation_id,
+      dependent: :destroy,
+      inverse_of: :conversation
     has_many :messages, class_name: "Community::Message", foreign_key: :forum_conversation_id, dependent: :destroy
     belongs_to :creator, class_name: "User", optional: true
 
@@ -18,7 +23,7 @@ module Community
     def display_name(current_user)
       return title if is_group? && title.present?
 
-      other_user(current_user)&.username || "私信"
+      other_user(current_user)&.username || I18n.t("mcweb.forum.messages.direct_fallback")
     end
 
     def participant_names
@@ -53,6 +58,10 @@ module Community
 
     def participant?(user)
       participants.exists?(user: user)
+    end
+
+    def occupied_participant_slots
+      participants.count + invitations.pending_actionable.count
     end
 
     def self.last_message_previews_for(conversation_ids)

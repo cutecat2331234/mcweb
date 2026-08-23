@@ -116,6 +116,8 @@ class Round68GroupPmLinkTest < ActiveSupport::TestCase
       recipient_usernames: sender.username,
       body: "Hello group"
     ).value[:conversation]
+    invitation = conv.invitations.find_by!(user: sender, status: "pending")
+    assert Community::AcceptConversationInvitation.call(user: sender, invitation: invitation).success?
 
     result = Community::SendMessage.call(user: sender, conversation: conv, body: "Link https://example.com")
     assert result.failure?

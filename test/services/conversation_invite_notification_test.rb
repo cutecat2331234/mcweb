@@ -16,10 +16,12 @@ class ConversationInviteNotificationTest < ActiveSupport::TestCase
     ).value[:conversation]
   end
 
-  test "notifies a user when they are added to a group conversation" do
+  test "notifies a user about a pending group invitation without adding them" do
     assert_difference -> { Notification.where(user: @invitee, notification_type: "forum.conversation_invite").count }, 1 do
       result = Community::AddConversationParticipant.call(actor: @creator, conversation: @conversation, username: @invitee.username)
       assert result.success?
     end
+    assert_not @conversation.participant?(@invitee)
+    assert @conversation.invitations.where(user: @invitee, status: "pending").exists?
   end
 end

@@ -59,7 +59,8 @@ module Community
         archivedToggleUrl: include_archived ? forum_conversations_path : forum_conversations_path(archived: 1),
         showStarred: show_starred,
         starredToggleUrl: show_starred ? forum_conversations_path : forum_conversations_path(starred: 1),
-        query: params[:q].to_s
+        query: params[:q].to_s,
+        conversationInvitations: pending_conversation_invitation_props
       }
     end
 
@@ -87,14 +88,14 @@ module Community
     def mark_unread
       conversation = find_accessible_conversation!
       conversation.mark_unread_for!(current_user)
-      redirect_to forum_conversations_path, notice: t("mcweb.flash.conversation_marked_unread", default: "已标记为未读")
+      redirect_to forum_conversations_path, notice: t("mcweb.flash.conversation_marked_unread")
     end
 
     def set_label
       conversation = find_accessible_conversation!
       participant = conversation.participants.find_by(user: current_user)
       participant&.update!(label: params[:label].to_s.strip.presence)
-      redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_labeled", default: "已更新标签")
+      redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_labeled")
     end
 
     def toggle_star
@@ -192,6 +193,30 @@ module Community
 
     private
 
+    def pending_conversation_invitation_props
+      Community::ConversationInvitation
+        .pending_actionable
+        .where(user: current_user)
+        .includes(:invited_by, :conversation)
+        .order(created_at: :asc, id: :asc)
+        .select do |invitation|
+          Community::NotificationAccess.conversation_invitation_visible?(
+            user: current_user,
+            invitation: invitation
+          )
+        end
+        .map do |invitation|
+          {
+            public_id: invitation.public_id,
+            title: invitation.conversation.title,
+            inviter: invitation.invited_by.username,
+            expires_at: l(invitation.expires_at, format: :short),
+            accept_url: accept_forum_conversation_invitation_path(invitation),
+            decline_url: decline_forum_conversation_invitation_path(invitation)
+          }
+        end
+    end
+
     def mark_conversation_read_through!(conversation, message_id)
       ActiveRecord::Base.transaction do
         message = conversation.messages.find(message_id)
@@ -211,7 +236,7 @@ module Community
 
       conversation.update!(invites_locked: locked)
       key = locked ? "mcweb.flash.conversation_invites_locked" : "mcweb.flash.conversation_invites_unlocked"
-      redirect_to forum_conversation_path(conversation), notice: t(key, default: (locked ? "已锁定邀请" : "已允许成员邀请"))
+      redirect_to forum_conversation_path(conversation), notice: t(key)
     end
 
     def find_accessible_conversation!

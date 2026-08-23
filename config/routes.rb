@@ -824,6 +824,12 @@ Rails.application.routes.draw do
       resource :message_draft, only: %i[update destroy], controller: "conversation_message_drafts"
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
     end
+    resources :conversation_invitations, only: [], param: :id do
+      member do
+        post :accept
+        post :decline
+      end
+    end
     get "members", to: "members#index", as: :members
     get "statistics", to: "forum_stats#index", as: :statistics
     get "help", to: "help#index", as: :help

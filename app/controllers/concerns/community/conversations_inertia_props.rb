@@ -66,7 +66,7 @@ module Community
     def group_add_participant_url(conversation)
       return nil unless conversation.is_group?
       return nil unless conversation.participant?(current_user)
-      return nil if conversation.participants.count >= Community::AddConversationParticipant.max_participants
+      return nil if conversation.occupied_participant_slots >= Community::AddConversationParticipant.max_participants
       return nil unless Community::TrustLevel.can_send_pm?(current_user)
 
       return nil unless Community::AddConversationParticipant.can_add_member?(current_user, conversation)
@@ -84,15 +84,15 @@ module Community
 
       if (conversation.invites_locked? || SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true") &&
          !Community::AddConversationParticipant.can_add_member?(current_user, conversation)
-        return "仅群主可添加新成员。"
+        return I18n.t("mcweb.forum.messages.group_add_restrictions.creator_only")
       end
 
-      if conversation.participants.count >= Community::AddConversationParticipant.max_participants
-        return "群组人数已满。"
+      if conversation.occupied_participant_slots >= Community::AddConversationParticipant.max_participants
+        return I18n.t("mcweb.forum.messages.group_add_restrictions.full")
       end
 
       unless Community::TrustLevel.can_send_pm?(current_user)
-        return "新成员暂时无法添加群组成员。"
+        return I18n.t("mcweb.forum.messages.group_add_restrictions.trust_level")
       end
 
       pm_restriction = Community::CheckWarningRestrictions.call(user: current_user, action: :pm)

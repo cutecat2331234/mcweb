@@ -32,7 +32,8 @@ class GroupConversationRecipientPrivacyTest < ActiveSupport::TestCase
 
     assert_predicate result, :success?
     assert_predicate result.value[:conversation], :is_group?
-    assert result.value[:conversation].participant?(@recipient)
+    assert_not result.value[:conversation].participant?(@recipient)
+    assert result.value[:conversation].invitations.where(user: @recipient, status: "pending").exists?
   end
 
   private

@@ -15,7 +15,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.participant_added")
+        redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.conversation_invitation_sent")
       else
         redirect_to forum_conversation_path(@conversation), alert: service_error_message(result)
       end

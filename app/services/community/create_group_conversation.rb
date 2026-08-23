@@ -7,7 +7,7 @@ module Community
     def initialize(sender:, title:, recipient_usernames:, body:, attachment_ids: [], ip_address: nil)
       @sender = sender
       @title = title.to_s.strip
-      @usernames = Array(recipient_usernames).flat_map { |n| n.to_s.split(",") }.map(&:strip).reject(&:blank?).uniq
+      @usernames = Array(recipient_usernames).flat_map { |name| name.to_s.split(",") }.map(&:strip).reject(&:blank?).uniq
       @usernames -= [ @sender.username ]
       @body = body.to_s.strip
       @attachment_ids = attachment_ids
@@ -24,7 +24,9 @@ module Community
 
       return ServiceResult.failure(error: :group_title_required) if @title.blank?
       return ServiceResult.failure(error: :add_other_participant) if @usernames.empty?
-      return ServiceResult.failure(error: :too_many_participants) if @usernames.size > MAX_PARTICIPANTS
+      if @usernames.size >= Community::AddConversationParticipant.max_participants
+        return ServiceResult.failure(error: :too_many_participants)
+      end
       return ServiceResult.failure(error: :message_too_short) if @body.length < 1
       return ServiceResult.failure(error: :new_members_cannot_send_pm) unless Community::TrustLevel.can_send_pm?(@sender)
 
@@ -38,32 +40,20 @@ module Community
       link_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :link)
       return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(@body)
 
-      recipients = User.where(username: @usernames)
-      missing = @usernames - recipients.pluck(:username)
+      recipients_by_username = User.where(username: @usernames).index_by(&:username)
+      missing = @usernames - recipients_by_username.keys
       if missing.any?
         return ServiceResult.failure(
           error: I18n.t("mcweb.services.errors.users_not_found", names: missing.join(", "))
         )
       end
-
-      recipients.each do |recipient|
-        if Community::UserBlock.blocked?(@sender, recipient)
-          return ServiceResult.failure(
-            error: I18n.t(
-              "mcweb.services.errors.cannot_message_user_named",
-              name: recipient.username
-            )
-          )
-        end
-        unless Community::PmPolicy.accepts?(recipient: recipient, sender: @sender)
-          return ServiceResult.failure(error: "pm_not_accepted")
-        end
-      end
+      recipients = @usernames.map { |username| recipients_by_username.fetch(username) }
 
       conversation = nil
       message = nil
-      attachment_result = nil
-      Community::Conversation.transaction do
+      invitations = []
+      failure = nil
+      Identity::UserMutationLock.with_users(users: [ @sender, *recipients ]) do
         conversation = Community::Conversation.create!(
           title: @title,
           is_group: true,
@@ -71,27 +61,49 @@ module Community
           last_message_at: Time.current
         )
         conversation.participants.create!(user: @sender)
-        recipients.each { |user| conversation.participants.create!(user: user) }
+
+        recipients.each do |recipient|
+          eligibility = Community::ConversationInvitationEligibility.call(
+            actor: @sender,
+            conversation: conversation,
+            invitee: recipient
+          )
+          if eligibility.failure?
+            failure = eligibility
+            raise ActiveRecord::Rollback
+          end
+
+          invitations << conversation.invitations.create!(
+            user: recipient,
+            invited_by: @sender,
+            expires_at: Time.current + Community::ConversationInvitation::DEFAULT_EXPIRY
+          )
+        end
+
         message = conversation.messages.create!(user: @sender, body: @body)
         attachment_result = Community::LinkMessageAttachments.call(
           user: @sender,
           message: message,
           attachment_ids: @attachment_ids
         )
-        raise ActiveRecord::Rollback if attachment_result.failure?
+        if attachment_result.failure?
+          failure = attachment_result
+          raise ActiveRecord::Rollback
+        end
 
         conversation.update!(last_message_at: message.created_at)
         conversation.mark_read_for!(@sender)
         conversation.unarchive_all_participants!
       end
-      return attachment_result if attachment_result&.failure?
+      return failure if failure
       return ServiceResult.failure(error: "message_create_failed") unless message&.persisted?
 
       Community::NotifyPrivateMessage.call(message: message, conversation: conversation)
+      invitations.each { |invitation| Community::NotifyConversationInvitation.call(invitation: invitation) }
 
-      ServiceResult.success(conversation: conversation, message: message)
-    rescue ActiveRecord::RecordInvalid => e
-      ServiceResult.failure(errors: e.record.errors.to_hash)
+      ServiceResult.success(conversation: conversation, message: message, invitations: invitations)
+    rescue ActiveRecord::RecordInvalid => error
+      ServiceResult.failure(errors: error.record.errors.to_hash)
     end
   end
 end

@@ -30,6 +30,29 @@ module Community
       mail(to: @user.email, subject: forum_subject(:private_message, sender: @message.user.username))
     end
 
+    def conversation_invitation(user_id, invitation_public_id)
+      @user = User.find(user_id)
+      Community::ConversationInvitation.transaction do
+        @invitation = Community::ConversationInvitation
+          .lock
+          .find_by(public_id: invitation_public_id, user: @user)
+        return unless Community::NotificationAccess.conversation_invitation_visible?(
+          user: @user,
+          invitation: @invitation
+        )
+
+        @conversation = @invitation.conversation
+        @inviter = @invitation.invited_by
+        @url = "#{root_url.chomp('/')}#{forum_conversations_path(anchor: 'conversation-invitations')}"
+        assign_notification_unsubscribe("forum.conversation_invite")
+
+        mail(
+          to: @user.email,
+          subject: forum_subject(:conversation_invitation, inviter: @inviter.username)
+        )
+      end
+    end
+
     def mention(user_id, topic_id, post_id)
       @user = User.find(user_id)
       return unless assign_visible_topic_and_post(topic_id, post_id)

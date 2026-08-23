@@ -66,13 +66,15 @@ class Round70AddParticipantValidationTest < ActionDispatch::IntegrationTest
     grant_permission(actor, "forum.users.mute")
     enable_forum_pm!(actor)
     enable_forum_pm!(silenced)
+    initial_member = create_user(username: "r70m#{SecureRandom.hex(3)}")
+    enable_forum_pm!(initial_member)
 
     Community::CreateUserSilence.call(actor: actor, user: silenced, reason: "Test", days: 1)
 
     result = Community::CreateGroupConversation.call(
       sender: actor,
       title: "R70 Group",
-      recipient_usernames: [ create_user(username: "r70m#{SecureRandom.hex(3)}").username ],
+      recipient_usernames: [ initial_member.username ],
       body: "Hi"
     )
     conv = result.value[:conversation]
@@ -90,11 +92,13 @@ class Round70AddParticipantValidationTest < ActionDispatch::IntegrationTest
     actor = create_user
     newbie = create_user(username: "r70new#{SecureRandom.hex(4)}")
     enable_forum_pm!(actor)
+    initial_member = create_user(username: "r70m2#{SecureRandom.hex(3)}")
+    enable_forum_pm!(initial_member)
 
     result = Community::CreateGroupConversation.call(
       sender: actor,
       title: "R70 Group2",
-      recipient_usernames: [ create_user(username: "r70m2#{SecureRandom.hex(3)}").username ],
+      recipient_usernames: [ initial_member.username ],
       body: "Hi"
     )
     conv = result.value[:conversation]

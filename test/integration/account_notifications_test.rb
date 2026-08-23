@@ -22,7 +22,7 @@ class AccountNotificationsTest < ActionDispatch::IntegrationTest
     assert_equal "Account/Notifications/Index", inertia.component
     assert_inertia_deferred_props :notifications, group: "portal_navigation"
 
-    inertia_load_deferred_props("portal_navigation")
+    load_deferred_props("portal_navigation")
     navigation = inertia.props.deep_symbolize_keys.fetch(:notifications)
     assert_equal 1, navigation.fetch(:unread_count)
     assert_equal account_notifications_path, navigation.fetch(:url)
@@ -163,7 +163,19 @@ class AccountNotificationsTest < ActionDispatch::IntegrationTest
   def inertia_headers
     {
       "X-Inertia" => "true",
-      "X-Inertia-Version" => InertiaRails.configuration.version
+      "X-Inertia-Version" => InertiaRails.configuration.version,
+      "X-McWeb-Application" => "account",
+      "HTTP_REFERER" => "http://www.example.com/app/account"
     }
+  end
+
+  def load_deferred_props(group)
+    deferred_props = inertia.deferred_props.fetch(group)
+    component = inertia.component
+    path = request.fullpath
+    get path, headers: inertia_headers.merge(
+      "X-Inertia-Partial-Data" => deferred_props.join(","),
+      "X-Inertia-Partial-Component" => component
+    )
   end
 end

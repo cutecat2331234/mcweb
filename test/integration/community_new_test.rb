@@ -39,7 +39,7 @@ class CommunityNewTest < ActionDispatch::IntegrationTest
 
     get forum_new_feed_path
     assert_inertia_deferred_props :forum_new, group: "portal_navigation"
-    inertia_load_deferred_props("portal_navigation")
+    load_deferred_props("portal_navigation")
     assert_equal 2, inertia.props.deep_symbolize_keys[:forum_new][:count]
   end
 
@@ -107,6 +107,20 @@ class CommunityNewTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def load_deferred_props(group)
+    deferred_props = inertia.deferred_props.fetch(group)
+    component = inertia.component
+    path = request.fullpath
+    get path, headers: {
+      "X-Inertia" => "true",
+      "X-Inertia-Version" => InertiaRails.configuration.version,
+      "X-Inertia-Partial-Data" => deferred_props.join(","),
+      "X-Inertia-Partial-Component" => component,
+      "X-McWeb-Application" => "forum",
+      "HTTP_REFERER" => "http://www.example.com/app/forum/latest"
+    }
+  end
 
   def seed_topic(title: "T", section: @section, created_at: Time.current, wiki: false)
     topic = Community::Topic.create!(

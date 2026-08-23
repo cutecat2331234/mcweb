@@ -290,7 +290,9 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
   def inertia_headers
     {
       "X-Inertia" => "true",
-      "X-Inertia-Version" => InertiaRails.configuration.version
+      "X-Inertia-Version" => InertiaRails.configuration.version,
+      "X-McWeb-Application" => "account",
+      "HTTP_REFERER" => "http://www.example.com/app/account"
     }
   end
 end

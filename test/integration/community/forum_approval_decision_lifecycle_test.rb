@@ -48,23 +48,33 @@ module Community
       sign_in_as(@moderator)
     end
 
-    test "forum and admin queues expose every permission-scoped page" do
-      get forum_moderation_approvals_path(page: 2), headers: inertia_headers
+    test "legacy forum queue redirects to staff while staff and admin expose their scoped pages" do
+      get forum_moderation_approvals_path(page: 2)
+
+      assert_redirected_to staff_forum_approvals_path(page: 2)
+
+      get staff_forum_approvals_path(page: 2), headers: inertia_headers(
+        application: "staff",
+        referer: "/app/staff"
+      )
 
       assert_response :success
       assert_equal "private, no-store", response.headers["Cache-Control"]
-      assert_equal "Community/Moderation/Approvals/Index", inertia.component
-      forum_props = inertia.props.deep_symbolize_keys
+      assert_equal "Staff/Forum/Approvals/Index", inertia.component
+      staff_props = inertia.props.deep_symbolize_keys
       assert_equal(
         { page: 2, pages: 2, count: 26 },
-        forum_props.fetch(:pagination).slice(:page, :pages, :count)
+        staff_props.fetch(:pagination).slice(:page, :pages, :count)
       )
-      assert_equal Community::RejectPost::REASON_MAX_LENGTH, forum_props.fetch(:reason_max_length)
-      assert_equal [ @posts.first.id ], forum_props.fetch(:posts).pluck(:id)
-      assert_includes forum_props.dig(:posts, 0, :approve_url), "approval_queue_page=2"
-      assert_includes forum_props.dig(:posts, 0, :reject_url), "approval_queue_page=2"
+      assert_equal Community::RejectPost::REASON_MAX_LENGTH, staff_props.fetch(:reason_max_length)
+      assert_equal [ @posts.first.id ], staff_props.fetch(:posts).pluck(:id)
+      assert_includes staff_props.dig(:posts, 0, :approve_url), "approval_queue_page=2"
+      assert_includes staff_props.dig(:posts, 0, :reject_url), "approval_queue_page=2"
 
-      get admin_forum_approvals_path(page: 2), headers: inertia_headers
+      get admin_forum_approvals_path(page: 2), headers: inertia_headers(
+        application: "admin",
+        referer: "/admin"
+      )
 
       assert_response :success
       assert_equal "Admin/Generic/Index", inertia.component
@@ -78,7 +88,10 @@ module Community
     end
 
     test "topic moderation action receives the shared rejection contract" do
-      get forum_topic_path(@topic), headers: inertia_headers
+      get forum_topic_path(@topic), headers: inertia_headers(
+        application: "forum",
+        referer: "/app/forum/latest"
+      )
 
       assert_response :success
       assert_equal "Community/Topics/Show", inertia.component
@@ -95,7 +108,13 @@ module Community
     test "admin detail and validation keep the canonical queue page" do
       pending_post = @posts.first
 
-      get admin_forum_approval_path(pending_post, approval_queue_page: 2), headers: inertia_headers
+      get admin_forum_approval_path(
+        pending_post,
+        approval_queue_page: 2
+      ), headers: inertia_headers(
+        application: "admin",
+        referer: "/admin/forum/approvals"
+      )
 
       assert_response :success
       assert_equal "Admin/Forum/Approvals/Show", inertia.component
@@ -108,7 +127,10 @@ module Community
       post reject_admin_forum_approval_path(pending_post), params: {
         approval_queue_page: 2,
         reason: "  "
-      }
+      }, headers: application_headers(
+        application: "admin",
+        referer: "/admin/forum/approvals"
+      )
 
       assert_redirected_to admin_forum_approval_path(pending_post, approval_queue_page: 2)
       assert_equal "pending_approval", pending_post.reload.status
@@ -117,19 +139,28 @@ module Community
     test "a decision that empties the last page recovers to the new last page" do
       pending_post = @posts.first
 
-      post reject_forum_post_path(pending_post), params: {
+      post reject_staff_forum_approval_path(pending_post), params: {
         approval_queue_page: 2,
         reason: "Duplicate submission"
-      }
+      }, headers: application_headers(
+        application: "staff",
+        referer: "/app/staff/forum/approvals"
+      )
 
-      assert_redirected_to forum_moderation_approvals_path(page: 2)
+      assert_redirected_to staff_forum_approvals_path(page: 2)
       assert_equal "hidden", pending_post.reload.status
 
-      get forum_moderation_approvals_path(page: 2)
+      get staff_forum_approvals_path(page: 2), headers: inertia_headers(
+        application: "staff",
+        referer: "/app/staff/forum/approvals"
+      )
 
-      assert_redirected_to forum_moderation_approvals_path(page: 1)
+      assert_redirected_to staff_forum_approvals_path(page: 1)
 
-      get admin_forum_approvals_path(page: 2)
+      get admin_forum_approvals_path(page: 2), headers: inertia_headers(
+        application: "admin",
+        referer: "/admin/forum/approvals"
+      )
 
       assert_redirected_to admin_forum_approvals_path(page: 1)
     end
@@ -138,7 +169,12 @@ module Community
       pending_post = @posts.first
       Community::SectionModerator.where(section: @section, user: @moderator).delete_all
 
-      post reject_forum_post_path(pending_post), params: { reason: "No longer authorized" }
+      post reject_forum_post_path(pending_post),
+        params: { reason: "No longer authorized" },
+        headers: application_headers(
+          application: "forum",
+          referer: forum_topic_path(@topic)
+        )
 
       assert_redirected_to forum_latest_path
       assert_equal "pending_approval", pending_post.reload.status
@@ -150,10 +186,17 @@ module Community
 
     private
 
-    def inertia_headers
-      {
+    def inertia_headers(application:, referer:)
+      application_headers(application:, referer:).merge(
         "X-Inertia" => "true",
         "X-Inertia-Version" => InertiaRails.configuration.version
+      )
+    end
+
+    def application_headers(application:, referer:)
+      {
+        "X-McWeb-Application" => application,
+        "HTTP_REFERER" => "http://www.example.com#{referer}"
       }
     end
   end

@@ -41,7 +41,9 @@ class IdentityProfileSelfServiceTest < ActionDispatch::IntegrationTest
       }
     }, headers: {
       "X-Inertia" => "true",
-      "X-McWeb-Locale" => "zh-CN"
+      "X-McWeb-Locale" => "zh-CN",
+      "X-McWeb-Application" => "account",
+      "HTTP_REFERER" => "http://www.example.com/app/identity/profile"
     }
 
     assert_redirected_to identity_profile_path

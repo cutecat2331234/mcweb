@@ -113,7 +113,10 @@ class NavigationReceiptIntegrationTest < ActionDispatch::IntegrationTest
     initial_views = topic.views_count
     sign_in_as(reader)
 
-    get forum_topic_path(topic), headers: inertia_headers
+    get forum_topic_path(topic), headers: inertia_headers(
+      application: "forum",
+      referer: "/app/forum/latest"
+    )
 
     assert_response :success
     assert_equal initial_views, topic.reload.views_count
@@ -148,7 +151,10 @@ class NavigationReceiptIntegrationTest < ActionDispatch::IntegrationTest
     participant = conversation.participants.find_by!(user: recipient)
     sign_in_as(recipient)
 
-    get forum_conversation_path(conversation), headers: inertia_headers
+    get forum_conversation_path(conversation), headers: inertia_headers(
+      application: "forum",
+      referer: "/app/forum/latest"
+    )
 
     assert_response :success
     assert_nil participant.reload.last_read_at
@@ -177,7 +183,10 @@ class NavigationReceiptIntegrationTest < ActionDispatch::IntegrationTest
     )
     sign_in_as(user)
 
-    get store_product_path(product), headers: inertia_headers
+    get store_product_path(product), headers: inertia_headers(
+      application: "store",
+      referer: "/app/store/products"
+    )
 
     assert_response :success
     assert_equal 0, product.reload.view_count
@@ -204,7 +213,10 @@ class NavigationReceiptIntegrationTest < ActionDispatch::IntegrationTest
     )
     sign_in_as(user)
 
-    get account_notifications_path, headers: inertia_headers
+    get account_notifications_path, headers: inertia_headers(
+      application: "account",
+      referer: "/app/account"
+    )
 
     assert_response :success
     assert_nil notification.reload.read_at
@@ -221,10 +233,12 @@ class NavigationReceiptIntegrationTest < ActionDispatch::IntegrationTest
 
   private
 
-  def inertia_headers
+  def inertia_headers(application:, referer:)
     {
       "X-Inertia" => "true",
-      "X-Inertia-Version" => InertiaRails.configuration.version
+      "X-Inertia-Version" => InertiaRails.configuration.version,
+      "X-McWeb-Application" => application,
+      "HTTP_REFERER" => "http://www.example.com#{referer}"
     }
   end
 

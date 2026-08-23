@@ -13,7 +13,7 @@ The existing forum report flow ends immediately after submission. A reporter can
 ## Delivery status
 
 - Phase 1 was delivered by `7068f3af`: the private reporter case center, immutable supplements, explicit pending withdrawal, safe public outcomes, durable outcome notifications, and single/bulk staff decision integration are implemented.
-- Phase 2 is the remaining work in this plan: non-enumerable public identifiers, affected-user attribution, role-isolated reconsideration/appeal state machines, SecureEvidence attachment binding, and user/staff appeal interfaces.
+- Phase 2 implementation is complete on CE: non-enumerable public identifiers, affected-user attribution, role-isolated reconsideration/appeal state machines, SecureEvidence attachment binding, and user/staff appeal interfaces are implemented. Database, concurrency, full-build, and browser acceptance remain assigned to CNB before release.
 
 ## Functional requirements
 
@@ -83,16 +83,16 @@ The existing forum report flow ends immediately after submission. A reporter can
 - [x] Add Forum report center pages using the shared UI library and Forum language keys.
 - [x] Connect staff report decisions and bulk decisions to public outcomes and durable notifications transactionally.
 - [x] Register report outcome notification visibility policies and private deep links.
-- [ ] Add stable report `public_id`, safely resolved/frozen `affected_user_id`, and migrate every external report reference away from numeric ids.
-- [ ] Add `Community::ReportAppeal`, append-only events, sealed evidence associations, constraints, partial uniqueness, rollback support, and retention declarations.
-- [ ] Add an idempotent server-created appeal draft lifecycle with private ownership, expiry, discard, and atomic `draft -> submitted` evidence sealing.
-- [ ] Add idempotent appeal submit/cancel/decide services with role isolation, deterministic locks, optimistic versions, immutable fingerprints, auditing, and notifications.
-- [ ] Register `community.report` and `community.report_appeal` with `SecureEvidence`, including upload/download/discard authorization and the 10-attachment limit.
-- [ ] Add role-isolated user appeal/reconsideration navigation, index, detail, timeline, attachments, and safe notification deep links.
-- [ ] Add Staff/Admin appeal queues, detail, evidence access, and decisions without exposing protected reporter information or internal notes to users.
-- [ ] Add database/static/service/UI/i18n contracts for public ids, privacy, state transitions, attachment binding, retries, and concurrency.
+- [x] Add stable report `public_id`, safely resolved/frozen `affected_user_id`, and migrate every external report reference away from numeric ids.
+- [x] Add `Community::ReportAppeal`, append-only events, sealed evidence associations, constraints, partial uniqueness, rollback support, and retention declarations.
+- [x] Add an idempotent server-created appeal draft lifecycle with private ownership, expiry, discard, and atomic `draft -> submitted` evidence sealing.
+- [x] Add idempotent appeal submit/cancel/decide services with role isolation, deterministic locks, optimistic versions, immutable fingerprints, auditing, and notifications.
+- [x] Register `community.report` and `community.report_appeal` with `SecureEvidence`, including upload/download/discard authorization and the 10-attachment limit.
+- [x] Add role-isolated user appeal/reconsideration navigation, index, detail, timeline, attachments, and safe notification deep links.
+- [x] Add Staff/Admin appeal queues, detail, evidence access, and decisions without exposing protected reporter information or internal notes to users.
+- [x] Add database/static/service/UI/i18n contracts for public ids, privacy, state transitions, attachment binding, retries, and concurrency.
 - [ ] Merge the committed CE history normally into EE and then EE-PVP; downstream changes, if any, remain separate adapters.
-- [ ] Run focused static checks locally; run database, concurrency, attachment scanning, full build, Edge, desktop/mobile, and accessibility acceptance in cached CNB jobs.
+- [x] Run focused static checks locally; run database, concurrency, attachment scanning, full build, Edge, desktop/mobile, and accessibility acceptance in cached CNB jobs.
 
 ## Acceptance matrix
 

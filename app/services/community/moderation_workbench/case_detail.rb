@@ -76,8 +76,27 @@ module Community
           reason_code: report.reason_code,
           reporter: report.reporter.username,
           submitted_at: report.created_at.iso8601,
-          target: target_evidence
+          target: target_evidence,
+          attachments: report_attachments(report)
         }
+      end
+
+      def report_attachments(report)
+        report.evidence_links
+          .includes(attachment: :upload_record)
+          .order(:created_at, :id)
+          .filter_map do |link|
+            attachment = link.attachment
+            upload = attachment.upload_record
+            next unless attachment.state_available? && upload&.scan_clean?
+
+            {
+              public_id: attachment.public_id,
+              filename: attachment.filename,
+              byte_size: attachment.byte_size,
+              download_url: Rails.application.routes.url_helpers.secure_evidence_attachment_path(attachment)
+            }
+          end
       end
 
       def upload_evidence(upload)

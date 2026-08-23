@@ -75,6 +75,13 @@ type Evidence = Record<string, unknown> & {
   type?: string
 }
 
+type EvidenceAttachment = {
+  public_id: string
+  filename: string
+  byte_size: number
+  download_url: string
+}
+
 type Note = {
   id?: number
   body: string
@@ -426,7 +433,24 @@ function evidenceEntries() {
   if (!value) return []
   if (typeof value === 'string') return [['content', value]]
   if (Array.isArray(value)) return [['items', value]]
-  return Object.entries(value)
+  return Object.entries(value).filter(([key]) => key !== 'attachments')
+}
+
+function evidenceAttachments(): EvidenceAttachment[] {
+  const value = detail.value?.evidence
+  const items = Array.isArray(value) ? value : [value]
+
+  return items.flatMap((item) => {
+    if (!item || typeof item !== 'object' || !Array.isArray(item.attachments)) return []
+    return item.attachments.filter((attachment): attachment is EvidenceAttachment =>
+      Boolean(
+        attachment &&
+        typeof attachment === 'object' &&
+        typeof (attachment as EvidenceAttachment).public_id === 'string' &&
+        typeof (attachment as EvidenceAttachment).download_url === 'string',
+      ),
+    )
+  })
 }
 
 function displayValue(value: unknown) {
@@ -748,6 +772,18 @@ onMounted(() => {
                 </TypographyParagraph>
               </DescriptionsItem>
             </Descriptions>
+            <Space v-if="evidenceAttachments().length" wrap>
+              <Button
+                v-for="(attachment, index) in evidenceAttachments()"
+                :key="attachment.public_id"
+                :href="attachment.download_url"
+                type="text"
+                size="small"
+                data-no-prefetch
+              >
+                {{ t('staffWorkspace.cases.downloadEvidence', { number: index + 1 }) }}
+              </Button>
+            </Space>
           </Card>
 
           <Grid :cols="{ xs: 1, md: 2 }" :col-gap="12" :row-gap="12">

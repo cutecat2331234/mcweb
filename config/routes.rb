@@ -140,13 +140,19 @@ Rails.application.routes.draw do
         end
       end
       resources :topics, only: %i[index show]
-      resources :reports, only: %i[index show update] do
+      resources :reports, only: %i[index show update], param: :public_id do
         member do
           patch :claim
           patch :resolve_target
           post :reveal_evidence
         end
       end
+      resources :report_appeals,
+        path: "report-appeals",
+        only: %i[index show update],
+        param: :public_id do
+          member { post :evidence, action: :seal_evidence }
+        end
       resources :mutes, only: %i[create destroy]
       resources :censored_words, only: %i[index create destroy]
       resources :badges, only: %i[index new create edit update destroy]
@@ -596,6 +602,12 @@ Rails.application.routes.draw do
           post :notes
         end
       end
+      resources :report_appeals,
+        path: "report-appeals",
+        only: %i[index show update],
+        param: :public_id do
+          member { post :evidence, action: :seal_evidence }
+        end
     end
 
     namespace :secure_evidence, path: "evidence" do
@@ -696,10 +708,21 @@ Rails.application.routes.draw do
         post :reject
       end
     end
-    resources :reports, only: %i[index show new create] do
+    resources :reports, only: %i[index show new create], param: :public_id do
       member do
         post :supplements
         patch :withdraw
+        post :appeal_draft
+        post :evidence, action: :seal_evidence
+      end
+    end
+    resources :report_appeals,
+      path: "report-appeals",
+      only: %i[index show],
+      param: :public_id do
+      member do
+        patch :submit
+        patch :cancel
       end
     end
     resources :notifications, only: %i[index destroy] do

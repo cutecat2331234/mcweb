@@ -171,7 +171,7 @@ module Community
 
       assert_difference -> { Notification.where(notification_type: "forum.report_outcome").count }, 1 do
         assert_difference -> { Community::ReportOutcomeDelivery.count }, 1 do
-          assert_difference -> { Operations::DurableEnqueueIntent.count }, 1 do
+          assert_difference -> { Operations::DurableEnqueueIntent.count }, 2 do
             result = decide(report:, key:)
             assert_predicate result, :success?, result.error
             assert_equal false, result.value.fetch(:replayed)
@@ -187,7 +187,8 @@ module Community
       assert_equal @reporter.id, notification.user_id
       assert_equal false, notification.auto_dismiss
       metadata = notification.reload.metadata.stringify_keys
-      assert_equal %w[path public_outcome_code report_id], metadata.keys.sort
+      assert_equal %w[path public_outcome_code report_public_id], metadata.keys.sort
+      assert_equal report.public_id, metadata.fetch("report_public_id")
       assert_equal forum_report_path(report), metadata.fetch("path")
       refute_includes metadata.to_json, @reviewer.username
       refute_includes metadata.to_json, "internal decision"
@@ -370,7 +371,7 @@ module Community
       assert_equal 2, notifications.count
       notifications.each do |notification|
         metadata = notification.metadata.stringify_keys
-        assert_equal %w[path public_outcome_code report_id], metadata.keys.sort
+        assert_equal %w[path public_outcome_code report_public_id], metadata.keys.sort
         refute_includes metadata.to_json, "2 reports"
         refute_includes metadata.to_json, "internal bulk note"
       end
@@ -389,7 +390,12 @@ module Community
 
       notification.update!(metadata: notification.metadata.merge("path" => "/app/forum/reports/999999"))
       assert_not Community::NotificationAccess.visible?(notification:, user: @reporter)
-      notification.update!(metadata: notification.metadata.merge("path" => forum_report_path(report), "report_id" => report.id + 1))
+      notification.update!(
+        metadata: notification.metadata.merge(
+          "path" => forum_report_path(report),
+          "report_public_id" => "rpt_forged_reference"
+        )
+      )
       assert_not Community::NotificationAccess.visible?(notification:, user: @reporter)
     end
 

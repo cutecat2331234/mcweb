@@ -215,6 +215,11 @@ const nav = computed<NavGroup[]>(() => {
           permissionKey: 'forum.topics.lock',
         },
         {
+          label: t('admin.forumReportAppeals'),
+          href: adminRoutes.forumReportAppeals,
+          permissionAny: ['forum.topics.lock', 'forum.conversations.reports.review'],
+        },
+        {
           label: t('admin.forumApprovals'),
           href: adminRoutes.forumApprovals,
           capabilityKey: 'forum.approvals.read',

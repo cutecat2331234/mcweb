@@ -430,6 +430,10 @@ en:
       report_submitted: Report submitted.
       report_supplement_added: Additional information added.
       report_withdrawn: Report withdrawn.
+      report_evidence_added: Evidence added to the case.
+      report_appeal_submitted: Appeal submitted for review.
+      report_appeal_cancelled: Appeal cancelled.
+      report_appeal_decided: Appeal decision saved.
       report_rate_limited: You are submitting reports too quickly. Please wait a while and try again.
       content_not_found: Content not found or access denied.
       draft_saved: Draft saved.
@@ -1034,6 +1038,28 @@ en:
         report_internal_note_too_long: The internal note is too long.
         report_target_mutation_failed: The report decision could not be completed.
         report_mutation_failed: The report could not be changed. Try again.
+        report_affected_user_unavailable: The affected account could not be verified for this decision.
+        report_evidence_unavailable: This evidence is unavailable or cannot be attached to this case.
+        report_evidence_limit_exceeded: A case can contain at most 10 evidence files.
+        report_evidence_not_clean: Evidence must finish malware scanning before it can be attached.
+        report_evidence_already_sealed: This evidence is already attached to a case.
+        report_evidence_mutation_failed: Evidence could not be attached. Try again.
+        report_appeal_unavailable: This appeal is unavailable or you cannot access it.
+        report_appeal_role_invalid: This report does not allow that type of appeal.
+        report_appeal_idempotency_key_invalid: Refresh this appeal and try again.
+        report_appeal_idempotency_conflict: This request identifier was already used for a different appeal change.
+        report_appeal_already_active: An active appeal already exists for this report and role.
+        report_appeal_mutation_failed: The appeal could not be changed. Try again.
+        report_appeal_reason_required: Explain why the decision should be reviewed.
+        report_appeal_reason_too_long: Appeal details cannot exceed 5,000 characters.
+        report_appeal_version_required: Refresh this appeal before changing it.
+        report_appeal_version_conflict: This appeal changed. Review the latest status and try again.
+        report_appeal_state_conflict: This appeal is no longer in a state that permits that change.
+        report_appeal_draft_expired: This private appeal draft has expired. Start a new appeal.
+        report_appeal_draft_not_expired: This appeal draft is still active.
+        report_appeal_decision_invalid: Select a valid appeal decision.
+        report_appeal_internal_note_too_long: The internal note cannot exceed 5,000 characters.
+        report_appeal_reviewer_conflict: Another reviewer has already claimed this appeal.
         message_revision_required: Refresh the conversation before editing this message.
         message_revision_conflict: This message changed while you were editing it. Refresh and try again.
         post_revision_required: Refresh the topic before editing this post.
@@ -1862,6 +1888,11 @@ en:
           review_complete: Review completed
           not_upheld: No action was taken based on this report
           action_taken: Action was taken under the community rules
+      report_appeals:
+        public_outcomes:
+          upheld: The original report decision was upheld
+          overturned: The original report decision was overturned; any follow-up action is handled separately
+          cancelled: The appeal was cancelled
       stats:
         topics: Topics
         posts: Posts
@@ -2069,6 +2100,12 @@ en:
       in_app:
         report_outcome:
           title: Your report has been reviewed
+          body: "Outcome: %{outcome}"
+        report_subject_action:
+          title: A community report decision affects your account
+          body: Open the private appeal center to review the decision and available options.
+        report_appeal_outcome:
+          title: Your appeal has been reviewed
           body: "Outcome: %{outcome}"
         profile_post:
           title: "%{author} posted on your profile"
@@ -2935,6 +2972,7 @@ en:
           action_dismiss: Dismiss report
           action_claim: Claim
           action_reveal_evidence: Reveal encrypted evidence
+          action_download_evidence: "Download report evidence %{number}"
           action_resolve_target_action: Agree & hide all flags
           action_uphold_all: Uphold all reports
           action_uphold_all_private_messages: Uphold all reports and retain evidence

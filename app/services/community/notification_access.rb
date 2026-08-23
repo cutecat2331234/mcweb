@@ -15,6 +15,8 @@ module Community
     PROFILE_POST_TYPE = "forum.profile_post"
     PROFILE_POST_COMMENT_TYPE = "forum.profile_post_comment"
     REPORT_OUTCOME_TYPE = "forum.report_outcome"
+    REPORT_SUBJECT_ACTION_TYPE = "forum.report_subject_action"
+    REPORT_APPEAL_OUTCOME_TYPE = "forum.report_appeal_outcome"
     TAG_SUBSCRIBABLE_TYPE = "Community::Tag"
     CONVERSATION_RESOURCE_TYPES = %w[
       forum.conversation_invite
@@ -125,6 +127,8 @@ module Community
       preload_profile_posts
       preload_tag_access
       preload_report_outcomes
+      preload_report_subject_actions
+      preload_report_appeal_outcomes
     end
 
     def visible?(notification)
@@ -139,6 +143,8 @@ module Community
       return false unless bookmark_reminder_visible?(notification)
       return false unless profile_post_visible?(notification)
       return false unless report_outcome_visible?(notification)
+      return false unless report_subject_action_visible?(notification)
+      return false unless report_appeal_outcome_visible?(notification)
 
       true
     end
@@ -244,6 +250,30 @@ module Community
         .index_by(&:notification_id)
     rescue ActiveRecord::ActiveRecordError
       @report_outcome_deliveries_by_notification_id = {}
+    end
+
+    def preload_report_subject_actions
+      notification_ids = @notifications.filter_map do |notification|
+        notification.id if notification.notification_type == REPORT_SUBJECT_ACTION_TYPE
+      end
+      @report_subject_deliveries_by_notification_id = Community::ReportSubjectActionDelivery
+        .includes(:report)
+        .where(notification_id: notification_ids)
+        .index_by(&:notification_id)
+    rescue ActiveRecord::ActiveRecordError
+      @report_subject_deliveries_by_notification_id = {}
+    end
+
+    def preload_report_appeal_outcomes
+      notification_ids = @notifications.filter_map do |notification|
+        notification.id if notification.notification_type == REPORT_APPEAL_OUTCOME_TYPE
+      end
+      @report_appeal_deliveries_by_notification_id = Community::ReportAppealOutcomeDelivery
+        .includes(:appeal)
+        .where(notification_id: notification_ids)
+        .index_by(&:notification_id)
+    rescue ActiveRecord::ActiveRecordError
+      @report_appeal_deliveries_by_notification_id = {}
     end
 
     def topic_visible?(notification)
@@ -373,15 +403,49 @@ module Community
       delivery = @report_outcome_deliveries_by_notification_id[notification.id]
       report = delivery&.report
       values = metadata(notification)
-      report_id = positive_metadata_id(notification, "report_id")
+      report_public_id = values["report_public_id"] || values[:report_public_id]
       outcome = values["public_outcome_code"] || values[:public_outcome_code]
-      return false unless report && report_id == report.id
+      return false unless report && report_public_id.to_s == report.public_id
       return false unless report.reporter_id == @user.id
       return false unless report.status.in?(Community::Report::STAFF_FINAL_STATUSES)
       return false unless outcome.to_s == report.public_outcome_code
       return false unless delivery.public_outcome_code == report.public_outcome_code
 
       notification.destination_path == Rails.application.routes.url_helpers.forum_report_path(report)
+    rescue ActiveRecord::ActiveRecordError, ActionController::UrlGenerationError
+      false
+    end
+
+    def report_subject_action_visible?(notification)
+      return true unless notification.notification_type == REPORT_SUBJECT_ACTION_TYPE
+
+      delivery = @report_subject_deliveries_by_notification_id[notification.id]
+      report = delivery&.report
+      values = metadata(notification)
+      report_public_id = values["report_public_id"] || values[:report_public_id]
+      return false unless report && report_public_id.to_s == report.public_id
+      return false unless report.actioned? && report.affected_user_id == @user.id
+
+      notification.destination_path == Rails.application.routes.url_helpers.forum_report_appeals_path
+    rescue ActiveRecord::ActiveRecordError, ActionController::UrlGenerationError
+      false
+    end
+
+    def report_appeal_outcome_visible?(notification)
+      return true unless notification.notification_type == REPORT_APPEAL_OUTCOME_TYPE
+
+      delivery = @report_appeal_deliveries_by_notification_id[notification.id]
+      appeal = delivery&.appeal
+      values = metadata(notification)
+      appeal_public_id = values["appeal_public_id"] || values[:appeal_public_id]
+      outcome = values["public_outcome_code"] || values[:public_outcome_code]
+      return false unless appeal && appeal_public_id.to_s == appeal.public_id
+      return false unless appeal.appellant_id == @user.id
+      return false unless appeal.status.in?(%w[upheld overturned])
+      return false unless outcome.to_s == appeal.public_outcome_code
+      return false unless delivery.public_outcome_code == appeal.public_outcome_code
+
+      notification.destination_path == Rails.application.routes.url_helpers.forum_report_appeal_path(appeal)
     rescue ActiveRecord::ActiveRecordError, ActionController::UrlGenerationError
       false
     end

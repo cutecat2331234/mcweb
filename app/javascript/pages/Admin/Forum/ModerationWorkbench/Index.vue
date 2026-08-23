@@ -76,6 +76,13 @@ type Evidence = {
   [key: string]: unknown
 }
 
+type EvidenceAttachment = {
+  public_id: string
+  filename: string
+  byte_size: number
+  download_url: string
+}
+
 type Note = {
   id?: number
   body: string
@@ -484,9 +491,22 @@ function handleBulkCompleted(_result: ModerationExecutionResponse) {
 }
 
 function displayEvidence(item: Evidence) {
-  const value = item.content ?? item.value ?? item
+  const { attachments: _attachments, ...evidence } = item
+  const value = item.content ?? item.value ?? evidence
   if (typeof value === 'string') return value
   return JSON.stringify(value, null, 2)
+}
+
+function evidenceAttachments(item: Evidence): EvidenceAttachment[] {
+  if (!Array.isArray(item.attachments)) return []
+  return item.attachments.filter((attachment): attachment is EvidenceAttachment =>
+    Boolean(
+      attachment &&
+      typeof attachment === 'object' &&
+      typeof (attachment as EvidenceAttachment).public_id === 'string' &&
+      typeof (attachment as EvidenceAttachment).download_url === 'string',
+    ),
+  )
 }
 
 function evidenceLabel(item: Evidence, index: number) {
@@ -958,6 +978,18 @@ function noteAuthor(note: Note) {
               :auto-size="{ minRows: 2, maxRows: 12 }"
               :aria-label="evidenceLabel(item, index)"
             />
+            <Space v-if="evidenceAttachments(item).length" wrap>
+              <Button
+                v-for="(attachment, attachmentIndex) in evidenceAttachments(item)"
+                :key="attachment.public_id"
+                :href="attachment.download_url"
+                type="text"
+                size="small"
+                data-no-prefetch
+              >
+                {{ t('admin.moderationWorkbench.details.downloadEvidence', { number: attachmentIndex + 1 }) }}
+              </Button>
+            </Space>
           </Card>
         </Space>
         <Empty v-else :description="t('admin.moderationWorkbench.details.noEvidence')" />

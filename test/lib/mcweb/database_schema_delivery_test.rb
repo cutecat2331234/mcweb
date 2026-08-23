@@ -97,6 +97,48 @@ module Mcweb
       end
     end
 
+    test "fresh database schema includes report appeal and secure evidence guards" do
+      schema = Rails.root.join("db/schema.rb").read
+
+      %w[
+        forum_report_appeals
+        forum_report_appeal_events
+        forum_report_attachments
+        forum_report_appeal_attachments
+        forum_report_appeal_outcome_deliveries
+        forum_report_subject_action_deliveries
+      ].each do |table|
+        assert_includes schema, %(create_table "#{table}")
+      end
+
+      %w[
+        forum_report_appeals_guard_change
+        forum_report_appeals_reject_delete
+        forum_reports_guard_affected_user
+        forum_report_appeal_events_reject_change
+        forum_report_attachments_validate_insert
+        forum_report_appeal_attachments_validate_insert
+        forum_report_appeal_deliveries_validate_insert
+        forum_report_subject_deliveries_validate_insert
+      ].each do |function|
+        assert_includes schema, "CREATE OR REPLACE FUNCTION public.#{function}()"
+      end
+
+      %w[
+        forum_report_appeals_guard_change
+        forum_report_appeals_reject_delete
+        forum_reports_affected_user_guard
+        forum_report_appeal_events_immutable
+        forum_report_attachments_insert_contract
+        forum_report_appeal_attachments_insert_contract
+        forum_report_appeal_deliveries_insert_contract
+        forum_report_subject_deliveries_insert_contract
+      ].each do |trigger|
+        assert_includes schema, "CREATE TRIGGER #{trigger}"
+      end
+      assert_includes schema, 'name: "forum_reports_affected_user_shape"'
+    end
+
     test "fresh database schema accepts immutable secure evidence discard events" do
       schema = Rails.root.join("db/schema.rb").read
 

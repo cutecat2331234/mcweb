@@ -88,7 +88,10 @@ module Admin
           title: forum_t("reports.show_title"),
           fields: fields,
           backUrl: admin_forum_reports_path,
-          actions: report_actions + evidence_actions(reveal_evidence: reveal_evidence) + reportable_actions
+          actions: report_actions +
+            evidence_actions(reveal_evidence: reveal_evidence) +
+            report_attachment_actions +
+            reportable_actions
         }, encrypt_history: true
       end
 
@@ -168,6 +171,8 @@ module Admin
       end
 
       def authorize_report
+        return head :not_found if report_participant?
+
         allowed = private_message_report? ? can_review_private_messages? : can_review_regular_reports?
         return if allowed
 
@@ -175,7 +180,7 @@ module Admin
       end
 
       def authorized_reports_scope
-        if can_review_regular_reports? && can_review_private_messages?
+        scope = if can_review_regular_reports? && can_review_private_messages?
           ::Community::Report.all
         elsif can_review_private_messages?
           ::Community::Report.where(reportable_type: "Community::Message")
@@ -184,6 +189,8 @@ module Admin
         else
           ::Community::Report.none
         end
+        scope.where.not(reporter_id: current_user.id)
+          .where("affected_user_id IS NULL OR affected_user_id <> ?", current_user.id)
       end
 
       def can_review_regular_reports?
@@ -198,8 +205,12 @@ module Admin
         @report&.reportable_type == "Community::Message"
       end
 
+      def report_participant?
+        @report.reporter_id == current_user.id || @report.affected_user_id == current_user.id
+      end
+
       def set_report
-        @report = ::Community::Report.find(params[:id])
+        @report = ::Community::Report.find_by!(public_id: params[:public_id])
       end
 
       def report_params
@@ -345,6 +356,24 @@ module Admin
             variant: "outline"
           }
         ]
+      end
+
+      def report_attachment_actions
+        links = @report.evidence_links
+          .includes(attachment: :upload_record)
+          .order(:created_at, :id)
+
+        links.filter_map do |link|
+          attachment = link.attachment
+          attachment if attachment.state_available? && attachment.upload_record&.scan_clean?
+        end.map.with_index do |attachment, index|
+          {
+            label: forum_t("reports.action_download_evidence", number: index + 1),
+            href: secure_evidence_attachment_path(attachment),
+            variant: "outline",
+            hardNavigation: true
+          }
+        end
       end
 
       def report_disposition(report, status:)

@@ -150,6 +150,11 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
             href: routes.forumReports,
             loginRequired: true,
             icon: 'file-text',
+          }, {
+            label: t('forum.reportAppeals.navigation'),
+            href: routes.forumReportAppeals,
+            loginRequired: true,
+            icon: 'shield',
           } ] : []),
         ],
       })

@@ -430,6 +430,10 @@
       report_submitted: 举报已提交。
       report_supplement_added: 补充说明已添加。
       report_withdrawn: 举报已撤回。
+      report_evidence_added: 证据已添加到此案件。
+      report_appeal_submitted: 复议或申诉已提交审核。
+      report_appeal_cancelled: 复议或申诉已取消。
+      report_appeal_decided: 复议或申诉决定已保存。
       report_rate_limited: 举报过于频繁，请稍后再试。
       content_not_found: 内容不存在或无权访问。
       draft_saved: 草稿已保存。
@@ -1034,6 +1038,28 @@
         report_internal_note_too_long: 内部说明过长。
         report_target_mutation_failed: 无法完成此次举报决定。
         report_mutation_failed: 无法更改此举报，请重试。
+        report_affected_user_unavailable: 无法核实此次决定所影响的账号。
+        report_evidence_unavailable: 此证据不可用，或不能添加到该案件。
+        report_evidence_limit_exceeded: 每个案件最多可包含 10 个证据文件。
+        report_evidence_not_clean: 证据必须完成恶意文件扫描后才能添加。
+        report_evidence_already_sealed: 此证据已添加到案件中。
+        report_evidence_mutation_failed: 无法添加证据，请重试。
+        report_appeal_unavailable: 此复议或申诉不可用，或你无权访问。
+        report_appeal_role_invalid: 此举报不允许发起该类型的复议或申诉。
+        report_appeal_idempotency_key_invalid: 请刷新此复议或申诉后重试。
+        report_appeal_idempotency_conflict: 此请求标识已用于另一项复议或申诉变更。
+        report_appeal_already_active: 此举报和申请角色已有一项进行中的复议或申诉。
+        report_appeal_mutation_failed: 无法更改此复议或申诉，请重试。
+        report_appeal_reason_required: 请说明需要重新审查该决定的原因。
+        report_appeal_reason_too_long: 复议或申诉说明不能超过 5,000 个字符。
+        report_appeal_version_required: 请刷新此复议或申诉后再进行更改。
+        report_appeal_version_conflict: 此复议或申诉已发生变化，请查看最新状态后重试。
+        report_appeal_state_conflict: 此复议或申诉目前不能进行该项变更。
+        report_appeal_draft_expired: 此私密草稿已过期，请重新发起复议或申诉。
+        report_appeal_draft_not_expired: 此复议或申诉草稿仍在有效期内。
+        report_appeal_decision_invalid: 请选择有效的复议或申诉决定。
+        report_appeal_internal_note_too_long: 内部说明不能超过 5,000 个字符。
+        report_appeal_reviewer_conflict: 另一名审核人员已接手此复议或申诉。
         message_revision_required: 编辑前请刷新当前私信会话。
         message_revision_conflict: 编辑期间私信已发生变化，请刷新后重试。
         post_revision_required: 编辑前请刷新当前主题。
@@ -1862,6 +1888,11 @@
           review_complete: 审核已完成
           not_upheld: 未因本次举报采取措施
           action_taken: 已依据社区规则采取措施
+      report_appeals:
+        public_outcomes:
+          upheld: 原举报决定维持不变
+          overturned: 原举报决定已被改判；后续措施将由独立流程处理
+          cancelled: 复议或申诉已取消
       stats:
         topics: 主题
         posts: 帖子
@@ -2069,6 +2100,12 @@
       in_app:
         report_outcome:
           title: 你的举报已有处理结果
+          body: "处理结果：%{outcome}"
+        report_subject_action:
+          title: 一项社区举报决定涉及你的账号
+          body: 请打开私密申诉中心查看决定和可用操作。
+        report_appeal_outcome:
+          title: 你的复议或申诉已有处理结果
           body: "处理结果：%{outcome}"
         profile_post:
           title: "%{author} 在你的主页留言"
@@ -2935,6 +2972,7 @@
           action_dismiss: 驳回举报
           action_claim: 认领
           action_reveal_evidence: 查看加密证据
+          action_download_evidence: "下载举报证据 %{number}"
           action_resolve_target_action: 采纳并隐藏全部举报
           action_uphold_all: 采纳全部举报
           action_uphold_all_private_messages: 采纳全部举报并保留证据

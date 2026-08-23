@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -796,6 +796,103 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
     t.index ["user_id"], name: "index_forum_reply_drafts_on_user_id"
   end
 
+  create_table "forum_report_appeal_attachments", force: :cascade do |t|
+    t.string "audience", null: false
+    t.datetime "created_at", null: false
+    t.bigint "forum_report_appeal_id", null: false
+    t.bigint "sealed_by_id", null: false
+    t.bigint "secure_evidence_attachment_id", null: false
+    t.index ["forum_report_appeal_id", "created_at"], name: "idx_forum_report_appeal_attachments_timeline"
+    t.index ["forum_report_appeal_id"], name: "index_forum_report_appeal_attachments_on_forum_report_appeal_id"
+    t.index ["sealed_by_id"], name: "index_forum_report_appeal_attachments_on_sealed_by_id"
+    t.index ["secure_evidence_attachment_id"], name: "idx_forum_report_appeal_attachments_evidence", unique: true
+    t.check_constraint "audience::text = ANY (ARRAY['appellant'::text, 'reviewers'::text])", name: "forum_report_appeal_attachments_audience"
+  end
+
+  create_table "forum_report_appeal_events", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.bigint "forum_report_appeal_id", null: false
+    t.string "from_status"
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.datetime "occurred_at", null: false
+    t.string "public_outcome_code"
+    t.string "request_fingerprint", limit: 64, null: false
+    t.string "to_status", null: false
+    t.index ["actor_id"], name: "index_forum_report_appeal_events_on_actor_id"
+    t.index ["forum_report_appeal_id", "event_type", "idempotency_key_digest"], name: "idx_forum_report_appeal_events_idempotency", unique: true
+    t.index ["forum_report_appeal_id", "occurred_at", "id"], name: "idx_forum_report_appeal_events_timeline"
+    t.index ["forum_report_appeal_id"], name: "idx_forum_report_appeal_events_appeal"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_appeal_events_digests"
+    t.check_constraint "event_type::text = ANY (ARRAY['drafted'::text, 'submitted'::text, 'review_started'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])", name: "forum_report_appeal_events_type"
+    t.check_constraint "(from_status IS NULL OR from_status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])) AND to_status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])", name: "forum_report_appeal_events_status"
+  end
+
+  create_table "forum_report_appeal_outcome_deliveries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_report_appeal_id", null: false
+    t.bigint "notification_id"
+    t.string "public_outcome_code", null: false
+    t.index ["forum_report_appeal_id"], name: "idx_forum_report_appeal_deliveries_appeal", unique: true
+    t.index ["notification_id"], name: "idx_forum_report_appeal_deliveries_notification", unique: true
+    t.check_constraint "public_outcome_code::text = ANY (ARRAY['upheld'::text, 'overturned'::text])", name: "forum_report_appeal_deliveries_outcome"
+  end
+
+  create_table "forum_report_appeals", force: :cascade do |t|
+    t.bigint "appellant_id", null: false
+    t.string "appellant_role", null: false
+    t.datetime "cancelled_at"
+    t.datetime "created_at", null: false
+    t.datetime "decided_at"
+    t.string "decision_idempotency_key_digest", limit: 64
+    t.string "decision_request_fingerprint", limit: 64
+    t.string "draft_idempotency_key_digest", limit: 64, null: false
+    t.string "draft_request_fingerprint", limit: 64, null: false
+    t.datetime "expires_at"
+    t.bigint "forum_report_id", null: false
+    t.text "internal_note"
+    t.integer "lock_version", default: 0, null: false
+    t.string "public_id", limit: 64, null: false
+    t.string "public_outcome_code"
+    t.text "reason"
+    t.datetime "review_started_at"
+    t.bigint "reviewer_id"
+    t.datetime "state_changed_at", null: false
+    t.string "status", default: "draft", null: false
+    t.string "submit_idempotency_key_digest", limit: 64
+    t.string "submit_request_fingerprint", limit: 64
+    t.datetime "submitted_at"
+    t.datetime "updated_at", null: false
+    t.string "cancel_idempotency_key_digest", limit: 64
+    t.string "cancel_request_fingerprint", limit: 64
+    t.index ["appellant_id", "draft_idempotency_key_digest"], name: "idx_forum_report_appeals_draft_idempotency", unique: true
+    t.index ["appellant_id"], name: "index_forum_report_appeals_on_appellant_id"
+    t.index ["forum_report_id", "appellant_id", "appellant_role"], name: "idx_forum_report_appeals_one_active", unique: true, where: "((status)::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text]))"
+    t.index ["forum_report_id"], name: "index_forum_report_appeals_on_forum_report_id"
+    t.index ["public_id"], name: "idx_forum_report_appeals_public_id", unique: true
+    t.index ["reviewer_id"], name: "index_forum_report_appeals_on_reviewer_id"
+    t.index ["status", "expires_at"], name: "idx_forum_report_appeals_draft_expiry", where: "((status)::text = 'draft'::text)"
+    t.index ["status", "state_changed_at", "id"], name: "idx_forum_report_appeals_queue"
+    t.check_constraint "appellant_role::text = ANY (ARRAY['reporter'::text, 'affected_subject'::text])", name: "forum_report_appeals_role"
+    t.check_constraint "char_length(public_id::text) >= 12 AND char_length(public_id::text) <= 64", name: "forum_report_appeals_public_id_length"
+    t.check_constraint "reason IS NULL OR char_length(btrim(reason)) >= 1 AND char_length(btrim(reason)) <= 5000", name: "forum_report_appeals_reason_length"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])", name: "forum_report_appeals_status"
+    t.check_constraint "status::text = 'draft'::text AND reason IS NULL AND public_outcome_code IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND expires_at IS NOT NULL AND submitted_at IS NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = 'submitted'::text AND reason IS NOT NULL AND public_outcome_code IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = 'under_review'::text AND reason IS NOT NULL AND public_outcome_code IS NULL AND reviewer_id IS NOT NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NOT NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = ANY (ARRAY['upheld'::text, 'overturned'::text]) AND reason IS NOT NULL AND public_outcome_code::text = status::text AND reviewer_id IS NOT NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NOT NULL AND decided_at IS NOT NULL AND cancelled_at IS NULL OR status::text = 'cancelled'::text AND public_outcome_code::text = 'cancelled'::text AND expires_at IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NOT NULL", name: "forum_report_appeals_state_shape"
+    t.check_constraint "draft_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND draft_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text AND (submit_idempotency_key_digest IS NULL OR submit_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (submit_request_fingerprint IS NULL OR submit_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND (cancel_idempotency_key_digest IS NULL OR cancel_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (cancel_request_fingerprint IS NULL OR cancel_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND (decision_idempotency_key_digest IS NULL OR decision_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (decision_request_fingerprint IS NULL OR decision_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND ((submit_idempotency_key_digest IS NULL) = (submit_request_fingerprint IS NULL)) AND ((cancel_idempotency_key_digest IS NULL) = (cancel_request_fingerprint IS NULL)) AND ((decision_idempotency_key_digest IS NULL) = (decision_request_fingerprint IS NULL))", name: "forum_report_appeals_digest_shape"
+  end
+
+  create_table "forum_report_attachments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_report_id", null: false
+    t.bigint "sealed_by_id", null: false
+    t.bigint "secure_evidence_attachment_id", null: false
+    t.index ["forum_report_id", "created_at"], name: "idx_forum_report_attachments_timeline"
+    t.index ["forum_report_id"], name: "index_forum_report_attachments_on_forum_report_id"
+    t.index ["sealed_by_id"], name: "index_forum_report_attachments_on_sealed_by_id"
+    t.index ["secure_evidence_attachment_id"], name: "idx_forum_report_attachments_evidence", unique: true
+  end
+
   create_table "forum_report_evidences", force: :cascade do |t|
     t.datetime "captured_at", null: false
     t.string "content_digest", limit: 64, null: false
@@ -856,9 +953,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
   end
 
   create_table "forum_reports", force: :cascade do |t|
+    t.bigint "affected_user_id"
     t.datetime "created_at", null: false
     t.string "dedupe_key", limit: 64
     t.integer "lock_version", default: 0, null: false
+    t.string "public_id", limit: 64, null: false
     t.string "public_outcome_code"
     t.text "reason", null: false
     t.string "reason_code"
@@ -874,15 +973,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
     t.string "withdrawal_idempotency_key_digest", limit: 64
     t.datetime "withdrawn_at"
     t.index ["dedupe_key"], name: "idx_forum_reports_pending_dedupe", unique: true, where: "((dedupe_key IS NOT NULL) AND ((status)::text = 'pending'::text))"
+    t.index ["affected_user_id"], name: "idx_forum_reports_affected_user"
+    t.index ["public_id"], name: "idx_forum_reports_public_id", unique: true
     t.index ["reason_code"], name: "index_forum_reports_on_reason_code"
     t.index ["reportable_type", "reportable_id"], name: "index_forum_reports_on_reportable_type_and_reportable_id"
     t.index ["reporter_id"], name: "index_forum_reports_on_reporter_id"
     t.index ["reporter_id", "created_at"], name: "idx_forum_reports_reporter_created"
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
+    t.check_constraint "affected_user_id IS NULL OR status::text = 'actioned'::text", name: "forum_reports_affected_user_shape"
     t.check_constraint "dedupe_key IS NULL OR dedupe_key::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_dedupe_key_format"
+    t.check_constraint "char_length(public_id::text) >= 12 AND char_length(public_id::text) <= 64", name: "forum_reports_public_id_length"
     t.check_constraint "status::text = 'pending'::text AND public_outcome_code IS NULL AND withdrawn_at IS NULL OR status::text = 'withdrawn'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'withdrawn'::text AND withdrawn_at IS NOT NULL OR status::text = 'reviewed'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'review_complete'::text AND withdrawn_at IS NULL OR status::text = 'dismissed'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'not_upheld'::text AND withdrawn_at IS NULL OR status::text = 'actioned'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'action_taken'::text AND withdrawn_at IS NULL", name: "forum_reports_public_outcome_shape"
     t.check_constraint "status::text = ANY (ARRAY['pending'::text, 'withdrawn'::text, 'reviewed'::text, 'dismissed'::text, 'actioned'::text])", name: "forum_reports_status_vocabulary"
     t.check_constraint "withdrawal_idempotency_key_digest IS NULL OR withdrawal_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_withdrawal_digest"
+  end
+
+  create_table "forum_report_subject_action_deliveries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_report_id", null: false
+    t.bigint "notification_id"
+    t.index ["forum_report_id"], name: "idx_forum_report_subject_deliveries_report", unique: true
+    t.index ["notification_id"], name: "idx_forum_report_subject_deliveries_notification", unique: true
   end
 
   create_table "forum_saved_search_webhook_deliveries", force: :cascade do |t|
@@ -4006,12 +4117,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
   add_foreign_key "forum_read_states", "users"
   add_foreign_key "forum_reply_drafts", "forum_topics"
   add_foreign_key "forum_reply_drafts", "users"
+  add_foreign_key "forum_report_appeal_attachments", "forum_report_appeals", on_delete: :restrict
+  add_foreign_key "forum_report_appeal_attachments", "secure_evidence_attachments", on_delete: :restrict
+  add_foreign_key "forum_report_appeal_attachments", "users", column: "sealed_by_id", on_delete: :restrict
+  add_foreign_key "forum_report_appeal_events", "forum_report_appeals", on_delete: :restrict
+  add_foreign_key "forum_report_appeal_events", "users", column: "actor_id", on_delete: :restrict
+  add_foreign_key "forum_report_appeal_outcome_deliveries", "forum_report_appeals", on_delete: :restrict
+  add_foreign_key "forum_report_appeal_outcome_deliveries", "notifications", on_delete: :nullify
+  add_foreign_key "forum_report_appeals", "forum_reports", on_delete: :restrict
+  add_foreign_key "forum_report_appeals", "users", column: "appellant_id", on_delete: :restrict
+  add_foreign_key "forum_report_appeals", "users", column: "reviewer_id", on_delete: :restrict
+  add_foreign_key "forum_report_attachments", "forum_reports", on_delete: :restrict
+  add_foreign_key "forum_report_attachments", "secure_evidence_attachments", on_delete: :restrict
+  add_foreign_key "forum_report_attachments", "users", column: "sealed_by_id", on_delete: :restrict
   add_foreign_key "forum_report_evidences", "forum_reports"
   add_foreign_key "forum_report_decision_batches", "users", column: "reviewer_id", on_delete: :restrict
   add_foreign_key "forum_report_outcome_deliveries", "forum_reports", on_delete: :restrict
   add_foreign_key "forum_report_outcome_deliveries", "notifications", on_delete: :nullify
   add_foreign_key "forum_report_supplements", "forum_reports", on_delete: :restrict
   add_foreign_key "forum_report_supplements", "users", column: "reporter_id", on_delete: :restrict
+  add_foreign_key "forum_report_subject_action_deliveries", "forum_reports", on_delete: :restrict
+  add_foreign_key "forum_report_subject_action_deliveries", "notifications", on_delete: :nullify
+  add_foreign_key "forum_reports", "users", column: "affected_user_id", on_delete: :restrict
   add_foreign_key "forum_reports", "users", column: "reporter_id"
   add_foreign_key "forum_reports", "users", column: "reviewer_id"
   add_foreign_key "forum_saved_search_webhook_deliveries", "forum_saved_searches", column: "saved_search_id"
@@ -4306,6 +4433,388 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_appeals_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF NEW.public_id IS DISTINCT FROM OLD.public_id
+         OR NEW.forum_report_id IS DISTINCT FROM OLD.forum_report_id
+         OR NEW.appellant_id IS DISTINCT FROM OLD.appellant_id
+         OR NEW.appellant_role IS DISTINCT FROM OLD.appellant_role
+         OR NEW.draft_idempotency_key_digest IS DISTINCT FROM OLD.draft_idempotency_key_digest
+         OR NEW.draft_request_fingerprint IS DISTINCT FROM OLD.draft_request_fingerprint
+         OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'forum report appeal identity is immutable';
+      END IF;
+
+      IF (NEW.submit_idempotency_key_digest IS DISTINCT FROM OLD.submit_idempotency_key_digest
+           OR NEW.submit_request_fingerprint IS DISTINCT FROM OLD.submit_request_fingerprint)
+         AND NOT (
+           OLD.submit_idempotency_key_digest IS NULL
+           AND OLD.submit_request_fingerprint IS NULL
+           AND NEW.submit_idempotency_key_digest IS NOT NULL
+           AND NEW.submit_request_fingerprint IS NOT NULL
+           AND OLD.status = 'draft'
+           AND NEW.status = 'submitted'
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal submit identity is immutable';
+      END IF;
+
+      IF (NEW.cancel_idempotency_key_digest IS DISTINCT FROM OLD.cancel_idempotency_key_digest
+           OR NEW.cancel_request_fingerprint IS DISTINCT FROM OLD.cancel_request_fingerprint)
+         AND NOT (
+           OLD.cancel_idempotency_key_digest IS NULL
+           AND OLD.cancel_request_fingerprint IS NULL
+           AND NEW.cancel_idempotency_key_digest IS NOT NULL
+           AND NEW.cancel_request_fingerprint IS NOT NULL
+           AND OLD.status IN ('draft', 'submitted')
+           AND NEW.status = 'cancelled'
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal cancel identity is immutable';
+      END IF;
+
+      IF (NEW.decision_idempotency_key_digest IS DISTINCT FROM OLD.decision_idempotency_key_digest
+           OR NEW.decision_request_fingerprint IS DISTINCT FROM OLD.decision_request_fingerprint)
+         AND NOT (
+           OLD.decision_idempotency_key_digest IS NULL
+           AND OLD.decision_request_fingerprint IS NULL
+           AND NEW.decision_idempotency_key_digest IS NOT NULL
+           AND NEW.decision_request_fingerprint IS NOT NULL
+           AND OLD.status = 'under_review'
+           AND NEW.status IN ('upheld', 'overturned')
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal decision identity is immutable';
+      END IF;
+
+      IF OLD.status IN ('submitted', 'under_review', 'upheld', 'overturned', 'cancelled')
+         AND NEW.reason IS DISTINCT FROM OLD.reason THEN
+        RAISE EXCEPTION 'submitted forum report appeal reason is immutable';
+      END IF;
+
+      IF NOT (
+        (OLD.status = 'draft' AND NEW.status IN ('draft', 'submitted', 'cancelled'))
+        OR (OLD.status = 'submitted' AND NEW.status IN ('submitted', 'under_review', 'cancelled'))
+        OR (OLD.status = 'under_review' AND NEW.status IN ('under_review', 'upheld', 'overturned'))
+        OR (OLD.status IN ('upheld', 'overturned', 'cancelled') AND NEW.status = OLD.status)
+      ) THEN
+        RAISE EXCEPTION 'forum report appeal state transition is invalid';
+      END IF;
+
+      IF OLD.status IN ('upheld', 'overturned', 'cancelled') AND NEW IS DISTINCT FROM OLD THEN
+        RAISE EXCEPTION 'terminal forum report appeal is immutable';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_appeals_reject_delete()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report appeals cannot be deleted';
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_reports_guard_affected_user()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF NEW.public_id IS DISTINCT FROM OLD.public_id THEN
+        RAISE EXCEPTION 'forum report public id is immutable';
+      END IF;
+
+      IF NEW.affected_user_id IS DISTINCT FROM OLD.affected_user_id
+         AND NOT (
+           OLD.affected_user_id IS NULL
+           AND OLD.status = 'pending'
+           AND NEW.status = 'actioned'
+           AND NEW.affected_user_id IS NOT NULL
+         ) THEN
+        RAISE EXCEPTION 'forum report affected user is immutable';
+      END IF;
+
+      IF NEW.affected_user_id IS NOT NULL AND NEW.status IS DISTINCT FROM 'actioned' THEN
+        RAISE EXCEPTION 'forum report affected user does not match outcome';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_events_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report appeal events are append-only';
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_case_attachments_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report evidence links are immutable';
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_attachments_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      attachment_subject_key text;
+      attachment_subject_id bigint;
+      attachment_subject_public_id text;
+      attachment_uploader_id bigint;
+      attachment_state text;
+      upload_scan_status text;
+      report_public_id text;
+      report_owner_id bigint;
+      report_status text;
+    BEGIN
+      SELECT public_id, reporter_id, status
+      INTO report_public_id, report_owner_id, report_status
+      FROM forum_reports
+      WHERE id = NEW.forum_report_id
+      FOR UPDATE;
+
+      SELECT evidence.subject_key,
+             evidence.subject_id,
+             evidence.subject_public_id,
+             evidence.uploader_id,
+             evidence.state,
+             uploads.scan_status
+      INTO attachment_subject_key,
+           attachment_subject_id,
+           attachment_subject_public_id,
+           attachment_uploader_id,
+           attachment_state,
+           upload_scan_status
+      FROM secure_evidence_attachments evidence
+      INNER JOIN forum_uploads uploads
+        ON uploads.secure_evidence_attachment_id = evidence.id
+      WHERE evidence.id = NEW.secure_evidence_attachment_id
+      FOR UPDATE OF evidence, uploads;
+
+      IF attachment_subject_key IS DISTINCT FROM 'community.report'
+         OR attachment_subject_id IS DISTINCT FROM NEW.forum_report_id
+         OR attachment_subject_public_id IS DISTINCT FROM report_public_id
+         OR attachment_uploader_id IS DISTINCT FROM NEW.sealed_by_id
+         OR NEW.sealed_by_id IS DISTINCT FROM report_owner_id
+         OR report_status IS DISTINCT FROM 'pending'
+         OR attachment_state IS DISTINCT FROM 'available'
+         OR upload_scan_status IS DISTINCT FROM 'clean'
+         OR EXISTS (
+           SELECT 1
+           FROM forum_report_appeal_attachments
+           WHERE secure_evidence_attachment_id = NEW.secure_evidence_attachment_id
+         ) THEN
+        RAISE EXCEPTION 'forum report evidence is not clean or does not belong to this subject';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_attachments_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      attachment_subject_key text;
+      attachment_subject_id bigint;
+      attachment_subject_public_id text;
+      attachment_uploader_id bigint;
+      attachment_state text;
+      upload_scan_status text;
+      appeal_appellant_id bigint;
+      appeal_public_id text;
+      appeal_status text;
+    BEGIN
+      SELECT appellant_id, public_id, status
+      INTO appeal_appellant_id, appeal_public_id, appeal_status
+      FROM forum_report_appeals
+      WHERE id = NEW.forum_report_appeal_id
+      FOR UPDATE;
+
+      SELECT evidence.subject_key,
+             evidence.subject_id,
+             evidence.subject_public_id,
+             evidence.uploader_id,
+             evidence.state,
+             uploads.scan_status
+      INTO attachment_subject_key,
+           attachment_subject_id,
+           attachment_subject_public_id,
+           attachment_uploader_id,
+           attachment_state,
+           upload_scan_status
+      FROM secure_evidence_attachments evidence
+      INNER JOIN forum_uploads uploads
+        ON uploads.secure_evidence_attachment_id = evidence.id
+      WHERE evidence.id = NEW.secure_evidence_attachment_id
+      FOR UPDATE OF evidence, uploads;
+
+      IF attachment_subject_key IS DISTINCT FROM 'community.report_appeal'
+         OR attachment_subject_id IS DISTINCT FROM NEW.forum_report_appeal_id
+         OR attachment_subject_public_id IS DISTINCT FROM appeal_public_id
+         OR attachment_uploader_id IS DISTINCT FROM NEW.sealed_by_id
+         OR attachment_state IS DISTINCT FROM 'available'
+         OR upload_scan_status IS DISTINCT FROM 'clean'
+         OR NOT (
+           (NEW.audience = 'appellant'
+             AND NEW.sealed_by_id = appeal_appellant_id
+             AND appeal_status = 'submitted')
+           OR (NEW.audience = 'reviewers'
+             AND NEW.sealed_by_id <> appeal_appellant_id
+             AND appeal_status IN ('submitted', 'under_review'))
+         )
+         OR EXISTS (
+           SELECT 1
+           FROM forum_report_attachments
+           WHERE secure_evidence_attachment_id = NEW.secure_evidence_attachment_id
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal evidence is not clean or does not belong to this subject';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_deliveries_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'UPDATE'
+         AND OLD.notification_id IS NOT NULL
+         AND NEW.notification_id IS NULL
+         AND NEW.forum_report_appeal_id = OLD.forum_report_appeal_id
+         AND NEW.public_outcome_code = OLD.public_outcome_code
+         AND NEW.created_at = OLD.created_at THEN
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION 'forum report appeal delivery receipts are immutable';
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_deliveries_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      appeal_status text;
+      appeal_outcome text;
+      appeal_public_id text;
+      appellant_id bigint;
+      notification_owner_id bigint;
+      notification_kind text;
+      notification_metadata jsonb;
+    BEGIN
+      SELECT appeals.status,
+             appeals.public_outcome_code,
+             appeals.public_id,
+             appeals.appellant_id,
+             notifications.user_id,
+             notifications.notification_type,
+             notifications.metadata
+      INTO appeal_status,
+           appeal_outcome,
+           appeal_public_id,
+           appellant_id,
+           notification_owner_id,
+           notification_kind,
+           notification_metadata
+      FROM forum_report_appeals appeals
+      INNER JOIN notifications ON notifications.id = NEW.notification_id
+      WHERE appeals.id = NEW.forum_report_appeal_id
+      FOR UPDATE OF appeals;
+
+      IF NEW.notification_id IS NULL
+         OR appeal_status NOT IN ('upheld', 'overturned')
+         OR appeal_outcome IS DISTINCT FROM appeal_status
+         OR NEW.public_outcome_code IS DISTINCT FROM appeal_outcome
+         OR notification_owner_id IS DISTINCT FROM appellant_id
+         OR notification_kind IS DISTINCT FROM 'forum.report_appeal_outcome'
+         OR notification_metadata ->> 'appeal_public_id' IS DISTINCT FROM appeal_public_id
+         OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM appeal_outcome
+         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/report-appeals/' || appeal_public_id THEN
+        RAISE EXCEPTION 'forum report appeal outcome delivery contract is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_subject_deliveries_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'UPDATE'
+         AND OLD.notification_id IS NOT NULL
+         AND NEW.notification_id IS NULL
+         AND NEW.forum_report_id = OLD.forum_report_id
+         AND NEW.created_at = OLD.created_at THEN
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION 'forum report subject action delivery receipts are immutable';
+    END;
+    $function$;
+
+    CREATE OR REPLACE FUNCTION public.forum_report_subject_deliveries_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      report_status text;
+      report_public_id text;
+      report_subject_id bigint;
+      notification_owner_id bigint;
+      notification_kind text;
+      notification_metadata jsonb;
+    BEGIN
+      SELECT reports.status,
+             reports.public_id,
+             reports.affected_user_id,
+             notifications.user_id,
+             notifications.notification_type,
+             notifications.metadata
+      INTO report_status,
+           report_public_id,
+           report_subject_id,
+           notification_owner_id,
+           notification_kind,
+           notification_metadata
+      FROM forum_reports reports
+      INNER JOIN notifications ON notifications.id = NEW.notification_id
+      WHERE reports.id = NEW.forum_report_id
+      FOR UPDATE OF reports;
+
+      IF NEW.notification_id IS NULL
+         OR report_status IS DISTINCT FROM 'actioned'
+         OR report_subject_id IS NULL
+         OR notification_owner_id IS DISTINCT FROM report_subject_id
+         OR notification_kind IS DISTINCT FROM 'forum.report_subject_action'
+         OR notification_metadata ->> 'report_public_id' IS DISTINCT FROM report_public_id
+         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/report-appeals' THEN
+        RAISE EXCEPTION 'forum report subject action delivery contract is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.forum_reports_guard_state_transition()
      RETURNS trigger
      LANGUAGE plpgsql
@@ -4399,6 +4908,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
       report_status text;
       report_outcome text;
       report_owner_id bigint;
+      report_reference text;
       notification_owner_id bigint;
       notification_kind text;
       notification_metadata jsonb;
@@ -4406,12 +4916,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
       SELECT reports.status,
              reports.public_outcome_code,
              reports.reporter_id,
+             reports.public_id,
              notifications.user_id,
              notifications.notification_type,
              notifications.metadata
       INTO report_status,
            report_outcome,
            report_owner_id,
+           report_reference,
            notification_owner_id,
            notification_kind,
            notification_metadata
@@ -4427,9 +4939,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
          OR NEW.public_outcome_code IS DISTINCT FROM report_outcome
          OR notification_owner_id IS DISTINCT FROM report_owner_id
          OR notification_kind IS DISTINCT FROM 'forum.report_outcome'
-         OR notification_metadata ->> 'report_id' IS DISTINCT FROM NEW.forum_report_id::text
+         OR notification_metadata ->> 'report_public_id' IS DISTINCT FROM report_reference
          OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM NEW.public_outcome_code
-         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/reports/' || NEW.forum_report_id::text THEN
+         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/reports/' || report_reference THEN
         RAISE EXCEPTION 'forum report outcome delivery contract is invalid';
       END IF;
 
@@ -5128,6 +5640,54 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE CONSTRAINT TRIGGER forum_messages_require_current_revision AFTER INSERT OR UPDATE OF body, revision ON public.forum_messages DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION forum_messages_require_current_revision();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeals_guard_change BEFORE UPDATE ON public.forum_report_appeals FOR EACH ROW EXECUTE FUNCTION forum_report_appeals_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeals_reject_delete BEFORE DELETE ON public.forum_report_appeals FOR EACH ROW EXECUTE FUNCTION forum_report_appeals_reject_delete();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_reports_affected_user_guard BEFORE UPDATE ON public.forum_reports FOR EACH ROW EXECUTE FUNCTION forum_reports_guard_affected_user();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeal_events_immutable BEFORE DELETE OR UPDATE ON public.forum_report_appeal_events FOR EACH ROW EXECUTE FUNCTION forum_report_appeal_events_reject_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_attachments_immutable BEFORE DELETE OR UPDATE ON public.forum_report_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_case_attachments_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_attachments_insert_contract BEFORE INSERT ON public.forum_report_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_attachments_validate_insert();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeal_attachments_immutable BEFORE DELETE OR UPDATE ON public.forum_report_appeal_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_case_attachments_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeal_attachments_insert_contract BEFORE INSERT ON public.forum_report_appeal_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_appeal_attachments_validate_insert();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeal_deliveries_immutable BEFORE DELETE OR UPDATE ON public.forum_report_appeal_outcome_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_appeal_deliveries_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeal_deliveries_insert_contract BEFORE INSERT ON public.forum_report_appeal_outcome_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_appeal_deliveries_validate_insert();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_subject_deliveries_immutable BEFORE DELETE OR UPDATE ON public.forum_report_subject_action_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_subject_deliveries_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_subject_deliveries_insert_contract BEFORE INSERT ON public.forum_report_subject_action_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_subject_deliveries_validate_insert();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

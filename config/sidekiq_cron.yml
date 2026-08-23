@@ -202,6 +202,12 @@ cleanup_secure_evidence_attachments:
   queue: maintenance
   active_job: true
 
+cleanup_report_appeal_drafts:
+  cron: "*/15 * * * *"
+  class: "Maintenance::CleanupReportAppealDraftsJob"
+  queue: maintenance
+  active_job: true
+
 scan_forum_attachments:
   cron: "* * * * *"
   class: "Maintenance::ScanForumAttachmentsJob"

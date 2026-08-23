@@ -25,7 +25,7 @@ defineOptions({ layout: PortalLayout })
 const { t } = useI18n()
 
 interface ReportSummary {
-  id: number
+  id: string
   target_label: string
   reason_label: string
   reason_detail: string | null
@@ -100,6 +100,9 @@ function changePage(page: number) {
           <BreadcrumbItem>{{ t('forum.reports.caseCenter') }}</BreadcrumbItem>
         </Breadcrumb>
       </template>
+      <Button type="outline" @click="router.visit(routes.forumReportAppeals)">
+        {{ t('forum.reportAppeals.navigation') }}
+      </Button>
     </PageHeader>
 
     <Card :bordered="true">

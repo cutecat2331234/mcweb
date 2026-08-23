@@ -22,6 +22,10 @@ module Identity
         contributor: DataExporting::CommunityUploadsContributor
       )
       registry.register(
+        key: "community.report_cases",
+        contributor: Community::ReportIdentityLifecycle::DataExportContributor
+      )
+      registry.register(
         key: "commerce.account",
         contributor: DataExporting::CommerceAccountContributor
       )

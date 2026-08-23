@@ -29,13 +29,13 @@ class CommunityReportCaseCenterTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_private_report_response
     reports = inertia.props.deep_symbolize_keys.fetch(:reports)
-    assert_equal [ @report.id ], reports.pluck(:id)
+    assert_equal [ @report.public_id ], reports.pluck(:id)
 
     get forum_report_path(@report)
     assert_response :success
     assert_private_report_response
     report = inertia.props.deep_symbolize_keys.fetch(:report)
-    assert_equal @report.id, report.fetch(:id)
+    assert_equal @report.public_id, report.fetch(:id)
     assert_equal "Reporter-only detail", report.fetch(:reason_detail)
     assert_equal I18n.t("mcweb.forum.reports.targets.user", locale: @reporter.locale), report.fetch(:target_label)
     assert_empty report.keys & %i[

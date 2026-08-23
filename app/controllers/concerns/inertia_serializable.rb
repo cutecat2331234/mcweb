@@ -53,6 +53,8 @@ module InertiaSerializable
       account_type: current_user.account_type,
       locale: current_user.locale,
       can_access_admin: can_access_admin,
+      can_review_report_appeals: Community::SectionModeration.staff_for_any_section?(current_user) ||
+        current_user.permission?("forum.conversations.reports.review"),
       admin_modules: admin_modules,
       admin_permissions: admin_permissions,
       admin_capabilities: admin_capabilities,

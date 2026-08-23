@@ -44,7 +44,7 @@ test('pending mutations carry explicit desired state version and bounded idempot
 })
 
 test('reporter endpoints are owner scoped private and history encrypted', () => {
-  assert.match(controller, /where\(reporter_id: current_user\.id\)\.find\(params\[:id\]\)/)
+  assert.match(controller, /where\(reporter_id: current_user\.id\)\.find_by!\(public_id: params\[:public_id\]\)/)
   assert.match(controller, /Cache-Control", "private, no-store"/)
   assert.match(controller, /X-Robots-Tag", "noindex, nofollow"/)
   assert.equal((controller.match(/encrypt_history: true/g) ?? []).length, 4)
@@ -54,8 +54,9 @@ test('reporter endpoints are owner scoped private and history encrypted', () => 
 
 test('reporter serializer has an explicit safe target and field contract', () => {
   assert.match(serializer, /SAFE_TARGET_KINDS/)
-  assert.doesNotMatch(serializer, /\.reportable\b|review_note|reviewer|assignee|evidence|penalty|duration|member_status/)
-  assert.doesNotMatch(indexPage + showPage, /review_note|reviewer|assignee|evidence|penalty|duration|member_status/)
+  assert.doesNotMatch(serializer, /\.reportable\b|review_note|reviewer|assignee|penalty|duration|member_status/)
+  assert.doesNotMatch(indexPage + showPage, /review_note|reviewer|assignee|penalty|duration|member_status/)
+  assert.match(serializer, /public_id: @report\.public_id/)
 })
 
 test('report case center copy is symmetric in English and Simplified Chinese', () => {

@@ -1,5 +1,7 @@
 module Community
   class Report < ApplicationRecord
+    include HasPublicId
+
     REASON_CODES = %w[spam offensive off_topic other].freeze
     STATUSES = %w[pending withdrawn reviewed dismissed actioned].freeze
     STAFF_FINAL_STATUSES = %w[reviewed dismissed actioned].freeze
@@ -39,6 +41,7 @@ module Community
     belongs_to :reporter, class_name: "User"
     belongs_to :reportable, polymorphic: true
     belongs_to :reviewer, class_name: "User", optional: true
+    belongs_to :affected_user, class_name: "User", optional: true
     has_one :evidence,
       class_name: "Community::ReportEvidence",
       foreign_key: :forum_report_id,
@@ -51,6 +54,24 @@ module Community
       dependent: :restrict_with_error
     has_one :outcome_delivery,
       class_name: "Community::ReportOutcomeDelivery",
+      foreign_key: :forum_report_id,
+      inverse_of: :report,
+      dependent: :restrict_with_error
+    has_many :appeals,
+      class_name: "Community::ReportAppeal",
+      foreign_key: :forum_report_id,
+      inverse_of: :report,
+      dependent: :restrict_with_error
+    has_many :evidence_links,
+      class_name: "Community::ReportAttachment",
+      foreign_key: :forum_report_id,
+      inverse_of: :report,
+      dependent: :restrict_with_error
+    has_many :secure_evidence_attachments,
+      through: :evidence_links,
+      source: :attachment
+    has_one :subject_action_delivery,
+      class_name: "Community::ReportSubjectActionDelivery",
       foreign_key: :forum_report_id,
       inverse_of: :report,
       dependent: :restrict_with_error
@@ -67,6 +88,10 @@ module Community
     validate :reason_code_allowed
     validate :terminal_state_not_reopened, on: :update
     validate :public_outcome_matches_status
+    validate :affected_user_shape
+    validate :affected_user_is_frozen, on: :update
+
+    attr_readonly :public_id
 
     before_validation :normalize_lifecycle_fields
 
@@ -109,6 +134,22 @@ module Community
       return if public_outcome_code == expected
 
       errors.add(:public_outcome_code, :invalid)
+    end
+
+    def affected_user_shape
+      if affected_user_id.present? && status != "actioned"
+        errors.add(:affected_user_id, :invalid)
+      end
+    end
+
+    def affected_user_is_frozen
+      return unless will_save_change_to_affected_user_id?
+
+      previous_status = status_change_to_be_saved&.first || status_in_database
+      return if affected_user_id_change_to_be_saved.first.nil? &&
+        previous_status == "pending" && status == "actioned"
+
+      errors.add(:affected_user_id, :invalid)
     end
 
     def reason_code_allowed

@@ -42,7 +42,8 @@ module Community
 
         if report.status == @desired_status
           delivery = ensure_outcome_delivery!(report)
-          result = success(report:, delivery:, replayed: true)
+          subject_delivery = ensure_subject_action_delivery!(report)
+          result = success(report:, delivery:, subject_delivery:, replayed: true)
           next
         end
         unless report.pending?
@@ -55,11 +56,15 @@ module Community
         end
 
         previous_version = report.lock_version
+        affected_user = if @desired_status == "actioned"
+          Community::ReportAffectedUserResolver.call(report.reportable)
+        end
         report.update!(
           reviewer: @reviewer,
           review_note: @internal_note,
           reviewed_at: Time.current,
           status: @desired_status,
+          affected_user: affected_user,
           dedupe_key: nil,
           state_changed_at: Time.current
         )
@@ -69,6 +74,7 @@ module Community
           raise ActiveRecord::Rollback
         end
         delivery = ensure_outcome_delivery!(report)
+        subject_delivery = ensure_subject_action_delivery!(report)
         Administration::AuditLogger.call(
           actor: @reviewer,
           action: "community.report_decided",
@@ -79,7 +85,7 @@ module Community
           before_state: { status: "pending", lock_version: previous_version },
           after_state: { status: report.status, lock_version: report.lock_version }
         )
-        result = success(report:, delivery:, replayed: false)
+        result = success(report:, delivery:, subject_delivery:, replayed: false)
       end
       result || failure("report_mutation_failed")
     rescue ActiveRecord::StaleObjectError
@@ -116,7 +122,7 @@ module Community
         notification_type: NOTIFICATION_TYPE,
         key: "report_outcome",
         metadata: {
-          report_id: report.id,
+          report_public_id: report.public_id,
           public_outcome_code: report.public_outcome_code,
           path: Rails.application.routes.url_helpers.forum_report_path(report)
         },
@@ -129,6 +135,28 @@ module Community
         notification: notification,
         public_outcome_code: report.public_outcome_code,
         idempotency_key_digest: ReportMutationKey.digest(@idempotency_key)
+      )
+    end
+
+    def ensure_subject_action_delivery!(report)
+      return unless report.actioned? && report.affected_user
+
+      existing = ReportSubjectActionDelivery.find_by(forum_report_id: report.id)
+      return existing if existing
+
+      notification = Community::InAppNotification.notify(
+        user: report.affected_user,
+        notification_type: "forum.report_subject_action",
+        key: "report_subject_action",
+        metadata: {
+          report_public_id: report.public_id,
+          path: Rails.application.routes.url_helpers.forum_report_appeals_path
+        }
+      )
+      ReportSubjectActionDelivery.create!(
+        report:,
+        notification:,
+        created_at: Time.current
       )
     end
 

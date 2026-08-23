@@ -8,7 +8,8 @@ module Community
 
     before_action :set_report_privacy_headers
     before_action :require_login
-    before_action :set_owned_report, only: %i[show supplements withdraw]
+    before_action :set_owned_report, only: %i[show supplements withdraw seal_evidence]
+    before_action :set_appealable_report, only: :appeal_draft
 
     def index
       @pagy, reports = pagy(
@@ -98,6 +99,34 @@ module Community
       redirect_to forum_report_path(@report), notice: t("mcweb.flash.report_withdrawn")
     end
 
+    def appeal_draft
+      result = Community::CreateReportAppealDraft.call(
+        report: @report,
+        appellant: current_user,
+        appellant_role: appeal_draft_params[:appellant_role],
+        idempotency_key: appeal_draft_params[:idempotency_key]
+      )
+      return redirect_to forum_report_appeals_path, alert: service_error_message(result) if result.failure?
+
+      redirect_to forum_report_appeal_path(result.value.fetch(:appeal))
+    end
+
+    def seal_evidence
+      result = Community::SealReportEvidence.call(
+        report: @report,
+        actor: current_user,
+        attachment_public_ids: evidence_params[:attachment_public_ids]
+      )
+      unless result.success?
+        return render_report_show(
+          form_errors: { evidence: service_error_message(result) },
+          status: :unprocessable_entity
+        )
+      end
+
+      redirect_to forum_report_path(@report), notice: t("mcweb.flash.report_evidence_added")
+    end
+
     private
 
     def render_failure(result)
@@ -116,6 +145,7 @@ module Community
       render inertia: "Community/Reports/Show",
              props: {
                report: reporter_serializer(@report).detail,
+               evidence_upload_url: secure_evidence_attachments_path,
                form_errors: form_errors
              },
              status: status,
@@ -140,7 +170,14 @@ module Community
     end
 
     def set_owned_report
-      @report = Community::Report.where(reporter_id: current_user.id).find(params[:id])
+      @report = Community::Report.where(reporter_id: current_user.id).find_by!(public_id: params[:public_id])
+    end
+
+    def set_appealable_report
+      @report = Community::Report.find_by!(public_id: params[:public_id])
+      role = appeal_draft_params[:appellant_role].to_s
+      raise ActiveRecord::RecordNotFound unless Community::ReportAppealPolicy.new(current_user)
+        .may_create?(report: @report, role:)
     end
 
     def set_report_privacy_headers
@@ -170,6 +207,15 @@ module Community
 
     def withdrawal_params
       params.require(:report).permit(:desired_state, :idempotency_key, :lock_version)
+    end
+
+    def appeal_draft_params
+      params.fetch(:appeal, ActionController::Parameters.new)
+        .permit(:appellant_role, :idempotency_key)
+    end
+
+    def evidence_params
+      params.require(:evidence).permit(attachment_public_ids: [])
     end
   end
 end

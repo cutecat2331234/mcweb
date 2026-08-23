@@ -51,19 +51,27 @@ let compactQuery: MediaQueryList | null = null
 
 const auth = computed(
   () => (page.props.auth ?? { user: null }) as {
-    user: { username: string; avatar_url?: string | null } | null
+    user: {
+      username: string
+      avatar_url?: string | null
+      can_review_report_appeals?: boolean
+    } | null
   },
 )
 const currentPath = computed(() => page.url.split('?')[0])
 const selectedKey = computed(() =>
-  currentPath.value.startsWith(routes.staffModerationCases)
-    ? routes.staffModerationCases
-    : routes.staff,
+  currentPath.value.startsWith(routes.staffReportAppeals)
+    ? routes.staffReportAppeals
+    : currentPath.value.startsWith(routes.staffModerationCases)
+      ? routes.staffModerationCases
+      : routes.staff,
 )
 const currentTitle = computed(() =>
-  selectedKey.value === routes.staffModerationCases
-    ? t('staffWorkspace.navigation.queue')
-    : t('staffWorkspace.navigation.overview'),
+  selectedKey.value === routes.staffReportAppeals
+    ? t('staffWorkspace.navigation.reportAppeals')
+    : selectedKey.value === routes.staffModerationCases
+      ? t('staffWorkspace.navigation.queue')
+      : t('staffWorkspace.navigation.overview'),
 )
 
 function visit(path: string) {
@@ -162,6 +170,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
           <MenuItem :key="routes.staffModerationCases">
             <template #icon><IconSafe /></template>
             {{ t('staffWorkspace.navigation.queue') }}
+          </MenuItem>
+          <MenuItem v-if="auth.user?.can_review_report_appeals" :key="routes.staffReportAppeals">
+            <template #icon><IconSafe /></template>
+            {{ t('staffWorkspace.navigation.reportAppeals') }}
           </MenuItem>
         </Menu>
         <Space

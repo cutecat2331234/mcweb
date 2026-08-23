@@ -75,7 +75,15 @@ module Community
           )
         end
 
-        visible
+        return visible unless actor
+
+        participant_report_ids = Community::Report
+          .where("reporter_id = :user_id OR affected_user_id = :user_id", user_id: actor.id)
+          .select(:id)
+        visible.where.not(
+          source_type: "Community::Report",
+          source_id: participant_report_ids
+        )
       end
 
       def visible?(moderation_case)
@@ -87,10 +95,11 @@ module Community
           source.is_a?(Community::Post) &&
             can_moderate_section?(section_for_post(source))
         when *REPORT_KINDS
+          source = safe_source(moderation_case)
+          return false if source.is_a?(Community::Report) && report_participant?(source)
           return can_review_private_message_reports? if private_message_report?(moderation_case)
           return true if global_moderator?
 
-          source = safe_source(moderation_case)
           source.is_a?(Community::Report) &&
             can_moderate_section?(section_for_reportable(reportable_for(source)))
         when "quarantined_attachment"
@@ -338,6 +347,10 @@ module Community
       def private_message_report?(moderation_case)
         source = safe_source(moderation_case)
         source.is_a?(Community::Report) && source.reportable_type == "Community::Message"
+      end
+
+      def report_participant?(report)
+        actor && (report.reporter_id == actor.id || report.affected_user_id == actor.id)
       end
 
       def section_for_reportable(reportable)

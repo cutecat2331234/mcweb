@@ -6,9 +6,11 @@ module Admin
       include NestedLocaleParams
 
       before_action -> { require_permission("website.articles.read") }
-      before_action -> { require_permission("website.articles.edit") }, only: %i[new create edit update destroy]
-      before_action -> { require_permission("website.articles.publish") }, only: %i[publish schedule]
-      before_action :set_article, only: %i[show edit update destroy publish schedule preview]
+      before_action -> { require_permission("website.articles.edit") },
+                    only: %i[new create edit update discard_form discard archive]
+      before_action -> { require_permission("website.articles.publish") }, only: %i[publish schedule archive]
+      before_action :set_article,
+                    only: %i[show edit update discard_form discard publish schedule archive preview]
 
       def index
         articles = ::Website::Article.order(updated_at: :desc)
@@ -24,13 +26,13 @@ module Admin
           rows: articles.map do |article|
             admin_row(
               title: article.title,
-              type: article.article_type,
-              status: article.status,
+              type: article_type_label(article.article_type),
+              status: content_status_label(article.status),
               published: article.published_at ? l(article.published_at, format: :short) : "—",
               url: admin_website_article_path(article)
             )
           end,
-          actions: [ { label: t("mcweb.admin.website.articles.new"), href: new_admin_website_article_path } ]
+          actions: index_actions
         }
       end
 
@@ -39,8 +41,8 @@ module Admin
           title: @article.title,
           subtitle: @article.slug,
           fields: [
-            { label: t("mcweb.admin.website.articles.col_type"), value: @article.article_type },
-            { label: t("mcweb.admin.common.status"), value: @article.status },
+            { label: t("mcweb.admin.website.articles.col_type"), value: article_type_label(@article.article_type) },
+            { label: t("mcweb.admin.common.status"), value: content_status_label(@article.status) },
             { label: t("mcweb.admin.website.articles.field_summary"), value: @article.summary.presence || "—" },
             { label: t("mcweb.admin.website.articles.col_published"), value: @article.published_at ? l(@article.published_at, format: :long) : "—" }
           ],
@@ -69,20 +71,59 @@ module Admin
       end
 
       def update
-        if @article.update(article_params)
+        result = ::Website::ContentUpdate.call(
+          content: @article,
+          attributes: article_params.except(:lock_version),
+          actor: current_user,
+          expected_lock_version: article_params[:lock_version],
+          request_id: params[:request_id]
+        )
+        if result.success?
           redirect_to admin_website_article_path(@article), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.article"))
         else
-          render inertia: "Admin/Website/Articles/Form", props: form_props(@article), status: :unprocessable_entity
+          redirect_to edit_admin_website_article_path(@article), alert: service_error_message(result)
         end
       end
 
-      def destroy
-        @article.destroy!
-        redirect_to admin_website_articles_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.article"))
+      def discard_form
+        render inertia: "Admin/Website/ContentDiscard", props: {
+          title: t("mcweb.admin.website.recovery.discard_title"),
+          content: {
+            type: "article", title: @article.title, slug: @article.slug,
+            lock_version: @article.lock_version
+          },
+          submitUrl: discard_admin_website_article_path(@article),
+          backUrl: admin_website_article_path(@article),
+          replacementRequired: false,
+          replacementOptions: []
+        }
+      end
+
+      def discard
+        result = ::Website::DiscardContent.call(
+          content: @article,
+          actor: current_user,
+          reason: params[:reason],
+          confirmation: params[:confirmation],
+          expected_lock_version: params[:lock_version],
+          idempotency_key: params[:request_id]
+        )
+        if result.success?
+          redirect_to admin_website_recycle_bin_path,
+                      notice: t("mcweb.admin.website.recovery.discarded")
+        else
+          redirect_to discard_form_admin_website_article_path(@article),
+                      alert: service_error_message(result)
+        end
       end
 
       def publish
-        result = ::Website::ArticlePublisher.call(article: @article, actor: current_user)
+        result = ::Website::ArticlePublisher.call(
+          article: @article,
+          actor: current_user,
+          expected_lock_version: params[:lock_version],
+          request_id: params[:request_id]
+        )
         if result.success?
           redirect_to admin_website_article_path(@article), notice: t("mcweb.admin.website.published", default: "Published")
         else
@@ -98,9 +139,30 @@ module Admin
           return
         end
 
-        result = ::Website::ArticlePublisher.call(article: @article, publish_at: publish_at, actor: current_user)
+        result = ::Website::ArticlePublisher.call(
+          article: @article,
+          publish_at: publish_at,
+          actor: current_user,
+          expected_lock_version: params[:lock_version],
+          request_id: params[:request_id]
+        )
         if result.success?
           redirect_to admin_website_article_path(@article), notice: t("mcweb.admin.website.scheduled", default: "Scheduled")
+        else
+          redirect_to admin_website_article_path(@article), alert: service_error_message(result)
+        end
+      end
+
+      def archive
+        result = ::Website::ArchiveContent.call(
+          content: @article,
+          actor: current_user,
+          expected_lock_version: params[:lock_version],
+          request_id: params[:request_id]
+        )
+        if result.success?
+          redirect_to admin_website_article_path(@article),
+                      notice: t("mcweb.admin.website.recovery.archived")
         else
           redirect_to admin_website_article_path(@article), alert: service_error_message(result)
         end
@@ -122,12 +184,13 @@ module Admin
       private
 
       def set_article
-        @article = ::Website::Article.find_by!(public_id: params[:id])
+        scope = action_name == "discard" ? ::Website::Article.with_lifecycle : ::Website::Article.all
+        @article = scope.find_by!(public_id: params[:id])
       end
 
       def article_params
         permitted = params.require(:article).permit(
-          :title, :slug, :article_type, :summary, :body,
+          :title, :slug, :article_type, :summary, :body, :lock_version,
           seo: {}
         )
         permitted[:seo] = permitted[:seo].to_unsafe_h if permitted[:seo].is_a?(ActionController::Parameters)
@@ -156,15 +219,17 @@ module Admin
             published_at: article.published_at&.strftime("%Y-%m-%dT%H:%M"),
             scheduled_at: article.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
             seo: article.seo.presence || { "title" => "", "description" => "", "og_image" => "" },
-            translations: article.translations.presence || {}
+            translations: article.translations.presence || {},
+            lock_version: article.lock_version
           },
-          articleTypeOptions: %w[news blog].map { |value| { value:, label: value } },
-          statusOptions: ::Website::Article.statuses.keys.map { |value| { value:, label: value } },
+          articleTypeOptions: %w[news blog].map { |value| { value:, label: article_type_label(value) } },
+          statusOptions: ::Website::Article.statuses.keys.map { |value| { value:, label: content_status_label(value) } },
           locales: %w[en zh-CN],
           submitUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
           publishUrl: article.persisted? ? publish_admin_website_article_path(article) : nil,
           scheduleUrl: article.persisted? ? schedule_admin_website_article_path(article) : nil,
           previewUrl: article.persisted? ? preview_admin_website_article_path(article) : nil,
+          revisionsUrl: article.persisted? ? admin_website_article_revisions_path(article) : nil,
           method: article.persisted? ? "patch" : "post",
           backUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
           form_errors: article.errors.to_hash(true),
@@ -174,14 +239,50 @@ module Admin
 
       def show_actions
         actions = [
-          { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_article_path(@article) },
-          { label: t("mcweb.admin.website.preview", default: "Preview"), href: preview_admin_website_article_path(@article), external: true }
+          { label: t("mcweb.admin.website.preview", default: "Preview"), href: preview_admin_website_article_path(@article), hardNavigation: true },
+          { label: t("mcweb.admin.website.revisions.title"), href: admin_website_article_revisions_path(@article) }
         ]
+        if current_user.permission?("website.articles.edit")
+          actions.unshift(label: t("mcweb.admin.ui.edit"), href: edit_admin_website_article_path(@article))
+        end
         if current_user.permission?("website.articles.publish")
-          actions << { label: t("mcweb.admin.website.publish", default: "Publish"), href: publish_admin_website_article_path(@article), method: "post" }
+          actions << {
+            label: t("mcweb.admin.website.publish", default: "Publish"),
+            href: publish_admin_website_article_path(@article), method: "post",
+            data: { lock_version: @article.lock_version, request_id: "website-publish-article-#{SecureRandom.uuid}" }
+          }
+          actions << {
+            label: t("mcweb.admin.website.recovery.archive"),
+            href: archive_admin_website_article_path(@article), method: "post",
+            data: { lock_version: @article.lock_version, request_id: "website-archive-article-#{SecureRandom.uuid}" },
+            confirm: t("mcweb.admin.website.recovery.archive_confirm")
+          }
         end
         if current_user.permission?("website.articles.edit")
-          actions << { label: t("mcweb.admin.ui.delete", default: "Delete"), href: admin_website_article_path(@article), method: "delete", confirm: t("mcweb.admin.website.confirm_delete", default: "Delete this article?") }
+          actions << {
+            label: t("mcweb.admin.website.recovery.discard"),
+            href: discard_form_admin_website_article_path(@article)
+          }
+        end
+        actions
+      end
+
+      def article_type_label(value)
+        t("mcweb.admin.website.articles.types.#{value}")
+      end
+
+      def content_status_label(value)
+        t("mcweb.admin.website.statuses.#{value}")
+      end
+
+      def index_actions
+        actions = []
+        if current_user.permission?("website.articles.edit")
+          actions << { label: t("mcweb.admin.website.articles.new"), href: new_admin_website_article_path }
+        end
+        if current_user.permission?("website.content.restore") ||
+            current_user.permission?("website.content.purge")
+          actions << { label: t("mcweb.admin.website.recovery.title"), href: admin_website_recycle_bin_path }
         end
         actions
       end

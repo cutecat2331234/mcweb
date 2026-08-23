@@ -113,10 +113,12 @@ class WebsiteCmsBugfixTest < ActionDispatch::IntegrationTest
     )
 
     patch admin_website_page_path(page), params: {
+      request_id: "website-page-update-#{SecureRandom.uuid}",
       page: {
         title: page.title,
         slug: page.slug,
         page_type: "custom",
+        lock_version: page.lock_version,
         seo: { title: "", description: "", og_image: "" },
         translations: {
           "en" => { "title" => "English title", "seo" => { "title" => "EN SEO", "description" => "EN desc" } }
@@ -215,7 +217,12 @@ class Website::ArticlePublisherTest < ActiveSupport::TestCase
       article_type: "news",
       status: "draft"
     )
-    result = Website::ArticlePublisher.call(article: article, actor: create_user)
+    result = Website::ArticlePublisher.call(
+      article: article,
+      actor: create_user,
+      expected_lock_version: article.lock_version,
+      request_id: "website-article-publish-#{SecureRandom.uuid}"
+    )
     assert result.success?
     assert_equal "published", article.reload.status
   end

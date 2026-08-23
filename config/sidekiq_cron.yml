@@ -262,6 +262,12 @@ publish_scheduled_website_content:
   queue: website
   active_job: true
 
+purge_discarded_website_content:
+  cron: "45 3 * * *"
+  class: "Website::PurgeDiscardedContentJob"
+  queue: maintenance
+  active_job: true
+
 purge_expired_dispute_evidence:
   cron: "30 4 * * *"
   class: "Commerce::PurgeExpiredDisputeEvidenceJob"

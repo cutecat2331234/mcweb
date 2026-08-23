@@ -7,6 +7,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import MarkdownEditor from '@/components/admin/MarkdownEditor.vue'
 import SeoFields from '@/components/admin/website/SeoFields.vue'
 import TranslationsPanel from '@/components/admin/website/TranslationsPanel.vue'
+import { createIdempotencyKey } from '@/lib/idempotency'
 
 defineOptions({ layout: AdminLayout })
 
@@ -25,6 +26,7 @@ const props = defineProps<{
     scheduled_at: string | null
     seo: Record<string, string>
     translations: Record<string, Record<string, string>>
+    lock_version: number
   }
   articleTypeOptions: Array<{ value: string; label: string }>
   statusOptions: Array<{ value: string; label: string }>
@@ -32,6 +34,7 @@ const props = defineProps<{
   submitUrl: string
   publishUrl: string | null
   scheduleUrl: string | null
+  revisionsUrl: string | null
   method: 'post' | 'patch'
   backUrl: string
   form_errors?: Record<string, string[]>
@@ -40,7 +43,7 @@ const props = defineProps<{
 
 const tab = ref<'basic' | 'body' | 'seo' | 'i18n'>('basic')
 const scheduleAt = ref(props.article.scheduled_at || '')
-const form = useForm({ article: { ...props.article } })
+const form = useForm({ article: { ...props.article }, request_id: createIdempotencyKey() })
 
 function fieldError(key: string) {
   const inertiaError = form.errors[`article.${key}` as keyof typeof form.errors]
@@ -60,13 +63,20 @@ function publishNow() {
     okText: t('admin.website.publish', 'Publish now'),
     cancelText: t('admin.ui.cancel'),
     hideCancel: false,
-    onOk: () => router.post(props.publishUrl!),
+    onOk: () => router.post(props.publishUrl!, {
+      lock_version: props.article.lock_version,
+      request_id: createIdempotencyKey(),
+    }),
   })
 }
 
 function schedulePublish() {
   if (props.scheduleUrl && scheduleAt.value) {
-    router.post(props.scheduleUrl, { publish_at: scheduleAt.value })
+    router.post(props.scheduleUrl, {
+      publish_at: scheduleAt.value,
+      lock_version: props.article.lock_version,
+      request_id: createIdempotencyKey(),
+    })
   }
 }
 </script>
@@ -74,7 +84,12 @@ function schedulePublish() {
 <template>
   <a-page-header :title="title" :show-back="false">
     <template #extra>
-      <a-button @click="router.visit(backUrl)">{{ t('admin.ui.cancel') }}</a-button>
+      <a-space wrap>
+        <a-button v-if="revisionsUrl" @click="router.visit(revisionsUrl)">
+          {{ t('admin.website.revisions.title') }}
+        </a-button>
+        <a-button @click="router.visit(backUrl)">{{ t('admin.ui.cancel') }}</a-button>
+      </a-space>
     </template>
   </a-page-header>
 
@@ -104,7 +119,7 @@ function schedulePublish() {
             <a-select v-model="form.article.article_type" :options="articleTypeOptions" />
           </a-form-item>
           <a-form-item :label="t('admin.common.status')">
-            <a-tag>{{ form.article.status }}</a-tag>
+            <a-tag>{{ statusOptions.find((option) => option.value === form.article.status)?.label || form.article.status }}</a-tag>
           </a-form-item>
           <a-form-item
             field="summary"

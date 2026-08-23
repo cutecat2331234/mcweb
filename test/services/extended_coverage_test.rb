@@ -51,7 +51,12 @@ class Website::PagePublisherTest < ActiveSupport::TestCase
       status: "draft"
     )
 
-    result = Website::PagePublisher.call(page: page, actor: author)
+    result = Website::PagePublisher.call(
+      page: page,
+      actor: author,
+      expected_lock_version: page.lock_version,
+      request_id: "website-page-publish-#{SecureRandom.uuid}"
+    )
     assert result.success?
     assert_equal "published", page.reload.status
 

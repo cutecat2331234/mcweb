@@ -368,6 +368,9 @@ Rails.application.routes.draw do
         member do
           post :publish
           post :schedule
+          post :archive
+          get :discard, action: :discard_form, as: :discard_form
+          post :discard
           get :preview
         end
         resources :blocks, only: %i[create update destroy] do
@@ -385,9 +388,22 @@ Rails.application.routes.draw do
         member do
           post :publish
           post :schedule
+          post :archive
+          get :discard, action: :discard_form, as: :discard_form
+          post :discard
           get :preview
         end
+        resources :revisions, controller: "article_revisions", only: %i[index show] do
+          member do
+            post :restore_draft
+          end
+        end
       end
+      get "recycle-bin", to: "recycle_bin#index", as: :recycle_bin
+      get "recycle-bin/:content_type/:id", to: "recycle_bin#show", as: :recycle_bin_item
+      post "recycle-bin/:content_type/:id/restore", to: "recycle_bin#restore", as: :restore_recycle_bin_item
+      post "recycle-bin/:content_type/:id/authorize-purge", to: "recycle_bin#authorize_purge", as: :authorize_purge_recycle_bin_item
+      delete "recycle-bin/:content_type/:id/purge", to: "recycle_bin#purge", as: :purge_recycle_bin_item
       resources :nav_items, only: %i[index create update destroy] do
         collection do
           patch :reorder

@@ -25,9 +25,11 @@ const props = withDefaults(defineProps<{
   actionUrl: string
   method?: 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   payload?: Record<string, unknown>
+  requiresVerification?: boolean
 }>(), {
   method: 'POST',
   payload: () => ({}),
+  requiresVerification: false,
 })
 
 const emit = defineEmits<{
@@ -43,10 +45,15 @@ const authorization = ref<Authorization | null>(null)
 const authorizing = ref(false)
 const submitting = ref(false)
 const errorMessage = ref('')
+const password = ref('')
+const verificationCode = ref('')
 
 const step = computed(() => authorization.value ? 2 : 1)
 const canAuthorize = computed(() =>
-  reason.value.trim().length > 0 && !authorizing.value && !submitting.value,
+  reason.value.trim().length > 0
+  && (!props.requiresVerification || password.value.length > 0)
+  && !authorizing.value
+  && !submitting.value,
 )
 const canSubmit = computed(() =>
   Boolean(authorization.value)
@@ -67,6 +74,8 @@ function reset() {
   errorMessage.value = ''
   authorizing.value = false
   submitting.value = false
+  password.value = ''
+  verificationCode.value = ''
 }
 
 function close() {
@@ -92,10 +101,15 @@ async function authorize() {
       ...props.payload,
       reason: reason.value.trim(),
       request_id: requestId.value,
+      ...(props.requiresVerification
+        ? { password: password.value, code: verificationCode.value }
+        : {}),
     })
     authorization.value = result
     requestId.value = result.request_id
     confirmation.value = ''
+    password.value = ''
+    verificationCode.value = ''
   } catch (error) {
     errorMessage.value = errorText(error)
   } finally {
@@ -195,6 +209,32 @@ async function execute() {
             :disabled="authorizing"
           />
         </a-form-item>
+
+        <template v-if="requiresVerification">
+          <a-form-item
+            field="password"
+            :label="t('admin.highRisk.password')"
+            required
+          >
+            <a-input-password
+              v-model="password"
+              autocomplete="current-password"
+              :disabled="authorizing"
+            />
+          </a-form-item>
+          <a-form-item
+            field="verificationCode"
+            :label="t('admin.highRisk.verificationCode')"
+            :extra="t('admin.highRisk.verificationCodeHint')"
+          >
+            <a-input
+              v-model="verificationCode"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              :disabled="authorizing"
+            />
+          </a-form-item>
+        </template>
 
         <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="8" :row-gap="8">
           <a-grid-item>

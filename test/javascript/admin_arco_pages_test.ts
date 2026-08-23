@@ -567,10 +567,13 @@ test('store operational pages retain filters, bulk actions, retries, moderation,
 
 const websiteArcoPagePaths = [
   'Website/Articles/Form.vue',
+  'Website/ContentDiscard.vue',
   'Website/NavItems/Index.vue',
   'Website/Pages/Form.vue',
-  'Website/Pages/Revisions/Index.vue',
-  'Website/Pages/Revisions/Show.vue',
+  'Website/Recovery/Index.vue',
+  'Website/Recovery/Show.vue',
+  'Website/Revisions/Index.vue',
+  'Website/Revisions/Show.vue',
   'Website/Themes/Form.vue',
 ]
 
@@ -727,6 +730,40 @@ test('admin entry resolves Arco components and styles on demand', () => {
     viteConfig.indexOf('mcwebUiArcoStyleBridge()') < viteConfig.indexOf('vitePluginForArco('),
     'the @mcweb/ui bridge must expose named imports before Arco injects component styles',
   )
+})
+
+test('website CMS routes, sidebar targets, components, and preview boundary stay reachable', () => {
+  const entry = javascriptSource('entrypoints/admin.ts')
+  const routes = projectSource('config/routes.rb')
+  const adminRoutes = javascriptSource('lib/adminRoutes.ts')
+  const layout = javascriptSource('layouts/ArcoAdminLayout.vue')
+  const pagesController = projectSource('app/controllers/admin/website/pages_controller.rb')
+  const articlesController = projectSource('app/controllers/admin/website/articles_controller.rb')
+
+  assert.match(entry, /import\.meta\.glob<DefineComponent>\('\.\.\/pages\/Admin\/\*\*\/\*\.vue'\)/)
+  assert.match(entry, /if \(!name\.startsWith\('Admin\/'\)\)/)
+  assert.match(adminRoutes, /websitePages: '\/admin\/website\/pages'/)
+  assert.match(adminRoutes, /websiteArticles: '\/admin\/website\/articles'/)
+  assert.match(adminRoutes, /websiteNavItems: '\/admin\/website\/nav_items'/)
+  assert.match(adminRoutes, /websiteThemes: '\/admin\/website\/themes'/)
+  assert.match(adminRoutes, /websiteRecycleBin: '\/admin\/website\/recycle-bin'/)
+  assert.match(layout, /href: adminRoutes\.websiteRecycleBin/)
+  assert.match(layout, /permissionAny: \[ 'website\.content\.restore', 'website\.content\.purge' \]/)
+  assert.match(routes, /get "recycle-bin", to: "recycle_bin#index"/)
+  assert.match(routes, /resources :revisions, controller: "article_revisions"/)
+  assert.match(pagesController, /render inertia: "Admin\/Website\/ContentDiscard"/)
+  assert.match(articlesController, /render inertia: "Admin\/Website\/ContentDiscard"/)
+  assert.match(pagesController, /render inertia: "Website\/Pages\/Show", layout: "inertia"/)
+  assert.match(articlesController, /render inertia: "Website\/Articles\/Show", layout: "inertia"/)
+  assert.match(pagesController, /preview_url, hardNavigation: true/)
+  assert.match(articlesController, /preview_admin_website_article_path\(@article\), hardNavigation: true/)
+  const genericShow = pageSource('Generic/Show.vue')
+  assert.match(genericShow, /if \(action\.hardNavigation\) \{/)
+  assert.match(genericShow, /window\.location\.assign\(action\.href\)/)
+
+  for (const relativePath of websiteArcoPagePaths) {
+    assert.doesNotThrow(() => pageSource(relativePath))
+  }
 })
 
 test('admin links that leave the admin Inertia entry use full document navigation', () => {

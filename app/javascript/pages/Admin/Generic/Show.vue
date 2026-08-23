@@ -34,6 +34,7 @@ export interface DetailAction {
   variant?: 'default' | 'outline'
   data?: RequestPayload
   external?: boolean
+  hardNavigation?: boolean
 }
 
 export interface OperationNotice {
@@ -389,6 +390,10 @@ async function runAction(action: DetailAction, confirmed = false) {
   }
   const method = action.method || 'get'
   if (method === 'get') {
+    if (action.hardNavigation) {
+      window.location.assign(action.href)
+      return
+    }
     if (action.external || !isAdminSpaNavigationHref(action.href)) {
       window.open(action.href, '_blank', 'noopener')
       return

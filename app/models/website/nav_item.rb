@@ -16,7 +16,10 @@ module Website
     scope :ordered, -> { order(:position) }
 
     def href
-      page&.slug ? "/#{page.slug}" : url
+      return "/#{page.slug}" if page&.published?
+      return if website_page_id.present?
+
+      url
     end
 
     def self.frontend_items(location)
@@ -25,7 +28,10 @@ module Website
           .for_location(location)
           .ordered
           .includes(:page)
-          .map { |item| { label: item.label, href: item.href } }
+          .filter_map do |item|
+            href = item.href
+            { label: item.label, href: href } if href.present?
+          end
       end
     end
 

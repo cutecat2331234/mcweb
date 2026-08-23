@@ -167,6 +167,11 @@ const nav = computed<NavGroup[]>(() => {
           permissionKey: 'website.pages.read',
         },
         {
+          label: t('admin.website.recovery.title'),
+          href: adminRoutes.websiteRecycleBin,
+          permissionAny: [ 'website.content.restore', 'website.content.purge' ],
+        },
+        {
           label: t('admin.website.themes.title', 'Themes'),
           href: adminRoutes.websiteThemes,
           permissionKey: 'website.pages.read',

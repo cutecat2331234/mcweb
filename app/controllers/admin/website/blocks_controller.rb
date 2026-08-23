@@ -3,41 +3,60 @@
 module Admin
   module Website
     class BlocksController < BaseController
+      before_action -> { require_permission("website.pages.read") }
       before_action -> { require_permission("website.pages.edit") }
       before_action :set_page
       before_action :set_block, only: %i[update destroy]
 
       def create
-        block = @page.blocks.build(block_params)
-        block.position = (@page.blocks.unscope(:order).maximum(:position) || -1) + 1
-
-        if block.save
-          redirect_to edit_admin_website_page_path(@page), notice: t("mcweb.flash.created", resource: "Block")
+        result = ::Website::BlockMutation.call(
+          page: @page, actor: current_user, action: :create,
+          attributes: block_params, request_id: params[:request_id],
+          expected_lock_version: params[:lock_version]
+        )
+        if result.success?
+          redirect_to edit_admin_website_page_path(@page), notice: t("mcweb.flash.created", resource: t("mcweb.admin.website.blocks.resource"))
         else
-          redirect_to edit_admin_website_page_path(@page), alert: block.errors.full_messages.to_sentence
+          redirect_to edit_admin_website_page_path(@page), alert: service_error_message(result)
         end
       end
 
       def update
-        if @block.update(block_params)
-          redirect_to edit_admin_website_page_path(@page), notice: t("mcweb.flash.updated", resource: "Block")
+        result = ::Website::BlockMutation.call(
+          page: @page, actor: current_user, action: :update, block: @block,
+          attributes: block_params, request_id: params[:request_id],
+          expected_lock_version: params[:lock_version]
+        )
+        if result.success?
+          redirect_to edit_admin_website_page_path(@page), notice: t("mcweb.flash.updated", resource: t("mcweb.admin.website.blocks.resource"))
         else
-          redirect_to edit_admin_website_page_path(@page), alert: @block.errors.full_messages.to_sentence
+          redirect_to edit_admin_website_page_path(@page), alert: service_error_message(result)
         end
       end
 
       def destroy
-        @block.destroy!
-        redirect_to edit_admin_website_page_path(@page), notice: t("mcweb.flash.deleted", resource: "Block")
+        result = ::Website::BlockMutation.call(
+          page: @page, actor: current_user, action: :destroy, block: @block,
+          request_id: params[:request_id], expected_lock_version: params[:lock_version]
+        )
+        if result.success?
+          redirect_to edit_admin_website_page_path(@page), notice: t("mcweb.flash.deleted", resource: t("mcweb.admin.website.blocks.resource"))
+        else
+          redirect_to edit_admin_website_page_path(@page), alert: service_error_message(result)
+        end
       end
 
       def reorder
-        ::Website::Block.transaction do
-          Array(params[:block_ids]).each_with_index do |id, index|
-            @page.blocks.find(id).update!(position: index)
-          end
+        result = ::Website::BlockMutation.call(
+          page: @page, actor: current_user, action: :reorder,
+          block_ids: params[:block_ids], request_id: params[:request_id],
+          expected_lock_version: params[:lock_version]
+        )
+        if result.success?
+          redirect_to edit_admin_website_page_path(@page)
+        else
+          redirect_to edit_admin_website_page_path(@page), alert: service_error_message(result)
         end
-        redirect_to edit_admin_website_page_path(@page)
       end
 
       private

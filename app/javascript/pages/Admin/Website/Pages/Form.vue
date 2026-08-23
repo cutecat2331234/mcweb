@@ -7,6 +7,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import BlockEditor, { type BlockItem } from '@/components/admin/website/BlockEditor.vue'
 import SeoFields from '@/components/admin/website/SeoFields.vue'
 import TranslationsPanel from '@/components/admin/website/TranslationsPanel.vue'
+import { createIdempotencyKey } from '@/lib/idempotency'
 
 defineOptions({ layout: AdminLayout })
 
@@ -23,6 +24,7 @@ const props = defineProps<{
     scheduled_at: string | null
     seo: Record<string, string>
     translations: Record<string, Record<string, string>>
+    lock_version: number
   }
   blocks: BlockItem[]
   pageTypeOptions: Array<{ value: string; label: string }>
@@ -42,7 +44,7 @@ const props = defineProps<{
 
 const tab = ref<'basic' | 'blocks' | 'seo' | 'i18n'>('basic')
 const scheduleAt = ref(props.page.scheduled_at || '')
-const form = useForm({ page: { ...props.page } })
+const form = useForm({ page: { ...props.page }, request_id: createIdempotencyKey() })
 const themeOptionsWithDefault = [
   { value: null, label: '—' },
   ...props.themeOptions,
@@ -66,13 +68,20 @@ function publishNow() {
     okText: t('admin.website.publish', 'Publish now'),
     cancelText: t('admin.ui.cancel'),
     hideCancel: false,
-    onOk: () => router.post(props.publishUrl!),
+    onOk: () => router.post(props.publishUrl!, {
+      lock_version: props.page.lock_version,
+      request_id: createIdempotencyKey(),
+    }),
   })
 }
 
 function schedulePublish() {
   if (!props.scheduleUrl || !scheduleAt.value) return
-  router.post(props.scheduleUrl, { publish_at: scheduleAt.value })
+  router.post(props.scheduleUrl, {
+    publish_at: scheduleAt.value,
+    lock_version: props.page.lock_version,
+    request_id: createIdempotencyKey(),
+  })
 }
 </script>
 
@@ -114,7 +123,7 @@ function schedulePublish() {
             <a-select v-model="form.page.page_type" :options="pageTypeOptions" />
           </a-form-item>
           <a-form-item :label="t('admin.common.status')">
-            <a-tag>{{ form.page.status }}</a-tag>
+            <a-tag>{{ statusOptions.find((option) => option.value === form.page.status)?.label || form.page.status }}</a-tag>
           </a-form-item>
           <a-form-item
             v-if="themeOptions.length"
@@ -162,7 +171,11 @@ function schedulePublish() {
       key="blocks"
       :title="t('admin.website.tabs.blocks', 'Blocks')"
     >
-      <BlockEditor :blocks="blocks" :base-url="blocksBaseUrl" />
+      <BlockEditor
+        :blocks="blocks"
+        :base-url="blocksBaseUrl"
+        :page-lock-version="page.lock_version"
+      />
     </a-tab-pane>
 
     <a-tab-pane key="seo" title="SEO">

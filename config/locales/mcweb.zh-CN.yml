@@ -78,10 +78,16 @@
         description: "查看官网文章、预览和发布状态。"
       website_articles_edit:
         name: "编辑官网文章"
-        description: "创建、编辑和删除官网文章草稿。"
+        description: "创建、编辑官网文章并将其移入回收站。"
       website_articles_publish:
         name: "发布官网文章"
         description: "发布和定时发布官网文章。"
+      website_content_restore:
+        name: "恢复官网内容"
+        description: "查看官网内容回收站，并将符合条件的页面和文章恢复为草稿。"
+      website_content_purge:
+        name: "永久清除官网内容"
+        description: "在保留期与安全检查通过后，永久移除官网内容中的可变数据。"
       website_templates_manage:
         name: "管理前端模板"
         description: "安装、配置、启用和移除公开前端模板。"
@@ -905,6 +911,35 @@
         content_target_missing: 原始内容记录已不存在。
         content_purge_blocked: 保留或证据规则阻止了永久清理。
         content_purge_failed: 永久清理失败，生命周期状态未被改变。
+        website_content_unavailable: 当前官网内容已无法执行此操作。
+        website_content_conflict: 内容已被其他请求修改，请刷新后重试。
+        website_content_version_required: 此操作需要当前内容版本。
+        website_content_reason_required: 请输入本次内容操作的原因。
+        website_content_reason_too_long: 原因不能超过 1,000 个字符。
+        website_content_idempotency_key_invalid: 内容操作的请求 ID 无效。
+        website_content_idempotency_key_reused: 此请求 ID 已用于其他内容操作。
+        website_content_idempotency_contract_invalid: 内容操作的重放合同无效。
+        website_content_already_discarded: 此内容已在回收站中。
+        website_content_not_discarded: 此内容不在回收站中。
+        website_content_already_purged: 此内容已被永久清除。
+        website_content_confirmation_mismatch: 输入的确认文本与此内容不匹配。
+        website_content_discard_failed: 无法将内容移入回收站。
+        website_content_restore_failed: 无法恢复内容，未保留任何部分修改。
+        website_content_restore_blocked: 请先解决列出的恢复冲突。
+        website_content_publish_failed: 无法修改内容的发布状态。
+        website_content_purge_blocked: 保留规则或受保护引用阻止最终清除。
+        website_content_purge_failed: 最终清除失败，生命周期状态未被改变。
+        website_content_step_up_required: 永久清除此内容前请验证当前账号。
+        website_content_purge_authorization_invalid: 清除授权无效或已过期，请重新生成预览。
+        website_content_purge_unauthorized: 你没有永久清除官网内容的权限。
+        website_content_audit_failed: 无法创建审计记录，本次更改未保存。
+        website_home_replacement_required: 丢弃当前首页前请选择另一个已发布首页。
+        website_revision_not_found: 所选修订版本不属于此内容。
+        website_revision_event_invalid: 不支持此修订事件类型。
+        website_revision_restore_failed: 无法恢复修订版本，未保留任何部分修改。
+        website_block_action_invalid: 不支持此区块操作。
+        website_block_mutation_failed: 区块修改失败，页面未被改变。
+        website_block_reorder_conflict: 区块列表已变化，请刷新后重新排序。
         inventory_target_unavailable: 此项目没有启用可跟踪库存。
         inventory_delta_invalid: 请输入支持范围内的非零库存调整数量。
         fulfillment_action_invalid: 不支持此履约操作。
@@ -1509,6 +1544,10 @@
       is_required: "不能为空。"
       is_too_large: "过大。"
       issued_finance_document_content_is_immutable: "已签发财务单据的内容不可修改。"
+      website_content_tombstone_immutable: "已永久清除的官网内容不可修改。"
+      website_content_recoverable_delete_required: "必须通过官网可恢复生命周期丢弃。"
+      website_revision_immutable: "官网内容修订记录不可修改。"
+      website_revision_idempotency_pair: "官网内容修订的请求摘要与操作摘要必须同时保存。"
       must_be_a_mapping: "必须是键值映射。"
       must_be_a_normalized_relative_path: "必须是规范化的相对路径。"
       must_be_a_safe_https_or_uploaded_image_url: "必须是安全的 http(s) 地址或已上传图片地址。"
@@ -2261,6 +2300,28 @@
         developer_mode_captures_cleared: "开发模式捕获记录已清理"
         minecraft_identity_linked: "Minecraft 身份已绑定"
         minecraft_identity_unlinked: "Minecraft 身份已解除绑定"
+        website_page_updated: "官网页面已更新"
+        website_page_published: "官网页面已发布"
+        website_page_scheduled: "官网页面已安排定时发布"
+        website_page_archived: "官网页面已归档"
+        website_page_discarded: "官网页面已移入回收站"
+        website_page_restored: "官网页面已恢复为草稿"
+        website_page_revision_restored: "官网页面修订版本已恢复"
+        website_page_purged: "官网页面已永久清除"
+        website_page_purge_blocked: "官网页面最终清除已被阻止"
+        website_page_block_create: "官网页面区块已添加"
+        website_page_block_update: "官网页面区块已更新"
+        website_page_block_delete: "官网页面区块已移除"
+        website_page_block_reorder: "官网页面区块顺序已调整"
+        website_article_updated: "官网文章已更新"
+        website_article_published: "官网文章已发布"
+        website_article_scheduled: "官网文章已安排定时发布"
+        website_article_archived: "官网文章已归档"
+        website_article_discarded: "官网文章已移入回收站"
+        website_article_restored: "官网文章已恢复为草稿"
+        website_article_revision_restored: "官网文章修订版本已恢复"
+        website_article_purged: "官网文章已永久清除"
+        website_article_purge_blocked: "官网文章最终清除已被阻止"
         forum_post_moderate: "论坛帖子已审核处理"
         forum_topic_moderate: "论坛主题已审核处理"
         forum_topic_move: "论坛主题已移动"
@@ -2386,6 +2447,43 @@
       ui:
         edit: 编辑
       website:
+        published: 内容已发布。
+        scheduled: 已安排定时发布。
+        invalid_schedule: 请选择未来的发布日期和时间。
+        preview: 预览
+        publish: 发布
+        statuses:
+          draft: 草稿
+          scheduled: 已定时
+          published: 已发布
+          archived: 已归档
+        recovery:
+          title: 内容回收站
+          detail_title: 已丢弃内容
+          discard_title: 丢弃官网内容
+          discard: 移入回收站
+          discarded: 内容已移入回收站。
+          archive: 归档
+          archived: 内容已归档。
+          archive_confirm: 归档此内容并取消其定时发布吗？
+          restored: 内容已恢复为草稿。
+          purged: 可变内容已永久清除；墓碑与修订证据已保留。
+          type: 内容类型
+          content_title: 标题
+          slug: 标识
+          purge_deadline: 最终清除期限
+          types:
+            page: 页面
+            article: 文章
+        revisions:
+          title: 修订历史
+          show: 修订详情
+          restored: 修订版本已恢复为当前草稿。
+        blocks:
+          resource: 区块
+        nav:
+          resource: 导航项
+          invalid_page: 找不到所选页面。
         pages:
           title: 官网页面
           new: 新建页面
@@ -2393,6 +2491,10 @@
           col_title: 标题
           col_slug: 标识
           field_type: 页面类型
+          types:
+            custom: 普通页面
+            home: 首页
+            landing: 落地页
         articles:
           title: 官网文章
           new: 新建文章
@@ -2401,6 +2503,9 @@
           col_type: 类型
           col_published: 发布时间
           field_summary: 摘要
+          types:
+            news: 新闻
+            blog: 博客
         themes:
           title: 官网主题
           new: 新建主题

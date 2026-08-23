@@ -12,7 +12,7 @@ module Website
     private
 
     def publish_due_pages
-      Website::Page.where(status: "scheduled")
+      Website::Page.where(status: "scheduled", discarded_at: nil, purged_at: nil)
         .where.not(scheduled_at: nil)
         .where(scheduled_at: ..Time.current)
         .find_each do |page|
@@ -21,7 +21,7 @@ module Website
     end
 
     def publish_due_articles
-      Website::Article.where(status: "scheduled")
+      Website::Article.where(status: "scheduled", discarded_at: nil, purged_at: nil)
         .where.not(scheduled_at: nil)
         .where(scheduled_at: ..Time.current)
         .find_each do |article|

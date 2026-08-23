@@ -53,6 +53,18 @@ module Admin
       }
       assert_redirected_to root_path
       assert_equal "Permission page", page.reload.title
+
+      post admin_website_page_blocks_path(page), params: {
+        block: { block_type: "hero", visible: true, settings: { headline: "Hidden" } }
+      }
+      assert_redirected_to root_path
+      assert_empty page.blocks
+
+      post admin_website_nav_items_path, params: {
+        nav_item: { label: "Hidden", website_page_id: page.public_id, location: "header" }
+      }
+      assert_redirected_to root_path
+      assert_empty ::Website::NavItem.where(label: "Hidden")
     end
 
     test "article editing permission without read permission has no form or write entry" do
@@ -138,7 +150,10 @@ module Admin
       @editor = create_user(account_type: "staff")
       grant_permission(@editor, "admin.access")
       grant_permission(@editor, "website.pages.read")
+      grant_permission(@editor, "website.pages.edit")
       grant_permission(@editor, "website.articles.read")
+      grant_permission(@editor, "website.articles.edit")
+      grant_permission(@editor, "website.content.restore")
       grant_admin_module(@editor, "website")
       sign_in_as(@editor)
     end
@@ -148,7 +163,8 @@ module Admin
         admin_website_pages_path => "Admin/Generic/Index",
         admin_website_articles_path => "Admin/Generic/Index",
         admin_website_nav_items_path => "Admin/Website/NavItems/Index",
-        admin_website_themes_path => "Admin/Generic/Index"
+        admin_website_themes_path => "Admin/Generic/Index",
+        admin_website_recycle_bin_path => "Admin/Website/Recovery/Index"
       }.each do |path, component|
         get path
 
@@ -160,6 +176,61 @@ module Admin
                         "expected #{path} to load, got #{response.status}: #{failure_detail}"
         assert_equal component, inertia.component, "expected #{path} to render #{component}"
       end
+    end
+
+    test "CMS page, article, revision, and preview direct links resolve through their owning entry" do
+      page = ::Website::Page.create!(
+        title: "Reachable page",
+        slug: "reachable-page-#{SecureRandom.hex(4)}",
+        page_type: "custom",
+        status: "draft",
+        author: @editor
+      )
+      article = ::Website::Article.create!(
+        title: "Reachable article",
+        slug: "reachable-article-#{SecureRandom.hex(4)}",
+        article_type: "news",
+        status: "draft",
+        author: @editor
+      )
+
+      {
+        new_admin_website_page_path => "Admin/Website/Pages/Form",
+        edit_admin_website_page_path(page) => "Admin/Website/Pages/Form",
+        admin_website_page_revisions_path(page) => "Admin/Website/Revisions/Index",
+        new_admin_website_article_path => "Admin/Website/Articles/Form",
+        edit_admin_website_article_path(article) => "Admin/Website/Articles/Form",
+        admin_website_article_revisions_path(article) => "Admin/Website/Revisions/Index"
+      }.each do |path, component|
+        get path
+        assert_response :success, "expected #{path} to open"
+        assert_equal component, inertia.component
+      end
+
+      get preview_admin_website_page_path(page)
+      assert_response :success
+      assert_equal "Website/Pages/Show", inertia.component
+
+      get preview_admin_website_article_path(article)
+      assert_response :success
+      assert_equal "Website/Articles/Show", inertia.component
+    end
+
+    test "purge permission remains independent while the recycle bin still enforces content read access" do
+      purger = create_user(account_type: "staff")
+      grant_permission(purger, "admin.access")
+      grant_permission(purger, "website.content.purge")
+      grant_permission(purger, "website.pages.read")
+      grant_admin_module(purger, "website")
+      sign_in_as(purger)
+
+      get admin_website_recycle_bin_path
+
+      assert_response :success
+      assert_equal "Admin/Website/Recovery/Index", inertia.component
+      props = inertia.props.deep_symbolize_keys
+      assert_equal admin_website_pages_path, props.fetch(:pagesUrl)
+      assert_nil props.fetch(:articlesUrl)
     end
   end
 end

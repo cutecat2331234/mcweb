@@ -200,7 +200,7 @@ module Identity
         execution_points: [
           "app/controllers/admin/website/pages_controller.rb#create",
           "app/controllers/admin/website/pages_controller.rb#update",
-          "app/controllers/admin/website/pages_controller.rb#destroy",
+          "app/controllers/admin/website/pages_controller.rb#discard",
           "app/controllers/admin/website/blocks_controller.rb"
         ]
       ),
@@ -228,7 +228,7 @@ module Identity
         execution_points: [
           "app/controllers/admin/website/articles_controller.rb#create",
           "app/controllers/admin/website/articles_controller.rb#update",
-          "app/controllers/admin/website/articles_controller.rb#destroy"
+          "app/controllers/admin/website/articles_controller.rb#discard"
         ]
       ),
       build_entry.call(
@@ -237,6 +237,25 @@ module Identity
         execution_points: [
           "app/controllers/admin/website/articles_controller.rb#publish",
           "app/controllers/admin/website/articles_controller.rb#schedule"
+        ]
+      ),
+      build_entry.call(
+        "website.content.restore",
+        "恢复官网内容",
+        execution_points: [
+          "app/controllers/admin/website/recycle_bin_controller.rb#index",
+          "app/controllers/admin/website/recycle_bin_controller.rb#restore",
+          "app/services/website/restore_content.rb#call",
+          "app/services/website/restore_revision.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "website.content.purge",
+        "最终清除官网内容",
+        execution_points: [
+          "app/controllers/admin/website/recycle_bin_controller.rb#authorize_purge",
+          "app/controllers/admin/website/recycle_bin_controller.rb#purge",
+          "app/services/website/final_purge.rb#call"
         ]
       ),
       build_entry.call(

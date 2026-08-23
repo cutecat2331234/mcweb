@@ -78,10 +78,16 @@ en:
         description: "View website articles, previews, and publication status."
       website_articles_edit:
         name: "Edit website articles"
-        description: "Create, edit, and delete website article drafts."
+        description: "Create, edit, and move website articles to the recycle bin."
       website_articles_publish:
         name: "Publish website articles"
         description: "Publish and schedule website articles."
+      website_content_restore:
+        name: "Restore website content"
+        description: "Review the website recycle bin and restore eligible pages and articles as drafts."
+      website_content_purge:
+        name: "Permanently purge website content"
+        description: "Permanently remove mutable website content after retention and safety checks."
       website_templates_manage:
         name: "Manage frontend templates"
         description: "Install, configure, activate, and remove public frontend templates."
@@ -905,6 +911,35 @@ en:
         content_target_missing: The original content record no longer exists.
         content_purge_blocked: Retention or evidence rules block permanent cleanup.
         content_purge_failed: Permanent cleanup failed without changing the lifecycle state.
+        website_content_unavailable: This website content is no longer available for this operation.
+        website_content_conflict: The content changed in another request. Refresh and try again.
+        website_content_version_required: A current content version is required.
+        website_content_reason_required: Enter a reason for this content operation.
+        website_content_reason_too_long: The reason cannot exceed 1,000 characters.
+        website_content_idempotency_key_invalid: The content-operation request ID is invalid.
+        website_content_idempotency_key_reused: This request ID was already used for a different content operation.
+        website_content_idempotency_contract_invalid: The content-operation replay contract is invalid.
+        website_content_already_discarded: This content is already in the recycle bin.
+        website_content_not_discarded: This content is not in the recycle bin.
+        website_content_already_purged: This content has already been permanently purged.
+        website_content_confirmation_mismatch: The typed confirmation does not match this content.
+        website_content_discard_failed: The content could not be moved to the recycle bin.
+        website_content_restore_failed: The content could not be restored. No partial changes were kept.
+        website_content_restore_blocked: Resolve the listed restore conflicts before restoring this content.
+        website_content_publish_failed: The publication state could not be changed.
+        website_content_purge_blocked: Retention or protected references block final purge.
+        website_content_purge_failed: Final purge failed without changing the lifecycle state.
+        website_content_step_up_required: Verify your current account before permanently purging this content.
+        website_content_purge_authorization_invalid: The purge authorization is invalid or expired. Request a new preview.
+        website_content_purge_unauthorized: You do not have permission to permanently purge website content.
+        website_content_audit_failed: The change was not saved because its audit record could not be created.
+        website_home_replacement_required: Select another published home page before discarding this one.
+        website_revision_not_found: The selected revision does not belong to this content.
+        website_revision_event_invalid: This revision event type is not supported.
+        website_revision_restore_failed: The revision could not be restored. No partial changes were kept.
+        website_block_action_invalid: This block action is not supported.
+        website_block_mutation_failed: The block change failed without changing the page.
+        website_block_reorder_conflict: The block list changed. Refresh before reordering it again.
         inventory_target_unavailable: This item does not use tracked inventory.
         inventory_delta_invalid: Enter a non-zero inventory adjustment within the supported range.
         fulfillment_action_invalid: This fulfillment action is not supported.
@@ -1509,6 +1544,10 @@ en:
       is_required: "is required"
       is_too_large: "is too large"
       issued_finance_document_content_is_immutable: "issued finance document content is immutable"
+      website_content_tombstone_immutable: "purged website content is immutable"
+      website_content_recoverable_delete_required: "must be discarded through the recoverable website lifecycle"
+      website_revision_immutable: "website content revisions are immutable"
+      website_revision_idempotency_pair: "website revision request and operation digests must be stored together"
       must_be_a_mapping: "must be a mapping"
       must_be_a_normalized_relative_path: "must be a normalized relative path"
       must_be_a_safe_https_or_uploaded_image_url: "must be a safe http(s) or uploaded image URL"
@@ -2261,6 +2300,28 @@ en:
         developer_mode_captures_cleared: "Developer Mode captures cleared"
         minecraft_identity_linked: "Minecraft identity linked"
         minecraft_identity_unlinked: "Minecraft identity unlinked"
+        website_page_updated: "Website page updated"
+        website_page_published: "Website page published"
+        website_page_scheduled: "Website page publication scheduled"
+        website_page_archived: "Website page archived"
+        website_page_discarded: "Website page moved to recycle bin"
+        website_page_restored: "Website page restored as draft"
+        website_page_revision_restored: "Website page revision restored"
+        website_page_purged: "Website page permanently purged"
+        website_page_purge_blocked: "Website page purge blocked"
+        website_page_block_create: "Website page block added"
+        website_page_block_update: "Website page block updated"
+        website_page_block_delete: "Website page block removed"
+        website_page_block_reorder: "Website page blocks reordered"
+        website_article_updated: "Website article updated"
+        website_article_published: "Website article published"
+        website_article_scheduled: "Website article publication scheduled"
+        website_article_archived: "Website article archived"
+        website_article_discarded: "Website article moved to recycle bin"
+        website_article_restored: "Website article restored as draft"
+        website_article_revision_restored: "Website article revision restored"
+        website_article_purged: "Website article permanently purged"
+        website_article_purge_blocked: "Website article purge blocked"
         forum_post_moderate: "Forum post moderated"
         forum_topic_moderate: "Forum topic moderated"
         forum_topic_move: "Forum topic moved"
@@ -2386,6 +2447,43 @@ en:
       ui:
         edit: Edit
       website:
+        published: Content published.
+        scheduled: Publication scheduled.
+        invalid_schedule: Choose a future publish date and time.
+        preview: Preview
+        publish: Publish
+        statuses:
+          draft: Draft
+          scheduled: Scheduled
+          published: Published
+          archived: Archived
+        recovery:
+          title: Recycle bin
+          detail_title: Discarded content
+          discard_title: Discard website content
+          discard: Move to recycle bin
+          discarded: Content moved to the recycle bin.
+          archive: Archive
+          archived: Content archived.
+          archive_confirm: Archive this content and remove any scheduled publication?
+          restored: Content restored as a draft.
+          purged: Mutable content was permanently purged; tombstone and revision evidence were retained.
+          type: Content type
+          content_title: Title
+          slug: Slug
+          purge_deadline: Purge deadline
+          types:
+            page: Page
+            article: Article
+        revisions:
+          title: Revision history
+          show: Revision details
+          restored: Revision restored as the current draft.
+        blocks:
+          resource: Block
+        nav:
+          resource: Navigation item
+          invalid_page: The selected page was not found.
         pages:
           title: Website pages
           new: New page
@@ -2393,6 +2491,10 @@ en:
           col_title: Title
           col_slug: Slug
           field_type: Page type
+          types:
+            custom: Standard page
+            home: Home page
+            landing: Landing page
         articles:
           title: Website articles
           new: New article
@@ -2401,6 +2503,9 @@ en:
           col_type: Type
           col_published: Published
           field_summary: Summary
+          types:
+            news: News
+            blog: Blog
         themes:
           title: Website themes
           new: New theme

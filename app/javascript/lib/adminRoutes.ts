@@ -146,6 +146,7 @@ export const adminRoutes = {
   websiteArticle: (id: string) => `/admin/website/articles/${id}`,
   editWebsiteArticle: (id: string) => `/admin/website/articles/${id}/edit`,
   websiteNavItems: '/admin/website/nav_items',
+  websiteRecycleBin: '/admin/website/recycle-bin',
   websiteThemes: '/admin/website/themes',
   newWebsiteTheme: '/admin/website/themes/new',
   websiteTheme: (id: number | string) => `/admin/website/themes/${id}`,

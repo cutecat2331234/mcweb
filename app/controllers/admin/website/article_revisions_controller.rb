@@ -2,18 +2,18 @@
 
 module Admin
   module Website
-    class PageRevisionsController < BaseController
-      before_action -> { require_permission("website.pages.read") }
-      before_action -> { require_permission("website.pages.edit") }, only: %i[restore_draft]
+    class ArticleRevisionsController < BaseController
+      before_action -> { require_permission("website.articles.read") }
+      before_action -> { require_permission("website.articles.edit") }, only: %i[restore_draft]
       before_action -> { require_permission("website.content.restore") }, only: %i[restore_draft]
-      before_action :set_page
+      before_action :set_article
       before_action :set_revision, only: %i[show restore_draft]
 
       def index
         render inertia: "Admin/Website/Revisions/Index", props: {
           title: t("mcweb.admin.website.revisions.title"),
           content: content_props,
-          revisions: @page.revisions.ordered.includes(:author).map { |revision| serialize_revision(revision) },
+          revisions: @article.revisions.ordered.includes(:author).map { |revision| serialize_revision(revision) },
           backUrl: content_back_url
         }
       end
@@ -24,17 +24,17 @@ module Admin
           content: content_props,
           revision: serialize_revision(@revision).merge(
             snapshot: @revision.snapshot,
-            restoreUrl: restore_draft_admin_website_page_revision_path(@page, @revision)
+            restoreUrl: restore_draft_admin_website_article_revision_path(@article, @revision)
           ),
-          canRestore: current_user.permission?("website.pages.edit") &&
-            current_user.permission?("website.content.restore") && !@page.purged?,
-          backUrl: admin_website_page_revisions_path(@page)
+          canRestore: current_user.permission?("website.articles.edit") &&
+            current_user.permission?("website.content.restore") && !@article.purged?,
+          backUrl: admin_website_article_revisions_path(@article)
         }
       end
 
       def restore_draft
         result = ::Website::RestoreRevision.call(
-          content: @page,
+          content: @article,
           revision: @revision,
           actor: current_user,
           reason: params[:reason],
@@ -43,22 +43,22 @@ module Admin
           idempotency_key: params[:request_id]
         )
         if result.success?
-          redirect_to edit_admin_website_page_path(@page),
+          redirect_to edit_admin_website_article_path(@article),
                       notice: t("mcweb.admin.website.revisions.restored")
         else
-          redirect_to admin_website_page_revision_path(@page, @revision),
+          redirect_to admin_website_article_revision_path(@article, @revision),
                       alert: service_error_message(result)
         end
       end
 
       private
 
-      def set_page
-        @page = ::Website::Page.with_lifecycle.find_by!(public_id: params[:page_id])
+      def set_article
+        @article = ::Website::Article.with_lifecycle.find_by!(public_id: params[:article_id])
       end
 
       def set_revision
-        @revision = @page.revisions.find(params[:id])
+        @revision = @article.revisions.find(params[:id])
       end
 
       def serialize_revision(revision)
@@ -70,26 +70,26 @@ module Admin
           source_lock_version: revision.source_lock_version,
           author: revision.author&.username,
           created_at: l(revision.created_at, format: :long),
-          url: admin_website_page_revision_path(@page, revision)
+          url: admin_website_article_revision_path(@article, revision)
         }
       end
 
       def content_props
         {
-          id: @page.public_id,
-          type: "page",
-          title: @page.title,
-          slug: @page.slug,
-          status: @page.purged? ? "purged" : @page.status,
-          lock_version: @page.lock_version
+          id: @article.public_id,
+          type: "article",
+          title: @article.title,
+          slug: @article.slug,
+          status: @article.purged? ? "purged" : @article.status,
+          lock_version: @article.lock_version
         }
       end
 
       def content_back_url
-        return admin_website_recycle_bin_item_path("page", @page.public_id) if @page.discarded?
-        return admin_website_recycle_bin_path if @page.purged?
+        return admin_website_recycle_bin_item_path("article", @article.public_id) if @article.discarded?
+        return admin_website_recycle_bin_path if @article.purged?
 
-        admin_website_page_path(@page)
+        admin_website_article_path(@article)
       end
     end
   end

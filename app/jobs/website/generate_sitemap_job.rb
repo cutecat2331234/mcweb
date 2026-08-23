@@ -5,8 +5,8 @@ module Website
     queue_as :website
 
     def perform
-      pages = Website::Page.where(status: "published").pluck(:slug, :updated_at, :page_type)
-      articles = Website::Article.where(status: "published").pluck(:slug, :updated_at)
+      pages = Website::Page.published.pluck(:slug, :updated_at, :page_type)
+      articles = Website::Article.published.pluck(:slug, :updated_at)
 
       sitemap_path = Rails.root.join("public", "sitemap.xml")
       File.write(sitemap_path, build_sitemap(pages, articles))

@@ -6,9 +6,11 @@ module Admin
       include NestedLocaleParams
 
       before_action -> { require_permission("website.pages.read") }
-      before_action -> { require_permission("website.pages.edit") }, only: %i[new create edit update destroy]
-      before_action -> { require_permission("website.pages.publish") }, only: %i[publish schedule]
-      before_action :set_page, only: %i[show edit update destroy publish schedule preview]
+      before_action -> { require_permission("website.pages.edit") },
+                    only: %i[new create edit update discard_form discard archive]
+      before_action -> { require_permission("website.pages.publish") }, only: %i[publish schedule archive]
+      before_action :set_page,
+                    only: %i[show edit update discard_form discard publish schedule archive preview]
 
       def index
         pages = ::Website::Page.order(updated_at: :desc)
@@ -25,12 +27,12 @@ module Admin
             admin_row(
               title: page.title,
               slug: page.slug,
-              status: page.status,
+              status: content_status_label(page.status),
               updated: l(page.updated_at, format: :short),
               url: admin_website_page_path(page)
             )
           end,
-          actions: [ { label: t("mcweb.admin.website.pages.new"), href: new_admin_website_page_path } ]
+          actions: index_actions
         }
       end
 
@@ -40,8 +42,8 @@ module Admin
           title: @page.title,
           subtitle: @page.slug,
           fields: [
-            { label: t("mcweb.admin.website.pages.field_type"), value: @page.page_type },
-            { label: t("mcweb.admin.common.status"), value: @page.status },
+            { label: t("mcweb.admin.website.pages.field_type"), value: page_type_label(@page.page_type) },
+            { label: t("mcweb.admin.common.status"), value: content_status_label(@page.status) },
             { label: t("mcweb.admin.common.updated"), value: l(@page.updated_at, format: :long) },
             { label: "SEO", value: @page.seo.to_json.truncate(120) }
           ],
@@ -70,22 +72,51 @@ module Admin
       end
 
       def update
-        if @page.update(page_params)
-          @page.create_revision!(author: current_user) if @page.published?
-          redirect_to admin_website_page_path(@page), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.page"))
+        result = ::Website::ContentUpdate.call(
+          content: @page,
+          attributes: page_params.except(:lock_version),
+          actor: current_user,
+          expected_lock_version: page_params[:lock_version],
+          request_id: params[:request_id]
+        )
+        if result.success?
+          redirect_to admin_website_page_path(@page),
+                      notice: t("mcweb.flash.updated", resource: t("mcweb.resources.page"))
         else
-          render inertia: "Admin/Website/Pages/Form", props: form_props(@page), status: :unprocessable_entity
+          redirect_to edit_admin_website_page_path(@page), alert: service_error_message(result)
         end
       end
 
-      def destroy
-        @page.destroy!
-        redirect_to admin_website_pages_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.page"))
+      def discard_form
+        render inertia: "Admin/Website/ContentDiscard", props: discard_form_props
+      end
+
+      def discard
+        result = ::Website::DiscardContent.call(
+          content: @page,
+          actor: current_user,
+          reason: params[:reason],
+          confirmation: params[:confirmation],
+          expected_lock_version: params[:lock_version],
+          idempotency_key: params[:request_id],
+          replacement_page_public_id: params[:replacement_page_public_id]
+        )
+        if result.success?
+          redirect_to admin_website_recycle_bin_path,
+                      notice: t("mcweb.admin.website.recovery.discarded")
+        else
+          redirect_to discard_form_admin_website_page_path(@page),
+                      alert: service_error_message(result)
+        end
       end
 
       def publish
-        @page.create_revision!(author: current_user)
-        result = ::Website::PagePublisher.call(page: @page, actor: current_user)
+        result = ::Website::PagePublisher.call(
+          page: @page,
+          actor: current_user,
+          expected_lock_version: params[:lock_version],
+          request_id: params[:request_id]
+        )
         if result.success?
           redirect_to admin_website_page_path(@page), notice: t("mcweb.admin.website.published", default: "Published")
         else
@@ -101,9 +132,30 @@ module Admin
           return
         end
 
-        result = ::Website::PagePublisher.call(page: @page, publish_at: publish_at, actor: current_user)
+        result = ::Website::PagePublisher.call(
+          page: @page,
+          publish_at: publish_at,
+          actor: current_user,
+          expected_lock_version: params[:lock_version],
+          request_id: params[:request_id]
+        )
         if result.success?
           redirect_to admin_website_page_path(@page), notice: t("mcweb.admin.website.scheduled", default: "Scheduled")
+        else
+          redirect_to admin_website_page_path(@page), alert: service_error_message(result)
+        end
+      end
+
+      def archive
+        result = ::Website::ArchiveContent.call(
+          content: @page,
+          actor: current_user,
+          expected_lock_version: params[:lock_version],
+          request_id: params[:request_id]
+        )
+        if result.success?
+          redirect_to admin_website_page_path(@page),
+                      notice: t("mcweb.admin.website.recovery.archived")
         else
           redirect_to admin_website_page_path(@page), alert: service_error_message(result)
         end
@@ -123,12 +175,13 @@ module Admin
       private
 
       def set_page
-        @page = ::Website::Page.find_by!(public_id: params[:id])
+        scope = action_name == "discard" ? ::Website::Page.with_lifecycle : ::Website::Page.all
+        @page = scope.find_by!(public_id: params[:id])
       end
 
       def page_params
         permitted = params.require(:page).permit(
-          :title, :slug, :page_type, :website_theme_id,
+          :title, :slug, :page_type, :website_theme_id, :lock_version,
           seo: {}
         )
         permitted[:seo] = permitted[:seo].to_unsafe_h if permitted[:seo].is_a?(ActionController::Parameters)
@@ -149,8 +202,8 @@ module Admin
           title: page.persisted? ? t("mcweb.admin.website.pages.edit") : t("mcweb.admin.website.pages.new"),
           page: serialize_page_form(page),
           blocks: page.persisted? ? page.blocks.unscope(:order).order(:position).map { |b| serialize_block(b) } : [],
-          pageTypeOptions: %w[custom home landing].map { |value| { value:, label: value } },
-          statusOptions: ::Website::Page.statuses.keys.map { |value| { value:, label: value } },
+          pageTypeOptions: %w[custom home landing].map { |value| { value:, label: page_type_label(value) } },
+          statusOptions: ::Website::Page.statuses.keys.map { |value| { value:, label: content_status_label(value) } },
           themeOptions: ::Website::Theme.order(:name).map { |t| { value: t.id, label: t.name } },
           locales: %w[en zh-CN],
           submitUrl: page.persisted? ? admin_website_page_path(page) : admin_website_pages_path,
@@ -175,8 +228,17 @@ module Admin
           website_theme_id: page.website_theme_id,
           scheduled_at: page.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
           seo: page.seo.presence || { "title" => "", "description" => "", "og_image" => "" },
-          translations: page.translations.presence || {}
+          translations: page.translations.presence || {},
+          lock_version: page.lock_version
         }
+      end
+
+      def page_type_label(value)
+        t("mcweb.admin.website.pages.types.#{value}")
+      end
+
+      def content_status_label(value)
+        t("mcweb.admin.website.statuses.#{value}")
       end
 
       def serialize_block(block)
@@ -191,15 +253,63 @@ module Admin
 
       def show_actions(preview_url)
         actions = [
-          { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_page_path(@page) },
-          { label: t("mcweb.admin.website.preview", default: "Preview"), href: preview_url, external: true },
+          { label: t("mcweb.admin.website.preview", default: "Preview"), href: preview_url, hardNavigation: true },
           { label: t("mcweb.admin.website.revisions.title", default: "Revisions"), href: admin_website_page_revisions_path(@page) }
         ]
+        if current_user.permission?("website.pages.edit")
+          actions.unshift(label: t("mcweb.admin.ui.edit"), href: edit_admin_website_page_path(@page))
+        end
         if current_user.permission?("website.pages.publish")
-          actions << { label: t("mcweb.admin.website.publish", default: "Publish"), href: publish_admin_website_page_path(@page), method: "post" }
+          actions << {
+            label: t("mcweb.admin.website.publish", default: "Publish"),
+            href: publish_admin_website_page_path(@page), method: "post",
+            data: { lock_version: @page.lock_version, request_id: "website-publish-page-#{SecureRandom.uuid}" }
+          }
+          actions << {
+            label: t("mcweb.admin.website.recovery.archive"),
+            href: archive_admin_website_page_path(@page), method: "post",
+            data: { lock_version: @page.lock_version, request_id: "website-archive-page-#{SecureRandom.uuid}" },
+            confirm: t("mcweb.admin.website.recovery.archive_confirm")
+          }
         end
         if current_user.permission?("website.pages.edit")
-          actions << { label: t("mcweb.admin.ui.delete", default: "Delete"), href: admin_website_page_path(@page), method: "delete", confirm: t("mcweb.admin.website.confirm_delete", default: "Delete this page?") }
+          actions << {
+            label: t("mcweb.admin.website.recovery.discard"),
+            href: discard_form_admin_website_page_path(@page)
+          }
+        end
+        actions
+      end
+
+      def discard_form_props
+        replacements = if @page.page_type == "home" && @page.published?
+          ::Website::Page.published.where(page_type: "home").where.not(id: @page.id)
+        else
+          ::Website::Page.none
+        end
+        {
+          title: t("mcweb.admin.website.recovery.discard_title"),
+          content: {
+            type: "page", title: @page.title, slug: @page.slug,
+            lock_version: @page.lock_version
+          },
+          submitUrl: discard_admin_website_page_path(@page),
+          backUrl: admin_website_page_path(@page),
+          replacementRequired: @page.page_type == "home" && @page.published?,
+          replacementOptions: replacements.map do |replacement|
+            { value: replacement.public_id, label: replacement.title }
+          end
+        }
+      end
+
+      def index_actions
+        actions = []
+        if current_user.permission?("website.pages.edit")
+          actions << { label: t("mcweb.admin.website.pages.new"), href: new_admin_website_page_path }
+        end
+        if current_user.permission?("website.content.restore") ||
+            current_user.permission?("website.content.purge")
+          actions << { label: t("mcweb.admin.website.recovery.title"), href: admin_website_recycle_bin_path }
         end
         actions
       end

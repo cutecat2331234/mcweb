@@ -2,54 +2,21 @@
 
 module Website
   class PagePublisher < ApplicationService
-    def initialize(page:, publish_at: nil, actor: nil)
+    def initialize(page:, publish_at: nil, actor: nil, expected_lock_version: nil, request_id: nil)
       @page = page
       @publish_at = publish_at
       @actor = actor
+      @expected_lock_version = expected_lock_version
+      @request_id = request_id
     end
 
     def call
-      if @publish_at.present? && @publish_at.future?
-        schedule_page
-      else
-        publish_now
-      end
-    end
-
-    private
-
-    def publish_now
-      @page.update!(
-        status: "published",
-        published_at: Time.current,
-        scheduled_at: nil
-      )
-
-      log_action("website.page.published")
-      ServiceResult.success(@page)
-    rescue ActiveRecord::RecordInvalid => e
-      ServiceResult.failure(errors: e.record.errors.to_hash)
-    end
-
-    def schedule_page
-      @page.update!(
-        status: "scheduled",
-        scheduled_at: @publish_at,
-        published_at: nil
-      )
-
-      log_action("website.page.scheduled", scheduled_at: @publish_at.iso8601)
-      ServiceResult.success(@page)
-    rescue ActiveRecord::RecordInvalid => e
-      ServiceResult.failure(errors: e.record.errors.to_hash)
-    end
-
-    def log_action(action, metadata = {})
-      Administration::AuditLogger.call(
+      Website::PublishContent.call(
+        content: @page,
         actor: @actor,
-        action: action,
-        resource: @page,
-        metadata: metadata
+        publish_at: @publish_at,
+        expected_lock_version: @expected_lock_version,
+        request_id: @request_id
       )
     end
   end

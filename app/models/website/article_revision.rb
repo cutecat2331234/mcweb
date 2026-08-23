@@ -1,22 +1,21 @@
-module Website
-  class PageRevision < ApplicationRecord
-    EVENT_TYPES = %w[
-      update block_create block_update block_delete block_reorder publish schedule archive discard restore
-      revision_restore purge legacy
-    ].freeze
+# frozen_string_literal: true
 
-    belongs_to :page, class_name: "Website::Page", foreign_key: :website_page_id,
+module Website
+  class ArticleRevision < ApplicationRecord
+    EVENT_TYPES = Website::PageRevision::EVENT_TYPES
+
+    belongs_to :article, class_name: "Website::Article", foreign_key: :website_article_id,
       inverse_of: :revisions
     belongs_to :author, class_name: "User", optional: true
 
-    validates :revision_number, presence: true, uniqueness: { scope: :website_page_id }
+    validates :revision_number, presence: true, uniqueness: { scope: :website_article_id }
     validates :snapshot, presence: true
     validates :event_type, inclusion: { in: EVENT_TYPES }
     validates :reason, length: { maximum: 1_000 }, allow_nil: true
     validates :request_id_digest,
       format: { with: Website::RecoverableContent::IDEMPOTENCY_DIGEST_PATTERN },
       allow_nil: true,
-      uniqueness: { scope: :website_page_id }
+      uniqueness: { scope: :website_article_id }
     validates :operation_digest,
       format: { with: Website::RecoverableContent::IDEMPOTENCY_DIGEST_PATTERN },
       allow_nil: true

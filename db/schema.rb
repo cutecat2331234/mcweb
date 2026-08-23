@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3774,13 +3774,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
     t.index ["active", "event"], name: "index_webhook_subscriptions_on_active_and_event"
   end
 
+  create_table "website_article_revisions", force: :cascade do |t|
+    t.bigint "author_id"
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.string "operation_digest", limit: 64
+    t.text "reason"
+    t.string "request_id_digest", limit: 64
+    t.integer "revision_number", null: false
+    t.jsonb "snapshot", null: false
+    t.integer "source_lock_version", default: 0, null: false
+    t.bigint "website_article_id", null: false
+    t.index ["author_id"], name: "index_website_article_revisions_on_author_id"
+    t.index ["website_article_id", "request_id_digest"], name: "idx_website_article_revisions_request", unique: true, where: "(request_id_digest IS NOT NULL)"
+    t.index ["website_article_id", "revision_number"], name: "idx_website_article_revisions_number", unique: true
+    t.index ["website_article_id"], name: "index_website_article_revisions_on_website_article_id"
+    t.check_constraint "event_type::text = ANY (ARRAY['update'::character varying::text, 'block_create'::character varying::text, 'block_update'::character varying::text, 'block_delete'::character varying::text, 'block_reorder'::character varying::text, 'publish'::character varying::text, 'schedule'::character varying::text, 'archive'::character varying::text, 'discard'::character varying::text, 'restore'::character varying::text, 'revision_restore'::character varying::text, 'purge'::character varying::text, 'legacy'::character varying::text])", name: "chk_website_article_revisions_event_type"
+    t.check_constraint "reason IS NULL OR char_length(reason) >= 1 AND char_length(reason) <= 1000", name: "chk_website_article_revisions_reason"
+    t.check_constraint "request_id_digest IS NULL AND operation_digest IS NULL OR request_id_digest::text ~ '^[0-9a-f]{64}$'::text AND operation_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_website_article_revisions_request"
+    t.check_constraint "source_lock_version >= 0", name: "chk_website_article_revisions_source_version"
+  end
+
   create_table "website_articles", force: :cascade do |t|
     t.string "article_type", default: "news", null: false
     t.bigint "author_id"
     t.text "body"
     t.datetime "created_at", null: false
+    t.text "discard_reason"
+    t.string "discard_idempotency_key_digest", limit: 64
+    t.datetime "discarded_at"
+    t.bigint "discarded_by_id"
+    t.integer "lock_version", default: 0, null: false
     t.string "public_id", null: false
     t.datetime "published_at"
+    t.datetime "purge_at"
+    t.string "purge_idempotency_key_digest", limit: 64
+    t.text "purge_reason"
+    t.datetime "purged_at"
+    t.bigint "purged_by_id"
+    t.string "restore_idempotency_key_digest", limit: 64
     t.datetime "scheduled_at"
     t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
@@ -3790,8 +3822,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
     t.jsonb "translations", default: {}, null: false
     t.datetime "updated_at", null: false
     t.index ["author_id"], name: "index_website_articles_on_author_id"
+    t.index ["discard_idempotency_key_digest"], name: "idx_website_articles_discard_request", unique: true, where: "(discard_idempotency_key_digest IS NOT NULL)"
+    t.index ["discarded_at", "purge_at"], name: "idx_website_articles_recycle_bin"
+    t.index ["discarded_by_id"], name: "index_website_articles_on_discarded_by_id"
     t.index ["public_id"], name: "index_website_articles_on_public_id", unique: true
-    t.index ["slug"], name: "index_website_articles_on_slug", unique: true
+    t.index ["purge_idempotency_key_digest"], name: "idx_website_articles_purge_request", unique: true, where: "(purge_idempotency_key_digest IS NOT NULL)"
+    t.index ["purged_by_id"], name: "index_website_articles_on_purged_by_id"
+    t.index ["restore_idempotency_key_digest"], name: "idx_website_articles_restore_request", unique: true, where: "(restore_idempotency_key_digest IS NOT NULL)"
+    t.index ["slug"], name: "idx_website_articles_active_slug", unique: true, where: "((discarded_at IS NULL) AND (purged_at IS NULL))"
+    t.check_constraint "discarded_at IS NULL AND discarded_by_id IS NULL AND discard_reason IS NULL AND purge_at IS NULL AND discard_idempotency_key_digest IS NULL OR discarded_at IS NOT NULL AND discard_reason IS NOT NULL AND char_length(discard_reason) >= 1 AND char_length(discard_reason) <= 1000 AND purge_at IS NOT NULL AND purge_at >= discarded_at AND discard_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_website_articles_discard_shape"
+    t.check_constraint "purged_at IS NULL AND purged_by_id IS NULL AND purge_reason IS NULL AND purge_idempotency_key_digest IS NULL OR purged_at IS NOT NULL AND purge_reason IS NOT NULL AND char_length(purge_reason) >= 1 AND char_length(purge_reason) <= 1000 AND purge_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND discarded_at IS NOT NULL AND purge_at IS NOT NULL AND purged_at >= purge_at", name: "chk_website_articles_purge_shape"
+    t.check_constraint "purged_at IS NULL OR status::text = 'archived'::text AND author_id IS NULL AND published_at IS NULL AND title::text = public_id::text AND scheduled_at IS NULL AND summary IS NULL AND body IS NULL AND seo = '{}'::jsonb AND translations = '{}'::jsonb", name: "chk_website_articles_purged_tombstone"
+    t.check_constraint "restore_idempotency_key_digest IS NULL OR restore_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_website_articles_restore_request"
   end
 
   create_table "website_blocks", force: :cascade do |t|
@@ -3822,22 +3864,42 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
   create_table "website_page_revisions", force: :cascade do |t|
     t.bigint "author_id"
     t.datetime "created_at", null: false
+    t.string "event_type", default: "legacy", null: false
+    t.string "operation_digest", limit: 64
+    t.text "reason"
+    t.string "request_id_digest", limit: 64
     t.integer "revision_number", null: false
     t.jsonb "snapshot", default: {}, null: false
+    t.integer "source_lock_version", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "website_page_id", null: false
     t.index ["author_id"], name: "index_website_page_revisions_on_author_id"
+    t.index ["website_page_id", "request_id_digest"], name: "idx_website_page_revisions_request", unique: true, where: "(request_id_digest IS NOT NULL)"
     t.index ["website_page_id", "revision_number"], name: "idx_on_website_page_id_revision_number_1396ad78f2", unique: true
     t.index ["website_page_id"], name: "index_website_page_revisions_on_website_page_id"
+    t.check_constraint "event_type::text = ANY (ARRAY['update'::character varying::text, 'block_create'::character varying::text, 'block_update'::character varying::text, 'block_delete'::character varying::text, 'block_reorder'::character varying::text, 'publish'::character varying::text, 'schedule'::character varying::text, 'archive'::character varying::text, 'discard'::character varying::text, 'restore'::character varying::text, 'revision_restore'::character varying::text, 'purge'::character varying::text, 'legacy'::character varying::text])", name: "chk_website_page_revisions_event_type"
+    t.check_constraint "reason IS NULL OR char_length(reason) >= 1 AND char_length(reason) <= 1000", name: "chk_website_page_revisions_reason"
+    t.check_constraint "request_id_digest IS NULL AND operation_digest IS NULL OR request_id_digest::text ~ '^[0-9a-f]{64}$'::text AND operation_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_website_page_revisions_request"
+    t.check_constraint "source_lock_version >= 0", name: "chk_website_page_revisions_source_version"
   end
 
   create_table "website_pages", force: :cascade do |t|
     t.bigint "author_id"
     t.datetime "created_at", null: false
+    t.text "discard_reason"
+    t.string "discard_idempotency_key_digest", limit: 64
+    t.datetime "discarded_at"
+    t.bigint "discarded_by_id"
     t.integer "lock_version", default: 0, null: false
     t.string "page_type", default: "custom", null: false
     t.string "public_id", null: false
     t.datetime "published_at"
+    t.datetime "purge_at"
+    t.string "purge_idempotency_key_digest", limit: 64
+    t.text "purge_reason"
+    t.datetime "purged_at"
+    t.bigint "purged_by_id"
+    t.string "restore_idempotency_key_digest", limit: 64
     t.datetime "scheduled_at"
     t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
@@ -3847,10 +3909,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
     t.datetime "updated_at", null: false
     t.bigint "website_theme_id"
     t.index ["author_id"], name: "index_website_pages_on_author_id"
+    t.index ["discard_idempotency_key_digest"], name: "idx_website_pages_discard_request", unique: true, where: "(discard_idempotency_key_digest IS NOT NULL)"
+    t.index ["discarded_at", "purge_at"], name: "idx_website_pages_recycle_bin"
+    t.index ["discarded_by_id"], name: "index_website_pages_on_discarded_by_id"
     t.index ["public_id"], name: "index_website_pages_on_public_id", unique: true
-    t.index ["slug"], name: "index_website_pages_on_slug", unique: true
+    t.index ["purge_idempotency_key_digest"], name: "idx_website_pages_purge_request", unique: true, where: "(purge_idempotency_key_digest IS NOT NULL)"
+    t.index ["purged_by_id"], name: "index_website_pages_on_purged_by_id"
+    t.index ["restore_idempotency_key_digest"], name: "idx_website_pages_restore_request", unique: true, where: "(restore_idempotency_key_digest IS NOT NULL)"
+    t.index ["slug"], name: "idx_website_pages_active_slug", unique: true, where: "((discarded_at IS NULL) AND (purged_at IS NULL))"
     t.index ["status"], name: "index_website_pages_on_status"
     t.index ["website_theme_id"], name: "index_website_pages_on_website_theme_id"
+    t.check_constraint "discarded_at IS NULL AND discarded_by_id IS NULL AND discard_reason IS NULL AND purge_at IS NULL AND discard_idempotency_key_digest IS NULL OR discarded_at IS NOT NULL AND discard_reason IS NOT NULL AND char_length(discard_reason) >= 1 AND char_length(discard_reason) <= 1000 AND purge_at IS NOT NULL AND purge_at >= discarded_at AND discard_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_website_pages_discard_shape"
+    t.check_constraint "purged_at IS NULL AND purged_by_id IS NULL AND purge_reason IS NULL AND purge_idempotency_key_digest IS NULL OR purged_at IS NOT NULL AND purge_reason IS NOT NULL AND char_length(purge_reason) >= 1 AND char_length(purge_reason) <= 1000 AND purge_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND discarded_at IS NOT NULL AND purge_at IS NOT NULL AND purged_at >= purge_at", name: "chk_website_pages_purge_shape"
+    t.check_constraint "purged_at IS NULL OR status::text = 'archived'::text AND website_theme_id IS NULL AND author_id IS NULL AND title::text = public_id::text AND published_at IS NULL AND scheduled_at IS NULL AND seo = '{}'::jsonb AND translations = '{}'::jsonb", name: "chk_website_pages_purged_tombstone"
+    t.check_constraint "restore_idempotency_key_digest IS NULL OR restore_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_website_pages_restore_request"
   end
 
   create_table "website_themes", force: :cascade do |t|
@@ -4189,16 +4261,50 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
   add_foreign_key "webhook_subscriptions", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "website_article_revisions", "users", column: "author_id"
+  add_foreign_key "website_article_revisions", "website_articles"
   add_foreign_key "website_articles", "users", column: "author_id"
+  add_foreign_key "website_articles", "users", column: "discarded_by_id"
+  add_foreign_key "website_articles", "users", column: "purged_by_id"
   add_foreign_key "website_blocks", "website_pages"
   add_foreign_key "website_nav_items", "website_pages"
   add_foreign_key "website_page_revisions", "users", column: "author_id"
   add_foreign_key "website_page_revisions", "website_pages"
   add_foreign_key "website_pages", "users", column: "author_id"
+  add_foreign_key "website_pages", "users", column: "discarded_by_id"
+  add_foreign_key "website_pages", "users", column: "purged_by_id"
   add_foreign_key "website_pages", "website_themes"
 
   # User-defined PostgreSQL trigger functions and triggers.
   # These database invariants must also exist after db:schema:load.
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.prevent_website_revision_mutation()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'website content revisions are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.protect_website_content_lifecycle()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'website content must use the recoverable lifecycle';
+      END IF;
+      IF OLD.purged_at IS NOT NULL THEN
+        RAISE EXCEPTION 'purged website tombstones are immutable';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.forum_reports_guard_state_transition()
      RETURNS trigger
@@ -4966,6 +5072,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_120000) do
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER identity_auth_group_memberships_bump_delete AFTER DELETE ON public.community_group_memberships REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_group_memberships();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_article_revisions_immutable BEFORE DELETE OR UPDATE ON public.website_article_revisions FOR EACH ROW EXECUTE FUNCTION prevent_website_revision_mutation();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_articles_lifecycle_guard BEFORE DELETE OR UPDATE ON public.website_articles FOR EACH ROW EXECUTE FUNCTION protect_website_content_lifecycle();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_page_revisions_immutable BEFORE DELETE OR UPDATE ON public.website_page_revisions FOR EACH ROW EXECUTE FUNCTION prevent_website_revision_mutation();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_pages_lifecycle_guard BEFORE DELETE OR UPDATE ON public.website_pages FOR EACH ROW EXECUTE FUNCTION protect_website_content_lifecycle();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

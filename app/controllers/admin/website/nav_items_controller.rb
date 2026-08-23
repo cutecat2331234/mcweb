@@ -3,7 +3,7 @@
 module Admin
   module Website
     class NavItemsController < BaseController
-      before_action -> { require_permission("website.pages.read") }, only: %i[index]
+      before_action -> { require_permission("website.pages.read") }
       before_action -> { require_permission("website.pages.edit") }, except: %i[index]
       before_action :set_nav_item, only: %i[update destroy]
 
@@ -26,7 +26,7 @@ module Admin
         item.position = (::Website::NavItem.where(location: item.location).maximum(:position) || -1) + 1
 
         if item.save
-          redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.created", resource: "Nav item")
+          redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.created", resource: t("mcweb.admin.website.nav.resource"))
         else
           redirect_to admin_website_nav_items_path, alert: item.errors.full_messages.to_sentence
         end
@@ -36,7 +36,7 @@ module Admin
         return redirect_with_page_error if @invalid_page_reference
 
         if @nav_item.update(nav_item_params)
-          redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.updated", resource: "Nav item")
+          redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.updated", resource: t("mcweb.admin.website.nav.resource"))
         else
           redirect_to admin_website_nav_items_path, alert: @nav_item.errors.full_messages.to_sentence
         end
@@ -44,7 +44,7 @@ module Admin
 
       def destroy
         @nav_item.destroy!
-        redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.deleted", resource: "Nav item")
+        redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.admin.website.nav.resource"))
       end
 
       def reorder

@@ -3,6 +3,7 @@ import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { Modal } from '@mcweb/ui'
 import { IconArrowDown, IconArrowUp, IconDelete, IconPlus } from '@arco-design/web-vue/es/icon'
+import { createIdempotencyKey } from '@/lib/idempotency'
 
 const { t } = useI18n()
 
@@ -17,11 +18,12 @@ export interface BlockItem {
 const props = defineProps<{
   blocks: BlockItem[]
   baseUrl: string
+  pageLockVersion: number
 }>()
 
 const blockTypeOptions = [
-  { value: 'hero', label: 'Hero' },
-  { value: 'rich_text', label: 'Rich text' },
+  { value: 'hero', label: t('admin.website.blocks.types.hero') },
+  { value: 'rich_text', label: t('admin.website.blocks.types.richText') },
 ]
 
 function moveBlock(index: number, direction: -1 | 1) {
@@ -29,7 +31,11 @@ function moveBlock(index: number, direction: -1 | 1) {
   if (next < 0 || next >= props.blocks.length) return
   const ids = props.blocks.map((block) => block.id)
   ;[ids[index], ids[next]] = [ids[next], ids[index]]
-  router.patch(`${props.baseUrl}/reorder`, { block_ids: ids }, { preserveScroll: true })
+  router.patch(
+    `${props.baseUrl}/reorder`,
+    { block_ids: ids, request_id: createIdempotencyKey(), lock_version: props.pageLockVersion },
+    { preserveScroll: true },
+  )
 }
 
 function addBlock() {
@@ -41,13 +47,19 @@ function addBlock() {
         visible: true,
         settings: { headline: '', subheadline: '' },
       },
+      request_id: createIdempotencyKey(),
+      lock_version: props.pageLockVersion,
     },
     { preserveScroll: true },
   )
 }
 
 function updateBlock(block: BlockItem) {
-  router.patch(`${props.baseUrl}/${block.id}`, { block }, { preserveScroll: true })
+  router.patch(
+    `${props.baseUrl}/${block.id}`,
+    { block, request_id: createIdempotencyKey(), lock_version: props.pageLockVersion },
+    { preserveScroll: true },
+  )
 }
 
 function removeBlock(block: BlockItem) {
@@ -58,7 +70,11 @@ function removeBlock(block: BlockItem) {
     cancelText: t('admin.ui.cancel'),
     hideCancel: false,
     okButtonProps: { status: 'danger' },
-    onOk: () => router.delete(`${props.baseUrl}/${block.id}`, { preserveScroll: true }),
+    onOk: () => router.visit(`${props.baseUrl}/${block.id}`, {
+      method: 'delete',
+      data: { request_id: createIdempotencyKey(), lock_version: props.pageLockVersion },
+      preserveScroll: true,
+    }),
   })
 }
 </script>
@@ -102,7 +118,7 @@ function removeBlock(block: BlockItem) {
       <a-form :model="block" layout="vertical">
         <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16">
           <a-grid-item>
-            <a-form-item field="block_type" label="Block type">
+            <a-form-item field="block_type" :label="t('admin.website.blocks.type')">
               <a-select v-model="block.block_type" :options="blockTypeOptions" />
             </a-form-item>
           </a-grid-item>
@@ -114,20 +130,20 @@ function removeBlock(block: BlockItem) {
         </a-grid>
 
         <template v-if="block.block_type === 'hero'">
-          <a-form-item field="settings.headline" label="Headline">
+          <a-form-item field="settings.headline" :label="t('admin.website.blocks.headline')">
             <a-input v-model="block.settings.headline" allow-clear />
           </a-form-item>
-          <a-form-item field="settings.subheadline" label="Subheadline">
+          <a-form-item field="settings.subheadline" :label="t('admin.website.blocks.subheadline')">
             <a-input v-model="block.settings.subheadline" allow-clear />
           </a-form-item>
-          <a-form-item field="settings.cta_text" label="CTA text">
+          <a-form-item field="settings.cta_text" :label="t('admin.website.blocks.ctaText')">
             <a-input v-model="block.settings.cta_text" allow-clear />
           </a-form-item>
-          <a-form-item field="settings.cta_url" label="CTA URL">
+          <a-form-item field="settings.cta_url" :label="t('admin.website.blocks.ctaUrl')">
             <a-input v-model="block.settings.cta_url" allow-clear />
           </a-form-item>
         </template>
-        <a-form-item v-else-if="block.block_type === 'rich_text'" field="settings.html" label="HTML">
+        <a-form-item v-else-if="block.block_type === 'rich_text'" field="settings.html" :label="t('admin.website.blocks.html')">
           <a-textarea
             v-model="block.settings.html"
             class="font-mono"

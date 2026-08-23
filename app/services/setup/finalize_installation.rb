@@ -34,6 +34,10 @@ module Setup
     end
 
     def configure_database!
+      unless @database.key?(:password) && @database[:password].is_a?(String)
+        return ServiceResult.failure(error: I18n.t("mcweb.setup.database_password_field_missing"))
+      end
+
       database_name = @database[:development_database].presence ||
         Mcweb::LocalConfig.default_database_name("development")
 
@@ -47,15 +51,10 @@ module Setup
       return ServiceResult.failure(error: test_result.error) unless test_result.success?
 
       Mcweb::LocalConfig.write!(
-        "database" => {
-          "host" => @database[:host],
-          "port" => @database[:port].to_i,
-          "username" => @database[:username],
-          "password" => @database[:password],
-          "development" => database_name,
-          "test" => @database[:test_database].presence || Mcweb::LocalConfig.default_database_name("test"),
-          "production" => @database[:production_database].presence || Mcweb::LocalConfig.default_database_name("production")
-        }
+        "database" => Mcweb::LocalConfig.normalized_database_configuration(
+          @database,
+          development_database: database_name
+        )
       )
 
       prepare_result = Mcweb::PrepareApplicationDatabase.call

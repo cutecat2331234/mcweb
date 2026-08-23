@@ -43,14 +43,16 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     assert_redirected_to setup_root_path
   end
 
-  test "database form allows an intentionally empty password" do
+  test "database form allows libpq defaults and an intentionally empty password" do
     unlock_for_setup!
 
     get setup_step_path("database")
 
     assert_response :success
-    assert_select "#setup_password"
-    assert_select "#setup_password[required]", count: 0
+    %w[host port username password].each do |field|
+      assert_select "#setup_#{field}"
+      assert_select "#setup_#{field}[required]", count: 0
+    end
   end
 
   test "database step preserves an explicitly empty password" do
@@ -77,6 +79,40 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to setup_step_path("site")
     assert_equal "", connection_options.sole.fetch(:password)
+    assert_equal "", Mcweb::LocalConfig["database", "password"]
+  end
+
+  test "database step preserves passwordless socket defaults" do
+    unlock_for_setup!
+    connection_options = []
+    connection_check = lambda do |**options|
+      connection_options << options
+      ServiceResult.success
+    end
+
+    Mcweb::TestDatabaseConnection.stub(:call, connection_check) do
+      Mcweb::PrepareApplicationDatabase.stub(:call, ServiceResult.success) do
+        patch setup_step_path("database"), params: {
+          setup: {
+            host: "",
+            port: "",
+            username: "",
+            password: "",
+            development_database: "mcweb_socket"
+          }
+        }
+      end
+    end
+
+    assert_redirected_to setup_step_path("site")
+    submitted = connection_options.sole
+    assert_equal "", submitted.fetch(:host)
+    assert_equal "", submitted.fetch(:port)
+    assert_equal "", submitted.fetch(:username)
+    assert_equal "", submitted.fetch(:password)
+    assert_not Mcweb::LocalConfig.load.fetch("database").key?("host")
+    assert_not Mcweb::LocalConfig.load.fetch("database").key?("port")
+    assert_not Mcweb::LocalConfig.load.fetch("database").key?("username")
     assert_equal "", Mcweb::LocalConfig["database", "password"]
   end
 

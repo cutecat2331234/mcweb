@@ -1,0 +1,6 @@
+zh-CN:
+  mcweb:
+    setup:
+      database_port_invalid: 数据库端口必须在 1 到 65535 之间；留空则使用 PostgreSQL 默认端口。
+      database_connection_failed_safe: 无法连接 PostgreSQL，请检查连接与认证设置后重试。
+      database_prepare_failed_safe: PostgreSQL 已连接，但 McWeb 无法准备应用数据库。请检查服务端日志后重试。

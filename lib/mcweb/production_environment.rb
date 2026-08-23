@@ -103,12 +103,24 @@ module Mcweb
         end
 
         host = environment["MCWEB_DATABASE_HOST"].to_s.strip.presence
-        password = environment["MCWEB_DATABASE_PASSWORD"].to_s.presence
-        reject_placeholder_value!(password, "MCWEB_DATABASE_PASSWORD") if password
-        return unless host
+        password_supplied = environment.key?("MCWEB_DATABASE_PASSWORD") &&
+          environment["MCWEB_DATABASE_PASSWORD"].is_a?(String)
+        password = environment["MCWEB_DATABASE_PASSWORD"] if password_supplied
+        reject_placeholder_value!(password, "MCWEB_DATABASE_PASSWORD") if password.present?
+        database_environment_configured = %w[
+          MCWEB_DATABASE_HOST
+          MCWEB_DATABASE_PORT
+          MCWEB_DATABASE_USERNAME
+          MCWEB_DATABASE_PASSWORD
+          MCWEB_DATABASE_NAME
+        ].any? { |key| environment.key?(key) }
+        return unless database_environment_configured
 
-        required!(environment, "MCWEB_DATABASE_USERNAME")
-        required!(environment, "MCWEB_DATABASE_PASSWORD")
+        unless password_supplied
+          raise InvalidConfiguration,
+            "MCWEB_DATABASE_PASSWORD must be set in production; use an empty value only for an intentionally passwordless connection"
+        end
+        required!(environment, "MCWEB_DATABASE_USERNAME") if host
       rescue URI::InvalidURIError
         raise InvalidConfiguration, "DATABASE_URL must be a valid PostgreSQL database URL"
       end

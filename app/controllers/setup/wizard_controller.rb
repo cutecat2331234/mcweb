@@ -68,7 +68,7 @@ module Setup
 
     def handle_database_step(params)
       data = params.to_h.with_indifferent_access
-      unless data.key?(:password)
+      unless data.key?(:password) && data[:password].is_a?(String)
         flash[:alert] = t("mcweb.setup.database_password_field_missing")
         return redirect_to setup_step_path("database")
       end
@@ -88,15 +88,10 @@ module Setup
       end
 
       Mcweb::LocalConfig.write!(
-        "database" => {
-          "host" => data[:host],
-          "port" => data[:port].to_i,
-          "username" => data[:username],
-          "password" => data[:password],
-          "development" => database_name,
-          "test" => data[:test_database].presence || Mcweb::LocalConfig.default_database_name("test"),
-          "production" => data[:production_database].presence || Mcweb::LocalConfig.default_database_name("production")
-        }
+        "database" => Mcweb::LocalConfig.normalized_database_configuration(
+          data,
+          development_database: database_name
+        )
       )
 
       prepare_result = Mcweb::PrepareApplicationDatabase.call

@@ -12,20 +12,23 @@
   <%= form_with url: setup_step_path("database"), method: :patch, scope: :setup, class: "space-y-4" do |f| %>
     <p class="mc-form-hint">数据库与密钥将写入 <code>config/local.yml</code>，无需配置环境变量。</p>
     <div>
-      <label class="mc-form-label" for="setup_host">数据库主机</label>
-      <%= f.text_field :host, value: @settings.dig("database", "host") || "127.0.0.1", class: "mc-input w-full", required: true, id: "setup_host" %>
+      <label class="mc-form-label" for="setup_host">数据库主机（可选）</label>
+      <%= f.text_field :host, value: @settings.dig("database", "host") || "127.0.0.1", class: "mc-input w-full", id: "setup_host" %>
+      <p class="mc-form-hint">本机 Unix socket / peer 认证可留空，使用 libpq 默认连接位置。</p>
     </div>
     <div>
-      <label class="mc-form-label" for="setup_port">端口</label>
-      <%= f.number_field :port, value: @settings.dig("database", "port") || 5432, class: "mc-input w-full", required: true, min: 1, max: 65535, id: "setup_port" %>
+      <label class="mc-form-label" for="setup_port">端口（可选）</label>
+      <%= f.number_field :port, value: @settings.dig("database", "port") || 5432, class: "mc-input w-full", min: 1, max: 65535, id: "setup_port" %>
     </div>
     <div>
-      <label class="mc-form-label" for="setup_username">用户名</label>
-      <%= f.text_field :username, value: @settings.dig("database", "username") || "postgres", class: "mc-input w-full", required: true, id: "setup_username" %>
+      <label class="mc-form-label" for="setup_username">用户名（可选）</label>
+      <%= f.text_field :username, value: @settings.dig("database", "username") || "postgres", class: "mc-input w-full", id: "setup_username" %>
+      <p class="mc-form-hint">留空时由 libpq 选择当前系统用户。</p>
     </div>
     <div>
-      <label class="mc-form-label" for="setup_password">密码</label>
+      <label class="mc-form-label" for="setup_password">密码（可选）</label>
       <%= f.password_field :password, autocomplete: "new-password", class: "mc-input w-full", id: "setup_password" %>
+      <p class="mc-form-hint">PostgreSQL trust、本机 socket/peer 或 IAM/外部认证代理无需静态密码时请留空。</p>
     </div>
     <div>
       <label class="mc-form-label" for="setup_development_database">开发库名称</label>

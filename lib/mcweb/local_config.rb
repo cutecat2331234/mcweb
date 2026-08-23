@@ -37,8 +37,9 @@ module Mcweb
 
       def complete?
         db = load["database"] || {}
-        %w[host port username].all? { |key| db[key].present? } &&
+        db.is_a?(Hash) &&
           db.key?("password") &&
+          db["password"].is_a?(String) &&
           load["secret_key_base"].present? &&
           load["lockbox_master_key"].present?
       end
@@ -47,10 +48,10 @@ module Mcweb
         db = load["database"] || {}
         if env.to_s == "production" && production_database_environment?(environment)
           return {
-            "host" => environment["MCWEB_DATABASE_HOST"].to_s.strip.presence,
-            "port" => environment["MCWEB_DATABASE_PORT"].to_s.strip.presence,
-            "username" => environment["MCWEB_DATABASE_USERNAME"].to_s.strip.presence,
-            "password" => environment["MCWEB_DATABASE_PASSWORD"].to_s.presence,
+            "host" => normalized_optional_value(environment["MCWEB_DATABASE_HOST"]),
+            "port" => normalized_optional_value(environment["MCWEB_DATABASE_PORT"]),
+            "username" => normalized_optional_value(environment["MCWEB_DATABASE_USERNAME"]),
+            "password" => database_password_from_environment(environment),
             "database" => environment["MCWEB_DATABASE_NAME"].to_s.strip.presence ||
               db[env] ||
               default_database_name(env)
@@ -58,9 +59,9 @@ module Mcweb
         end
 
         settings = {
-          "host" => db["host"],
-          "port" => db["port"],
-          "username" => db["username"],
+          "host" => normalized_optional_value(db["host"]),
+          "port" => normalized_optional_value(db["port"]),
+          "username" => normalized_optional_value(db["username"]),
           "password" => db["password"],
           "database" => db[env] || default_database_name(env)
         }
@@ -69,6 +70,22 @@ module Mcweb
 
       def default_database_name(env)
         "mcweb_#{env}"
+      end
+
+      def normalized_database_configuration(attributes, development_database:)
+        data = attributes.with_indifferent_access
+        configuration = {
+          "host" => normalized_optional_value(data[:host]),
+          "port" => normalized_optional_value(data[:port])&.to_i,
+          "username" => normalized_optional_value(data[:username]),
+          "development" => development_database,
+          "test" => data[:test_database].presence || default_database_name("test"),
+          "production" => data[:production_database].presence || default_database_name("production")
+        }.compact
+        if data.key?(:password) && data[:password].is_a?(String)
+          configuration["password"] = data[:password].to_s
+        end
+        configuration
       end
 
       def write!(attrs)
@@ -81,6 +98,17 @@ module Mcweb
       end
 
       private
+
+      def normalized_optional_value(value)
+        return value unless value.respond_to?(:strip)
+
+        value.strip.presence
+      end
+
+      def database_password_from_environment(environment)
+        value = environment["MCWEB_DATABASE_PASSWORD"]
+        value if environment.key?("MCWEB_DATABASE_PASSWORD") && value.is_a?(String)
+      end
 
       def production_database_environment?(environment)
         %w[

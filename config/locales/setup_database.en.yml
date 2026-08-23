@@ -1,0 +1,6 @@
+en:
+  mcweb:
+    setup:
+      database_port_invalid: Database port must be between 1 and 65535, or left blank to use the PostgreSQL default.
+      database_connection_failed_safe: Could not connect to PostgreSQL. Check the connection and authentication settings, then try again.
+      database_prepare_failed_safe: PostgreSQL connected, but McWeb could not prepare the application database. Check the server logs and try again.

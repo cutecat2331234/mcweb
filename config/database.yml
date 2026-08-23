@@ -13,7 +13,7 @@ development:
 <% dev = local_db("development") %>
   database: <%= dev["database"] || "mcweb_development" %>
 <% if dev["username"] %>  username: <%= dev["username"] %>
-<% end %><% if dev["password"] %>  password: <%= dev["password"] %>
+<% end %><% if dev.key?("password") %>  password: <%= dev["password"].to_s.inspect %>
 <% end %><% if dev["host"] %>  host: <%= dev["host"] %>
 <% end %><% if dev["port"] %>  port: <%= dev["port"] %>
 <% end %>
@@ -22,7 +22,7 @@ test:
 <% test_cfg = local_db("test") %>
   database: <%= (test_cfg["database"] || "mcweb_test") %><%= ENV["TEST_ENV_NUMBER"] %>
 <% if test_cfg["username"] %>  username: <%= test_cfg["username"] %>
-<% end %><% if test_cfg["password"] %>  password: <%= test_cfg["password"] %>
+<% end %><% if test_cfg.key?("password") %>  password: <%= test_cfg["password"].to_s.inspect %>
 <% end %><% if test_cfg["host"] %>  host: <%= test_cfg["host"] %>
 <% end %><% if test_cfg["port"] %>  port: <%= test_cfg["port"] %>
 <% end %>
@@ -32,7 +32,7 @@ production:
 <% prod = local_db("production") %>
     database: <%= prod["database"] || "mcweb_production" %>
 <% if prod["username"] %>    username: <%= prod["username"] %>
-<% end %><% if prod["password"] %>    password: <%= prod["password"] %>
+<% end %><% if prod.key?("password") %>    password: <%= prod["password"].to_s.inspect %>
 <% end %><% if prod["host"] %>    host: <%= prod["host"] %>
 <% end %><% if prod["port"] %>    port: <%= prod["port"] %>
 <% end %>

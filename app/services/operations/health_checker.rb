@@ -61,7 +61,13 @@ module Operations
           processes: @sidekiq_processes,
           queues: @sidekiq_queues
         ).value
-        attach_worker_heartbeat(queue_health_payload(snapshot))
+        recovery = Operations::RedisQueueRecoverySnapshot.call(
+          queue_snapshot: snapshot,
+          now: @clock.call
+        ).value
+        attach_worker_heartbeat(
+          queue_health_payload(snapshot).merge(recovery:)
+        )
       else
         { status: "ok", pending_jobs: 0, failed_jobs: 0, adapter: adapter.to_s }
       end

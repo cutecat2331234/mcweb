@@ -43,17 +43,22 @@ module Minecraft
         return idempotent_result(existing, request_digest)
       end
 
-      operation = Minecraft::NodeOperation.create!(
-        operation_type: @operation_type,
-        status: "queued",
-        idempotency_key: @idempotency_key,
-        request_digest: request_digest,
-        request_payload: request_payload,
-        target_count: @servers.length
-      )
-      Minecraft::PrepareNodeOperationJob.perform_later
+      operation = nil
+      Minecraft::NodeOperation.transaction(requires_new: true) do
+        operation = Minecraft::NodeOperation.create!(
+          operation_type: @operation_type,
+          status: "queued",
+          idempotency_key: @idempotency_key,
+          request_digest: request_digest,
+          request_payload: request_payload,
+          target_count: @servers.length
+        )
+        Minecraft::NodeOperationPreparation.record!(operation:)
+      end
 
       ServiceResult.success(operation: operation, idempotent: false)
+    rescue Operations::DurableEnqueueAdmission::Unavailable
+      operation_failure(:background_processing_unavailable)
     rescue ActiveRecord::RecordNotUnique
       existing = @idempotency_key && Minecraft::NodeOperation.find_by(idempotency_key: @idempotency_key)
       return idempotent_result(existing, request_digest) if existing

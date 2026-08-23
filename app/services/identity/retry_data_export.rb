@@ -11,7 +11,7 @@ module Identity
 
     def call
       retried = false
-      DataExport.transaction do
+      DataExport.transaction(requires_new: true) do
         @data_export.lock!
         return ServiceResult.success(data_export: @data_export, replayed: true) if @data_export.queued? || @data_export.running?
         return failure("data_export_retry_not_allowed") unless @data_export.failed? || @data_export.expired?
@@ -35,11 +35,13 @@ module Identity
           ip_address: @ip_address,
           user_agent: @user_agent
         )
+        Identity::DataExportGeneration.record!(data_export: @data_export)
         retried = true
       end
 
-      Identity::BuildDataExportJob.perform_later(@data_export.id) if retried
       ServiceResult.success(data_export: @data_export, replayed: !retried)
+    rescue Operations::DurableEnqueueAdmission::Unavailable
+      failure(Operations::DurableEnqueueAdmission::ERROR_CODE)
     rescue ActiveRecord::StaleObjectError
       failure("data_export_conflict")
     end

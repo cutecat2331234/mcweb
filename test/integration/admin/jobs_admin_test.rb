@@ -28,6 +28,12 @@ module Admin
         assert_equal "test", props.dig(:queueSnapshot, :adapter)
         assert_equal "local", props.dig(:queueSnapshot, :status)
         assert_equal [], props.dig(:queueSnapshot, :queues)
+        assert_equal "local", props.dig(:redisRecovery, :status)
+        assert_nil props.dig(:redisRecovery, :redis_available)
+        assert_equal true, props.dig(:redisRecovery, :ledger_available)
+        assert_equal false, props.dig(:redisRecovery, :database_fallback)
+        assert props.dig(:redisRecoveryCopy, :title).present?
+        assert props.dig(:redisRecoveryCopy, :handoffNote).present?
         assert_equal true, props.dig(:workerHeartbeat, :available)
         assert_equal "missing", props.dig(:workerHeartbeat, :status)
         assert_equal 0, props.dig(:workerHeartbeat, :fresh_count)

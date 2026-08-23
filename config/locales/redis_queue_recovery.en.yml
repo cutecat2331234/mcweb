@@ -1,0 +1,39 @@
+en:
+  mcweb:
+    services:
+      errors:
+        background_processing_unavailable: "Background processing is temporarily unavailable. Nothing was queued; please try again later."
+    admin:
+      redis_queue_recovery:
+        title: "Redis queue recovery"
+        description: "Live Sidekiq availability plus the PostgreSQL durable-intent backlog. The ledger remains readable while Redis is unavailable."
+        redis: "Redis / Sidekiq"
+        ledger: "Durable ledger"
+        pending: "Pending intents"
+        retrying: "Retrying intents"
+        dead_lettered: "Dead-lettered intents"
+        oldest_pending: "Oldest pending request"
+        last_enqueue_failure: "Last enqueue failure"
+        last_recovery_handoff: "Last recovery handoff"
+        last_recovery_failure: "Last recovery failure"
+        recovery_result: "Latest recovery result"
+        fallback_active: "Redis metrics are unavailable. Showing the persisted PostgreSQL recovery ledger instead."
+        handoff_note: "Accepted means Sidekiq accepted the recovered dispatch; it does not mean the underlying work has completed."
+        statuses:
+          healthy: "Healthy"
+          recovering: "Recovering"
+          warning: "Attention required"
+          unavailable: "Redis unavailable"
+          error: "Ledger unavailable"
+          local: "Local adapter"
+        availability:
+          available: "Available"
+          unavailable: "Unavailable"
+          not_applicable: "Not applicable"
+        results:
+          accepted: "Accepted by Sidekiq"
+          failed: "Handoff failed"
+          none: "No recovery handoff recorded"
+        triggers:
+          maintenance: "Automatic recovery"
+          manual: "Manual recovery"

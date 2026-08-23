@@ -18,6 +18,9 @@ module Admin
       def index
         developer_mode_enabled = Mcweb::DeveloperMode.enabled?
         queue_result = queue_snapshot_factory.call
+        redis_recovery = Operations::RedisQueueRecoverySnapshot.call(
+          queue_snapshot: queue_result.value
+        ).value
         render inertia: "Admin/System/Jobs/Index", props: {
           dashboardUrl: "/jobs",
           metricsUrl: admin_system_jobs_path,
@@ -35,6 +38,8 @@ module Admin
           securityRecoveryDeliveries: recent_security_recovery_deliveries,
           securityRecoveryCopy: security_recovery_copy,
           queueSnapshot: queue_result.value,
+          redisRecovery: redis_recovery,
+          redisRecoveryCopy: redis_recovery_copy,
           workerHeartbeat: worker_heartbeat_snapshot,
           operationsMetrics: metrics_query_factory.call(
             range: params[:range].to_s
@@ -185,6 +190,48 @@ module Admin
             pending: t("#{scope}.statuses.pending"),
             sent: t("#{scope}.statuses.sent"),
             failed: t("#{scope}.statuses.failed")
+          }
+        }
+      end
+
+      def redis_recovery_copy
+        scope = "mcweb.admin.redis_queue_recovery"
+        {
+          title: t("#{scope}.title"),
+          description: t("#{scope}.description"),
+          redis: t("#{scope}.redis"),
+          ledger: t("#{scope}.ledger"),
+          pending: t("#{scope}.pending"),
+          retrying: t("#{scope}.retrying"),
+          deadLettered: t("#{scope}.dead_lettered"),
+          oldestPending: t("#{scope}.oldest_pending"),
+          lastEnqueueFailure: t("#{scope}.last_enqueue_failure"),
+          lastRecoveryHandoff: t("#{scope}.last_recovery_handoff"),
+          lastRecoveryFailure: t("#{scope}.last_recovery_failure"),
+          recoveryResult: t("#{scope}.recovery_result"),
+          fallbackActive: t("#{scope}.fallback_active"),
+          handoffNote: t("#{scope}.handoff_note"),
+          statuses: {
+            healthy: t("#{scope}.statuses.healthy"),
+            recovering: t("#{scope}.statuses.recovering"),
+            warning: t("#{scope}.statuses.warning"),
+            unavailable: t("#{scope}.statuses.unavailable"),
+            error: t("#{scope}.statuses.error"),
+            local: t("#{scope}.statuses.local")
+          },
+          availability: {
+            available: t("#{scope}.availability.available"),
+            unavailable: t("#{scope}.availability.unavailable"),
+            notApplicable: t("#{scope}.availability.not_applicable")
+          },
+          results: {
+            accepted: t("#{scope}.results.accepted"),
+            failed: t("#{scope}.results.failed"),
+            none: t("#{scope}.results.none")
+          },
+          triggers: {
+            maintenance: t("#{scope}.triggers.maintenance"),
+            manual: t("#{scope}.triggers.manual")
           }
         }
       end

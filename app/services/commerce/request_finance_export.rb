@@ -30,7 +30,7 @@ module Commerce
       end
 
       finance_export = nil
-      FinanceExport.transaction do
+      FinanceExport.transaction(requires_new: true) do
         finance_export = FinanceExport.create!(
           requested_by: @actor,
           status: "queued",
@@ -66,12 +66,12 @@ module Commerce
           ip_address: @ip_address,
           user_agent: @user_agent
         )
+        Commerce::FinanceExportGeneration.record!(finance_export:)
       end
 
-      ActiveRecord.after_all_transactions_commit do
-        Commerce::BuildFinanceExportJob.perform_later(finance_export.id)
-      end
       ServiceResult.success(finance_export:, replayed: false)
+    rescue Operations::DurableEnqueueAdmission::Unavailable
+      failure(Operations::DurableEnqueueAdmission::ERROR_CODE)
     rescue ActiveRecord::RecordNotUnique
       replay_result(
         FinanceExport.find_by!(requested_by: @actor, idempotency_key: @idempotency_key),

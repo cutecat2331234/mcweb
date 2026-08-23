@@ -17,7 +17,7 @@ module Identity
 
     test "request is idempotent and queues a single background export" do
       first = nil
-      assert_enqueued_jobs 1, only: BuildDataExportJob do
+      assert_enqueued_jobs 1, only: Operations::DispatchDurableIntentJob do
         first = RequestDataExport.call(
           user: @user,
           idempotency_key: "export-request-1",
@@ -35,10 +35,70 @@ module Identity
       end
 
       assert first.success?
+      data_export = first.value.fetch(:data_export)
+      intent = Operations::DurableEnqueueIntent.find_by!(
+        handler_key: Identity::DataExportGeneration::HANDLER_KEY,
+        source_id: data_export.id
+      )
+      assert_equal "identity.data_export", intent.source_kind
+      assert_equal "default", intent.queue_name
+      assert_empty intent.arguments
       assert AuditLog.exists?(
         action: "identity.data_export_requested",
-        resource_id: first.value.fetch(:data_export).id
+        resource_id: data_export.id
       )
+    end
+
+    test "request rolls back instead of reporting success when its durable intent cannot be recorded" do
+      assert_no_difference -> { DataExport.count } do
+        Identity::DataExportGeneration.stub(
+          :record!,
+          ->(**) { raise Operations::DurableEnqueueAdmission::Unavailable }
+        ) do
+          result = RequestDataExport.call(
+            user: @user,
+            idempotency_key: "export-admission-unavailable",
+            ip_address: "127.0.0.1"
+          )
+
+          assert_predicate result, :failure?
+          assert_equal "background_processing_unavailable", result.code
+        end
+      end
+    end
+
+    test "a queue outage leaves the accepted export queued and recoverable from PostgreSQL" do
+      result = nil
+      Operations::DispatchDurableIntentJob.stub(
+        :set,
+        ->(**) { raise IOError, "temporary queue outage" }
+      ) do
+        result = RequestDataExport.call(
+          user: @user,
+          idempotency_key: "export-redis-outage",
+          ip_address: "127.0.0.1"
+        )
+      end
+
+      assert_predicate result, :success?
+      data_export = result.value.fetch(:data_export)
+      assert_predicate data_export.reload, :queued?
+      intent = Operations::DurableEnqueueIntent.find_by!(
+        handler_key: Identity::DataExportGeneration::HANDLER_KEY,
+        source_id: data_export.id
+      )
+      failure = intent.events.order(:sequence).last
+      assert_equal "enqueue_failed", failure.event_type
+
+      recovery_at = failure.occurred_at +
+        Operations::DurableEnqueueCatalog.entry(intent.handler_key).enqueue_stale_seconds +
+        1.second
+      assert_enqueued_with(job: Operations::DispatchDurableIntentJob, queue: "default") do
+        recovery = Operations::RecoverDurableEnqueue.call(now: recovery_at)
+
+        assert_predicate recovery, :success?
+        assert_equal 1, recovery.value.fetch(:enqueued_count)
+      end
     end
 
     test "job creates a private zip without authentication secrets" do
@@ -110,7 +170,7 @@ module Identity
         error_code: "data_export_generation_failed"
       )
 
-      assert_enqueued_jobs 1, only: BuildDataExportJob do
+      assert_enqueued_jobs 1, only: Operations::DispatchDurableIntentJob do
         result = RetryDataExport.call(data_export:, user: @user)
         assert result.success?
         refute result.value.fetch(:replayed)
@@ -118,6 +178,33 @@ module Identity
 
       assert_predicate data_export.reload, :queued?
       assert_nil data_export.error_code
+    end
+
+    test "retry keeps the failed state when a new durable generation cannot be recorded" do
+      requested_at = 1.hour.ago
+      data_export = DataExport.create!(
+        user: @user,
+        idempotency_key: "retry-export-admission-unavailable",
+        requested_at:,
+        status: :failed,
+        failed_at: Time.current,
+        error_code: "data_export_generation_failed"
+      )
+
+      Identity::DataExportGeneration.stub(
+        :record!,
+        ->(**) { raise Operations::DurableEnqueueAdmission::Unavailable }
+      ) do
+        result = RetryDataExport.call(data_export:, user: @user)
+
+        assert_predicate result, :failure?
+        assert_equal "background_processing_unavailable", result.code
+      end
+
+      data_export.reload
+      assert_predicate data_export, :failed?
+      assert_equal "data_export_generation_failed", data_export.error_code
+      assert_equal requested_at.to_i, data_export.requested_at.to_i
     end
 
     test "a contributor failure retries the same logical export and completes on a later attempt" do
@@ -148,7 +235,7 @@ module Identity
         assert_equal 1, data_export.attempts
 
         assert_no_difference -> { DataExport.count } do
-          assert_enqueued_jobs 1, only: BuildDataExportJob do
+          assert_enqueued_jobs 1, only: Operations::DispatchDurableIntentJob do
             result = RetryDataExport.call(data_export:, user: @user)
             assert_predicate result, :success?
           end

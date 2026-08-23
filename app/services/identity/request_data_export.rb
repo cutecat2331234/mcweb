@@ -23,7 +23,7 @@ module Identity
       end
 
       data_export = nil
-      DataExport.transaction do
+      DataExport.transaction(requires_new: true) do
         data_export = DataExport.create!(
           user: @user,
           idempotency_key: @idempotency_key,
@@ -38,12 +38,12 @@ module Identity
           ip_address: @ip_address,
           user_agent: @user_agent
         )
+        Identity::DataExportGeneration.record!(data_export:)
       end
 
-      ActiveRecord.after_all_transactions_commit do
-        Identity::BuildDataExportJob.perform_later(data_export.id)
-      end
       ServiceResult.success(data_export:, replayed: false)
+    rescue Operations::DurableEnqueueAdmission::Unavailable
+      failure(Operations::DurableEnqueueAdmission::ERROR_CODE)
     rescue ActiveRecord::RecordNotUnique
       existing = DataExport.find_by!(user: @user, idempotency_key: @idempotency_key)
       ServiceResult.success(data_export: existing, replayed: true)

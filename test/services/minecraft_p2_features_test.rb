@@ -161,7 +161,12 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
     end
     operation = Minecraft::NodeOperation.order(:created_at).last
     assert_equal 1, operation.target_count
-    assert_enqueued_with(job: Minecraft::PrepareNodeOperationJob, args: [])
+    intent = Operations::DurableEnqueueIntent.find_by!(
+      handler_key: Minecraft::NodeOperationPreparation::HANDLER_KEY,
+      source_id: operation.id
+    )
+    assert_equal "minecraft", intent.queue_name
+    assert_enqueued_with(job: Operations::DispatchDurableIntentJob, queue: "minecraft")
   end
 
   test "BuildFileSyncUrl generates verifiable url" do

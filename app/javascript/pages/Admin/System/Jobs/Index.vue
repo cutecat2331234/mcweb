@@ -162,6 +162,47 @@ const props = defineProps<{
       latency_seconds: number
     }>
   }
+  redisRecovery: {
+    dependency: 'sidekiq_redis'
+    status: 'healthy' | 'recovering' | 'warning' | 'unavailable' | 'error' | 'local'
+    redis_available?: boolean | null
+    queue_status: string
+    database_fallback: boolean
+    ledger_available: boolean
+    ledger_error_code?: string
+    pending_intents: number
+    running_intents: number
+    retrying_intents: number
+    dead_lettered_intents: number
+    oldest_pending_at?: string | null
+    oldest_pending_seconds?: number | null
+    last_enqueue_failure_at?: string | null
+    last_recovery_handoff_at?: string | null
+    last_recovery_failure_at?: string | null
+    last_recovery_result: 'accepted' | 'failed' | 'none'
+    last_recovery_trigger?: 'maintenance' | 'manual' | null
+    generated_at: string
+  }
+  redisRecoveryCopy: {
+    title: string
+    description: string
+    redis: string
+    ledger: string
+    pending: string
+    retrying: string
+    deadLettered: string
+    oldestPending: string
+    lastEnqueueFailure: string
+    lastRecoveryHandoff: string
+    lastRecoveryFailure: string
+    recoveryResult: string
+    fallbackActive: string
+    handoffNote: string
+    statuses: Record<string, string>
+    availability: Record<'available' | 'unavailable' | 'notApplicable', string>
+    results: Record<'accepted' | 'failed' | 'none', string>
+    triggers: Record<'maintenance' | 'manual', string>
+  }
   workerHeartbeat: {
     available: boolean
     status: 'healthy' | 'stale' | 'missing' | 'unavailable'
@@ -704,6 +745,112 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
           </a-space>
         </a-descriptions-item>
       </a-descriptions>
+
+      <a-divider />
+
+      <a-space direction="vertical" :size="12" fill data-testid="redis-recovery-snapshot">
+        <div>
+          <a-typography-title :heading="6">
+            {{ redisRecoveryCopy.title }}
+          </a-typography-title>
+          <a-typography-paragraph type="secondary">
+            {{ redisRecoveryCopy.description }}
+          </a-typography-paragraph>
+        </div>
+
+        <a-alert
+          v-if="redisRecovery.database_fallback"
+          type="warning"
+          show-icon
+          :title="redisRecoveryCopy.fallbackActive"
+        />
+
+        <a-descriptions
+          :column="{ xs: 1, sm: 2, xl: 4 }"
+          layout="vertical"
+          bordered
+          size="small"
+        >
+          <a-descriptions-item :label="redisRecoveryCopy.redis">
+            <a-tag
+              :color="
+                redisRecovery.redis_available === null
+                  ? 'gray'
+                  : redisRecovery.redis_available
+                    ? 'green'
+                    : 'red'
+              "
+            >
+              {{
+                redisRecoveryCopy.availability[
+                  redisRecovery.redis_available === null
+                    ? 'notApplicable'
+                    : redisRecovery.redis_available
+                      ? 'available'
+                      : 'unavailable'
+                ]
+              }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.ledger">
+            <a-space wrap>
+              <a-tag :color="redisRecovery.ledger_available ? 'green' : 'red'">
+                {{
+                  redisRecoveryCopy.availability[
+                    redisRecovery.ledger_available ? 'available' : 'unavailable'
+                  ]
+                }}
+              </a-tag>
+              <a-tag :color="queueStatusColor(redisRecovery.status)">
+                {{ redisRecoveryCopy.statuses[redisRecovery.status] }}
+              </a-tag>
+            </a-space>
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.pending">
+            <a-statistic :value="redisRecovery.pending_intents" />
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.retrying">
+            <a-statistic :value="redisRecovery.retrying_intents" />
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.deadLettered">
+            <a-statistic :value="redisRecovery.dead_lettered_intents" />
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.oldestPending">
+            {{ formatDate(redisRecovery.oldest_pending_at) }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.lastEnqueueFailure">
+            {{ formatDate(redisRecovery.last_enqueue_failure_at) }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.lastRecoveryHandoff">
+            <a-space direction="vertical" :size="4" fill>
+              <span>{{ formatDate(redisRecovery.last_recovery_handoff_at) }}</span>
+              <a-tag v-if="redisRecovery.last_recovery_trigger" color="arcoblue">
+                {{ redisRecoveryCopy.triggers[redisRecovery.last_recovery_trigger] }}
+              </a-tag>
+            </a-space>
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.lastRecoveryFailure">
+            {{ formatDate(redisRecovery.last_recovery_failure_at) }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="redisRecoveryCopy.recoveryResult">
+            <a-tag
+              :color="
+                redisRecovery.last_recovery_result === 'failed'
+                  ? 'red'
+                  : redisRecovery.last_recovery_result === 'none'
+                    ? 'gray'
+                    : 'green'
+              "
+            >
+              {{ redisRecoveryCopy.results[redisRecovery.last_recovery_result] }}
+            </a-tag>
+          </a-descriptions-item>
+        </a-descriptions>
+
+        <a-typography-text type="secondary">
+          {{ redisRecoveryCopy.handoffNote }}
+        </a-typography-text>
+      </a-space>
 
       <a-divider />
 

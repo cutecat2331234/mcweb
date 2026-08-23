@@ -47,6 +47,32 @@ class Commerce::FinanceExportsTest < ActiveSupport::TestCase
     assert_predicate conflict, :failure?
     assert_equal "finance_export_idempotency_conflict", conflict.code
     assert_equal 1, Commerce::FinanceExport.where(requested_by: @owner, idempotency_key: request_id).count
+    finance_export = first.value.fetch(:finance_export)
+    intent = Operations::DurableEnqueueIntent.find_by!(
+      handler_key: Commerce::FinanceExportGeneration::HANDLER_KEY,
+      source_id: finance_export.id
+    )
+    assert_equal "commerce.finance_export", intent.source_kind
+    assert_equal "default", intent.queue_name
+    assert_empty intent.arguments
+  end
+
+  test "export request rolls back when its durable generation cannot be recorded" do
+    assert_no_difference -> { Commerce::FinanceExport.count } do
+      Commerce::FinanceExportGeneration.stub(
+        :record!,
+        ->(**) { raise Operations::DurableEnqueueAdmission::Unavailable }
+      ) do
+        result = Commerce::RequestFinanceExport.call(
+          actor: @owner,
+          filters: { currency: "CNY" },
+          idempotency_key: SecureRandom.uuid
+        )
+
+        assert_predicate result, :failure?
+        assert_equal "background_processing_unavailable", result.code
+      end
+    end
   end
 
   test "asynchronous export builds filtered CSV with progress, digest, and immutable audit" do
@@ -64,7 +90,7 @@ class Commerce::FinanceExportsTest < ActiveSupport::TestCase
     assert_predicate result, :success?, result.error
     finance_export = result.value.fetch(:finance_export)
 
-    perform_enqueued_jobs(only: Commerce::BuildFinanceExportJob)
+    perform_enqueued_jobs(only: Operations::DispatchDurableIntentJob)
 
     finance_export.reload
     assert finance_export.completed?

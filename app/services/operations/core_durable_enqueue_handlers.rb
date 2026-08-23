@@ -27,6 +27,9 @@ module Operations
 
       Identity::EmailChangeDelivery.register(registry)
       Identity::SecurityRecoveryMailDelivery.register(registry)
+      Identity::DataExportGeneration.register(registry)
+      Commerce::FinanceExportGeneration.register(registry)
+      Minecraft::NodeOperationPreparation.register(registry)
 
       registry.register(
         key: "community.web_push",

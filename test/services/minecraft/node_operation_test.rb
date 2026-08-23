@@ -64,6 +64,45 @@ class Minecraft::NodeOperationTest < ActiveSupport::TestCase
     assert_equal 1, Minecraft::NodeOperation.where(idempotency_key: "metrics-idempotent").count
   end
 
+  test "operation creation and its allowlisted dispatcher intent commit together" do
+    result = nil
+    assert_enqueued_with(job: Operations::DispatchDurableIntentJob, queue: "minecraft") do
+      result = Minecraft::EnqueueNodeOperation.call(
+        operation_type: "collect_metrics",
+        servers: [ @server_a ],
+        idempotency_key: "durable-operation-wakeup"
+      )
+    end
+
+    assert_predicate result, :success?
+    operation = result.value.fetch(:operation)
+    intent = Operations::DurableEnqueueIntent.find_by!(
+      handler_key: Minecraft::NodeOperationPreparation::HANDLER_KEY,
+      source_id: operation.id
+    )
+    assert_equal "minecraft.node_operation", intent.source_kind
+    assert_equal "minecraft", intent.queue_name
+    assert_empty intent.arguments
+  end
+
+  test "operation creation fails closed when a durable wakeup cannot be recorded" do
+    assert_no_difference -> { Minecraft::NodeOperation.count } do
+      Minecraft::NodeOperationPreparation.stub(
+        :record!,
+        ->(**) { raise Operations::DurableEnqueueAdmission::Unavailable }
+      ) do
+        result = Minecraft::EnqueueNodeOperation.call(
+          operation_type: "collect_metrics",
+          servers: [ @server_a ],
+          idempotency_key: "unavailable-operation-wakeup"
+        )
+
+        assert_predicate result, :failure?
+        assert_equal "background_processing_unavailable", result.code.to_s
+      end
+    end
+  end
+
   test "a node cannot receive another batch before result acknowledgement" do
     first = enqueue_and_prepare(servers: [ @server_a ], idempotency_key: "queue-first")
     second = enqueue_and_prepare(servers: [ @server_b ], idempotency_key: "queue-second")

@@ -19,7 +19,7 @@ class IdentityDataExportsTest < ActionDispatch::IntegrationTest
     assert_equal [], inertia.props.fetch(:exports)
     assert_equal false, inertia.props.dig(:pagination, :has_more)
 
-    assert_enqueued_jobs 1, only: Identity::BuildDataExportJob do
+    assert_enqueued_jobs 1, only: Operations::DispatchDurableIntentJob do
       post identity_data_exports_path, params: {
         data_export: { idempotency_key: "integration-export-1" }
       }

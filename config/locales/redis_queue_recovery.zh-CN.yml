@@ -1,0 +1,39 @@
+zh-CN:
+  mcweb:
+    services:
+      errors:
+        background_processing_unavailable: "后台处理暂时不可用。本次操作未进入队列，请稍后重试。"
+    admin:
+      redis_queue_recovery:
+        title: "Redis 队列恢复"
+        description: "同时显示 Sidekiq 实时可用性与 PostgreSQL 持久意图积压；Redis 不可用时仍可读取恢复账本。"
+        redis: "Redis / Sidekiq"
+        ledger: "持久意图账本"
+        pending: "待处理意图"
+        retrying: "重试中意图"
+        dead_lettered: "死信意图"
+        oldest_pending: "最早待处理请求"
+        last_enqueue_failure: "最近入队失败"
+        last_recovery_handoff: "最近恢复交接"
+        last_recovery_failure: "最近恢复失败"
+        recovery_result: "最近恢复结果"
+        fallback_active: "Redis 指标当前不可用，现显示 PostgreSQL 中持久保存的恢复账本。"
+        handoff_note: "“Sidekiq 已接收”只表示恢复调度已交给队列，不代表底层任务已经完成。"
+        statuses:
+          healthy: "健康"
+          recovering: "恢复处理中"
+          warning: "需要处理"
+          unavailable: "Redis 不可用"
+          error: "账本不可用"
+          local: "本地适配器"
+        availability:
+          available: "可用"
+          unavailable: "不可用"
+          not_applicable: "不适用"
+        results:
+          accepted: "Sidekiq 已接收"
+          failed: "交接失败"
+          none: "暂无恢复交接记录"
+        triggers:
+          maintenance: "自动恢复"
+          manual: "人工恢复"

@@ -1454,6 +1454,8 @@
         inline_upload_expired: 内联图片在内容保存前已过期，请重新上传。
         post_moderation_unauthorized: 无权审核帖子。
         post_not_pending_approval: 帖子不在待审核状态。
+        post_rejection_reason_required: 拒绝帖子前请填写拒绝理由。
+        post_rejection_reason_too_long: 拒绝理由不能超过 1,000 个字符。
         warn_user_unauthorized: 无权发出警告。
         cannot_warn_self: 不能警告自己。
         warning_reason_required: 请填写警告原因。

@@ -83,6 +83,65 @@ module Community
       assert_equal approved_audits, audit_count("community.post_approved")
     end
 
+    test "rejection requires a bounded reason before changing state" do
+      blank = Community::RejectPost.call(actor: @moderator, post: @post, reason: " \n ")
+
+      assert blank.failure?
+      assert_equal "post_rejection_reason_required", blank.code
+      assert_equal "pending_approval", @post.reload.status
+      assert_equal 0, notification_count("forum.post_rejected")
+      assert_equal 0, audit_count("community.post_rejected")
+
+      too_long = Community::RejectPost.call(
+        actor: @moderator,
+        post: @post,
+        reason: "x" * (Community::RejectPost::REASON_MAX_LENGTH + 1)
+      )
+
+      assert too_long.failure?
+      assert_equal "post_rejection_reason_too_long", too_long.code
+      assert_equal "pending_approval", @post.reload.status
+      assert_equal 0, notification_count("forum.post_rejected")
+      assert_equal 0, audit_count("community.post_rejected")
+    end
+
+    test "rejection persists the exact reason for the author and audit trail" do
+      reason = "The reply contains an off-topic account advertisement."
+
+      result = Community::RejectPost.call(actor: @moderator, post: @post, reason: reason)
+
+      assert result.success?
+      assert_equal "hidden", @post.reload.status
+      notification = Notification.find_by!(user: @author, notification_type: "forum.post_rejected")
+      assert_equal reason, notification.body
+      audit = AuditLog.for_resource(@post).by_action("community.post_rejected").sole
+      assert_equal reason, audit.reason
+      assert_equal reason, audit.metadata.fetch("reason")
+    end
+
+    test "external rejection dispatch failure does not roll back the decision" do
+      dispatch_failure = ServiceResult.failure(error: "forum_event_dispatch_unavailable")
+
+      result = Community::DispatchForumEventWebhook.stub(:call, dispatch_failure) do
+        Community::RejectPost.call(actor: @moderator, post: @post, reason: "Duplicate content")
+      end
+
+      assert result.success?
+      assert_equal "hidden", @post.reload.status
+      assert_equal 1, notification_count("forum.post_rejected")
+      assert_equal 1, audit_count("community.post_rejected")
+    end
+
+    test "rejection validation codes are localized in supported locales" do
+      %i[en zh-CN].each do |locale|
+        I18n.with_locale(locale) do
+          %w[post_rejection_reason_required post_rejection_reason_too_long].each do |code|
+            refute_equal code, ServiceErrorTranslator.translate(code)
+          end
+        end
+      end
+    end
+
     private
 
     def notification_count(type)

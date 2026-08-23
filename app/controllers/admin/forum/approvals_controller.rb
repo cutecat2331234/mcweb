@@ -3,12 +3,20 @@
 module Admin
   module Forum
     class ApprovalsController < BaseController
+      PAGE_SIZE = 25
+
       before_action :require_approval_staff
       before_action :set_post, only: %i[show approve reject]
       before_action :authorize_post_moderation, only: %i[show approve reject]
 
       def index
-        posts = Community::SectionModeration.pending_posts_scope_for(current_user).limit(100)
+        @pagy, posts = pagy(
+          :offset,
+          Community::SectionModeration.pending_posts_scope_for(current_user),
+          limit: PAGE_SIZE,
+          page: normalized_page(params[:page])
+        )
+        return redirect_to(admin_forum_approvals_path(page: @pagy.pages)) if @pagy.page > @pagy.pages
 
         render inertia: "Admin/Generic/Index", props: {
           title: forum_t("approvals.title"),
@@ -26,9 +34,10 @@ module Admin
               section: post.topic.section.name,
               excerpt: post.body.truncate(80),
               time: l(post.created_at, format: :short),
-              url: admin_forum_approval_path(post)
+              url: admin_forum_approval_path(post, approval_queue_page: @pagy.page)
             )
-          end
+          end,
+          pagination: pagy_props(@pagy)
         }
       end
 
@@ -47,32 +56,37 @@ module Admin
         ]
         fields << { label: forum_t("approvals.field_attachments"), value: attachment_lines.join("\n") } if attachment_lines.any?
 
-        render inertia: "Admin/Generic/Show", props: {
+        render inertia: "Admin/Forum/Approvals/Show", props: {
           title: forum_t("approvals.show_title"),
           fields: fields,
-          backUrl: admin_forum_approvals_path,
-          actions: [
-            { label: forum_t("approvals.action_approve"), href: approve_admin_forum_approval_path(post), method: "post" },
-            { label: forum_t("approvals.action_reject"), href: reject_admin_forum_approval_path(post), method: "post", variant: "destructive" }
-          ]
+          backUrl: approval_queue_path,
+          approveUrl: approve_admin_forum_approval_path(post, approval_queue_page: approval_queue_page),
+          rejectUrl: reject_admin_forum_approval_path(post, approval_queue_page: approval_queue_page),
+          reasonMaxLength: Community::RejectPost::REASON_MAX_LENGTH
         }
       end
 
       def approve
         result = Community::ApprovePost.call(actor: current_user, post: @post)
         if result.success?
-          redirect_to admin_forum_approvals_path, notice: t("mcweb.flash.post_approved")
+          redirect_to approval_queue_path, notice: t("mcweb.flash.post_approved")
         else
-          redirect_to admin_forum_approval_path(@post), alert: service_error_message(result)
+          redirect_to admin_forum_approval_path(
+            @post,
+            approval_queue_page: approval_queue_page
+          ), alert: service_error_message(result)
         end
       end
 
       def reject
         result = Community::RejectPost.call(actor: current_user, post: @post, reason: params[:reason])
         if result.success?
-          redirect_to admin_forum_approvals_path, notice: t("mcweb.flash.post_rejected")
+          redirect_to approval_queue_path, notice: t("mcweb.flash.post_rejected")
         else
-          redirect_to admin_forum_approval_path(@post), alert: service_error_message(result)
+          redirect_to admin_forum_approval_path(
+            @post,
+            approval_queue_page: approval_queue_page
+          ), alert: service_error_message(result)
         end
       end
 
@@ -92,6 +106,19 @@ module Admin
 
       def set_post
         @post = Community::Post.includes(:user, :attachments, topic: :section).find(params[:id])
+      end
+
+      def approval_queue_page
+        normalized_page(params[:approval_queue_page])
+      end
+
+      def approval_queue_path
+        admin_forum_approvals_path(page: approval_queue_page)
+      end
+
+      def normalized_page(value)
+        page = Integer(value, exception: false).to_i
+        page.positive? ? page : 1
       end
     end
   end

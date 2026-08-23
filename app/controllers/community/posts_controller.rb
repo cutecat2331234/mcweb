@@ -114,18 +114,22 @@ module Community
     def approve
       result = Community::ApprovePost.call(actor: current_user, post: @post)
       if result.success?
-        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_approved")
+        redirect_to post_moderation_return_path(anchor: "post-#{@post.id}"),
+                    notice: t("mcweb.flash.post_approved")
       else
-        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+        redirect_to post_moderation_return_path,
+                    alert: service_error_message(result)
       end
     end
 
     def reject
       result = Community::RejectPost.call(actor: current_user, post: @post, reason: params[:reason])
       if result.success?
-        redirect_to forum_topic_path(@post.topic), notice: t("mcweb.flash.post_rejected")
+        redirect_to post_moderation_return_path,
+                    notice: t("mcweb.flash.post_rejected")
       else
-        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+        redirect_to post_moderation_return_path,
+                    alert: service_error_message(result)
       end
     end
 
@@ -247,6 +251,25 @@ module Community
 
       post = Community::Post.find_by(id: post_params[:parent_post_id], forum_topic_id: @topic.id)
       post if post && PostAccess.readable?(post: post, user: current_user)
+    end
+
+    def approval_queue_return_path
+      page = Integer(params[:approval_queue_page], exception: false).to_i
+      return if page <= 0
+      return unless Community::SectionModeration.can_moderate_topic?(
+        user: current_user,
+        topic: @post.topic
+      )
+
+      forum_moderation_approvals_path(page: page)
+    end
+
+    def post_moderation_return_path(anchor: nil)
+      queue_path = approval_queue_return_path
+      return queue_path if queue_path
+      return forum_latest_path unless PostAccess.readable?(post: @post, user: current_user)
+
+      forum_topic_path(@post.topic, anchor: anchor)
     end
 
     def can_view_edits?

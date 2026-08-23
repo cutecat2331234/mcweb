@@ -19,12 +19,13 @@ Rejection is also currently a one-click POST with no reason input. The shared se
 - Paginate the permission-scoped pending-post relation in both Forum and Admin queues; do not materialize a global queue before authorization.
 - Keep the stable pending ordering across pages and expose the total permitted count and previous/next navigation.
 - Preserve the current queue page when a moderator opens a detail, approves an item, rejects an item, or receives a validation error.
+- If a decision removes the final item from the current page, recover to the new last page instead of leaving the moderator on an empty out-of-range queue.
 - A stale item that another moderator already decided must fail safely and return the operator to a reachable queue or detail state without changing the newer decision.
 
 ### Reasoned rejection
 
 - Require a non-blank, bounded rejection reason at the CE service boundary so Admin, Forum, plugin, and future callers cannot bypass the contract.
-- Show an explicit reason form and confirmation before rejection in both supported staff interfaces.
+- Show an explicit reason form and confirmation before rejection in the Forum queue and Admin detail; the existing topic-detail moderation action must collect the same reason before submission.
 - Deliver the exact bounded reason to the author through the existing persistent notification channel and retain it in the immutable audit record.
 - Approval remains a separate explicit action and never accepts or reuses rejection form state.
 - Validation failure must leave the post pending and present an actionable localized error to the moderator.
@@ -45,13 +46,13 @@ Rejection is also currently a one-click POST with no reason input. The shared se
 
 ## Implementation task list
 
-- [ ] Paginate the permission-scoped pending relation in the Forum and Admin controllers.
-- [ ] Add pagination and queue-return props without trusting arbitrary return URLs.
-- [ ] Add reason entry and confirmation to the Forum moderation queue and Admin approval detail.
-- [ ] Enforce bounded non-blank reasons in `Community::RejectPost` before any state mutation.
-- [ ] Persist rejection notification and audit effects transactionally; dispatch the external forum event after the decision commit.
-- [ ] Add service, controller, pagination, authorization, stale-decision, i18n, and interface contract coverage for CNB.
-- [ ] Run only Ruby syntax, diff whitespace, route/reference, and focused static consistency checks locally.
+- [x] Paginate the permission-scoped pending relation in the Forum and Admin controllers.
+- [x] Add pagination and queue-return props without trusting arbitrary return URLs.
+- [x] Add reason entry and confirmation to the Forum moderation queue, topic moderation action, and Admin approval detail.
+- [x] Enforce bounded non-blank reasons in `Community::RejectPost` before any state mutation.
+- [x] Persist rejection notification and audit effects transactionally; dispatch the external forum event after the decision commit.
+- [x] Add service, controller, pagination, authorization, stale-decision, i18n, and interface contract coverage for CNB.
+- [x] Run only Ruby syntax, diff whitespace, route/reference, and focused static consistency checks locally.
 - [ ] Merge the committed CE history normally into EE and then EE-PVP; do not copy, cherry-pick, squash, or recreate it downstream.
 - [ ] Run Rails tests, TypeScript checks, builds, database/concurrency tests, and desktop/mobile browser acceptance in CNB.
 

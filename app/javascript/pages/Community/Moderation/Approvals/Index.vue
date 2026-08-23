@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
+import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination from '@/components/portal/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -24,16 +28,93 @@ export interface PendingPostItem {
   reject_url: string
 }
 
-defineProps<{
-  posts: PendingPostItem[]
-}>()
-
-function approve(url: string) {
-  router.post(url, {}, { preserveScroll: true })
+interface PaginationMeta {
+  page: number
+  pages: number
+  count: number
+  from: number | null
+  to: number | null
+  prev: number | null
+  next: number | null
 }
 
-function reject(url: string) {
-  router.post(url, {}, { preserveScroll: true })
+const props = defineProps<{
+  posts: PendingPostItem[]
+  pagination: PaginationMeta
+  reason_max_length: number
+}>()
+
+const selectedPostId = ref<number | null>(null)
+const approvalConfirming = ref(false)
+const localReasonError = ref('')
+const approveForm = useForm({})
+const rejectForm = useForm({ reason: '' })
+const reasonError = computed(() => rejectForm.errors.reason || localReasonError.value)
+const decisionBusy = computed(
+  () => approvalConfirming.value || approveForm.processing || rejectForm.processing,
+)
+
+async function approve(url: string) {
+  if (decisionBusy.value) return
+
+  approvalConfirming.value = true
+  let accepted = false
+  try {
+    accepted = await confirm({
+      title: t('forum.moderation.approveTitle'),
+      message: t('forum.moderation.approveConfirm'),
+      confirmLabel: t('forum.moderation.approve'),
+    })
+  } finally {
+    approvalConfirming.value = false
+  }
+  if (!accepted) return
+
+  approveForm.post(url, { preserveScroll: true })
+}
+
+function openRejection(postId: number) {
+  if (decisionBusy.value) return
+
+  rejectForm.reset()
+  rejectForm.clearErrors()
+  localReasonError.value = ''
+  selectedPostId.value = postId
+}
+
+function closeRejection() {
+  if (rejectForm.processing) return
+  resetRejection()
+}
+
+function resetRejection() {
+  selectedPostId.value = null
+  localReasonError.value = ''
+  rejectForm.reset()
+  rejectForm.clearErrors()
+}
+
+function reject(post: PendingPostItem) {
+  if (decisionBusy.value) return
+
+  const reason = rejectForm.reason.trim()
+  if (!reason) {
+    localReasonError.value = t('forum.moderation.reasonRequired')
+    return
+  }
+  if (reason.length > props.reason_max_length) {
+    localReasonError.value = t('forum.moderation.reasonTooLong', {
+      count: props.reason_max_length,
+    })
+    return
+  }
+
+  localReasonError.value = ''
+  rejectForm.reason = reason
+  rejectForm.post(post.reject_url, {
+    preserveScroll: true,
+    onSuccess: resetRejection,
+  })
 }
 </script>
 
@@ -65,10 +146,73 @@ function reject(url: string) {
           </ul>
         </div>
         <div class="flex shrink-0 gap-2">
-          <Button type="button" size="sm" @click="approve(post.approve_url)">{{ t('forum.moderation.approve') }}</Button>
-          <Button type="button" size="sm" variant="outline" @click="reject(post.reject_url)">{{ t('forum.moderation.reject') }}</Button>
+          <Button
+            type="button"
+            size="sm"
+            :disabled="decisionBusy"
+            @click="approve(post.approve_url)"
+          >
+            {{ t('forum.moderation.approve') }}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            :disabled="decisionBusy"
+            @click="openRejection(post.id)"
+          >
+            {{ t('forum.moderation.reject') }}
+          </Button>
         </div>
       </div>
+
+      <form
+        v-if="selectedPostId === post.id"
+        class="mt-4 space-y-3 border-t pt-4"
+        @submit.prevent="reject(post)"
+      >
+        <div class="space-y-1">
+          <label :for="`approval-reason-${post.id}`" class="text-sm font-medium">
+            {{ t('forum.moderation.reasonLabel') }}
+          </label>
+          <Textarea
+            :id="`approval-reason-${post.id}`"
+            v-model="rejectForm.reason"
+            :maxlength="reason_max_length"
+            :aria-describedby="`approval-reason-help-${post.id}`"
+            :disabled="decisionBusy"
+            required
+          />
+          <p
+            :id="`approval-reason-help-${post.id}`"
+            :class="reasonError ? 'text-destructive' : 'text-muted-foreground'"
+            class="text-xs"
+            :role="reasonError ? 'alert' : undefined"
+          >
+            {{ reasonError || t('forum.moderation.reasonHint', { count: reason_max_length }) }}
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <Button type="submit" size="sm" :disabled="decisionBusy">
+            {{ t('forum.moderation.confirmReject') }}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            :disabled="decisionBusy"
+            @click="closeRejection"
+          >
+            {{ t('common.cancel') }}
+          </Button>
+        </div>
+      </form>
     </li>
   </ul>
+
+  <Pagination
+    v-if="pagination.pages > 1"
+    :pagination="pagination"
+    :base-path="routes.forumModerationApprovals"
+  />
 </template>

@@ -385,6 +385,7 @@ module InertiaSerializable
     visible_author_points = if private_activity_visible
                               author_forum_points.nil? ? Community::PointAccount.find_by(user: post.user, currency: "points")&.balance.to_i : author_forum_points
     end
+    pending_moderation = can_moderate && post.status == "pending_approval"
 
     {
       id: post.id,
@@ -444,8 +445,9 @@ module InertiaSerializable
         { id: topic.public_id, title: topic.title, url: forum_topic_path(topic) }
       },
       update_url: forum_post_path(post),
-      approve_url: (can_moderate && post.status == "pending_approval") ? approve_forum_post_path(post) : nil,
-      reject_url: (can_moderate && post.status == "pending_approval") ? reject_forum_post_path(post) : nil,
+      approve_url: pending_moderation ? approve_forum_post_path(post) : nil,
+      reject_url: pending_moderation ? reject_forum_post_path(post) : nil,
+      rejection_reason_max_length: pending_moderation ? Community::RejectPost::REASON_MAX_LENGTH : nil,
       attachments: serialize_post_attachments(post, user: current_user)
     }
   end

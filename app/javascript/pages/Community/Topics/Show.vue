@@ -121,6 +121,7 @@ export interface PostItem {
   pending_approval?: boolean
   approve_url?: string | null
   reject_url?: string | null
+  rejection_reason_max_length?: number | null
   attachments?: Array<{
     id: number
     filename: string
@@ -926,9 +927,36 @@ function approvePost(post: PostItem) {
   router.post(post.approve_url, {}, { preserveScroll: true })
 }
 
-function rejectPost(post: PostItem) {
+async function rejectPost(post: PostItem) {
   if (!post.reject_url) return
-  router.post(post.reject_url, {}, { preserveScroll: true })
+
+  const maxLength = post.rejection_reason_max_length ?? 1_000
+  let draft = ''
+  let message = t('forum.moderation.reasonHint', { count: maxLength })
+
+  while (true) {
+    const answer = await prompt({
+      title: t('forum.topics.rejectPost'),
+      message,
+      defaultValue: draft,
+      confirmLabel: t('forum.moderation.confirmReject'),
+    })
+    if (answer === null) return
+
+    draft = answer
+    const reason = answer.trim()
+    if (!reason) {
+      message = t('forum.moderation.reasonRequired')
+      continue
+    }
+    if (reason.length > maxLength) {
+      message = t('forum.moderation.reasonTooLong', { count: maxLength })
+      continue
+    }
+
+    router.post(post.reject_url, { reason }, { preserveScroll: true })
+    return
+  }
 }
 
 async function changePostAuthor(post: PostItem) {

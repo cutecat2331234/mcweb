@@ -1454,6 +1454,8 @@ en:
         inline_upload_expired: An inline image expired before the content was saved. Upload it again.
         post_moderation_unauthorized: You are not allowed to moderate posts.
         post_not_pending_approval: Post is not pending approval.
+        post_rejection_reason_required: Enter a rejection reason before rejecting this post.
+        post_rejection_reason_too_long: The rejection reason cannot exceed 1,000 characters.
         warn_user_unauthorized: You are not allowed to issue warnings.
         cannot_warn_self: You cannot warn yourself.
         warning_reason_required: Enter a warning reason.

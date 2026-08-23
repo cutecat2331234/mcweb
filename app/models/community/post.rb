@@ -26,7 +26,7 @@ module Community
 
     scope :chronological, -> { order(:floor_number) }
     scope :countable, -> { published.where(post_type: :regular) }
-    scope :pending_review, -> { where(status: :pending_approval).order(created_at: :desc) }
+    scope :pending_review, -> { where(status: :pending_approval).order(created_at: :desc, id: :desc) }
 
     scope :in_accessible_sections, ->(user) {
       Community::ForumAccess.post_scope(relation: all, user: user)

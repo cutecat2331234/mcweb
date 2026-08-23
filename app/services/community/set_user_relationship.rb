@@ -29,7 +29,7 @@ module Community
       attempts = 0
 
       begin
-        record = @relation.create_or_find_by!
+        record = @relation.create_or_find_by!({})
         record.previously_new_record?
       rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordNotUnique
         attempts += 1

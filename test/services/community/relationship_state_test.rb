@@ -100,11 +100,12 @@ module Community
       calls = 0
       original_create = relation.method(:create_or_find_by!)
 
-      relation.stub(:create_or_find_by!, lambda {
+      relation.stub(:create_or_find_by!, lambda { |attributes|
+        assert_equal({}, attributes)
         calls += 1
         raise ActiveRecord::RecordNotUnique if calls == 1
 
-        original_create.call
+        original_create.call(attributes)
       }) do
         result = SetUserRelationship.call(
           relation: relation,
@@ -121,7 +122,7 @@ module Community
     test "an exhausted unique race returns a conflict instead of raising" do
       relation = UserBlock.where(blocker: @actor, blocked: @target)
 
-      relation.stub(:create_or_find_by!, -> { raise ActiveRecord::RecordNotUnique }) do
+      relation.stub(:create_or_find_by!, ->(_attributes) { raise ActiveRecord::RecordNotUnique }) do
         result = SetUserRelationship.call(
           relation: relation,
           desired_state: true,

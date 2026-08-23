@@ -26,7 +26,12 @@ export const forumShell: ApplicationShellAdapter = {
         { labelKey: 'nav.unread', href: routes.forumUnread, requiresAuthentication: true },
         { labelKey: 'nav.watching', href: routes.forumWatching, requiresAuthentication: true },
         { labelKey: 'nav.bookmarks', href: routes.forumBookmarks, requiresAuthentication: true },
-        { labelKey: 'nav.messages', href: routes.forumMessages, requiresAuthentication: true },
+        {
+          labelKey: 'nav.messages',
+          href: routes.forumMessages,
+          badgeProp: 'messages_unread.count',
+          requiresAuthentication: true,
+        },
       ],
     },
   ],

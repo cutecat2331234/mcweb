@@ -18,7 +18,7 @@ export const storeShell: ApplicationShellAdapter = {
       id: 'store-personal',
       labelKey: 'common.mine',
       items: [
-        { labelKey: 'nav.cart', href: routes.storeCart },
+        { labelKey: 'nav.cart', href: routes.storeCart, badgeProp: 'cart.count' },
         { labelKey: 'nav.orders', href: routes.storeOrders, requiresAuthentication: true },
         { labelKey: 'nav.wishlist', href: routes.storeWishlist, requiresAuthentication: true },
         { labelKey: 'nav.wallet', href: routes.storeWallet, requiresAuthentication: true },

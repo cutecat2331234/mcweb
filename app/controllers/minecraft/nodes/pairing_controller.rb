@@ -3,6 +3,8 @@
 module Minecraft
   module Nodes
     class PairingController < ActionController::API
+      include InertiaApplicationBoundary
+
       def create
         rate_result = Administration::RateLimiter.call(
           key: "node_pair:#{request.remote_ip}",

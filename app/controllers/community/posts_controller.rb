@@ -261,7 +261,7 @@ module Community
         topic: @post.topic
       )
 
-      forum_moderation_approvals_path(page: page)
+      staff_forum_approvals_path(page: page)
     end
 
     def post_moderation_return_path(anchor: nil)

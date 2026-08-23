@@ -4,6 +4,7 @@ module Minecraft
   module Connector
     class ApiController < ActionController::API
       include ServiceResponder
+      include InertiaApplicationBoundary
 
       before_action :set_server
       before_action :authenticate_connector!

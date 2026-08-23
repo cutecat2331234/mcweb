@@ -57,7 +57,7 @@ test('notification center belongs to the account route and keeps the existing in
 test('portal notification entry is independent from the forum feature flag', () => {
   assert.match(layout, /v-if="auth\.user && notifications"/)
   assert.doesNotMatch(layout, /v-if="features\.forum && auth\.user && notifications"/)
-  assert.match(layout, /<Link :href="notifications\.url"/)
+  assert.match(layout, /@click="visit\(notifications\.url\)"/)
   assert.match(sharedProps, /logged_in\? && frontend_template_scope_for_request == "portal"/)
 })
 

@@ -9,6 +9,7 @@ module Api
     class BaseController < ActionController::API
       include Pagy::Method
       include ServiceResponder
+      include InertiaApplicationBoundary
 
       before_action :authenticate_api_key!
       before_action :rate_limit!

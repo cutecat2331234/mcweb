@@ -49,6 +49,7 @@ export const routes = {
   forumTagRss: (slug: string) => `${appPrefix}/forum/tags/${slug}.rss`,
   forumSitemap: `${appPrefix}/forum/sitemap.xml`,
   forumMessages: `${appPrefix}/forum/conversations`,
+  forumDismissAnnouncements: `${appPrefix}/forum/announcements/dismiss`,
   forumMessagesNew: `${appPrefix}/forum/conversations/new`,
   forumMessagesGroupNew: `${appPrefix}/forum/conversations/new?group=1`,
   forumMessage: (id: number) => `${appPrefix}/forum/conversations/${id}`,

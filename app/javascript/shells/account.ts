@@ -10,7 +10,11 @@ export const accountShell: ApplicationShellAdapter = {
       labelKey: 'accountCenter.title',
       items: [
         { labelKey: 'accountCenter.actions.profile', href: routes.account },
-        { labelKey: 'common.notifications', href: routes.accountNotifications },
+        {
+          labelKey: 'common.notifications',
+          href: routes.accountNotifications,
+          badgeProp: 'notifications.unread_count',
+        },
         { labelKey: 'accountCenter.actions.security', href: routes.security },
         { labelKey: 'accountCenter.security.sessions', href: routes.sessionsManagement },
         { labelKey: 'accountCenter.actions.minecraft', href: routes.minecraftLink },

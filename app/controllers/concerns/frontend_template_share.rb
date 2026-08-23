@@ -40,6 +40,7 @@ module FrontendTemplateShare
   def frontend_template_scope_for_request
     return "website" if frontend_application_id == "website_preview"
     return nil if admin_request?
+    return "portal" if frontend_application_id.in?(%w[account forum store])
     return self.class.frontend_template_scope if self.class.frontend_template_scope.present?
 
     case self.class.name

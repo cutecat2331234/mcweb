@@ -4,6 +4,7 @@ module Minecraft
   module Nodes
     class ApiController < ActionController::API
       include ServiceResponder
+      include InertiaApplicationBoundary
 
       before_action :set_node
       before_action :authenticate_node!

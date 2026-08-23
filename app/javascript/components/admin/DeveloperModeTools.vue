@@ -5,6 +5,10 @@ import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { IconBug, IconCopy, IconLaunch } from '@arco-design/web-vue/es/icon'
 import { adminRoutes } from '@/lib/adminRoutes'
+import { documentFrontendApplicationId } from '@/lib/frontendApplications'
+import { performSharedAction } from '@/lib/sharedAction'
+import { navigateFrontendDocument } from '@/lib/applicationNavigation'
+import { confirmUnsavedNavigation } from '@/lib/unsavedForms'
 
 interface Persona {
   key: string
@@ -66,22 +70,21 @@ function openWorkbench() {
   router.visit(adminRoutes.developerWorkbench)
 }
 
-function switchPersona(persona: Persona) {
+async function switchPersona(persona: Persona) {
   const url = developerMode.value.persona_switch_url
   if (!url || !persona.available || switchingPersona.value) return
+  if (!confirmUnsavedNavigation()) return
 
   switchingPersona.value = persona.key
-  router.post(
-    url,
-    { persona: persona.key },
-    {
-      preserveScroll: false,
-      preserveState: false,
-      onFinish: () => {
-        switchingPersona.value = null
-      },
-    },
-  )
+  try {
+    await performSharedAction(documentFrontendApplicationId(), url, {
+      method: 'POST',
+      data: { persona: persona.key },
+    })
+    navigateFrontendDocument('/app')
+  } finally {
+    switchingPersona.value = null
+  }
 }
 </script>
 

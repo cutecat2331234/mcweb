@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "contribution_id": "ee_pvp.player.staff",
+  "product_owner": "ee-pvp",
+  "runtime_owner": "ce",
+  "extends_application": "staff",
+  "component_prefixes": ["Pvp/Staff/"],
+  "routes": [
+    { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/staff/pvp", "priority": 3500 },
+    { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/staff/pvp/**", "priority": 3500 },
+    { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/staff/pvp", "priority": 3500 },
+    { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/staff/pvp/**", "priority": 3500 }
+  ],
+  "navigation": [
+    {
+      "id": "pvp",
+      "label_key": "pvp.staff.navigation",
+      "items": [
+        { "label_key": "pvp.staff.queue", "href": "/app/staff/pvp/queue" }
+      ]
+    }
+  ],
+  "styles": ["staff_pvp"],
+  "locales": ["staff_pvp"],
+  "error_boundary": "staff_pvp",
+  "budget": {
+    "representative_paths": ["/app/staff/pvp/queue"],
+    "representative_components": ["Pvp/Staff/Queue/Index"],
+    "max_initial_javascript_bytes": 760000,
+    "max_initial_stylesheet_bytes": 300000
+  },
+  "adapter_module": "app/javascript/frontend-application-adapters/staff/pvp-staff.ts"
+}

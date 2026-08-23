@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "contribution_id": "ee_pvp.website.renderer",
+  "product_owner": "ee-pvp",
+  "runtime_owner": "ee-pvp",
+  "extends_application": "website",
+  "component_prefixes": [],
+  "routes": [
+    { "kind": "document", "methods": ["GET", "HEAD"], "pattern": "/legal/**", "priority": 3000 },
+    { "kind": "download", "methods": ["GET", "HEAD"], "pattern": "/downloads/**", "priority": 3000 },
+    { "kind": "api", "methods": ["GET", "HEAD"], "pattern": "/public-api/**", "priority": 3000 }
+  ],
+  "styles": ["pvp_website"],
+  "locales": ["pvp_website"],
+  "error_boundary": "pvp_website",
+  "budget": {
+    "representative_paths": ["/", "/blog"],
+    "representative_entries": ["src/pages/index.astro", "src/pages/blog/index.astro"],
+    "max_initial_javascript_bytes": 420000,
+    "max_initial_stylesheet_bytes": 190000
+  },
+  "renderer_adapter": "ee_pvp_astro",
+  "exclusive_renderer": true,
+  "renderer_runtime_kind": "astro_document",
+  "renderer_entrypoint": "pvp-astro-website",
+  "renderer_shell_adapter": "pvp_astro",
+  "renderer_ui_adapter": "astro_custom",
+  "renderer_preview_kind": "document_frame",
+  "renderer_manifest_path": "website/dist/.vite/manifest.json"
+}

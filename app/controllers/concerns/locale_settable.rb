@@ -3,6 +3,9 @@
 module LocaleSettable
   extend ActiveSupport::Concern
 
+  LOCALE_COOKIE = "mcweb_locale"
+  LOCALE_COOKIE_TTL = 1.year
+
   included do
     around_action :with_locale
   end
@@ -10,14 +13,47 @@ module LocaleSettable
   private
 
   def with_locale(&block)
-    I18n.with_locale(resolved_locale, &block)
+    locale = resolved_locale
+    synchronize_locale_bridge(locale)
+    I18n.with_locale(locale, &block)
   end
 
   def resolved_locale
-    candidate = explicit_locale_param || inertia_locale_header || session[:locale].presence
+    candidate = explicit_locale_param
     candidate ||= current_user&.locale if respond_to?(:logged_in?, true) && logged_in?
+    candidate ||= session[:locale].presence
+    candidate ||= cookies[LOCALE_COOKIE].presence
+    candidate ||= inertia_locale_header
     candidate ||= accept_language_locale
     normalize_locale(candidate) || I18n.default_locale
+  end
+
+  def synchronize_locale_bridge(locale)
+    normalized = normalize_locale(locale)
+    return unless normalized
+
+    session[:locale] = normalized unless session[:locale].to_s == normalized.to_s
+    return if cookies[LOCALE_COOKIE].to_s == normalized.to_s
+
+    cookies[LOCALE_COOKIE] = {
+      value: normalized,
+      expires: LOCALE_COOKIE_TTL.from_now,
+      path: "/",
+      secure: Rails.env.production? &&
+        !Mcweb::DeveloperMode.allow?(:allow_insecure_cookies),
+      same_site: :lax,
+      httponly: false
+    }
+  end
+
+  def persist_locale_preference!(locale)
+    normalized = normalize_locale(locale)
+    return unless normalized
+
+    session[:locale] = normalized
+    current_user.update!(locale: normalized) if logged_in? && current_user.locale != normalized.to_s
+    synchronize_locale_bridge(normalized)
+    normalized
   end
 
   def explicit_locale_param

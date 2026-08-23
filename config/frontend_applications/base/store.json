@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "id": "store",
+  "product_owner": "ce",
+  "runtime_owner": "ce",
+  "runtime_kind": "inertia",
+  "entrypoint": "store",
+  "landing_path": "/app/store/products",
+  "component_prefixes": ["Commerce/", "Payments/"],
+  "component_names": [],
+  "allow_descendant_contributions": false,
+  "projections": [],
+  "shell_adapter": "store",
+  "ui_adapter": "mcweb_ui",
+  "styles": ["tokens", "shell_foundation", "app_shell", "store"],
+  "locales": ["core", "store"],
+  "error_boundary": "store",
+  "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona", "secure_evidence"],
+  "budget": {
+    "representative_paths": ["/app/store/products", "/app/store/cart", "/app/payments/fake/example"],
+    "representative_components": ["Commerce/Products/Index", "Commerce/Carts/Show", "Payments/Fake/Show"],
+    "max_initial_javascript_bytes": 700000,
+    "max_initial_stylesheet_bytes": 260000
+  },
+  "routes": [
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/image-packs/**",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/*.rss",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/**/*.rss",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/sitemap.xml",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/orders/export",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/orders/*/receipt_pdf",
+      "priority": 9000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/orders/*/packing_slip",
+      "priority": 9000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/orders/*/receipt",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/downloads/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/webhooks/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/wishlist/filter_presets",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/products/*/view_receipt",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/wishlist/filter_presets",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["DELETE"],
+      "pattern": "/app/store/wishlist/filter_presets/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/cart/preview_coupon",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/cart/preview_gift_card",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/checkout/preview_coupon",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/checkout/preview_gift_card",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/store/checkout/preview_store_credit",
+      "priority": 9000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store",
+      "priority": 1000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/store/**",
+      "priority": 1000
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/store/**",
+      "priority": 1000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/payments/**",
+      "priority": 1000
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/payments/**",
+      "priority": 1000
+    }
+  ]
+}

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { IconBug } from '@arco-design/web-vue/es/icon'
+import { documentFrontendApplicationId } from '@/lib/frontendApplications'
+import { performSharedAction } from '@/lib/sharedAction'
+import { navigateFrontendDocument } from '@/lib/applicationNavigation'
+import { confirmUnsavedNavigation } from '@/lib/unsavedForms'
 
 interface Persona {
   key: string
@@ -24,22 +28,21 @@ const developerMode = computed(
     },
 )
 
-function switchPersona(persona: Persona) {
+async function switchPersona(persona: Persona) {
   const url = developerMode.value.persona_switch_url
   if (!url || !persona.available || switching.value) return
+  if (!confirmUnsavedNavigation()) return
 
   switching.value = persona.key
-  router.post(
-    url,
-    { persona: persona.key },
-    {
-      preserveState: false,
-      preserveScroll: true,
-      onFinish: () => {
-        switching.value = null
-      },
-    },
-  )
+  try {
+    await performSharedAction(documentFrontendApplicationId(), url, {
+      method: 'POST',
+      data: { persona: persona.key },
+    })
+    navigateFrontendDocument('/app')
+  } finally {
+    switching.value = null
+  }
 }
 </script>
 

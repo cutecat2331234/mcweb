@@ -10,10 +10,13 @@ class LocaleController < ApplicationController
       return
     end
 
-    session[:locale] = locale
-    current_user&.update!(locale: locale) if logged_in?
+    persist_locale_preference!(locale)
 
-    redirect_to locale_redirect_path, notice: t("mcweb.flash.locale_updated")
+    if request.headers["Accept"].to_s.include?("application/json")
+      head :no_content
+    else
+      redirect_to locale_redirect_path, notice: t("mcweb.flash.locale_updated")
+    end
   end
 
   private

@@ -1,0 +1,6 @@
+@import "../shell-foundation.css";
+@import "../app-shell.css";
+
+html[data-mcweb-application="store"] body {
+  --mc-application-accent: #059669;
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "contribution_id": "ee.channel.application",
+  "product_owner": "ee",
+  "runtime_owner": "ee",
+  "adapter_module": "app/javascript/frontend-application-adapters/channel/ee-channel.ts",
+  "draft_contract": {
+    "capability": "channel_drafts",
+    "key_namespace": "channel_drafts",
+    "version": 1,
+    "user_scoped": true,
+    "resource_scoped": true,
+    "offline_recovery": true,
+    "clear_on_submit": true
+  },
+  "creates_application": {
+    "schema_version": 1,
+    "id": "channel",
+    "runtime_kind": "inertia",
+    "entrypoint": "channel",
+    "landing_path": "/app/chat",
+    "component_prefixes": ["Ee/"],
+    "component_names": [],
+    "allow_descendant_contributions": false,
+    "projections": [],
+    "shell_adapter": "channel",
+    "ui_adapter": "mcweb_ui",
+    "styles": ["tokens", "shell_foundation", "channel"],
+    "locales": ["core", "channel"],
+    "error_boundary": "channel",
+    "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona", "channel_drafts"],
+    "launcher": { "path": "/app", "priority": 100 },
+    "budget": {
+      "representative_paths": ["/app/chat", "/app/channels/example"],
+      "representative_components": ["Ee/Chat/Index", "Ee/Channels/Show"],
+      "max_initial_javascript_bytes": 750000,
+      "max_initial_stylesheet_bytes": 280000
+    },
+    "routes": [
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/chat", "priority": 2000 },
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/chat/**", "priority": 2000 },
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/channels", "priority": 2000 },
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/channels/**", "priority": 2000 },
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/messages", "priority": 2000 },
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/messages/**", "priority": 2000 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/chat", "priority": 2000 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/chat/**", "priority": 2000 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/channels", "priority": 2000 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/channels/**", "priority": 2000 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/messages", "priority": 2000 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/messages/**", "priority": 2000 }
+    ]
+  }
+}

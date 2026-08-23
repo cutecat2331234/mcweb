@@ -1,0 +1,16 @@
+<script nonce="<%= content_security_policy_nonce %>">
+  (function () {
+    var preference = "system";
+    try {
+      var stored = window.localStorage.getItem("mc-theme");
+      if (stored === "light" || stored === "dark" || stored === "system") preference = stored;
+    } catch (_error) {}
+    var theme = preference;
+    if (theme === "system") {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  })();
+</script>

@@ -38,10 +38,12 @@ import { useTheme } from '@/lib/useTheme'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
 import { safeSignOut } from '@/lib/safeSignOut'
+import { useApplicationShell } from '@/lib/applicationShell'
 
 const page = usePage()
 const { t } = useI18n()
 const arcoLocale = useArcoLocale()
+const applicationShell = useApplicationShell()
 const { isDark, toggleTheme } = useTheme()
 const mobileNavOpen = ref(false)
 const signOutVisible = ref(false)
@@ -59,15 +61,27 @@ const auth = computed(
   },
 )
 const currentPath = computed(() => page.url.split('?')[0])
+const contributedNavigationItems = computed(() => applicationShell.navigation
+  .filter((group) => group.id !== 'staff-workspace')
+  .flatMap((group) => group.items))
+const selectedContribution = computed(() => contributedNavigationItems.value
+  .filter((item) => currentPath.value === item.href || currentPath.value.startsWith(`${item.href}/`))
+  .sort((left, right) => right.href.length - left.href.length)[0])
 const selectedKey = computed(() =>
-  currentPath.value.startsWith(routes.staffReportAppeals)
+  selectedContribution.value?.href ?? (currentPath.value.startsWith(routes.staffForumApprovals)
+    ? routes.staffForumApprovals
+    : currentPath.value.startsWith(routes.staffReportAppeals)
     ? routes.staffReportAppeals
     : currentPath.value.startsWith(routes.staffModerationCases)
       ? routes.staffModerationCases
-      : routes.staff,
+      : routes.staff),
 )
 const currentTitle = computed(() =>
-  selectedKey.value === routes.staffReportAppeals
+  selectedContribution.value
+    ? t(selectedContribution.value.labelKey)
+    : selectedKey.value === routes.staffForumApprovals
+    ? t('staffWorkspace.forumApprovals.title')
+    : selectedKey.value === routes.staffReportAppeals
     ? t('staffWorkspace.navigation.reportAppeals')
     : selectedKey.value === routes.staffModerationCases
       ? t('staffWorkspace.navigation.queue')
@@ -171,9 +185,17 @@ watch(isDark, syncArcoTheme, { immediate: true })
             <template #icon><IconSafe /></template>
             {{ t('staffWorkspace.navigation.queue') }}
           </MenuItem>
+          <MenuItem :key="routes.staffForumApprovals">
+            <template #icon><IconSafe /></template>
+            {{ t('staffWorkspace.forumApprovals.title') }}
+          </MenuItem>
           <MenuItem v-if="auth.user?.can_review_report_appeals" :key="routes.staffReportAppeals">
             <template #icon><IconSafe /></template>
             {{ t('staffWorkspace.navigation.reportAppeals') }}
+          </MenuItem>
+          <MenuItem v-for="item in contributedNavigationItems" :key="item.href">
+            <template #icon><IconSafe /></template>
+            {{ t(item.labelKey) }}
           </MenuItem>
         </Menu>
         <Space
@@ -305,6 +327,14 @@ watch(isDark, syncArcoTheme, { immediate: true })
         <MenuItem :key="routes.staffModerationCases">
           <template #icon><IconSafe /></template>
           {{ t('staffWorkspace.navigation.queue') }}
+        </MenuItem>
+        <MenuItem :key="routes.staffForumApprovals">
+          <template #icon><IconSafe /></template>
+          {{ t('staffWorkspace.forumApprovals.title') }}
+        </MenuItem>
+        <MenuItem v-for="item in contributedNavigationItems" :key="item.href">
+          <template #icon><IconSafe /></template>
+          {{ t(item.labelKey) }}
         </MenuItem>
       </Menu>
     </Drawer>

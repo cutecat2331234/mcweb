@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "id": "website_preview",
+  "product_owner": "ce",
+  "runtime_owner": "ce",
+  "runtime_kind": "inertia",
+  "entrypoint": "website-preview",
+  "landing_path": "/admin/website/pages",
+  "component_prefixes": ["WebsitePreview/"],
+  "component_names": [],
+  "allow_descendant_contributions": false,
+  "projections": [
+    { "prefix": "Website/Pages/", "owner_application": "website" },
+    { "prefix": "Website/Articles/", "owner_application": "website" }
+  ],
+  "shell_adapter": "website_preview",
+  "ui_adapter": "mcweb_ui",
+  "styles": ["tokens", "shell_foundation", "arco_admin", "website_preview", "website_canvas"],
+  "locales": ["core", "admin", "website"],
+  "error_boundary": "website_preview",
+  "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona"],
+  "budget": {
+    "representative_paths": [
+      "/admin/website/pages/example/preview",
+      "/admin/website/articles/example/preview"
+    ],
+    "representative_components": ["Website/Pages/Show", "Website/Articles/Show"],
+    "max_initial_javascript_bytes": 720000,
+    "max_initial_stylesheet_bytes": 300000
+  },
+  "routes": [
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/website/pages/*/preview",
+      "priority": 10000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/website/articles/*/preview",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/frontend/templates/*/preview",
+      "priority": 10000
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "routes": [
+    {
+      "kind": "shared_action",
+      "methods": ["PATCH"],
+      "pattern": "/locale",
+      "priority": 12000,
+      "allowed_source_capabilities": ["locale"],
+      "safe_get_path": "/"
+    },
+    {
+      "kind": "shared_action",
+      "methods": ["DELETE"],
+      "pattern": "/app/identity/session",
+      "priority": 12000,
+      "allowed_source_capabilities": ["session"],
+      "safe_get_path": "/signed-out"
+    },
+    {
+      "kind": "shared_action",
+      "methods": ["POST"],
+      "pattern": "/app/developer-mode/persona",
+      "priority": 12000,
+      "allowed_source_capabilities": ["developer_persona"],
+      "safe_get_path": "/app"
+    },
+    {
+      "kind": "shared_action",
+      "methods": ["POST"],
+      "pattern": "/app/evidence/attachments",
+      "priority": 12000,
+      "allowed_source_capabilities": ["secure_evidence"],
+      "safe_get_path": "/app/forum/latest"
+    },
+    {
+      "kind": "shared_action",
+      "methods": ["DELETE"],
+      "pattern": "/app/evidence/attachments/*",
+      "priority": 12000,
+      "allowed_source_capabilities": ["secure_evidence"],
+      "safe_get_path": "/app/forum/latest"
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/evidence/attachments/*/scan_status",
+      "priority": 13000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/evidence/attachments/*",
+      "priority": 12500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/api/**",
+      "priority": 11000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/minecraft/connector/**",
+      "priority": 11000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/minecraft/nodes/**",
+      "priority": 11000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/minecraft/sync/**",
+      "priority": 11000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/minecraft/cached-skins/**",
+      "priority": 11000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/theme-assets/**",
+      "priority": 11000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/health/**",
+      "priority": 11000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/up",
+      "priority": 11000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/setup/**",
+      "priority": 10000
+    },
+    {
+      "kind": "api",
+      "methods": ["PATCH"],
+      "pattern": "/setup/**",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/setup",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/jobs/**",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/forum/**",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/store/**",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/identity/**",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/website/**",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/minecraft/link",
+      "priority": 10000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/payments/fake/**",
+      "priority": 10000
+    }
+  ]
+}

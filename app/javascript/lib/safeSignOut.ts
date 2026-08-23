@@ -1,12 +1,16 @@
-import { router } from '@inertiajs/vue3'
 import { routes } from '@/lib/routes'
+import { documentFrontendApplicationId } from '@/lib/frontendApplications'
+import { performSharedAction, SharedActionError } from '@/lib/sharedAction'
+import { navigateFrontendDocument } from '@/lib/applicationNavigation'
+import { confirmUnsavedNavigation } from '@/lib/unsavedForms'
 
 type SafeSignOutHooks = {
   onStart?: () => void
   onFinish?: () => void
 }
 
-export function safeSignOut(hooks: SafeSignOutHooks = {}) {
+export async function safeSignOut(hooks: SafeSignOutHooks = {}) {
+  if (!confirmUnsavedNavigation()) return
   let fallbackStarted = false
   let finished = false
 
@@ -21,22 +25,20 @@ export function safeSignOut(hooks: SafeSignOutHooks = {}) {
 
     fallbackStarted = true
     finish()
-    window.location.assign(routes.signedOut)
+    navigateFrontendDocument(routes.signedOut)
   }
 
   hooks.onStart?.()
 
   try {
-    router.delete(routes.signOut, {
-      preserveState: false,
-      onSuccess: visitSafePublicPage,
-      onError: visitSafePublicPage,
-      onCancel: visitSafePublicPage,
-      onHttpException: visitSafePublicPage,
-      onNetworkError: visitSafePublicPage,
-      onFinish: finish,
+    await performSharedAction(documentFrontendApplicationId(), routes.signOut, {
+      method: 'DELETE',
     })
-  } catch {
     visitSafePublicPage()
+  } catch (error) {
+    if (error instanceof SharedActionError && error.recoveryStarted) return
+    visitSafePublicPage()
+  } finally {
+    finish()
   }
 }

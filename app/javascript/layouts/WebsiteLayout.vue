@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Button, Space, Tag, TypographyText } from '@mcweb/ui'
 import { routes } from '@/lib/routes'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
@@ -12,6 +13,13 @@ import '@/styles/website.css'
 interface NavItem {
   label: string
   href: string
+}
+
+interface PreviewContext {
+  return_url: string
+  edit_url: string
+  label: string
+  mode_label: string
 }
 
 const { t } = useI18n()
@@ -30,6 +38,15 @@ const developerMode = computed(
 )
 const { activeTemplate, tokenStyle, websiteHeaderSlot, websiteFooterSlot } = useActiveTemplate()
 const { features } = useFeatureFlags()
+const frontendApplication = computed(() => (
+  page.props.frontend_application ?? null
+) as { id?: string } | null)
+const previewContext = computed(() => (
+  page.props.preview_context ?? null
+) as PreviewContext | null)
+const websitePreview = computed(() => (
+  frontendApplication.value?.id === 'website_preview' && previewContext.value !== null
+))
 
 const websiteNav = computed(() => {
   const items = page.props.website_nav as NavItem[] | undefined
@@ -63,10 +80,40 @@ function isActive(href: string) {
   if (href === routes.home) return current === '/'
   return current === href
 }
+
+
+function leavePreview(path: string) {
+  window.location.assign(path)
+}
 </script>
 
 <template>
   <DeveloperModeTools v-if="developerMode.enabled" />
+  <div
+    v-if="websitePreview && previewContext"
+    class="mc-preview-toolbar"
+    :style="{
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+      padding: '10px 16px',
+      borderBottom: '1px solid var(--color-border-2)',
+      background: 'var(--color-bg-2)',
+    }"
+  >
+    <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }">
+      <Space align="center" :size="10">
+        <Tag color="purple">{{ previewContext.mode_label }}</Tag>
+        <TypographyText bold>{{ previewContext.label }}</TypographyText>
+      </Space>
+      <Space align="center" :size="8">
+        <Button @click="leavePreview(previewContext.edit_url)">{{ t('common.edit') }}</Button>
+        <Button type="primary" @click="leavePreview(previewContext.return_url)">
+          {{ t('common.back') }}
+        </Button>
+      </Space>
+    </div>
+  </div>
   <div class="website-page" :style="tokenStyle">
     <TemplateAssets />
 

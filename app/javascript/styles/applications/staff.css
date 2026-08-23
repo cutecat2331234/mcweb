@@ -1,0 +1,6 @@
+@import "../shell-foundation.css";
+@import "../arco-admin.css";
+
+html[data-mcweb-application="staff"] body {
+  --mc-application-accent: #d97706;
+}

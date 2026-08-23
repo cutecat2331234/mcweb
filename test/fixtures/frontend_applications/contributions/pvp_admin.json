@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "contribution_id": "ee_pvp.player.admin",
+  "product_owner": "ee-pvp",
+  "runtime_owner": "ce",
+  "extends_application": "admin",
+  "component_prefixes": ["Admin/Pvp/"],
+  "routes": [
+    { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/admin/pvp", "priority": 3500 },
+    { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/admin/pvp/**", "priority": 3500 },
+    { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/admin/pvp", "priority": 3500 },
+    { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/admin/pvp/**", "priority": 3500 }
+  ],
+  "navigation": [
+    {
+      "id": "pvp",
+      "label_key": "pvp.admin.navigation",
+      "items": [
+        { "label_key": "pvp.admin.settings", "href": "/admin/pvp/settings" }
+      ]
+    }
+  ],
+  "styles": ["admin_pvp"],
+  "locales": ["admin_pvp"],
+  "error_boundary": "admin_pvp",
+  "budget": {
+    "representative_paths": ["/admin/pvp/settings"],
+    "representative_components": ["Admin/Pvp/Settings/Show"],
+    "max_initial_javascript_bytes": 920000,
+    "max_initial_stylesheet_bytes": 360000
+  },
+  "adapter_module": "app/javascript/frontend-application-adapters/admin/pvp-admin.ts"
+}

@@ -11,8 +11,8 @@ const adminEntry = readFileSync(
   resolve(process.cwd(), 'app/javascript/entrypoints/admin.ts'),
   'utf8',
 )
-const appEntry = readFileSync(
-  resolve(process.cwd(), 'app/javascript/entrypoints/inertia.ts'),
+const appStyle = readFileSync(
+  resolve(process.cwd(), 'app/javascript/styles/applications/account.css'),
   'utf8',
 )
 const adminLayout = readFileSync(
@@ -39,10 +39,9 @@ function contrastRatio(foreground: string, background: string) {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
-test('admin and application entrypoints load one shared shell geometry contract', () => {
-  for (const entrypoint of [adminEntry, appEntry]) {
-    assert.match(entrypoint, /import '@\/styles\/shell-foundation\.css'/)
-  }
+test('admin and application style roots load one shared shell geometry contract', () => {
+  assert.match(adminEntry, /@\/styles\/applications\/admin\.css/)
+  assert.match(appStyle, /@import "\.\.\/shell-foundation\.css"/)
 
   for (const token of [
     '--mc-shell-topbar-height',

@@ -165,11 +165,21 @@ module Admin
         blocks_result = ::Website::SerializePageBlocks.call(page: @page)
         seo_result = ::Website::ResolveSeo.call(record: @page)
 
-        render inertia: "Website/Pages/Show", layout: "inertia", props: {
+        Frontend::WebsiteRenderer.preview(
+          controller: self,
+          component: "Website/Pages/Show",
+          props: {
           page: { title: @page.title, slug: @page.slug },
           blocks: blocks_result.value,
-          seo: seo_result.value
-        }
+          seo: seo_result.value,
+          preview_context: {
+            return_url: admin_website_page_path(@page),
+            edit_url: edit_admin_website_page_path(@page),
+            label: @page.title,
+            mode_label: t("mcweb.admin.website.preview", default: "Preview")
+          }
+          }
+        )
       end
 
       private
@@ -265,6 +275,9 @@ module Admin
             href: publish_admin_website_page_path(@page), method: "post",
             data: { lock_version: @page.lock_version, request_id: "website-publish-page-#{SecureRandom.uuid}" }
           }
+        end
+        if current_user.permission?("website.pages.edit") &&
+            current_user.permission?("website.pages.publish")
           actions << {
             label: t("mcweb.admin.website.recovery.archive"),
             href: archive_admin_website_page_path(@page), method: "post",

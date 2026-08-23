@@ -2,6 +2,7 @@
 <html
   lang="<%= I18n.locale %>"
   data-developer-mode="<%= Mcweb::DeveloperMode.enabled? %>"
+  data-mcweb-application="<%= frontend_application_id %>"
 >
   <head>
     <meta charset="utf-8" />
@@ -14,18 +15,11 @@
     <%= csp_meta_tag %>
     <%= render "shared/admin_pwa_guard" %>
     <%= render "shared/tech_fingerprint" %>
-    <%= vite_typescript_tag "admin" %>
+    <%= render "shared/theme_bootstrap" %>
+    <%= vite_typescript_tag frontend_application_entrypoint %>
     <%= inertia_ssr_head %>
-    <script>
-      (function () {
-        var key = "mc-theme";
-        var stored = localStorage.getItem(key);
-        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        if (theme === "dark") document.documentElement.classList.add("dark");
-      })();
-    </script>
   </head>
-  <body class="mcweb-admin antialiased">
+  <body class="mcweb-admin antialiased" data-mcweb-application="<%= frontend_application_id %>">
     <%= inertia_root %>
   </body>
 </html>

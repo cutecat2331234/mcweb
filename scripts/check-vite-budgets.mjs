@@ -1,14 +1,15 @@
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { basename, resolve } from 'node:path'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
 
 const argv = process.argv.slice(2)
 const reportOnly = argv.includes('--report-only')
 const manifestArgument = argv.find((argument) => argument.startsWith('--manifest='))
 const manifestPath = resolve(
-  manifestArgument?.slice('--manifest='.length) ??
-    'public/vite/.vite/manifest.json',
+  manifestArgument?.slice('--manifest='.length) ?? 'public/vite/.vite/manifest.json',
 )
+const registryRoot = resolve('config/frontend_applications')
+const contributionRoot = resolve(registryRoot, 'contributions')
 
 if (!existsSync(manifestPath)) {
   console.error(`Vite manifest not found: ${manifestPath}`)
@@ -17,84 +18,68 @@ if (!existsSync(manifestPath)) {
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const outputRoot = resolve(manifestPath, '..', '..')
-const entrypoint = 'entrypoints/inertia.ts'
-const requiredChunkGroups = [
-  'vue-runtime',
-  'arco-provider-runtime',
-  'arco-auth-shell',
-  'arco-sign-in-form',
-  'arco-data-display',
-  'arco-extended-form',
-  'arco-developer-tools',
-  'arco-settings-icons',
-]
+const baseDescriptors = readdirSync(resolve(registryRoot, 'base'))
+  .filter((name) => name.endsWith('.json'))
+  .sort()
+  .map((name) => ({
+    source: `base/${name}`,
+    descriptor: JSON.parse(readFileSync(resolve(registryRoot, 'base', name), 'utf8')),
+  }))
+const contributionManifests = (existsSync(contributionRoot) ? readdirSync(contributionRoot) : [])
+  .filter((name) => name.endsWith('.json'))
+  .sort()
+  .map((name) => ({
+    name,
+    contribution: JSON.parse(readFileSync(resolve(contributionRoot, name), 'utf8')),
+  }))
+const contributedDescriptors = contributionManifests
+  .flatMap(({ name, contribution }) => {
+    return contribution.creates_application
+      ? [{
+          source: `contributions/${name}`,
+          descriptor: {
+            ...contribution.creates_application,
+            product_owner: contribution.product_owner,
+            runtime_owner: contribution.runtime_owner,
+          },
+        }]
+      : []
+  })
+const descriptorById = new Map([...baseDescriptors, ...contributedDescriptors]
+  .map((record) => [record.descriptor.id, record]))
+const extensionDescriptors = contributionManifests.flatMap(({ name, contribution }) => {
+  if (!contribution.extends_application || contribution.exclusive_renderer) return []
+  const target = descriptorById.get(contribution.extends_application)
+  if (!target || !contribution.budget) return []
+  return [{
+    source: `contributions/${name}`,
+    descriptor: {
+      ...target.descriptor,
+      budget: contribution.budget,
+    },
+  }]
+})
+const descriptors = [...baseDescriptors, ...contributedDescriptors, ...extensionDescriptors]
 
-const routeBudgets = [
-  {
-    name: 'website-home',
-    pages: ['pages/Website/Home.vue'],
-    maxRequests: 30,
-    maxCompressedKb: 300,
-  },
-  {
-    name: 'identity-session',
-    pages: ['pages/Identity/Sessions/New.vue'],
-    maxRequests: 25,
-    maxCompressedKb: 250,
-  },
-  {
-    name: 'forum-sections',
-    pages: ['pages/Community/Sections/Index.vue'],
-    maxRequests: 35,
-    maxCompressedKb: 400,
-  },
-  {
-    name: 'store-products',
-    pages: ['pages/Commerce/Products/Index.vue'],
-    maxRequests: 35,
-    maxCompressedKb: 400,
-  },
-  {
-    name: 'channel-main',
-    pages: [
-      'pages/Ee/Channels/Show.vue',
-      'pages/EE/Channels/Show.vue',
-      'pages/Channels/Show.vue',
-    ],
-    maxRequests: 45,
-    maxCompressedKb: 550,
-    optional: true,
-  },
-  {
-    name: 'admin-settings',
-    pages: ['pages/Admin/System/Settings/Show.vue'],
-    // Arco's on-demand component CSS currently resolves to 47 small files.
-    // Keep a narrow regression margin without forcing a high-risk manual chunk.
-    maxRequests: 50,
-    maxCompressedKb: 550,
-  },
-]
-
-function collectEntry(key, collectedKeys, files) {
+function collectEntry(key, collectedKeys, files, entries = manifest) {
   if (!key || collectedKeys.has(key)) return
-  const entry = manifest[key]
+  const entry = entries[key]
   if (!entry) return
 
   collectedKeys.add(key)
   if (entry.file) files.add(entry.file)
   for (const file of entry.css ?? []) files.add(file)
   for (const file of entry.assets ?? []) files.add(file)
-  for (const importedKey of entry.imports ?? []) {
-    collectEntry(importedKey, collectedKeys, files)
-  }
+  for (const importedKey of entry.imports ?? []) collectEntry(importedKey, collectedKeys, files, entries)
+  for (const importedKey of entry.dynamicImports ?? []) collectEntry(importedKey, collectedKeys, files, entries)
 }
 
-function byteMetrics(files) {
+function byteMetrics(files, assetRoot = outputRoot) {
   let raw = 0
   let gzip = 0
   let brotli = 0
   for (const file of files) {
-    const path = resolve(outputRoot, file)
+    const path = resolve(assetRoot, file)
     if (!existsSync(path) || statSync(path).isDirectory()) continue
     const contents = readFileSync(path)
     raw += contents.byteLength
@@ -141,55 +126,123 @@ function findImportCycles(entries) {
 }
 
 let failed = false
-const generatedChunkNames = new Set(Object.values(manifest).map((entry) => entry.name))
-const missingChunkGroups = requiredChunkGroups.filter((name) => !generatedChunkNames.has(name))
-if (missingChunkGroups.length > 0) {
-  failed = true
-  console.error(`Required Vite chunk groups are missing: ${missingChunkGroups.join(', ')}`)
-}
-
 const importCycles = findImportCycles(manifest)
 if (importCycles.length > 0) {
   failed = true
   console.error('Static Vite import cycles detected:')
-  for (const cycle of importCycles) {
-    console.error(`  ${[...cycle, cycle[0]].join(' -> ')}`)
-  }
+  for (const cycle of importCycles) console.error(`  ${[...cycle, cycle[0]].join(' -> ')}`)
 }
 
 const results = []
-for (const budget of routeBudgets) {
-  const page = budget.pages.find((candidate) => manifest[candidate])
-  if (!page) {
-    if (!budget.optional) {
-      failed = true
-      console.error(`${budget.name}: no manifest entry (${budget.pages.join(', ')})`)
-    }
+for (const { source, descriptor } of descriptors) {
+  const paths = descriptor.budget?.representative_paths ?? []
+  const components = descriptor.budget?.representative_components ?? []
+  if (paths.length === 0 || paths.length !== components.length) {
+    failed = true
+    console.error(`${source}: representative paths/components are missing or misaligned`)
     continue
   }
 
-  const keys = new Set()
-  const files = new Set()
-  collectEntry(entrypoint, keys, files)
-  collectEntry(page, keys, files)
-  const sizes = byteMetrics(files)
-  const result = {
-    route: budget.name,
-    page,
-    requests: files.size,
-    rawKb: kb(sizes.raw),
-    gzipKb: kb(sizes.gzip),
-    brotliKb: kb(sizes.brotli),
-    requestBudget: budget.maxRequests,
-    compressedBudgetKb: budget.maxCompressedKb,
-  }
-  results.push(result)
-
-  if (
-    result.requests > budget.maxRequests ||
-    result.gzipKb > budget.maxCompressedKb
-  ) {
+  const entrypoint = `entrypoints/${descriptor.entrypoint}.ts`
+  if (!manifest[entrypoint]) {
     failed = true
+    console.error(`${source}: registry entry is absent from Vite manifest: ${entrypoint}`)
+    continue
+  }
+
+  for (let index = 0; index < paths.length; index += 1) {
+    const page = `pages/${components[index]}.vue`
+    if (!manifest[page]) {
+      failed = true
+      console.error(`${source}: representative component is absent from Vite manifest: ${page}`)
+      continue
+    }
+
+    const keys = new Set()
+    const files = new Set()
+    collectEntry(entrypoint, keys, files)
+    collectEntry(page, keys, files)
+    const javascriptFiles = new Set([...files].filter((file) => !file.endsWith('.css')))
+    const stylesheetFiles = new Set([...files].filter((file) => file.endsWith('.css')))
+    const javascript = byteMetrics(javascriptFiles)
+    const stylesheets = byteMetrics(stylesheetFiles)
+    const result = {
+      application: descriptor.id,
+      route: paths[index],
+      component: components[index],
+      requests: files.size,
+      javascriptKb: kb(javascript.raw),
+      stylesheetKb: kb(stylesheets.raw),
+      gzipKb: kb(javascript.gzip + stylesheets.gzip),
+      brotliKb: kb(javascript.brotli + stylesheets.brotli),
+      javascriptBudgetKb: kb(descriptor.budget.max_initial_javascript_bytes),
+      stylesheetBudgetKb: descriptor.budget.max_initial_stylesheet_bytes
+        ? kb(descriptor.budget.max_initial_stylesheet_bytes)
+        : null,
+    }
+    results.push(result)
+    if (javascript.raw > descriptor.budget.max_initial_javascript_bytes
+      || (descriptor.budget.max_initial_stylesheet_bytes
+        && stylesheets.raw > descriptor.budget.max_initial_stylesheet_bytes)) {
+      failed = true
+    }
+  }
+}
+
+for (const { name, contribution } of contributionManifests) {
+  if (!contribution.exclusive_renderer || contribution.renderer_runtime_kind !== 'astro_document') continue
+  const astroManifestPath = resolve(contribution.renderer_manifest_path)
+  if (!existsSync(astroManifestPath)) {
+    failed = true
+    console.error(`contributions/${name}: Astro manifest is missing: ${astroManifestPath}`)
+    continue
+  }
+  const astroManifest = JSON.parse(readFileSync(astroManifestPath, 'utf8'))
+  const astroOutputRoot = resolve(astroManifestPath, '..', '..')
+  const paths = contribution.budget?.representative_paths ?? []
+  const entries = contribution.budget?.representative_entries ?? []
+  if (paths.length === 0 || paths.length !== entries.length) {
+    failed = true
+    console.error(`contributions/${name}: Astro representative paths/entries are misaligned`)
+    continue
+  }
+  for (let index = 0; index < paths.length; index += 1) {
+    const entryKey = Object.keys(astroManifest).find((key) => (
+      key === entries[index] || astroManifest[key]?.src === entries[index]
+    ))
+    if (!entryKey) {
+      failed = true
+      console.error(`contributions/${name}: Astro entry is absent from its manifest: ${entries[index]}`)
+      continue
+    }
+    const keys = new Set()
+    const files = new Set()
+    collectEntry(entryKey, keys, files, astroManifest)
+    const javascript = byteMetrics(
+      new Set([...files].filter((file) => !file.endsWith('.css'))),
+      astroOutputRoot,
+    )
+    const stylesheets = byteMetrics(
+      new Set([...files].filter((file) => file.endsWith('.css'))),
+      astroOutputRoot,
+    )
+    results.push({
+      application: contribution.extends_application,
+      route: paths[index],
+      component: entries[index],
+      requests: files.size,
+      javascriptKb: kb(javascript.raw),
+      stylesheetKb: kb(stylesheets.raw),
+      gzipKb: kb(javascript.gzip + stylesheets.gzip),
+      brotliKb: kb(javascript.brotli + stylesheets.brotli),
+      javascriptBudgetKb: kb(contribution.budget.max_initial_javascript_bytes),
+      stylesheetBudgetKb: contribution.budget.max_initial_stylesheet_bytes
+        ? kb(contribution.budget.max_initial_stylesheet_bytes)
+        : null,
+    })
+    if (javascript.raw > contribution.budget.max_initial_javascript_bytes
+      || (contribution.budget.max_initial_stylesheet_bytes
+        && stylesheets.raw > contribution.budget.max_initial_stylesheet_bytes)) failed = true
   }
 }
 
@@ -198,7 +251,7 @@ console.table(results)
 const largest = Object.values(manifest)
   .filter((entry) => entry.file && existsSync(resolve(outputRoot, entry.file)))
   .map((entry) => ({
-    file: entry.file,
+    file: basename(entry.file),
     gzipKb: kb(gzipSync(readFileSync(resolve(outputRoot, entry.file))).byteLength),
   }))
   .sort((left, right) => right.gzipKb - left.gzipKb)
@@ -208,6 +261,6 @@ console.log('Largest generated files (gzip KB)')
 console.table(largest)
 
 if (failed && !reportOnly) {
-  console.error('Vite performance budget exceeded.')
+  console.error('Frontend application performance budget exceeded.')
   process.exit(1)
 }

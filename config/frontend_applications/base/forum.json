@@ -1,0 +1,267 @@
+{
+  "schema_version": 1,
+  "id": "forum",
+  "product_owner": "ce",
+  "runtime_owner": "ce",
+  "runtime_kind": "inertia",
+  "entrypoint": "forum",
+  "landing_path": "/app/forum/latest",
+  "component_prefixes": ["Community/"],
+  "component_names": [],
+  "allow_descendant_contributions": false,
+  "projections": [],
+  "shell_adapter": "forum",
+  "ui_adapter": "mcweb_ui",
+  "styles": ["tokens", "shell_foundation", "app_shell", "forum"],
+  "locales": ["core", "forum"],
+  "error_boundary": "forum",
+  "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona", "server_drafts", "secure_evidence"],
+  "budget": {
+    "representative_paths": ["/app/forum/latest", "/app/forum/topics/example"],
+    "representative_components": ["Community/Latest/Index", "Community/Topics/Show"],
+    "max_initial_javascript_bytes": 650000,
+    "max_initial_stylesheet_bytes": 250000
+  },
+  "routes": [
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/moderation/approvals",
+      "priority": 9000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/notifications",
+      "priority": 9000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/notifications/*/visit",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/attachments/*/scan_status",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/attachments/*",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/uploads/*",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/*.rss",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/**/*.rss",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/*.opml",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/**/*.opml",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/sitemap.xml",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/topics/*/export",
+      "priority": 8500
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/polls/*/export",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/search/suggest",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/mentions/search",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/push/public_key",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/users/*/card",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/topics/similar_titles",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/posts/*/raw",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/polls/*/voters",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/tag-suggest",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/saved_searches",
+      "priority": 8500
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/forum/preview",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST", "DELETE"],
+      "pattern": "/app/forum/push/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/forum/unread/filter_presets",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["DELETE"],
+      "pattern": "/app/forum/unread/filter_presets/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/forum/uploads",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/forum/attachments",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/forum/saved_searches",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["PATCH", "DELETE"],
+      "pattern": "/app/forum/saved_searches/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["PATCH", "DELETE"],
+      "pattern": "/app/forum/topics/*/reply_draft",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["PATCH", "DELETE"],
+      "pattern": "/app/forum/conversations/*/message_draft",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/forum/topics/*/visit_receipt",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/app/forum/conversations/*/read_receipt",
+      "priority": 9000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/digest/unsubscribe",
+      "priority": 8500
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/notifications/email/unsubscribe",
+      "priority": 8500
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/saved_searches/unsubscribe",
+      "priority": 8500
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum",
+      "priority": 1000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/forum/**",
+      "priority": 1000
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/forum/**",
+      "priority": 1000
+    }
+  ]
+}

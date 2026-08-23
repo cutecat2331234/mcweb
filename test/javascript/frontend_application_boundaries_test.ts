@@ -1,0 +1,60 @@
+import assert from 'node:assert/strict'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { resolve } from 'node:path'
+import test from 'node:test'
+
+const root = process.cwd()
+const entryRoot = resolve(root, 'app/javascript/entrypoints')
+const applications = [
+  ['website-document.ts', ['Website/**/*.vue', 'Plugins/**/*.vue']],
+  ['forum.ts', ['Community/**/*.vue']],
+  ['store.ts', ['Commerce/**/*.vue', 'Payments/**/*.vue']],
+  ['account.ts', ['Account/**/*.vue', 'Identity/**/*.vue', 'Minecraft/**/*.vue']],
+  ['staff.ts', ['Staff/Dashboard/**/*.vue', 'Staff/Forum/Approvals/**/*.vue', 'Staff/ModerationCases/**/*.vue', 'Staff/ReportAppeals/**/*.vue']],
+  ['admin.ts', ['Admin/ArcoDemo/**/*.vue', 'Admin/Website/**/*.vue']],
+  ['website-preview.ts', ['Website/Pages/Show.vue', 'Website/Articles/Show.vue', 'WebsitePreview/DocumentFrame.vue']],
+] as const
+
+test('the umbrella entry is removed and every runtime has a positive resolver', () => {
+  assert.equal(existsSync(resolve(entryRoot, 'inertia.ts')), false)
+  for (const [entry, positiveGlobs] of applications) {
+    const source = readFileSync(resolve(entryRoot, entry), 'utf8')
+    assert.doesNotMatch(source, /!\.\.\/pages\//)
+    assert.doesNotMatch(source, /\.\.\/pages\/\*\*\/\*\.vue/)
+    for (const glob of positiveGlobs) assert.match(source, new RegExp(glob.replaceAll('*', '\\*')))
+  }
+})
+
+test('each entry discovers executable contributions only for its own runtime', () => {
+  for (const [entry] of applications) {
+    const source = readFileSync(resolve(entryRoot, entry), 'utf8')
+    assert.doesNotMatch(source, /frontend-application-adapters\/\*\*\/\*\.ts/)
+  }
+})
+
+test('application styles are separate roots and CE declares no Channel entry', () => {
+  const styleNames = readdirSync(resolve(root, 'app/javascript/styles/applications')).sort()
+  assert.deepEqual(styleNames, [
+    'account.css',
+    'admin.css',
+    'forum.css',
+    'staff.css',
+    'store.css',
+    'website-preview.css',
+    'website.css',
+  ])
+  assert.equal(existsSync(resolve(entryRoot, 'channel.ts')), false)
+  assert.equal(existsSync(resolve(entryRoot, 'pvp.ts')), false)
+})
+
+test('navigation and prefetch resolve route kind instead of treating all app paths as one SPA', () => {
+  const navigation = readFileSync(
+    resolve(root, 'app/javascript/lib/applicationNavigation.ts'),
+    'utf8',
+  )
+  const prefetch = readFileSync(resolve(root, 'app/javascript/lib/intentPrefetch.ts'), 'utf8')
+  assert.match(navigation, /match\.rule\.kind === 'inertia_page'/)
+  assert.match(navigation, /window\.location\.assign/)
+  assert.match(prefetch, /match\.rule\.kind !== 'inertia_page'/)
+  assert.doesNotMatch(prefetch, /PREFETCHABLE_PREFIXES/)
+})

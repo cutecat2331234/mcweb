@@ -6,7 +6,12 @@ module Website
       feature_state = FeatureFlags.frontend_hash
       unless logged_in?
         fresh_when(
-          etag: [ Website::HomeCache.version, I18n.locale, feature_state ],
+          etag: [
+            Website::HomeCache.version,
+            Frontend::WebsiteRenderer.cache_key,
+            I18n.locale,
+            feature_state
+          ],
           public: false
         )
         return if performed?
@@ -15,7 +20,11 @@ module Website
         locale: I18n.locale,
         feature_state:
       ) { build_home_payload(feature_state) }
-      render inertia: payload.fetch(:component), props: payload.fetch(:props)
+      Frontend::WebsiteRenderer.call(
+        controller: self,
+        component: payload.fetch(:component),
+        props: payload.fetch(:props)
+      )
     end
 
     private

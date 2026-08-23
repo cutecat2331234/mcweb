@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "contribution_id": "ee.channel.admin",
+  "product_owner": "ee",
+  "runtime_owner": "ce",
+  "extends_application": "admin",
+  "component_prefixes": ["Admin/Chat/"],
+  "routes": [
+    { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/admin/chat", "priority": 3000 },
+    { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/admin/chat/**", "priority": 3000 },
+    { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/admin/chat", "priority": 3000 },
+    { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/admin/chat/**", "priority": 3000 }
+  ],
+  "navigation": [
+    {
+      "id": "channel",
+      "label_key": "admin.channel.navigation",
+      "items": [
+        { "label_key": "admin.channel.settings", "href": "/admin/chat/settings" }
+      ]
+    }
+  ],
+  "styles": ["admin_chat"],
+  "locales": ["admin_chat"],
+  "error_boundary": "admin_chat",
+  "budget": {
+    "representative_paths": ["/admin/chat/settings"],
+    "representative_components": ["Admin/Chat/Settings/Show"],
+    "max_initial_javascript_bytes": 900000,
+    "max_initial_stylesheet_bytes": 350000
+  },
+  "adapter_module": "app/javascript/frontend-application-adapters/admin/ee-chat.ts"
+}

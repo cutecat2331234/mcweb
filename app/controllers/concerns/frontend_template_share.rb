@@ -38,6 +38,7 @@ module FrontendTemplateShare
   end
 
   def frontend_template_scope_for_request
+    return "website" if frontend_application_id == "website_preview"
     return nil if admin_request?
     return self.class.frontend_template_scope if self.class.frontend_template_scope.present?
 

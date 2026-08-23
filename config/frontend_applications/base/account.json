@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "id": "account",
+  "product_owner": "ce",
+  "runtime_owner": "ce",
+  "runtime_kind": "inertia",
+  "entrypoint": "account",
+  "landing_path": "/app/account",
+  "component_prefixes": ["Account/", "Identity/", "Minecraft/"],
+  "component_names": [],
+  "allow_descendant_contributions": false,
+  "projections": [],
+  "shell_adapter": "account",
+  "ui_adapter": "mcweb_ui",
+  "styles": ["tokens", "shell_foundation", "app_shell", "account"],
+  "locales": ["core", "account"],
+  "error_boundary": "account",
+  "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona"],
+  "launcher": { "path": "/app", "priority": 0 },
+  "budget": {
+    "representative_paths": ["/app/account", "/app/identity/security", "/app/minecraft/link"],
+    "representative_components": ["Account/Show", "Identity/Security/Show", "Minecraft/Link/Show"],
+    "max_initial_javascript_bytes": 620000,
+    "max_initial_stylesheet_bytes": 250000
+  },
+  "routes": [
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/identity/data-exports/*/download",
+      "priority": 9000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/account/notifications/*/visit",
+      "priority": 8500
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/identity/verify-email",
+      "priority": 8500
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/identity/security/email-change/confirm",
+      "priority": 8500
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/identity/security/email-change/revoke",
+      "priority": 8500
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/account",
+      "priority": 1000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/account/**",
+      "priority": 1000
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/account/**",
+      "priority": 1000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/identity/**",
+      "priority": 1000
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/identity/**",
+      "priority": 1000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/minecraft/**",
+      "priority": 1000
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/minecraft/**",
+      "priority": 1000
+    }
+  ]
+}

@@ -43,6 +43,7 @@ export const routes = {
   forumPreferences: `${appPrefix}/forum/preferences`,
   forumDrafts: `${appPrefix}/forum/drafts`,
   forumModerationApprovals: `${appPrefix}/forum/moderation/approvals`,
+  staffForumApprovals: `${appPrefix}/staff/forum/approvals`,
   forumLatestRss: `${appPrefix}/forum/latest.rss`,
   forumSectionRss: (slug: string) => `${appPrefix}/forum/sections/${slug}.rss`,
   forumTagRss: (slug: string) => `${appPrefix}/forum/tags/${slug}.rss`,

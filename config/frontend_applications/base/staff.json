@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "staff",
+  "product_owner": "ce",
+  "runtime_owner": "ce",
+  "runtime_kind": "inertia",
+  "entrypoint": "staff",
+  "landing_path": "/app/staff",
+  "component_prefixes": [
+    "Staff/Dashboard/",
+    "Staff/Forum/Approvals/",
+    "Staff/ModerationCases/",
+    "Staff/ReportAppeals/"
+  ],
+  "component_names": [],
+  "allow_descendant_contributions": true,
+  "projections": [],
+  "shell_adapter": "staff",
+  "ui_adapter": "mcweb_ui",
+  "styles": ["tokens", "shell_foundation", "arco_admin", "staff"],
+  "locales": ["core", "staff"],
+  "error_boundary": "staff",
+  "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona", "secure_evidence"],
+  "budget": {
+    "representative_paths": ["/app/staff", "/app/staff/moderation-cases"],
+    "representative_components": ["Staff/Dashboard/Index", "Staff/ModerationCases/Index"],
+    "max_initial_javascript_bytes": 680000,
+    "max_initial_stylesheet_bytes": 260000
+  },
+  "routes": [
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/staff/moderation-cases/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/staff/moderation-cases/**",
+      "priority": 9000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/staff",
+      "priority": 1500
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/app/staff/**",
+      "priority": 1500
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/app/staff/**",
+      "priority": 1500
+    }
+  ]
+}

@@ -1,10 +1,14 @@
 import { router } from '@inertiajs/vue3'
+
 import { csrfHeaders } from '@/lib/csrf'
+import {
+  frontendApplicationRequestHeaders,
+  resolveFrontendRoute,
+} from '@/lib/frontendApplications'
 import { localeRequestHeaders } from '@/lib/localePreference'
 
 const DEFAULT_HOVER_DELAY = 150
 const DEFAULT_CACHE_FOR = '30s'
-const PREFETCHABLE_PREFIXES = [ '/app', '/admin' ]
 
 interface NetworkInformationLike {
   saveData?: boolean
@@ -16,7 +20,7 @@ function connectionAllowsPrefetch(): boolean {
   const connection = (navigator as Navigator & { connection?: NetworkInformationLike }).connection
   if (!connection) return true
   if (connection.saveData) return false
-  return ![ 'slow-2g', '2g' ].includes(connection.effectiveType || '')
+  return !['slow-2g', '2g'].includes(connection.effectiveType || '')
 }
 
 function intentElement(target: EventTarget | null): HTMLElement | null {
@@ -24,7 +28,7 @@ function intentElement(target: EventTarget | null): HTMLElement | null {
   return target.closest<HTMLElement>('[data-prefetch-safe="true"]')
 }
 
-function prefetchHref(element: HTMLElement): string | null {
+function prefetchHref(element: HTMLElement, applicationId: string): string | null {
   if (element.closest('[data-no-prefetch]')) return null
   if (element instanceof HTMLAnchorElement) {
     if (element.target === '_blank' || element.hasAttribute('download')) return null
@@ -33,37 +37,29 @@ function prefetchHref(element: HTMLElement): string | null {
   }
 
   const explicitHref = element.dataset.prefetchHref
-  const raw = explicitHref ||
-    (element instanceof HTMLAnchorElement ? element.getAttribute('href') : null)
+  const raw = explicitHref
+    || (element instanceof HTMLAnchorElement ? element.getAttribute('href') : null)
   if (!raw || raw.startsWith('#')) return null
 
   const url = new URL(raw, window.location.href)
   if (url.origin !== window.location.origin) return null
+  const match = resolveFrontendRoute(url.pathname, 'GET')
+  if (match?.application?.id !== applicationId || match.rule.kind !== 'inertia_page') return null
+
   const current = new URL(window.location.href)
-  const currentIsAdmin = current.pathname === '/admin' || current.pathname.startsWith('/admin/')
-  const targetIsAdmin = url.pathname === '/admin' || url.pathname.startsWith('/admin/')
-  if (currentIsAdmin !== targetIsAdmin) return null
-
-  const knownAppPath = PREFETCHABLE_PREFIXES.some(
-    (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
-  )
-  // Only destinations explicitly reviewed and marked data-prefetch-safe may
-  // enter this path. The app/admin boundary remains closed in both directions.
-  if (!knownAppPath) {
-    return null
-  }
-
   if (url.pathname === current.pathname && url.search === current.search) return null
   return `${url.pathname}${url.search}${url.hash}`
 }
 
 export function installIntentPrefetch({
+  applicationId,
   hoverDelay = DEFAULT_HOVER_DELAY,
   cacheFor = DEFAULT_CACHE_FOR,
 }: {
+  applicationId: string
   hoverDelay?: number
   cacheFor?: string
-} = {}): VoidFunction {
+}): VoidFunction {
   if (typeof document === 'undefined' || !connectionAllowsPrefetch()) return () => {}
 
   let pendingElement: HTMLElement | null = null
@@ -81,7 +77,7 @@ export function installIntentPrefetch({
 
     const element = intentElement(event.target)
     if (!element || element === pendingElement) return
-    const href = prefetchHref(element)
+    const href = prefetchHref(element, applicationId)
     if (!href) return
 
     cancelPending()
@@ -92,17 +88,11 @@ export function installIntentPrefetch({
       const headers = {
         ...csrfHeaders(),
         ...localeRequestHeaders(),
+        ...frontendApplicationRequestHeaders(applicationId),
       }
       const visitOptions = { headers }
-      if (
-        router.getCached(href, visitOptions) ||
-        router.getPrefetching(href, visitOptions)
-      ) return
-      router.prefetch(
-        href,
-        visitOptions,
-        { cacheFor },
-      )
+      if (router.getCached(href, visitOptions) || router.getPrefetching(href, visitOptions)) return
+      router.prefetch(href, visitOptions, { cacheFor })
     }, hoverDelay)
   }
 

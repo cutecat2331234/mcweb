@@ -1,0 +1,5 @@
+@import "../website.css";
+
+html[data-mcweb-application="website"] body {
+  min-height: 100dvh;
+}

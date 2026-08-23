@@ -5,10 +5,14 @@ class PluginPagesController < ApplicationController
     page = contribution_presenter.page(surface: "public")
     return head :not_found unless page
 
-    render inertia: "Plugins/Page", props: {
-      title: page.fetch(:title),
-      pluginPage: page
-    }
+    Frontend::WebsiteRenderer.call(
+      controller: self,
+      component: "Plugins/Page",
+      props: {
+        title: page.fetch(:title),
+        pluginPage: page
+      }
+    )
   end
 
   private

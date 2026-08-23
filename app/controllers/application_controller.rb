@@ -12,6 +12,9 @@ class ApplicationController < ActionController::Base
   include TouchLastSeen
   include FrontendTemplateShare
   include LocaleSettable
+  # Keep this include last: its prepend_before_action must run before
+  # Authentication's developer auto-login and every session/last-seen writer.
+  include InertiaApplicationBoundary
 
   before_action :require_totp_setup
   before_action :enforce_plugin_maintenance_window

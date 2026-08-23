@@ -5,6 +5,11 @@ import {
 import {
   beginStoragePreferenceTransaction,
 } from './storagePreferenceTransaction'
+import {
+  clearLocaleCookie,
+  readLocaleCookie,
+  writeLocaleCookie,
+} from './localeBridge'
 
 export const SHARED_LOCALE_STORAGE_KEY = 'mcweb-locale'
 export const INERTIA_LOCALE_HEADER = 'X-McWeb-Locale'
@@ -20,10 +25,11 @@ export function readSharedAppLocale(): AppLocale | null {
 
   try {
     const stored = window.localStorage.getItem(SHARED_LOCALE_STORAGE_KEY)
-    return stored === 'zh-CN' || stored === 'en' ? stored : null
+    if (stored === 'zh-CN' || stored === 'en') return stored
   } catch {
-    return null
+    // Fall through to the same-origin locale cookie shared with document renderers.
   }
+  return readLocaleCookie()
 }
 
 export function writeSharedAppLocale(locale: unknown): AppLocale {
@@ -35,6 +41,7 @@ export function writeSharedAppLocale(locale: unknown): AppLocale {
   } catch {
     // Storage can be unavailable in hardened or private browser contexts.
   }
+  writeLocaleCookie(normalized)
   return normalized
 }
 
@@ -42,6 +49,7 @@ export function beginAppLocalePreferenceTransaction(
   locale: unknown,
 ): AppLocalePreferenceTransaction {
   const normalized = normalizeAppLocale(locale)
+  const previousCookie = readLocaleCookie()
   const transaction = beginStoragePreferenceTransaction(
     SHARED_LOCALE_STORAGE_KEY,
     normalized,
@@ -49,8 +57,15 @@ export function beginAppLocalePreferenceTransaction(
 
   return {
     locale: normalized,
-    commit: transaction.commit,
-    rollback: transaction.rollback,
+    commit() {
+      writeLocaleCookie(normalized)
+      transaction.commit()
+    },
+    rollback() {
+      transaction.rollback()
+      if (previousCookie) writeLocaleCookie(previousCookie)
+      else clearLocaleCookie()
+    },
   }
 }
 
@@ -61,7 +76,8 @@ export function localePreferenceVisitCallbacks(
     onSuccess: () => transaction.commit(),
     onError: () => transaction.rollback(),
     onCancel: () => transaction.rollback(),
-    onException: () => transaction.rollback(),
+    onHttpException: () => transaction.rollback(),
+    onNetworkError: () => transaction.rollback(),
   }
 }
 

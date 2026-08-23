@@ -172,13 +172,23 @@ module Admin
         body_result = ::Website::RenderArticleBody.call(body: @article.body)
         seo_result = ::Website::ResolveSeo.call(record: @article)
 
-        render inertia: "Website/Articles/Show", layout: "inertia", props: {
+        Frontend::WebsiteRenderer.preview(
+          controller: self,
+          component: "Website/Articles/Show",
+          props: {
           article: serialize_article_detail(@article).merge(
             body_html: body_result.success? ? body_result.value.to_s : "",
             slug: @article.slug
           ),
-          seo: seo_result.value
-        }
+          seo: seo_result.value,
+          preview_context: {
+            return_url: admin_website_article_path(@article),
+            edit_url: edit_admin_website_article_path(@article),
+            label: @article.title,
+            mode_label: t("mcweb.admin.website.preview", default: "Preview")
+          }
+          }
+        )
       end
 
       private
@@ -251,6 +261,9 @@ module Admin
             href: publish_admin_website_article_path(@article), method: "post",
             data: { lock_version: @article.lock_version, request_id: "website-publish-article-#{SecureRandom.uuid}" }
           }
+        end
+        if current_user.permission?("website.articles.edit") &&
+            current_user.permission?("website.articles.publish")
           actions << {
             label: t("mcweb.admin.website.recovery.archive"),
             href: archive_admin_website_article_path(@article), method: "post",

@@ -1,55 +1,41 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import { Globe } from '@lucide/vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from 'reka-ui'
-import Button from '@/components/ui/Button.vue'
-import { cn } from '@/lib/utils'
+import { Button, Doption, Dropdown } from '@mcweb/ui'
+import { IconCheck, IconLanguage } from '@arco-design/web-vue/es/icon'
+
+import { documentFrontendApplicationId } from '@/lib/frontendApplications'
 import { normalizeAppLocale, preloadAppLocale, type AppLocale } from '@/lib/i18n'
-import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
-import {
-  beginAppLocalePreferenceTransaction,
-  localePreferenceVisitCallbacks,
-} from '@/lib/localePreference'
+import { beginAppLocalePreferenceTransaction } from '@/lib/localePreference'
 import { routes } from '@/lib/routes'
+import { performSharedAction } from '@/lib/sharedAction'
+import { navigateFrontendDocument } from '@/lib/applicationNavigation'
+import { confirmUnsavedNavigation } from '@/lib/unsavedForms'
 
 const page = usePage()
 const { t } = useI18n()
-
 const currentLocale = computed(() => normalizeAppLocale(page.props.locale))
 const availableLocales = computed(() => {
   const raw = page.props.available_locales
-  if (!Array.isArray(raw)) return [ 'zh-CN', 'en' ] as AppLocale[]
+  if (!Array.isArray(raw)) return ['zh-CN', 'en'] as AppLocale[]
   return raw.map((locale) => normalizeAppLocale(locale))
 })
 
-function localeLabel(locale: AppLocale) {
-  return t(`locale.${locale}`)
-}
-
-async function switchLocale(locale: AppLocale) {
+async function switchLocale(value: string | number | Record<string, unknown>) {
+  if (typeof value !== 'string') return
+  const locale = normalizeAppLocale(value)
   if (locale === currentLocale.value) return
+  if (!confirmUnsavedNavigation()) return
   await preloadAppLocale(locale)
   const transaction = beginAppLocalePreferenceTransaction(locale)
-  const token = readCsrfToken()
   try {
-    router.patch(
-      routes.locale,
-      { locale, authenticity_token: token },
-      {
-        preserveScroll: true,
-        headers: csrfHeaders(),
-        ...localePreferenceVisitCallbacks(transaction),
-      },
-    )
+    await performSharedAction(documentFrontendApplicationId(), routes.locale, {
+      method: 'PATCH',
+      data: { locale },
+    })
+    transaction.commit()
+    navigateFrontendDocument(window.location.href)
   } catch (error) {
     transaction.rollback()
     throw error
@@ -58,35 +44,15 @@ async function switchLocale(locale: AppLocale) {
 </script>
 
 <template>
-  <!-- Non-modal: keep the page scrollbar. Modal mode hides it and pads <body>,
-       which double-compensates with the html scrollbar-gutter and shifts the layout. -->
-  <DropdownMenuRoot :modal="false">
-    <DropdownMenuTrigger as-child>
-      <Button variant="ghost" size="icon" type="button" :aria-label="t('locale.label')">
-        <Globe class="h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent
-      :class="cn(
-        'z-50 min-w-[10rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md',
-      )"
-      :side-offset="8"
-      align="end"
-    >
-      <DropdownMenuLabel class="px-2 py-1.5 text-xs text-muted-foreground">
-        {{ t('locale.label') }}
-      </DropdownMenuLabel>
-      <DropdownMenuSeparator class="my-1 h-px bg-border" />
-      <DropdownMenuItem
-        v-for="locale in availableLocales"
-        :key="locale"
-        class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-        :class="locale === currentLocale ? 'font-medium text-foreground' : ''"
-        @select="switchLocale(locale)"
-      >
-        <span class="flex-1">{{ localeLabel(locale) }}</span>
-        <span v-if="locale === currentLocale" class="text-xs text-muted-foreground">✓</span>
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenuRoot>
+  <Dropdown trigger="click" @select="switchLocale">
+    <Button type="text" shape="circle" :aria-label="t('locale.label')">
+      <template #icon><IconLanguage /></template>
+    </Button>
+    <template #content>
+      <Doption v-for="locale in availableLocales" :key="locale" :value="locale">
+        <template #icon><IconCheck v-if="locale === currentLocale" /></template>
+        {{ t(`locale.${locale}`) }}
+      </Doption>
+    </template>
+  </Dropdown>
 </template>

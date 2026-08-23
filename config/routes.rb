@@ -370,7 +370,8 @@ Rails.application.routes.draw do
       post :uploads, to: "uploads#create"
     end
     namespace :website do
-      resources :pages do
+      get "", to: "home#show", as: :root
+      resources :pages, except: :destroy do
         member do
           post :publish
           post :schedule
@@ -390,7 +391,7 @@ Rails.application.routes.draw do
           end
         end
       end
-      resources :articles do
+      resources :articles, except: :destroy do
         member do
           post :publish
           post :schedule
@@ -544,6 +545,8 @@ Rails.application.routes.draw do
     end
   end
 
+  get "app", to: "frontend/launcher#show", as: :app_launcher
+
   scope path: "app" do
     get "account", to: "account#show", as: :account
     namespace :account do
@@ -603,6 +606,14 @@ Rails.application.routes.draw do
 
     namespace :staff do
       root "dashboard#index"
+      namespace :forum do
+        resources :approvals, only: :index do
+          member do
+            post :approve
+            post :reject
+          end
+        end
+      end
       resources :moderation_cases,
         path: "moderation-cases",
         only: %i[index show] do

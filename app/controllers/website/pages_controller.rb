@@ -13,11 +13,15 @@ module Website
       blocks_result = Website::SerializePageBlocks.call(page: page)
       seo_result = Website::ResolveSeo.call(record: page)
 
-      render inertia: "Website/Pages/Show", props: {
-        page: { title: page.title, slug: page.slug },
-        blocks: blocks_result.value,
-        seo: seo_result.value
-      }
+      Frontend::WebsiteRenderer.call(
+        controller: self,
+        component: "Website/Pages/Show",
+        props: {
+          page: { title: page.title, slug: page.slug },
+          blocks: blocks_result.value,
+          seo: seo_result.value
+        }
+      )
     end
   end
 end

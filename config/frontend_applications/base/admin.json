@@ -1,0 +1,263 @@
+{
+  "schema_version": 1,
+  "id": "admin",
+  "product_owner": "ce",
+  "runtime_owner": "ce",
+  "runtime_kind": "inertia",
+  "entrypoint": "admin",
+  "landing_path": "/admin",
+  "component_prefixes": [
+    "Admin/ArcoDemo/",
+    "Admin/AuditLogs/",
+    "Admin/Dashboard/",
+    "Admin/Forum/",
+    "Admin/Frontend/",
+    "Admin/Generic/",
+    "Admin/Minecraft/",
+    "Admin/Plugins/",
+    "Admin/Roles/",
+    "Admin/Store/",
+    "Admin/System/",
+    "Admin/Users/",
+    "Admin/Website/"
+  ],
+  "component_names": ["Admin/DashboardProDemo"],
+  "allow_descendant_contributions": true,
+  "projections": [],
+  "shell_adapter": "admin",
+  "ui_adapter": "mcweb_ui",
+  "styles": ["tokens", "shell_foundation", "arco_admin", "admin"],
+  "locales": ["core", "admin"],
+  "error_boundary": "admin",
+  "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona", "secure_evidence"],
+  "budget": {
+    "representative_paths": ["/admin", "/admin/users", "/admin/system/settings"],
+    "representative_components": ["Admin/Dashboard/Index", "Admin/Generic/Index", "Admin/System/Settings/Show"],
+    "max_initial_javascript_bytes": 850000,
+    "max_initial_stylesheet_bytes": 330000
+  },
+  "routes": [
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/forum/warnings.csv",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/forum/moderation-workbench/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/admin/forum/moderation-workbench/**",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/forum/settings/webhook_test_status",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/store/settings/webhook_test_status",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/store/finance/documents/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/store/disputes/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/inventory/authorize-adjustment",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/inventory/adjust",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/finance/documents/*/transition",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/finance/exports",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/finance/exports/*/revoke",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/disputes/*/authorize_action",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/disputes/*/execute_action",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/disputes/*/evidence/*/download-token",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/fulfillments/*/authorize_action",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/fulfillments/*/execute_action",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/store/uploads",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/website/recycle-bin/*/*/authorize-purge",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["DELETE"],
+      "pattern": "/admin/website/recycle-bin/*/*/purge",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/minecraft/servers/*/world_backups",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/minecraft/servers/*/world_restores",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/minecraft/servers/*/world_restores/*/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["PATCH"],
+      "pattern": "/admin/system/data-governance/policies/*",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/system/data-governance/holds",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["PATCH"],
+      "pattern": "/admin/system/data-governance/holds/*/release",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["POST"],
+      "pattern": "/admin/system/data-governance/content/soft-delete",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["PATCH"],
+      "pattern": "/admin/system/data-governance/records/*/restore",
+      "priority": 9000
+    },
+    {
+      "kind": "api",
+      "methods": ["DELETE"],
+      "pattern": "/admin/system/data-governance/records/*/purge",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/system/developer-workbench/diagnostic",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/audit_logs/export",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/store/orders/export",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/store/finance/exports/*/download",
+      "priority": 9000
+    },
+    {
+      "kind": "download",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/store/disputes/*/evidence/*/download",
+      "priority": 9000
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin",
+      "priority": 500
+    },
+    {
+      "kind": "inertia_page",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/admin/**",
+      "priority": 500
+    },
+    {
+      "kind": "application_action",
+      "methods": ["POST", "PUT", "PATCH", "DELETE"],
+      "pattern": "/admin/**",
+      "priority": 500
+    }
+  ]
+}

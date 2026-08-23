@@ -28,6 +28,7 @@ import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { useArcoLocale } from '@/lib/i18n'
 import { useTheme } from '@/lib/useTheme'
+import { useApplicationShell } from '@/lib/applicationShell'
 
 interface NavItem {
   label: string
@@ -48,6 +49,7 @@ interface NavGroup {
 const page = usePage()
 const { t } = useI18n()
 const arcoLocale = useArcoLocale()
+const applicationShell = useApplicationShell()
 const auth = computed(
   () => (page.props.auth ?? { user: null }) as {
     user: {
@@ -586,6 +588,19 @@ const nav = computed<NavGroup[]>(() => {
       icon: IconGift,
       items: pluginItems.map((item) => ({
         label: item.label,
+        href: item.href,
+      })),
+    })
+  }
+
+  for (const group of applicationShell.navigation) {
+    if (group.id === 'admin-overview') continue
+    groups.push({
+      key: group.id,
+      label: t(group.labelKey),
+      icon: IconCommand,
+      items: group.items.map((item) => ({
+        label: t(item.labelKey),
         href: item.href,
       })),
     })

@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcweb.local/schemas/frontend-application.json",
+  "title": "McWeb frontend application registry manifest",
+  "oneOf": [
+    { "$ref": "#/$defs/baseDescriptor" },
+    { "$ref": "#/$defs/contribution" },
+    { "$ref": "#/$defs/sharedRoutes" }
+  ],
+  "$defs": {
+    "identifier": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "owner": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+    "adapterName": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*$" },
+    "entrypoint": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "path": {
+      "type": "string",
+      "pattern": "^/(?!/)(?!.*[\\\\?#\\u0000-\\u001f\\u007f]).*$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[:\\\\]).+$"
+    },
+    "componentPrefix": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*(/[A-Z][A-Za-z0-9]*)*/$"
+    },
+    "componentName": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*(/[A-Z][A-Za-z0-9]*)*$"
+    },
+    "componentPrefixes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/componentPrefix" }
+    },
+    "componentNames": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/componentName" }
+    },
+    "namedResources": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/adapterName" }
+    },
+    "projection": {
+      "type": "object",
+      "required": ["prefix", "owner_application"],
+      "properties": {
+        "prefix": { "$ref": "#/$defs/componentPrefix" },
+        "owner_application": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": false
+    },
+    "projections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/projection" }
+    },
+    "methods": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] }
+    },
+    "routeRule": {
+      "type": "object",
+      "required": ["kind", "methods", "pattern", "priority"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "inertia_page",
+            "application_action",
+            "document",
+            "download",
+            "api",
+            "shared_action"
+          ]
+        },
+        "methods": { "$ref": "#/$defs/methods" },
+        "pattern": { "$ref": "#/$defs/path" },
+        "priority": { "type": "integer", "minimum": 0 },
+        "allowed_source_applications": { "$ref": "#/$defs/namedResources" },
+        "allowed_source_capabilities": { "$ref": "#/$defs/namedResources" },
+        "safe_get_path": { "$ref": "#/$defs/path" }
+      },
+      "additionalProperties": false
+    },
+    "routes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/routeRule" }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["representative_paths", "max_initial_javascript_bytes"],
+      "properties": {
+        "representative_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/path" }
+        },
+        "representative_components": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/componentName" }
+        },
+        "representative_entries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        },
+        "max_initial_javascript_bytes": { "type": "integer", "minimum": 1 },
+        "max_initial_stylesheet_bytes": { "type": "integer", "minimum": 1 }
+      },
+      "oneOf": [
+        {
+          "required": ["representative_components"],
+          "not": { "required": ["representative_entries"] }
+        },
+        {
+          "required": ["representative_entries"],
+          "not": { "required": ["representative_components"] }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "draftContract": {
+      "type": "object",
+      "required": [
+        "capability",
+        "key_namespace",
+        "version",
+        "user_scoped",
+        "resource_scoped",
+        "offline_recovery",
+        "clear_on_submit"
+      ],
+      "properties": {
+        "capability": { "$ref": "#/$defs/adapterName" },
+        "key_namespace": { "$ref": "#/$defs/adapterName" },
+        "version": { "type": "integer", "minimum": 1 },
+        "user_scoped": { "const": true },
+        "resource_scoped": { "const": true },
+        "offline_recovery": { "const": true },
+        "clear_on_submit": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "navigationItem": {
+      "type": "object",
+      "required": ["href", "label_key"],
+      "properties": {
+        "href": { "$ref": "#/$defs/path" },
+        "label_key": { "$ref": "#/$defs/adapterName" },
+        "badge_prop": { "$ref": "#/$defs/adapterName" },
+        "requires_authentication": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "navigationGroup": {
+      "type": "object",
+      "required": ["id", "label_key", "items"],
+      "properties": {
+        "id": { "$ref": "#/$defs/adapterName" },
+        "label_key": { "$ref": "#/$defs/adapterName" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/navigationItem" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "launcher": {
+      "type": "object",
+      "required": ["path", "priority"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "priority": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "applicationCore": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "id",
+        "runtime_kind",
+        "entrypoint",
+        "landing_path",
+        "component_prefixes",
+        "component_names",
+        "projections",
+        "shell_adapter",
+        "ui_adapter",
+        "styles",
+        "locales",
+        "error_boundary",
+        "budget",
+        "routes"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "id": { "$ref": "#/$defs/identifier" },
+        "runtime_kind": { "enum": ["inertia", "inertia_document", "astro_document"] },
+        "entrypoint": { "$ref": "#/$defs/entrypoint" },
+        "landing_path": { "$ref": "#/$defs/path" },
+        "component_prefixes": { "$ref": "#/$defs/componentPrefixes" },
+        "component_names": { "$ref": "#/$defs/componentNames" },
+        "allow_descendant_contributions": { "type": "boolean" },
+        "projections": { "$ref": "#/$defs/projections" },
+        "shell_adapter": { "$ref": "#/$defs/adapterName" },
+        "ui_adapter": { "$ref": "#/$defs/adapterName" },
+        "styles": { "$ref": "#/$defs/namedResources" },
+        "locales": { "$ref": "#/$defs/namedResources" },
+        "error_boundary": { "$ref": "#/$defs/adapterName" },
+        "capabilities": { "$ref": "#/$defs/namedResources" },
+        "launcher": { "$ref": "#/$defs/launcher" },
+        "renderer_adapter": { "$ref": "#/$defs/adapterName" },
+        "renderer_preview_kind": { "enum": ["inertia_canvas", "document_frame"] },
+        "renderer_manifest_path": { "$ref": "#/$defs/repositoryPath" },
+        "budget": { "$ref": "#/$defs/budget" },
+        "routes": {
+          "allOf": [
+            { "$ref": "#/$defs/routes" },
+            { "minItems": 1 }
+          ]
+        }
+      }
+    },
+    "baseDescriptor": {
+      "allOf": [
+        { "$ref": "#/$defs/applicationCore" },
+        {
+          "type": "object",
+          "required": ["product_owner", "runtime_owner"],
+          "properties": {
+            "product_owner": { "$ref": "#/$defs/owner" },
+            "runtime_owner": { "$ref": "#/$defs/owner" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "createdApplication": {
+      "allOf": [
+        { "$ref": "#/$defs/applicationCore" }
+      ],
+      "unevaluatedProperties": false
+    },
+    "sharedRoutes": {
+      "type": "object",
+      "required": ["schema_version", "routes"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "routes": {
+          "allOf": [
+            { "$ref": "#/$defs/routes" },
+            { "minItems": 1 }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "contribution": {
+      "type": "object",
+      "required": ["schema_version", "contribution_id", "product_owner", "runtime_owner"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "contribution_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "product_owner": { "$ref": "#/$defs/owner" },
+        "runtime_owner": { "$ref": "#/$defs/owner" },
+        "creates_application": { "$ref": "#/$defs/createdApplication" },
+        "extends_application": { "$ref": "#/$defs/identifier" },
+        "component_prefixes": { "$ref": "#/$defs/componentPrefixes" },
+        "component_names": { "$ref": "#/$defs/componentNames" },
+        "routes": { "$ref": "#/$defs/routes" },
+        "styles": { "$ref": "#/$defs/namedResources" },
+        "locales": { "$ref": "#/$defs/namedResources" },
+        "capabilities": { "$ref": "#/$defs/namedResources" },
+        "error_boundary": { "$ref": "#/$defs/adapterName" },
+        "adapter_module": {
+          "type": "string",
+          "pattern": "^app/javascript/frontend-application-adapters/[a-z0-9_./-]+\\.ts$"
+        },
+        "draft_contract": { "$ref": "#/$defs/draftContract" },
+        "navigation": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/navigationGroup" }
+        },
+        "budget": { "$ref": "#/$defs/budget" },
+        "renderer_adapter": { "$ref": "#/$defs/adapterName" },
+        "exclusive_renderer": { "const": true },
+        "renderer_runtime_kind": { "enum": ["inertia_document", "astro_document"] },
+        "renderer_entrypoint": { "$ref": "#/$defs/entrypoint" },
+        "renderer_shell_adapter": { "$ref": "#/$defs/adapterName" },
+        "renderer_ui_adapter": { "$ref": "#/$defs/adapterName" },
+        "renderer_preview_kind": { "enum": ["inertia_canvas", "document_frame"] },
+        "renderer_manifest_path": { "$ref": "#/$defs/repositoryPath" }
+      },
+      "oneOf": [
+        {
+          "required": ["creates_application"],
+          "not": { "required": ["extends_application"] }
+        },
+        {
+          "required": ["extends_application"],
+          "not": { "required": ["creates_application"] }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

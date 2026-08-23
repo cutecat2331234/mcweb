@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "website",
+  "product_owner": "ce",
+  "runtime_owner": "ce",
+  "runtime_kind": "inertia_document",
+  "entrypoint": "website-document",
+  "landing_path": "/",
+  "component_prefixes": ["Website/", "Plugins/"],
+  "component_names": [],
+  "allow_descendant_contributions": false,
+  "projections": [],
+  "shell_adapter": "website",
+  "ui_adapter": "website",
+  "styles": ["tokens", "website"],
+  "locales": ["core", "website"],
+  "error_boundary": "website",
+  "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona"],
+  "renderer_adapter": "ce_inertia_document",
+  "renderer_preview_kind": "inertia_canvas",
+  "budget": {
+    "representative_paths": ["/", "/blog", "/plugins/example/example"],
+    "representative_components": ["Website/Home", "Website/Articles/Index", "Plugins/Page"],
+    "max_initial_javascript_bytes": 360000,
+    "max_initial_stylesheet_bytes": 180000
+  },
+  "routes": [
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/",
+      "priority": 2000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/signed-out",
+      "priority": 2000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/blog",
+      "priority": 2000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/blog/**",
+      "priority": 2000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/plugins/**",
+      "priority": 2000
+    },
+    {
+      "kind": "document",
+      "methods": ["GET", "HEAD"],
+      "pattern": "/*",
+      "priority": 10
+    }
+  ]
+}

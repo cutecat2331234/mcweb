@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<%= I18n.locale %>" data-controller="theme" data-developer-mode="<%= Mcweb::DeveloperMode.enabled? %>">
+<html lang="<%= I18n.locale %>" data-controller="theme" data-developer-mode="<%= Mcweb::DeveloperMode.enabled? %>" data-mcweb-application="website">
   <head>
     <title><%= "[DEV] " if Mcweb::DeveloperMode.enabled? %><%= content_for(:title) || "Mcweb" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -8,6 +8,7 @@
     <% end %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <%= render "shared/theme_bootstrap" %>
     <%= render "shared/tech_fingerprint" %>
     <%= yield :head %>
 

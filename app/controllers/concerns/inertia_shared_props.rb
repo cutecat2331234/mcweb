@@ -9,6 +9,7 @@ module InertiaSharedProps
     share = {
       locale: I18n.locale.to_s,
       available_locales: I18n.available_locales.map(&:to_s),
+      frontend_application: frontend_application_shared_props,
       auth: { user: inertia_user },
       flash: {
         notice: flash[:notice],
@@ -45,6 +46,18 @@ module InertiaSharedProps
     share
   end
 
+  def frontend_application_shared_props
+    application = @frontend_application
+    return unless application
+
+    {
+      id: application.id,
+      product_owner: application.product_owner,
+      runtime_kind: application.runtime_kind,
+      landing_path: application.landing_path
+    }
+  end
+
   def account_notification_navigation_payload
     {
       unread_count: current_user.notifications.unread.count,
@@ -70,6 +83,8 @@ module InertiaSharedProps
 
   def inertia_feature_domain
     @inertia_feature_domain ||= begin
+      return :website if frontend_application_id.in?(%w[website website_preview])
+
       path = controller_path.to_s
       case path
       when %r{\Aadmin/store(?:/|\z)} then :admin_store
@@ -79,7 +94,6 @@ module InertiaSharedProps
       when %r{\Acommerce(?:/|\z)}, %r{\Apayments(?:/|\z)} then :commerce
       when %r{\Aminecraft(?:/|\z)} then :minecraft
       when %r{\Aidentity(?:/|\z)} then :identity
-      when %r{\Aee/chat(?:/|\z)}, %r{\Aee/direct_messages(?:/|\z)} then :chat
       else :core
       end
     end
@@ -203,7 +217,7 @@ module InertiaSharedProps
             count: Community::SectionModeration
               .pending_posts_scope_for(current_user)
               .count,
-            url: forum_moderation_approvals_path
+            url: staff_forum_approvals_path
           }
                                   end,
         messages_unread: {

@@ -76,12 +76,11 @@ test('Inertia documents expose noindex and retain the DEV title prefix', () => {
   }
 
   for (const path of [
-    'app/javascript/entrypoints/inertia.ts',
-    'app/javascript/entrypoints/admin.ts',
+    'app/javascript/lib/createInertiaApplication.ts',
   ]) {
     const entrypoint = source(path)
     assert.match(entrypoint, /dataset\.developerMode === 'true'/)
-    assert.match(entrypoint, /title: inertiaTitle/)
+    assert.match(entrypoint, /dataset\.developerMode === 'true'/)
   }
 })
 

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "contribution_id": "ee_pvp.player.application",
+  "product_owner": "ee-pvp",
+  "runtime_owner": "ee-pvp",
+  "adapter_module": "app/javascript/frontend-application-adapters/pvp/player-pvp.ts",
+  "creates_application": {
+    "schema_version": 1,
+    "id": "pvp",
+    "runtime_kind": "inertia",
+    "entrypoint": "pvp",
+    "landing_path": "/app/pvp",
+    "component_prefixes": ["Pvp/Dashboard/", "Pvp/Tester/"],
+    "component_names": [],
+    "allow_descendant_contributions": true,
+    "projections": [],
+    "shell_adapter": "pvp",
+    "ui_adapter": "mcweb_ui",
+    "styles": ["tokens", "shell_foundation", "pvp"],
+    "locales": ["core", "pvp"],
+    "error_boundary": "pvp",
+    "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona", "secure_evidence"],
+    "budget": {
+      "representative_paths": ["/app/pvp", "/app/pvp/tester"],
+      "representative_components": ["Pvp/Dashboard/Index", "Pvp/Tester/Index"],
+      "max_initial_javascript_bytes": 800000,
+      "max_initial_stylesheet_bytes": 300000
+    },
+    "routes": [
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/pvp", "priority": 2500 },
+      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/pvp/**", "priority": 2500 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/pvp", "priority": 2500 },
+      { "kind": "application_action", "methods": ["POST", "PUT", "PATCH", "DELETE"], "pattern": "/app/pvp/**", "priority": 2500 }
+    ]
+  }
+}

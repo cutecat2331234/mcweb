@@ -2,6 +2,7 @@
 <html
   lang="<%= I18n.locale %>"
   data-developer-mode="<%= Mcweb::DeveloperMode.enabled? %>"
+  data-mcweb-application="<%= frontend_application_id %>"
 >
   <head>
     <meta charset="utf-8" />
@@ -13,18 +14,11 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= render "shared/tech_fingerprint" %>
-    <%= vite_typescript_tag "inertia" %>
+    <%= render "shared/theme_bootstrap" %>
+    <%= vite_typescript_tag frontend_application_entrypoint %>
     <%= inertia_ssr_head %>
-    <script>
-      (function () {
-        var key = "mc-theme";
-        var stored = localStorage.getItem(key);
-        // 门户默认浅色；仅当用户明确选择 dark 时才启用暗色
-        if (stored === "dark") document.documentElement.classList.add("dark");
-      })();
-    </script>
   </head>
-  <body class="antialiased">
+  <body class="antialiased" data-mcweb-application="<%= frontend_application_id %>">
     <%= inertia_root %>
   </body>
 </html>

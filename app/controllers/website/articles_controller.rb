@@ -6,9 +6,11 @@ module Website
       articles = Website::Article.published.order(published_at: :desc)
       articles = articles.by_type(params[:type]) if params[:type].present?
 
-      render inertia: "Website/Articles/Index", props: {
-        articles: articles.map { |article| serialize_article(article) }
-      }
+      Frontend::WebsiteRenderer.call(
+        controller: self,
+        component: "Website/Articles/Index",
+        props: { articles: articles.map { |article| serialize_article(article) } }
+      )
     end
 
     def show
@@ -16,13 +18,17 @@ module Website
       body_result = Website::RenderArticleBody.call(body: article.body)
       seo_result = Website::ResolveSeo.call(record: article)
 
-      render inertia: "Website/Articles/Show", props: {
-        article: serialize_article_detail(article).merge(
-          body_html: body_result.success? ? body_result.value.to_s : "",
-          slug: article.slug
-        ),
-        seo: seo_result.value
-      }
+      Frontend::WebsiteRenderer.call(
+        controller: self,
+        component: "Website/Articles/Show",
+        props: {
+          article: serialize_article_detail(article).merge(
+            body_html: body_result.success? ? body_result.value.to_s : "",
+            slug: article.slug
+          ),
+          seo: seo_result.value
+        }
+      )
     end
   end
 end

@@ -127,27 +127,25 @@ test('community preference copy belongs to the forum domain in both locale bundl
 
 test('explicit Inertia visit headers override shared locale and csrf defaults', () => {
   for (const relativePath of [
-    'app/javascript/entrypoints/inertia.ts',
-    'app/javascript/entrypoints/admin.ts',
+    'app/javascript/lib/createInertiaApplication.ts',
   ]) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
     assert.match(
       source,
-      /event\.detail\.visit\.headers\s*=\s*\{\s*\.\.\.headers,\s*\.\.\.event\.detail\.visit\.headers,?\s*\}/,
+      /event\.detail\.visit\.headers\s*=\s*\{[\s\S]*?\.\.\.event\.detail\.visit\.headers,[\s\S]*?\.\.\.frontendApplicationRequestHeaders/,
     )
   }
 })
 
 test('Inertia resolves the target page locale before loading its component', () => {
   for (const relativePath of [
-    'app/javascript/entrypoints/inertia.ts',
-    'app/javascript/entrypoints/admin.ts',
+    'app/javascript/lib/createInertiaApplication.ts',
   ]) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
     assert.match(source, /resolve: async \(name, targetPage\?: InertiaPageLike\)/)
-    assert.match(source, /await syncLocaleFromInertiaPage\(targetPage\)[\s\S]*?return loader\(\)/)
+    assert.match(source, /await syncLocaleFromPage\(targetPage\)[\s\S]*?return await loader\(\)/)
     assert.match(source, /typeof locale !== 'string' \|\| locale\.trim\(\)\.length === 0/)
-    assert.doesNotMatch(source, /inertia:success[\s\S]{0,500}void syncLocaleFromInertiaPage/)
+    assert.match(source, /inertia:success[\s\S]{0,500}void syncLocaleFromPage/)
   }
 })
 

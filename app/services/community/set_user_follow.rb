@@ -15,7 +15,8 @@ module Community
       Community::UserFollow.transaction do
         mutation = Community::SetUserRelationship.call(
           relation: Community::UserFollow.where(follower: @follower, followed: @followed),
-          desired_state: @desired_state
+          desired_state: @desired_state,
+          participants: [ @follower, @followed ]
         )
         if mutation.failure?
           mutation

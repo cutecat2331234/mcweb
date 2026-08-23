@@ -242,7 +242,8 @@ module Community
       field_result = nil
       # Persist core profile attributes and custom field values atomically so a
       # field validation failure does not leave core attributes committed.
-      ActiveRecord::Base.transaction do
+      Identity::UserMutationLock.with_users(users: [ user ]) do |locked_users|
+        user = locked_users.fetch(user.id)
         user_saved = user.update(user_params)
         raise ActiveRecord::Rollback unless user_saved
 

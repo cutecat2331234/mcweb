@@ -4,16 +4,19 @@ module Community
   class SetUserRelationship < ApplicationService
     MAX_WRITE_ATTEMPTS = 3
 
-    def initialize(relation:, desired_state:)
+    def initialize(relation:, desired_state:, participants:)
       @relation = relation
       @desired_state = desired_state
+      @participants = participants
     end
 
     def call
       return ServiceResult.failure(error: :relationship_state_required) unless [ true, false ].include?(@desired_state)
 
-      changed = @desired_state ? ensure_present! : @relation.delete_all.positive?
-      ServiceResult.success(active: @relation.exists?, changed: changed)
+      Identity::UserMutationLock.with_users(users: @participants) do
+        changed = @desired_state ? ensure_present! : @relation.delete_all.positive?
+        ServiceResult.success(active: @relation.exists?, changed: changed)
+      end
     rescue ActiveRecord::RecordInvalid => error
       ServiceResult.failure(errors: error.record.errors.to_hash)
     rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordNotUnique

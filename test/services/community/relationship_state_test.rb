@@ -106,7 +106,11 @@ module Community
 
         original_create.call
       }) do
-        result = SetUserRelationship.call(relation: relation, desired_state: true)
+        result = SetUserRelationship.call(
+          relation: relation,
+          desired_state: true,
+          participants: [ @actor, @target ]
+        )
 
         assert_predicate result, :success?
         assert result.value[:active]
@@ -118,7 +122,11 @@ module Community
       relation = UserBlock.where(blocker: @actor, blocked: @target)
 
       relation.stub(:create_or_find_by!, -> { raise ActiveRecord::RecordNotUnique }) do
-        result = SetUserRelationship.call(relation: relation, desired_state: true)
+        result = SetUserRelationship.call(
+          relation: relation,
+          desired_state: true,
+          participants: [ @actor, @target ]
+        )
 
         assert_predicate result, :failure?
         assert_equal "conflict", result.code
@@ -212,6 +220,60 @@ module Community
           assert_equal 0, configuration[:relation].call.count
         end
       end
+    end
+
+    test "participant locks normalize order and serialize relationship writes" do
+      lock_acquired = Queue.new
+      release_lock = Queue.new
+      writer_started = Queue.new
+      writer_outcome = Queue.new
+
+      holder = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          Identity::UserMutationLock.with_users(users: [ @target, @actor, @target ]) do |locked_users|
+            lock_acquired << locked_users.keys
+            release_lock.pop
+          end
+        end
+      rescue StandardError => error
+        lock_acquired << error
+      end
+
+      locked_ids = Timeout.timeout(5) { lock_acquired.pop }
+      raise locked_ids if locked_ids.is_a?(Exception)
+      assert_equal [ @actor.id, @target.id ].sort, locked_ids
+
+      writer = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          writer_started << true
+          writer_outcome << SetUserBlock.call(
+            blocker: User.find(@actor.id),
+            blocked_username: @target.username,
+            desired_state: true
+          )
+        end
+      rescue StandardError => error
+        writer_outcome << error
+      end
+
+      Timeout.timeout(5) { writer_started.pop }
+      assert_raises(Timeout::Error) do
+        Timeout.timeout(0.2) { writer_outcome.pop }
+      end
+
+      release_lock << true
+      result = Timeout.timeout(5) { writer_outcome.pop }
+      raise result if result.is_a?(Exception)
+
+      assert_predicate result, :success?
+      assert result.value[:blocked]
+      assert UserBlock.exists?(blocker: @actor, blocked: @target)
+    ensure
+      release_lock&.push(true)
+      holder&.join(1)
+      writer&.join(1)
+      holder&.kill if holder&.alive?
+      writer&.kill if writer&.alive?
     end
 
     private

@@ -14,7 +14,8 @@ module Community
 
       mutation = Community::SetUserRelationship.call(
         relation: Community::UserBlock.where(blocker: @blocker, blocked: @blocked),
-        desired_state: @desired_state
+        desired_state: @desired_state,
+        participants: [ @blocker, @blocked ]
       )
       return mutation if mutation.failure?
 

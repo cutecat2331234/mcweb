@@ -14,7 +14,8 @@ module Community
 
       mutation = Community::SetUserRelationship.call(
         relation: Community::UserIgnore.where(ignorer: @ignorer, ignored: @ignored),
-        desired_state: @desired_state
+        desired_state: @desired_state,
+        participants: [ @ignorer, @ignored ]
       )
       return mutation if mutation.failure?
 

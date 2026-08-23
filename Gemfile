@@ -25,7 +25,7 @@ gem "sidekiq-cron", "~> 2.0"
 gem "aasm", "~> 6.0"
 gem "csv"
 gem "ostruct"
-gem "rubyzip", "~> 3.4"
+gem "rubyzip", "~> 3.5"
 gem "stripe", "~> 19.4"
 gem "aws-sdk-s3", "~> 1.228", require: false
 

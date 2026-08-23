@@ -15,7 +15,8 @@ module Admin
           items: items.map { |item| serialize_nav_item(item) },
           pages: ::Website::Page.order(:title).pluck(:public_id, :title, :slug).map { |id, title, slug| { id:, title:, slug: } },
           submitUrl: admin_website_nav_items_path,
-          reorderUrl: reorder_admin_website_nav_items_path
+          reorderUrl: reorder_admin_website_nav_items_path,
+          canEdit: current_user.permission?("website.pages.edit")
         }
       end
 
@@ -33,9 +34,14 @@ module Admin
       end
 
       def update
+        attrs = nav_item_params
         return redirect_with_page_error if @invalid_page_reference
 
-        if @nav_item.update(nav_item_params)
+        if attrs[:location].present? && attrs[:location] != @nav_item.location
+          attrs[:position] = (::Website::NavItem.where(location: attrs[:location]).maximum(:position) || -1) + 1
+        end
+
+        if @nav_item.update(attrs)
           redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.updated", resource: t("mcweb.admin.website.nav.resource"))
         else
           redirect_to admin_website_nav_items_path, alert: @nav_item.errors.full_messages.to_sentence

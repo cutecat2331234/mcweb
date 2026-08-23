@@ -10,9 +10,7 @@ import {
   DescriptionsItem,
   Grid,
   GridItem,
-  List,
-  ListItem,
-  ListItemMeta,
+  Link as ArcoLink,
   PageHeader,
   Space,
   Statistic,
@@ -22,18 +20,11 @@ import {
   TypographyTitle,
 } from '@mcweb/ui'
 import {
-  IconBookmark,
   IconCloud,
   IconEdit,
-  IconEye,
-  IconEyeInvisible,
   IconLock,
   IconMessage,
   IconNotification,
-  IconSettings,
-  IconSubscribe,
-  IconTag,
-  IconTags,
   IconUserGroup,
 } from '@arco-design/web-vue/es/icon'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -41,10 +32,17 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-type DashboardAction = {
+type DashboardDestination = {
   key: string
   href: string
   icon: Component
+}
+
+type ForumDestination = Pick<DashboardDestination, 'key' | 'href'>
+
+type ForumToolGroup = {
+  key: 'content' | 'moreCommunity' | 'privacy'
+  items: ForumDestination[]
 }
 
 const props = defineProps<{
@@ -80,23 +78,12 @@ const { locale, t } = useI18n()
 
 const displayName = computed(() => props.identity.display_name || props.identity.username)
 
-const primaryActions = computed<DashboardAction[]>(() => {
-  const actions: DashboardAction[] = [
-    { key: 'profile', href: routes.identityProfile, icon: IconEdit },
-    { key: 'password', href: routes.securityPassword, icon: IconLock },
-    { key: 'security', href: routes.security, icon: IconLock },
-  ]
-  if (props.minecraft_enabled) {
-    actions.push({ key: 'minecraft', href: routes.minecraftLink, icon: IconCloud })
-  }
-  return actions
-})
-
 const activityItems = computed(() => {
-  const items = [{
+  const items: Array<DashboardDestination & { value: number }> = [{
     key: 'notifications',
     value: props.activity.unread_notifications,
     href: routes.accountNotifications,
+    icon: IconNotification,
   }]
   if (props.forum_enabled) {
     items.push(
@@ -104,44 +91,50 @@ const activityItems = computed(() => {
         key: 'messages',
         value: props.activity.unread_messages ?? 0,
         href: routes.forumMessages,
+        icon: IconMessage,
       },
       {
         key: 'drafts',
         value: props.activity.topic_drafts ?? 0,
         href: routes.forumDrafts,
+        icon: IconEdit,
       },
     )
   }
   return items
 })
 
-const communityActions = computed<DashboardAction[]>(() => props.forum_enabled ? [
-  { key: 'newTopics', href: routes.forumNew, icon: IconNotification },
-  { key: 'unread', href: routes.forumUnread, icon: IconMessage },
-  { key: 'watching', href: routes.forumWatching, icon: IconSubscribe },
-  { key: 'bookmarks', href: routes.forumBookmarks, icon: IconBookmark },
-] : [])
+const accountActions: DashboardDestination[] = [
+  { key: 'sessions', href: routes.sessionsManagement, icon: IconUserGroup },
+  { key: 'dataExports', href: routes.identityDataExports, icon: IconCloud },
+]
 
-const moreCommunityActions = computed<DashboardAction[]>(() => props.forum_enabled ? [
-  { key: 'following', href: routes.forumFollowing, icon: IconUserGroup },
-  { key: 'watchedTags', href: routes.forumWatchedTags, icon: IconTag },
-  { key: 'watchedTagTopics', href: routes.forumWatchedTagTopics, icon: IconTags },
-] : [])
-
-const privacyActions = computed<DashboardAction[]>(() => props.forum_enabled ? [
-  { key: 'preferences', href: routes.forumPreferences, icon: IconSettings },
-  { key: 'blocks', href: routes.forumBlocks, icon: IconEyeInvisible },
-  { key: 'ignores', href: routes.forumIgnores, icon: IconEye },
-  { key: 'muted', href: routes.forumMuted, icon: IconNotification },
-] : [])
-
-const settingsActions = computed<DashboardAction[]>(() => {
-  const actions: DashboardAction[] = [
-    { key: 'sessions', href: routes.sessionsManagement, icon: IconUserGroup },
-    { key: 'dataExports', href: routes.identityDataExports, icon: IconCloud },
-  ]
-  return actions
-})
+const forumToolGroups: ForumToolGroup[] = [
+  {
+    key: 'content',
+    items: [
+      { key: 'newTopics', href: routes.forumNew },
+      { key: 'unread', href: routes.forumUnread },
+    ],
+  },
+  {
+    key: 'moreCommunity',
+    items: [
+      { key: 'watching', href: routes.forumWatching },
+      { key: 'watchedTags', href: routes.forumWatchedTags },
+      { key: 'bookmarks', href: routes.forumBookmarks },
+      { key: 'muted', href: routes.forumMuted },
+    ],
+  },
+  {
+    key: 'privacy',
+    items: [
+      { key: 'following', href: routes.forumFollowing },
+      { key: 'blocks', href: routes.forumBlocks },
+      { key: 'ignores', href: routes.forumIgnores },
+    ],
+  },
+]
 
 function visit(href: string) {
   router.visit(href)
@@ -169,7 +162,7 @@ function formatJoinedAt(value: string) {
                 {{ identity.username.slice(0, 1).toUpperCase() }}
               </Avatar>
               <Space direction="vertical" :size="2">
-                <TypographyTitle :heading="3" style="margin: 0">
+                <TypographyTitle :heading="3" class="!m-0">
                   {{ displayName }}
                 </TypographyTitle>
                 <TypographyText type="secondary">@{{ identity.username }}</TypographyText>
@@ -177,17 +170,10 @@ function formatJoinedAt(value: string) {
               </Space>
             </Space>
 
-            <Space wrap>
-              <Button
-                v-for="(action, index) in primaryActions"
-                :key="action.key"
-                :type="index === 0 ? 'primary' : 'secondary'"
-                @click="visit(action.href)"
-              >
-                <template #icon><component :is="action.icon" /></template>
-                {{ t(`accountCenter.actions.${action.key}`) }}
-              </Button>
-            </Space>
+            <Button type="primary" @click="visit(routes.identityProfile)">
+              <template #icon><IconEdit /></template>
+              {{ t('accountCenter.actions.profile') }}
+            </Button>
           </Space>
         </Card>
       </GridItem>
@@ -210,6 +196,10 @@ function formatJoinedAt(value: string) {
             </DescriptionsItem>
           </Descriptions>
           <template #actions>
+            <Button type="text" @click="visit(routes.securityPassword)">
+              <template #icon><IconLock /></template>
+              {{ t('accountCenter.actions.password') }}
+            </Button>
             <Button type="text" @click="visit(routes.security)">
               {{ t('accountCenter.security.review') }}
             </Button>
@@ -219,14 +209,16 @@ function formatJoinedAt(value: string) {
     </Grid>
 
     <Card :title="t('accountCenter.activity.title')" :bordered="true">
-      <Grid :cols="{ xs: 1, sm: 3 }" :col-gap="16" :row-gap="16">
+      <Grid :cols="{ xs: 1, sm: forum_enabled ? 3 : 1 }" :col-gap="16" :row-gap="16">
         <GridItem v-for="item in activityItems" :key="item.key">
           <Space direction="vertical" fill>
-            <Statistic
-              :title="t(`accountCenter.activity.${item.key}`)"
-              :value="item.value"
-              :value-style="item.value > 0 ? { color: 'rgb(var(--orange-6))' } : undefined"
-            />
+            <Space align="center">
+              <component :is="item.icon" />
+              <Statistic
+                :title="t(`accountCenter.activity.${item.key}`)"
+                :value="item.value"
+              />
+            </Space>
             <Button
               type="text"
               size="small"
@@ -240,14 +232,14 @@ function formatJoinedAt(value: string) {
       </Grid>
     </Card>
 
-    <Grid :cols="{ xs: 1, lg: minecraft_enabled ? 2 : 1 }" :col-gap="16" :row-gap="16">
+    <Grid :cols="{ xs: 1, lg: minecraft_enabled ? 3 : 2 }" :col-gap="16" :row-gap="16">
       <GridItem v-if="minecraft_enabled">
         <Card :title="t('accountCenter.minecraft.title')" :bordered="true">
           <template v-if="minecraft?.bound">
-            <TypographyTitle :heading="5" style="margin-top: 0">
+            <TypographyTitle :heading="5" class="!m-0">
               {{ minecraft.username || t('common.notAvailable') }}
             </TypographyTitle>
-            <TypographyParagraph type="secondary" style="overflow-wrap: anywhere">
+            <TypographyParagraph type="secondary" class="break-all">
               {{ minecraft.uuid || t('common.notAvailable') }}
             </TypographyParagraph>
           </template>
@@ -275,114 +267,62 @@ function formatJoinedAt(value: string) {
           </Descriptions>
         </Card>
       </GridItem>
-    </Grid>
-
-    <Grid :cols="{ xs: 1, lg: forum_enabled ? 2 : 1 }" :col-gap="16" :row-gap="16">
-      <GridItem v-if="forum_enabled">
-        <Card :title="t('accountCenter.groups.community')" :bordered="true">
-          <List :bordered="false" :split="true">
-            <ListItem v-for="action in communityActions" :key="action.key">
-              <template #meta>
-                <ListItemMeta
-                  :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
-                >
-                  <template #avatar><component :is="action.icon" /></template>
-                </ListItemMeta>
-              </template>
-              <template #actions>
-                <Button
-                  type="text"
-                  :aria-label="t('accountCenter.openItem', { item: t(`accountCenter.items.${action.key}.title`) })"
-                  @click="visit(action.href)"
-                >
-                  {{ t('accountCenter.open') }}
-                </Button>
-              </template>
-            </ListItem>
-          </List>
-        </Card>
-      </GridItem>
 
       <GridItem>
         <Card :title="t('accountCenter.groups.account')" :bordered="true">
-          <List :bordered="false" :split="true">
-            <ListItem v-for="action in settingsActions" :key="action.key">
-              <template #meta>
-                <ListItemMeta
-                  :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
-                >
-                  <template #avatar><component :is="action.icon" /></template>
-                </ListItemMeta>
-              </template>
-              <template #actions>
-                <Button
-                  type="text"
-                  :aria-label="t('accountCenter.openItem', { item: t(`accountCenter.items.${action.key}.title`) })"
-                  @click="visit(action.href)"
-                >
-                  {{ t('accountCenter.open') }}
-                </Button>
-              </template>
-            </ListItem>
-          </List>
+          <Space direction="vertical" fill size="large">
+            <Space
+              v-for="action in accountActions"
+              :key="action.key"
+              align="center"
+              class="justify-between"
+              fill
+              wrap
+            >
+              <Space align="center">
+                <component :is="action.icon" />
+                <Space direction="vertical" :size="0">
+                  <TypographyText>{{ t(`accountCenter.items.${action.key}.title`) }}</TypographyText>
+                  <TypographyText type="secondary">
+                    {{ t(`accountCenter.items.${action.key}.description`) }}
+                  </TypographyText>
+                </Space>
+              </Space>
+              <Button
+                type="text"
+                :aria-label="t('accountCenter.openItem', { item: t(`accountCenter.items.${action.key}.title`) })"
+                @click="visit(action.href)"
+              >
+                {{ t('accountCenter.open') }}
+              </Button>
+            </Space>
+          </Space>
         </Card>
       </GridItem>
     </Grid>
 
-    <Grid v-if="forum_enabled" :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
-      <GridItem>
-        <Card :title="t('accountCenter.groups.moreCommunity')" :bordered="true">
-          <List :bordered="false" :split="true" size="small">
-            <ListItem v-for="action in moreCommunityActions" :key="action.key">
-              <template #meta>
-                <ListItemMeta
-                  :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
-                >
-                  <template #avatar><component :is="action.icon" /></template>
-                </ListItemMeta>
-              </template>
-              <template #actions>
-                <Button
-                  type="text"
-                  :aria-label="t('accountCenter.openItem', { item: t(`accountCenter.items.${action.key}.title`) })"
-                  @click="visit(action.href)"
-                >
-                  {{ t('accountCenter.open') }}
-                </Button>
-              </template>
-            </ListItem>
-          </List>
-        </Card>
-      </GridItem>
-
-      <GridItem>
-        <Card :title="t('accountCenter.groups.privacy')" :bordered="true">
-          <List :bordered="false" :split="true" size="small">
-            <ListItem v-for="action in privacyActions" :key="action.key">
-              <template #meta>
-                <ListItemMeta
-                  :title="t(`accountCenter.items.${action.key}.title`)"
-                  :description="t(`accountCenter.items.${action.key}.description`)"
-                >
-                  <template #avatar><component :is="action.icon" /></template>
-                </ListItemMeta>
-              </template>
-              <template #actions>
-                <Button
-                  type="text"
-                  :aria-label="t('accountCenter.openItem', { item: t(`accountCenter.items.${action.key}.title`) })"
-                  @click="visit(action.href)"
-                >
-                  {{ t('accountCenter.open') }}
-                </Button>
-              </template>
-            </ListItem>
-          </List>
-        </Card>
-      </GridItem>
-    </Grid>
+    <Card
+      v-if="forum_enabled"
+      :title="t('accountCenter.groups.community')"
+      :bordered="true"
+    >
+      <Descriptions :column="1" size="medium">
+        <DescriptionsItem
+          v-for="group in forumToolGroups"
+          :key="group.key"
+          :label="t(`accountCenter.groups.${group.key}`)"
+        >
+          <Space wrap>
+            <ArcoLink
+              v-for="item in group.items"
+              :key="item.key"
+              :href="item.href"
+            >
+              {{ t(`accountCenter.items.${item.key}.title`) }}
+            </ArcoLink>
+          </Space>
+        </DescriptionsItem>
+      </Descriptions>
+    </Card>
   </Space>
 </template>

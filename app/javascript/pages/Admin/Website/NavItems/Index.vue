@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { Page } from '@inertiajs/core'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { Modal } from '@arco-design/web-vue'
-import { IconArrowDown, IconArrowUp, IconDelete } from '@arco-design/web-vue/es/icon'
+import { IconArrowDown, IconArrowUp, IconDelete, IconEdit } from '@arco-design/web-vue/es/icon'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
@@ -28,6 +29,7 @@ const props = defineProps<{
   pages: Array<{ id: string; title: string; slug: string }>
   submitUrl: string
   reorderUrl: string
+  canEdit: boolean
 }>()
 
 const locations = ['header', 'footer'] as const
@@ -38,6 +40,7 @@ const draft = ref({
   location: 'header',
   visible: true,
 })
+const editingId = ref<number | null>(null)
 const pageOptions = computed(() => [
   { value: '', label: t('admin.website.nav.externalUrl') },
   ...props.pages.map((page) => ({
@@ -64,32 +67,61 @@ function rowsForLocation(location: string) {
   return itemsForLocation(location).map((item, index) => ({ ...item, index }))
 }
 
-function createItem() {
-  router.post(
-    props.submitUrl,
-    {
-      nav_item: {
-        ...draft.value,
-        website_page_id: draft.value.website_page_id || null,
-        url: draft.value.url || null,
-      },
+function resetDraft() {
+  editingId.value = null
+  draft.value = {
+    label: '',
+    url: '',
+    website_page_id: '',
+    location: 'header',
+    visible: true,
+  }
+}
+
+function requestSucceeded(page: Page) {
+  const flash = page.props.flash as { notice?: string | null } | undefined
+  return Boolean(flash?.notice)
+}
+
+function saveItem() {
+  if (!props.canEdit) return
+
+  const data = {
+    nav_item: {
+      ...draft.value,
+      website_page_id: draft.value.website_page_id || null,
+      url: draft.value.url || null,
     },
-    {
-      preserveScroll: true,
-      onSuccess: () => {
-        draft.value = {
-          label: '',
-          url: '',
-          website_page_id: '',
-          location: 'header',
-          visible: true,
-        }
-      },
+  }
+  const options = {
+    preserveScroll: true,
+    onSuccess: (page: Page) => {
+      if (requestSucceeded(page)) resetDraft()
     },
-  )
+  }
+  if (editingId.value === null) {
+    router.post(props.submitUrl, data, options)
+  } else {
+    router.patch(`${props.submitUrl}/${editingId.value}`, data, options)
+  }
+}
+
+function startEditing(item: NavItem) {
+  if (!props.canEdit) return
+
+  editingId.value = item.id
+  draft.value = {
+    label: item.label,
+    url: item.url || '',
+    website_page_id: item.page_public_id || '',
+    location: item.location,
+    visible: item.visible,
+  }
 }
 
 function removeItem(item: NavItem) {
+  if (!props.canEdit) return
+
   Modal.warning({
     title: t('admin.ui.delete'),
     content: t('admin.website.nav.deleteConfirm', { label: item.label }),
@@ -97,11 +129,18 @@ function removeItem(item: NavItem) {
     cancelText: t('admin.ui.cancel'),
     hideCancel: false,
     okButtonProps: { status: 'danger' },
-    onOk: () => router.delete(`${props.submitUrl}/${item.id}`, { preserveScroll: true }),
+    onOk: () => router.delete(`${props.submitUrl}/${item.id}`, {
+      preserveScroll: true,
+      onSuccess: (page) => {
+        if (requestSucceeded(page) && editingId.value === item.id) resetDraft()
+      },
+    }),
   })
 }
 
 function moveItem(location: string, index: number, direction: -1 | 1) {
+  if (!props.canEdit) return
+
   const group = itemsForLocation(location)
   const next = index + direction
   if (next < 0 || next >= group.length) return
@@ -114,16 +153,22 @@ const columns = computed(() => [
   { title: t('admin.common.title'), dataIndex: 'label', width: 180 },
   { title: t('admin.website.nav.url'), dataIndex: 'href' },
   { title: t('admin.common.visible'), slotName: 'visible', width: 100 },
-  { title: t('adminMinecraft.actions'), slotName: 'actions', width: 190 },
+  ...(props.canEdit
+    ? [{ title: t('adminMinecraft.actions'), slotName: 'actions', width: 240 }]
+    : []),
 ])
 </script>
 
 <template>
   <a-space direction="vertical" :size="16" fill>
-  <a-page-header :title="title" :show-back="false" />
+    <a-page-header :title="title" :show-back="false" />
 
-  <a-card :title="t('admin.website.nav.add')" :bordered="true">
-    <a-form :model="draft" layout="vertical" @submit="createItem">
+  <a-card
+    v-if="canEdit"
+    :title="editingId === null ? t('admin.website.nav.add') : t('admin.ui.edit')"
+    :bordered="true"
+  >
+    <a-form :model="draft" layout="vertical" @submit="saveItem">
       <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
         <a-grid-item>
           <a-form-item field="label" :label="t('admin.website.nav.label')" required>
@@ -154,9 +199,14 @@ const columns = computed(() => [
       <a-form-item field="visible" :label="t('admin.common.visible')">
         <a-switch v-model="draft.visible" />
       </a-form-item>
-      <a-button html-type="submit" type="primary" :disabled="!draft.label.trim()">
-        {{ t('admin.ui.save') }}
-      </a-button>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :disabled="!draft.label.trim()">
+          {{ t('admin.ui.save') }}
+        </a-button>
+        <a-button v-if="editingId !== null" html-type="button" @click="resetDraft">
+          {{ t('admin.ui.cancel') }}
+        </a-button>
+      </a-space>
     </a-form>
   </a-card>
 
@@ -179,8 +229,15 @@ const columns = computed(() => [
             {{ record.visible ? t('adminMinecraft.yes') : t('adminMinecraft.no') }}
           </a-tag>
         </template>
-        <template #actions="{ record }">
+        <template v-if="canEdit" #actions="{ record }">
           <a-space>
+            <a-button
+              size="small"
+              :aria-label="t('admin.ui.edit')"
+              @click="startEditing(record)"
+            >
+              <template #icon><icon-edit /></template>
+            </a-button>
             <a-button
               size="small"
               :disabled="record.index === 0"

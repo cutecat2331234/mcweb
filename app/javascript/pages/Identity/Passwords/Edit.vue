@@ -70,14 +70,14 @@ function submit() {
     />
 
     <Card :title="t('identity.password.formTitle')" :bordered="true">
-      <Alert type="warning" show-icon style="margin-bottom: 16px">
+      <Alert type="warning" show-icon class="mb-4">
         {{ t('identity.password.sessionNotice') }}
       </Alert>
-      <Alert v-if="baseError" type="error" show-icon style="margin-bottom: 16px">
+      <Alert v-if="baseError" type="error" show-icon class="mb-4">
         {{ baseError }}
       </Alert>
 
-      <Form :model="form.password_change" layout="vertical" style="max-width: 560px" @submit="submit">
+      <Form :model="form.password_change" layout="vertical" class="max-w-xl" @submit="submit">
         <FormItem
           field="current_password"
           :label="t('identity.password.currentPassword')"

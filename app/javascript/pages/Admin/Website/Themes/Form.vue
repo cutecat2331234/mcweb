@@ -2,6 +2,7 @@
 import { router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -9,8 +10,9 @@ const { t } = useI18n()
 
 const props = defineProps<{
   title: string
-  theme: { name: string; key: string; active: boolean; tokens_json: string }
+  theme: { name: string; key: string; tokens_json: string }
   submitUrl: string
+  deleteUrl?: string | null
   method: 'post' | 'patch'
   backUrl: string
   form_errors?: Record<string, string[]>
@@ -25,6 +27,18 @@ function fieldError(key: string) {
 function submit() {
   if (props.method === 'patch') form.patch(props.submitUrl)
   else form.post(props.submitUrl)
+}
+
+async function destroy() {
+  const ok = await confirm({
+    title: t('admin.ui.delete'),
+    message: t('admin.website.nav.deleteConfirm', { label: props.theme.name }),
+    confirmLabel: t('admin.ui.delete'),
+    cancelLabel: t('admin.ui.cancel'),
+    variant: 'destructive',
+  })
+  if (!props.deleteUrl || !ok) return
+  form.delete(props.deleteUrl)
 }
 </script>
 
@@ -83,7 +97,10 @@ function submit() {
               >
                 {{ t('admin.ui.save') }}
               </a-button>
-              <a-button @click="router.visit(backUrl)">
+              <a-button v-if="deleteUrl" html-type="button" status="danger" @click="destroy">
+                {{ t('admin.ui.delete') }}
+              </a-button>
+              <a-button html-type="button" @click="router.visit(backUrl)">
                 {{ t('admin.ui.cancel') }}
               </a-button>
             </a-space>

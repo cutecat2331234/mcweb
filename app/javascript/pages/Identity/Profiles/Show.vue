@@ -127,17 +127,17 @@ async function submit() {
           {{ profile.email }}
         </DescriptionsItem>
       </Descriptions>
-      <TypographyParagraph type="secondary" style="margin-bottom: 0">
+      <TypographyParagraph type="secondary" class="!mb-0">
         {{ t('identity.profile.readOnlyHint') }}
       </TypographyParagraph>
     </Card>
 
     <Card :title="t('identity.profile.editableDetails')" :bordered="true">
-      <Alert v-if="baseError" type="error" show-icon style="margin-bottom: 16px">
+      <Alert v-if="baseError" type="error" show-icon class="mb-4">
         {{ baseError }}
       </Alert>
 
-      <Form :model="form.profile" layout="vertical" style="max-width: 560px" @submit="submit">
+      <Form :model="form.profile" layout="vertical" class="max-w-xl" @submit="submit">
         <FormItem
           field="display_name"
           :label="t('identity.profile.displayName')"

@@ -86,8 +86,12 @@ module Admin
       end
 
       def content_back_url
-        return admin_website_recycle_bin_item_path("article", @article.public_id) if @article.discarded?
-        return admin_website_recycle_bin_path if @article.purged?
+        if current_user.permission?("website.content.restore") ||
+            current_user.permission?("website.content.purge")
+          return admin_website_recycle_bin_item_path("article", @article.public_id) if @article.discarded?
+          return admin_website_recycle_bin_path if @article.purged?
+        end
+        return admin_website_articles_path if @article.discarded? || @article.purged?
 
         admin_website_article_path(@article)
       end

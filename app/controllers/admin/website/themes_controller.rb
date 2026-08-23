@@ -3,8 +3,8 @@
 module Admin
   module Website
     class ThemesController < BaseController
-      before_action -> { require_permission("website.pages.read") }, only: %i[index show]
-      before_action -> { require_permission("website.pages.edit") }, except: %i[index show activate]
+      before_action -> { require_permission("website.pages.read") }
+      before_action -> { require_permission("website.pages.edit") }, only: %i[new create edit update destroy]
       before_action -> { require_permission("website.pages.publish") }, only: %i[activate]
       before_action :set_theme, only: %i[show edit update destroy activate]
 
@@ -26,7 +26,9 @@ module Admin
               url: admin_website_theme_path(theme)
             )
           end,
-          actions: [ { label: t("mcweb.admin.website.themes.new", default: "New theme"), href: new_admin_website_theme_path } ]
+          actions: current_user.permission?("website.pages.edit") ? [
+            { label: t("mcweb.admin.website.themes.new", default: "New theme"), href: new_admin_website_theme_path }
+          ] : []
         }
       end
 
@@ -42,10 +44,7 @@ module Admin
             { label: t("mcweb.user_copy.theme_tokens"), value: @theme.tokens.to_json.truncate(200) }
           ],
           backUrl: admin_website_themes_path,
-          actions: [
-            { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_theme_path(@theme) },
-            (@theme.active? ? nil : { label: t("mcweb.admin.website.themes.activate", default: "Activate"), href: activate_admin_website_theme_path(@theme), method: "post" })
-          ].compact
+          actions: theme_actions
         }
       end
 
@@ -82,7 +81,12 @@ module Admin
       end
 
       def destroy
-        @theme.destroy!
+        ::Website::Theme.transaction do
+          ::Website::Page.with_lifecycle
+            .where(website_theme_id: @theme.id)
+            .update_all(website_theme_id: nil)
+          @theme.destroy!
+        end
         redirect_to admin_website_themes_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.theme"))
       end
 
@@ -93,12 +97,27 @@ module Admin
 
       private
 
+      def theme_actions
+        actions = []
+        if current_user.permission?("website.pages.edit")
+          actions << { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_theme_path(@theme) }
+        end
+        if current_user.permission?("website.pages.publish") && !@theme.active?
+          actions << {
+            label: t("mcweb.admin.website.themes.activate", default: "Activate"),
+            href: activate_admin_website_theme_path(@theme),
+            method: "post"
+          }
+        end
+        actions
+      end
+
       def set_theme
         @theme = ::Website::Theme.find(params[:id])
       end
 
       def theme_attributes(theme)
-        permitted = params.require(:theme).permit(:name, :key, :active, :tokens_json, tokens: {})
+        permitted = params.require(:theme).permit(:name, :key, :tokens_json, tokens: {})
         if permitted[:tokens_json].present?
           begin
             permitted[:tokens] = JSON.parse(permitted.delete(:tokens_json))
@@ -122,10 +141,10 @@ module Admin
           theme: {
             name: theme.name,
             key: theme.key,
-            active: theme.active,
             tokens_json: JSON.pretty_generate(theme.tokens.presence || {})
           },
           submitUrl: theme.persisted? ? admin_website_theme_path(theme) : admin_website_themes_path,
+          deleteUrl: theme.persisted? ? admin_website_theme_path(theme) : nil,
           method: theme.persisted? ? "patch" : "post",
           backUrl: theme.persisted? ? admin_website_theme_path(theme) : admin_website_themes_path,
           form_errors: theme.errors.to_hash(true)

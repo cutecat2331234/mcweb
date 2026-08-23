@@ -160,7 +160,12 @@ module Mcweb
       end
 
       def enqueue_unresolved!(up_to:)
-        connection.execute <<~SQL.squish
+        upper_bound = ActiveRecord::Relation::QueryAttribute.new(
+          "up_to",
+          Integer(up_to),
+          ActiveRecord::Type::Integer.new(limit: 8)
+        )
+        connection.exec_query(<<~SQL.squish, "Community message revision enqueue", [ upper_bound ])
           INSERT INTO forum_message_revision_backfill_queue (
             forum_message_id,
             revision,
@@ -173,7 +178,7 @@ module Mcweb
             #{BODY_DIGEST_SQL},
             CURRENT_TIMESTAMP
           FROM forum_messages
-          WHERE forum_messages.id <= #{Integer(up_to)}
+          WHERE forum_messages.id <= $1
             AND #{UNRESOLVED_CURRENT_SNAPSHOT}
           ON CONFLICT (forum_message_id, revision) DO NOTHING
         SQL

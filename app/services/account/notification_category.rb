@@ -70,14 +70,20 @@ module Account
           patterns = matching_prefixes.map { |_registered_category, prefix| "#{sanitize_prefix(prefix)}%" }
           return scope if patterns.empty?
 
-          clauses = Array.new(patterns.length, "notification_type NOT LIKE ?").join(" AND ")
-          return scope.where(clauses, *patterns)
+          column = scope.klass.arel_table[:notification_type]
+          predicate = patterns
+            .map { |pattern| column.does_not_match(pattern, "\\", true) }
+            .reduce(&:and)
+          return scope.where(predicate)
         end
 
         prefixes = registry.fetch(key)
         patterns = prefixes.map { |prefix| "#{sanitize_prefix(prefix)}%" }
-        clauses = Array.new(patterns.length, "notification_type LIKE ?").join(" OR ")
-        scope.where(clauses, *patterns)
+        column = scope.klass.arel_table[:notification_type]
+        predicate = patterns
+          .map { |pattern| column.matches(pattern, "\\", true) }
+          .reduce(&:or)
+        scope.where(predicate)
       end
 
       def label(category)

@@ -161,7 +161,7 @@ class WebsiteCmsBugfixTest < ActionDispatch::IntegrationTest
     get preview_admin_website_page_path(page)
     assert_response :success
     assert_includes response.body, "Draft only"
-    assert_match(%r{(?:entrypoints|assets)/inertia}, response.body)
+    assert_match(%r{(?:entrypoints|assets)/website-preview}, response.body)
     refute_match(%r{(?:entrypoints|assets)/admin}, response.body)
   end
 

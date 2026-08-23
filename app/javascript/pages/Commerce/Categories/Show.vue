@@ -12,6 +12,7 @@ import Input from '@/components/ui/Input.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -166,7 +167,7 @@ function toggleWishlist(url: string) {
     </label>
     <Input v-model="priceMin" type="number" min="0" step="0.01" :placeholder="t('commerce.productList.priceMin')" class="w-24" />
     <Input v-model="priceMax" type="number" min="0" step="0.01" :placeholder="t('commerce.productList.priceMax')" class="w-24" />
-    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">{{ t('commerce.productList.filter') }}</button>
+    <ArcoButton type="primary" html-type="submit" size="small">{{ t('commerce.productList.filter') }}</ArcoButton>
     <Button v-if="hasActiveFilters" type="button" variant="outline" size="sm" @click="clearFilters">{{ t('commerce.productList.clearFilters') }}</Button>
     <a v-if="category.rss_url" :href="category.rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS</a>
   </form>

@@ -24,6 +24,8 @@ import UserCustomFieldsForm, { type UserCustomField } from '@/components/portal/
 import { createIdempotencyKey } from '@/lib/idempotency'
 import { beginCommunityRelationshipMutation, finishCommunityRelationshipMutation } from '@/lib/communityRelationshipMutation'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -318,6 +320,7 @@ const openComments = reactive<Record<number, boolean>>({})
 const editingWallKey = ref<string | null>(null)
 const editingWallBody = ref('')
 const editingWallError = ref('')
+const deletingWallUrl = ref<string | null>(null)
 
 function submitWallPost() {
   if (!props.profile_wall?.post_url || !wallForm.profile_post.body.trim()) return
@@ -340,8 +343,22 @@ function submitComment(post: { id: number; comment_url: string }) {
   })
 }
 
-function deleteWallItem(url: string) {
-  router.delete(url, { preserveScroll: true })
+async function deleteWallItem(url: string) {
+  const ok = await confirm({
+    title: t('userProfile.wallDeleteTitle'),
+    message: t('userProfile.wallDeleteConfirm'),
+    confirmLabel: t('userProfile.wallDelete'),
+    variant: 'destructive',
+  })
+  if (!ok) return
+
+  deletingWallUrl.value = url
+  router.delete(url, {
+    preserveScroll: true,
+    onFinish: () => {
+      deletingWallUrl.value = null
+    },
+  })
 }
 
 function wallItemKey(kind: 'post' | 'comment', id: number) {
@@ -670,16 +687,16 @@ function saveWallEdit(
               <Textarea v-model="editingWallBody" rows="3" maxlength="5000" />
               <p v-if="editingWallError" role="alert" class="text-sm text-destructive">{{ editingWallError }}</p>
               <div class="flex gap-2">
-                <Button type="button" size="xs" @click="saveWallEdit('post', post)">{{ t('common.save') }}</Button>
-                <Button type="button" size="xs" variant="outline" @click="cancelWallEdit">{{ t('common.cancel') }}</Button>
+                <ArcoButton type="primary" html-type="button" size="mini" @click="saveWallEdit('post', post)">{{ t('common.save') }}</ArcoButton>
+                <ArcoButton type="outline" html-type="button" size="mini" @click="cancelWallEdit">{{ t('common.cancel') }}</ArcoButton>
               </div>
             </div>
             <p v-else class="mt-1 whitespace-pre-wrap break-words text-sm">{{ post.body }}</p>
             <div class="mt-2 flex flex-wrap gap-3 text-xs">
-              <button type="button" class="text-muted-foreground hover:text-foreground" @click="toggleCommentBox(post.id)">{{ t('userProfile.wallReply') }}</button>
-              <Button v-if="post.can_edit" type="button" size="xs" variant="ghost" class="h-auto px-0 py-0 text-xs" @click="startWallEdit('post', post)">{{ t('userProfile.wallEdit') }}</Button>
+              <ArcoButton html-type="button" size="mini" type="text" @click="toggleCommentBox(post.id)">{{ t('userProfile.wallReply') }}</ArcoButton>
+              <ArcoButton v-if="post.can_edit" html-type="button" size="mini" type="text" @click="startWallEdit('post', post)">{{ t('userProfile.wallEdit') }}</ArcoButton>
               <Link v-if="post.report_url" :href="post.report_url" class="text-muted-foreground hover:text-foreground">{{ t('userProfile.wallReport') }}</Link>
-              <button v-if="post.can_delete" type="button" class="text-muted-foreground hover:text-destructive" @click="deleteWallItem(post.delete_url)">{{ t('userProfile.wallDelete') }}</button>
+              <ArcoButton v-if="post.can_delete" html-type="button" size="mini" type="text" status="danger" :disabled="deletingWallUrl === post.delete_url" @click="deleteWallItem(post.delete_url)">{{ t('userProfile.wallDelete') }}</ArcoButton>
             </div>
 
             <ul v-if="post.comments.length" class="mt-3 space-y-2 border-l pl-3">
@@ -689,16 +706,16 @@ function saveWallEdit(
                   <span class="text-xs text-muted-foreground">
                     {{ comment.created_at }}<span v-if="comment.edited"> · {{ t('userProfile.wallEdited') }}</span>
                   </span>
-                  <Button v-if="comment.can_edit" type="button" size="xs" variant="ghost" class="h-auto px-0 py-0 text-xs" @click="startWallEdit('comment', comment)">{{ t('userProfile.wallEdit') }}</Button>
+                  <ArcoButton v-if="comment.can_edit" html-type="button" size="mini" type="text" @click="startWallEdit('comment', comment)">{{ t('userProfile.wallEdit') }}</ArcoButton>
                   <Link v-if="comment.report_url" :href="comment.report_url" class="text-xs text-muted-foreground hover:text-foreground">{{ t('userProfile.wallReport') }}</Link>
-                  <button v-if="comment.can_delete" type="button" class="text-xs text-muted-foreground hover:text-destructive" @click="deleteWallItem(comment.delete_url)">{{ t('userProfile.wallDelete') }}</button>
+                  <ArcoButton v-if="comment.can_delete" html-type="button" size="mini" type="text" status="danger" :disabled="deletingWallUrl === comment.delete_url" @click="deleteWallItem(comment.delete_url)">{{ t('userProfile.wallDelete') }}</ArcoButton>
                 </div>
                 <div v-if="editingWallKey === wallItemKey('comment', comment.id)" class="mt-1 space-y-2">
                   <Textarea v-model="editingWallBody" rows="2" maxlength="3000" />
                   <p v-if="editingWallError" role="alert" class="text-sm text-destructive">{{ editingWallError }}</p>
                   <div class="flex gap-2">
-                    <Button type="button" size="xs" @click="saveWallEdit('comment', comment)">{{ t('common.save') }}</Button>
-                    <Button type="button" size="xs" variant="outline" @click="cancelWallEdit">{{ t('common.cancel') }}</Button>
+                    <ArcoButton type="primary" html-type="button" size="mini" @click="saveWallEdit('comment', comment)">{{ t('common.save') }}</ArcoButton>
+                    <ArcoButton type="outline" html-type="button" size="mini" @click="cancelWallEdit">{{ t('common.cancel') }}</ArcoButton>
                   </div>
                 </div>
                 <p v-else class="whitespace-pre-wrap break-words text-muted-foreground">{{ comment.body }}</p>

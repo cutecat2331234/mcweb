@@ -21,6 +21,7 @@ import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -214,9 +215,9 @@ function clearSchedule() {
         <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
         <li v-for="attachment in pendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-2 rounded border px-2 py-1">
           <span>{{ attachment.filename }} <span class="text-muted-foreground">({{ attachment.human_size }})</span></span>
-          <button type="button" class="text-xs text-destructive hover:underline" @click="removePendingAttachment(attachment.id)">
+          <ArcoButton html-type="button" size="mini" type="text" status="danger" @click="removePendingAttachment(attachment.id)">
             {{ t('components.attachmentUpload.remove') }}
-          </button>
+          </ArcoButton>
         </li>
       </ul>
     </div>

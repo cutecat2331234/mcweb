@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Link, useForm, router } from '@inertiajs/vue3'
+import { useForm, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
-import Textarea from '@/components/ui/Textarea.vue'
 import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
@@ -18,6 +17,7 @@ import { createIdempotencyKey } from '@/lib/idempotency'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 import { commitNavigationEffect } from '@/lib/navigationReceipt'
+import { Button as ArcoButton, Textarea as ArcoTextarea } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -320,18 +320,18 @@ function submit() {
       <span v-for="p in participants" :key="p.username" class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
         <UserLink variant="inline" size="xs" :username="p.username" :avatar-url="p.avatar_url" avatar-class="h-4 w-4" name-class="text-xs" />
         <span v-if="p.is_creator" class="text-muted-foreground">{{ t('forum.messages.groupOwner') }}</span>
-        <Button
+        <ArcoButton
           v-if="p.remove_url"
-          type="button"
-          size="xs"
-          variant="ghost"
-          class="ml-1 h-auto min-h-6 px-1 py-0 text-muted-foreground hover:text-destructive"
+          html-type="button"
+          size="mini"
+          type="text"
+          status="danger"
           :title="p.is_self ? t('forum.messages.leaveGroup') : t('forum.messages.removeMember')"
           :aria-label="p.is_self ? t('forum.messages.leaveGroup') : t('forum.messages.removeMember')"
           @click="removeParticipant(p)"
         >
           {{ p.is_self ? t('forum.messages.leave') : '×' }}
-        </Button>
+        </ArcoButton>
       </span>
     </div>
     <form v-if="addParticipantUrl && canAddParticipant" class="mt-3 flex max-w-sm gap-2" @submit.prevent="addParticipant">
@@ -365,11 +365,11 @@ function submit() {
       >
         <p v-if="conversation.is_group && !msg.is_mine" class="mb-1 text-xs font-medium opacity-80">{{ msg.author }}</p>
         <div v-if="editingId === msg.id" class="space-y-1">
-          <Textarea v-model="editBody" :rows="3" class="min-h-20 bg-background text-foreground" />
+          <ArcoTextarea v-model="editBody" :auto-size="{ minRows: 3, maxRows: 8 }" />
           <p v-if="editError" role="alert" class="text-xs text-destructive">{{ editError }}</p>
           <div class="flex gap-2">
-            <Button type="button" size="xs" @click="saveEdit(msg)">{{ t('forum.messages.saveEdit') }}</Button>
-            <Button type="button" size="xs" variant="outline" @click="cancelEdit">{{ t('forum.messages.cancelEdit') }}</Button>
+            <ArcoButton type="primary" html-type="button" size="mini" @click="saveEdit(msg)">{{ t('forum.messages.saveEdit') }}</ArcoButton>
+            <ArcoButton type="outline" html-type="button" size="mini" @click="cancelEdit">{{ t('forum.messages.cancelEdit') }}</ArcoButton>
           </div>
         </div>
         <div v-else class="prose prose-sm max-w-none dark:prose-invert" v-html="msg.body_html" />
@@ -378,21 +378,21 @@ function submit() {
           {{ msg.created_at }}
           <span v-if="msg.edited" class="ml-1 italic">{{ t('forum.messages.editedMarker') }}</span>
           <span v-if="msg.is_mine && msg.read_by?.length" class="ml-1">{{ t('forum.messages.readBy', { users: msg.read_by.join(t('common.listSeparator')) }) }}</span>
-          <Button v-if="msg.edit_url && editingId !== msg.id" type="button" size="xs" variant="ghost" class="ml-1 h-auto px-1 py-0 text-[10px] underline" @click="startEdit(msg)">{{ t('forum.messages.editMessage') }}</Button>
-          <Button
+          <ArcoButton v-if="msg.edit_url && editingId !== msg.id" html-type="button" size="mini" type="text" @click="startEdit(msg)">{{ t('forum.messages.editMessage') }}</ArcoButton>
+          <ArcoButton
             v-if="msg.delete_url"
-            type="button"
-            size="xs"
-            variant="ghost"
-            class="ml-1 h-auto px-1 py-0 text-[10px] underline"
+            html-type="button"
+            size="mini"
+            type="text"
+            status="danger"
             :disabled="deletingMessageId === msg.id"
             @click="deleteMessage(msg)"
           >
             {{ t('forum.messages.deleteMessage') }}
-          </Button>
-          <Button v-if="msg.report_url" as-child type="button" size="xs" variant="ghost" class="ml-1 h-auto px-1 py-0 text-[10px] underline">
-            <Link :href="msg.report_url">{{ t('forum.messages.reportMessage') }}</Link>
-          </Button>
+          </ArcoButton>
+          <ArcoButton v-if="msg.report_url" html-type="button" size="mini" type="text" @click="router.visit(msg.report_url!)">
+            {{ t('forum.messages.reportMessage') }}
+          </ArcoButton>
         </p>
       </div>
     </div>
@@ -417,16 +417,17 @@ function submit() {
     <MarkdownEditor v-model="form.message.body" :show-mention="false" :rows="3" :placeholder="t('forum.messages.messagePlaceholder')" />
     <PostAttachmentsList :attachments="pendingAttachments" />
     <div v-if="pendingAttachments.length" class="flex flex-wrap gap-2">
-      <Button
+      <ArcoButton
         v-for="attachment in pendingAttachments"
         :key="attachment.id"
-        type="button"
-        size="xs"
-        variant="ghost"
+        html-type="button"
+        size="mini"
+        type="text"
+        status="danger"
         @click="removeAttachment(attachment.id)"
       >
         {{ t('forum.messages.removeAttachment', { filename: attachment.filename }) }}
-      </Button>
+      </ArcoButton>
     </div>
     <AttachmentUploadButton :disabled="form.processing || !canSend || pendingAttachments.length >= 10" @uploaded="addAttachment" />
     <p v-if="fieldError('body')" class="text-sm text-destructive">{{ fieldError('body') }}</p>

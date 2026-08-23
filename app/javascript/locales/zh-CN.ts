@@ -3878,6 +3878,8 @@ export default {
     wallCommentPlaceholder: '写下回复…',
     wallSend: '发送',
     wallDelete: '删除',
+    wallDeleteTitle: '删除这条动态？',
+    wallDeleteConfirm: '删除后内容将从个人主页中移除。确认继续吗？',
     wallEdit: '编辑',
     wallEdited: '已编辑',
     wallReport: '举报',

@@ -19,6 +19,7 @@ import { getJson } from '@/lib/http'
 import { useBulkModerate } from '@/lib/useBulkModerate'
 import { useCopyToClipboard } from '@/lib/useClipboard'
 import { useDebouncedCallback } from '@/lib/useDebounce'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -670,68 +671,78 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         <template v-else>
           <div v-if="suggestTopics.length" class="border-b px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestTopics') }}</p>
-            <button
+            <ArcoButton
               v-for="(item, index) in suggestTopics"
               :key="item.url"
-              type="button"
-              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              html-type="button"
+              size="small"
+              type="text"
+              long
               :class="{ 'bg-muted': isSuggestActive('topics', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               {{ item.title }}
-            </button>
+            </ArcoButton>
           </div>
           <div v-if="suggestTags.length" class="border-b px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestTags') }}</p>
-            <button
+            <ArcoButton
               v-for="(item, index) in suggestTags"
               :key="item.url"
-              type="button"
-              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              html-type="button"
+              size="small"
+              type="text"
+              long
               :class="{ 'bg-muted': isSuggestActive('tags', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               #{{ item.name }}
-            </button>
+            </ArcoButton>
           </div>
           <div v-if="suggestUsers.length" class="border-b px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestUsers') }}</p>
-            <button
+            <ArcoButton
               v-for="(item, index) in suggestUsers"
               :key="item.url"
-              type="button"
-              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              html-type="button"
+              size="small"
+              type="text"
+              long
               :class="{ 'bg-muted': isSuggestActive('users', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               @{{ item.username }}
-            </button>
+            </ArcoButton>
           </div>
           <div v-if="suggestSections.length" class="border-b px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestSections') }}</p>
-            <button
+            <ArcoButton
               v-for="(item, index) in suggestSections"
               :key="item.url"
-              type="button"
-              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              html-type="button"
+              size="small"
+              type="text"
+              long
               :class="{ 'bg-muted': isSuggestActive('sections', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               {{ item.category ? `${item.category} / ${item.name}` : item.name }}
-            </button>
+            </ArcoButton>
           </div>
           <div v-if="suggestSavedSearches.length" class="px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestSaved') }}</p>
-            <button
+            <ArcoButton
               v-for="(item, index) in suggestSavedSearches"
               :key="item.url"
-              type="button"
-              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              html-type="button"
+              size="small"
+              type="text"
+              long
               :class="{ 'bg-muted': isSuggestActive('saved_searches', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               {{ item.name }}
-            </button>
+            </ArcoButton>
           </div>
         </template>
       </div>
@@ -752,13 +763,13 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       <Checkbox v-model="postsOnly" />
       {{ t('forum.search.postsOnly') }}
     </label>
-    <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="showAdvanced = !showAdvanced">
+    <ArcoButton html-type="button" size="small" type="outline" @click="showAdvanced = !showAdvanced">
       {{ showAdvanced ? t('forum.search.hideAdvanced') : t('forum.search.showAdvanced') }}
-    </button>
-    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">{{ t('forum.search.submit') }}</button>
-    <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="copySearchLink">
+    </ArcoButton>
+    <ArcoButton type="primary" html-type="submit" size="small">{{ t('forum.search.submit') }}</ArcoButton>
+    <ArcoButton html-type="button" size="small" type="outline" @click="copySearchLink">
       {{ shareCopied ? t('forum.search.linkCopied') : t('forum.search.copyLinkBtn') }}
-    </button>
+    </ArcoButton>
   </form>
 
   <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
@@ -770,12 +781,14 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       :class="filter.param === 'exclude' ? 'border-destructive/30 bg-destructive/5 text-destructive' : ''"
     >
       {{ filter.label }}
-      <button
-        type="button"
-        class="hover:opacity-70"
+      <ArcoButton
+        html-type="button"
+        size="mini"
+        type="text"
         :title="t('forum.search.removeFilter')"
+        :aria-label="t('forum.search.removeFilter')"
         @click="removeActiveFilter(filter)"
-      >×</button>
+      >×</ArcoButton>
     </span>
   </div>
 
@@ -792,12 +805,15 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       class="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/5 px-2.5 py-0.5 text-xs text-destructive"
     >
       −{{ term }}
-      <button
-        type="button"
-        class="hover:text-destructive/80"
+      <ArcoButton
+        html-type="button"
+        size="mini"
+        type="text"
+        status="danger"
         :title="t('forum.search.removeExclude')"
+        :aria-label="t('forum.search.removeExclude')"
         @click="removeExcludeTerm(term)"
-      >×</button>
+      >×</ArcoButton>
     </span>
   </div>
 
@@ -856,14 +872,16 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         >
           {{ t('forum.search.exportOpml') }}
         </a>
-        <button
+        <ArcoButton
           v-if="clearSearchHistoryUrl"
-          type="button"
-          class="text-xs text-muted-foreground hover:text-destructive"
+          html-type="button"
+          size="mini"
+          type="text"
+          status="danger"
           @click="clearSearchHistory"
         >
           {{ t('forum.search.clearHistoryBtn') }}
-        </button>
+        </ArcoButton>
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -875,7 +893,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         <Link :href="history.url" class="hover:underline">{{ history.query || t('forum.search.filterSearch') }}</Link>
         <span v-for="label in history.filter_labels || []" :key="label" class="text-[10px] text-muted-foreground">{{ label }}</span>
         <span class="text-[10px] text-muted-foreground">{{ history.searched_at }}</span>
-        <button type="button" class="text-muted-foreground hover:text-destructive" :title="t('forum.search.delete')" @click="deleteSearchHistory(history.delete_url)">×</button>
+        <ArcoButton html-type="button" size="mini" type="text" status="danger" :title="t('forum.search.delete')" :aria-label="t('forum.search.delete')" @click="deleteSearchHistory(history.delete_url)">×</ArcoButton>
       </span>
     </div>
   </div>
@@ -899,49 +917,56 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           @keydown.enter="saveRenameSearch(search)"
           @keydown.escape="cancelRenameSearch"
         />
-        <button
-          type="button"
-          class="text-primary hover:underline"
+        <ArcoButton
+          html-type="button"
+          size="mini"
+          type="text"
           :disabled="renamingSearchId === search.id || !editingSearchName.trim()"
           @click="saveRenameSearch(search)"
         >
           {{ t('forum.search.save') }}
-        </button>
-        <button type="button" class="text-muted-foreground" @click="cancelRenameSearch">{{ t('forum.search.cancel') }}</button>
+        </ArcoButton>
+        <ArcoButton html-type="button" size="mini" type="text" @click="cancelRenameSearch">{{ t('forum.search.cancel') }}</ArcoButton>
       </template>
       <template v-else>
         <Link :href="search.url" class="hover:underline">{{ search.name }}</Link>
-        <button
+        <ArcoButton
           v-if="search.update_url"
-          type="button"
-          class="text-muted-foreground hover:text-foreground"
+          html-type="button"
+          size="mini"
+          type="text"
           :title="t('forum.search.rename')"
+          :aria-label="t('forum.search.rename')"
           @click="startRenameSearch(search)"
         >
           ✎
-        </button>
-        <button
+        </ArcoButton>
+        <ArcoButton
           v-if="search.update_url"
-          type="button"
-          class="text-[10px] transition-opacity"
+          html-type="button"
+          size="mini"
+          type="text"
           :class="search.notify_daily ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
           :disabled="togglingNotifyId === search.id"
           :title="search.notify_daily ? t('forum.search.disableDailyEmail') : t('forum.search.enableDailyEmail')"
+          :aria-label="search.notify_daily ? t('forum.search.disableDailyEmail') : t('forum.search.enableDailyEmail')"
           @click="toggleSavedSearchNotify(search)"
         >
           📧
-        </button>
-        <button
+        </ArcoButton>
+        <ArcoButton
           v-if="search.update_url"
-          type="button"
-          class="text-[10px] transition-opacity"
+          html-type="button"
+          size="mini"
+          type="text"
           :class="search.notify_in_app !== false ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
           :disabled="togglingNotifyId === search.id"
           :title="search.notify_in_app !== false ? t('forum.search.disableInApp') : t('forum.search.enableInApp')"
+          :aria-label="search.notify_in_app !== false ? t('forum.search.disableInApp') : t('forum.search.enableInApp')"
           @click="toggleSavedSearchNotifyInApp(search)"
         >
           🔔
-        </button>
+        </ArcoButton>
         <a
           v-if="search.rss_url"
           :href="search.rss_url"
@@ -959,7 +984,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         >
           Hook
         </span>
-        <button type="button" class="text-muted-foreground hover:text-destructive" :title="t('forum.search.delete')" @click="deleteSavedSearch(search.delete_url)">×</button>
+        <ArcoButton html-type="button" size="mini" type="text" status="danger" :title="t('forum.search.delete')" :aria-label="t('forum.search.delete')" @click="deleteSavedSearch(search.delete_url)">×</ArcoButton>
       </template>
     </span>
   </div>

@@ -13,6 +13,7 @@ import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
 import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
 import { routes } from '@/lib/routes'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -169,16 +170,17 @@ function submitMessage() {
       <MarkdownEditor v-model="form.conversation.body" :show-mention="false" />
       <PostAttachmentsList :attachments="pendingAttachments" />
       <div v-if="pendingAttachments.length" class="flex flex-wrap gap-2">
-        <Button
+        <ArcoButton
           v-for="attachment in pendingAttachments"
           :key="attachment.id"
-          type="button"
-          size="xs"
-          variant="ghost"
+          html-type="button"
+          size="mini"
+          type="text"
+          status="danger"
           @click="removeAttachment(attachment.id)"
         >
           {{ t('forum.messages.removeAttachment', { filename: attachment.filename }) }}
-        </Button>
+        </ArcoButton>
       </div>
       <AttachmentUploadButton :disabled="form.processing || !canSend || pendingAttachments.length >= 10" @uploaded="addAttachment" />
       <p v-if="fieldError('body')" class="text-sm text-destructive">{{ fieldError('body') }}</p>

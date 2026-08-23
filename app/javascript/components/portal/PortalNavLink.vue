@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
-import Badge from '@/components/ui/Badge.vue'
+import { Badge } from '@mcweb/ui'
 import { cn } from '@/lib/utils'
 import {
   Activity,
@@ -90,9 +90,9 @@ const emit = defineEmits<{ navigate: [] }>()
     :href="item.href"
     @click="emit('navigate')"
     :class="cn(
-      'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.99]',
+      'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150',
       active
-        ? 'relative bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary'
+        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
         : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
       compact && 'px-2.5 py-2',
     )"
@@ -106,10 +106,9 @@ const emit = defineEmits<{ navigate: [] }>()
     <span class="truncate">{{ item.label }}</span>
     <Badge
       v-if="item.badge && item.badge > 0"
-      variant="danger"
-      class="ml-auto h-5 min-w-5 px-1.5 text-[10px] font-semibold"
-    >
-      {{ item.badge > 99 ? '99+' : item.badge }}
-    </Badge>
+      :count="item.badge"
+      :max-count="99"
+      class="ml-auto"
+    />
   </Link>
 </template>

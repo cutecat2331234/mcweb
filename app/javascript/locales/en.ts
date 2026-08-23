@@ -3878,6 +3878,8 @@ export default {
     wallCommentPlaceholder: 'Write a reply…',
     wallSend: 'Send',
     wallDelete: 'Delete',
+    wallDeleteTitle: 'Delete this activity?',
+    wallDeleteConfirm: 'The content will be removed from this profile. Continue?',
     wallEdit: 'Edit',
     wallEdited: 'Edited',
     wallReport: 'Report',

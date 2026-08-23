@@ -14,6 +14,7 @@ import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
 import { readCsrfToken } from '@/lib/csrf'
 import { useCopyToClipboard } from '@/lib/useClipboard'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -254,16 +255,26 @@ async function deleteFilterPreset(deleteUrl: string) {
     <span class="text-sm text-muted-foreground">{{ t('forum.lists.savedFilters') }}</span>
     <span v-for="preset in savedFilterPresets" :key="preset.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="preset.url" class="hover:underline">{{ preset.name }}</Link>
-      <button
+      <ArcoButton
         v-if="preset.share_url"
-        type="button"
-        class="text-xs text-muted-foreground hover:text-foreground"
+        html-type="button"
+        size="mini"
+        type="text"
         :title="t('forum.lists.copyPresetLink')"
         @click="copyPresetLink(preset.share_url, preset.id)"
       >
         {{ presetCopiedId === preset.id ? t('forum.lists.presetLinkCopied') : '🔗' }}
-      </button>
-      <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteFilterPreset(preset.delete_url)">×</button>
+      </ArcoButton>
+      <ArcoButton
+        html-type="button"
+        size="mini"
+        type="text"
+        status="danger"
+        :aria-label="t('common.delete')"
+        @click="deleteFilterPreset(preset.delete_url)"
+      >
+        ×
+      </ArcoButton>
     </span>
   </div>
 
@@ -284,7 +295,16 @@ async function deleteFilterPreset(deleteUrl: string) {
       class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
     >
       {{ chip.label }}
-      <button type="button" class="hover:opacity-70" :title="t('forum.lists.removeFilter')" @click="removeFilter(chip)">×</button>
+      <ArcoButton
+        html-type="button"
+        size="mini"
+        type="text"
+        :title="t('forum.lists.removeFilter')"
+        :aria-label="t('forum.lists.removeFilter')"
+        @click="removeFilter(chip)"
+      >
+        ×
+      </ArcoButton>
     </span>
   </div>
 

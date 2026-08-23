@@ -12,6 +12,7 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 import { csrfHeaders } from '@/lib/csrf'
 import { useCopyToClipboard } from '@/lib/useClipboard'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -276,16 +277,26 @@ async function copyShareLink() {
     <span class="text-sm text-muted-foreground">{{ t('commerce.wishlist.savedFilters') }}</span>
     <span v-for="preset in savedFilterPresets" :key="preset.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="preset.url" class="hover:underline">{{ preset.name }}</Link>
-      <button
+      <ArcoButton
         v-if="preset.public_share_url"
-        type="button"
-        class="text-muted-foreground hover:text-primary"
+        html-type="button"
+        size="mini"
+        type="text"
         :title="t('commerce.wishlist.copyPublicShareTitle')"
         @click="copyPublicShare(preset.public_share_url!)"
       >
         {{ t('commerce.wishlist.share') }}
-      </button>
-      <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteFilterPreset(preset.delete_url)">×</button>
+      </ArcoButton>
+      <ArcoButton
+        html-type="button"
+        size="mini"
+        type="text"
+        status="danger"
+        :aria-label="t('common.delete')"
+        @click="deleteFilterPreset(preset.delete_url)"
+      >
+        ×
+      </ArcoButton>
     </span>
   </div>
 

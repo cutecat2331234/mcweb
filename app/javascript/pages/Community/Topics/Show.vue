@@ -41,6 +41,7 @@ import { confirm } from '@/lib/useConfirm'
 import { prompt } from '@/lib/usePrompt'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
+import { Button as ArcoButton, Textarea as ArcoTextarea } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -1591,7 +1592,7 @@ async function copyPollShareLink() {
 
   <div v-if="activePanel === 'edit-bookmark' && topicBookmark" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
     <p class="text-sm font-medium">{{ t('forum.topics.bookmarkNoteReminder') }}</p>
-    <textarea v-model="bookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.bookmarkNotePlaceholder')" />
+    <ArcoTextarea v-model="bookmarkNote" :auto-size="{ minRows: 2, maxRows: 5 }" :placeholder="t('forum.topics.bookmarkNotePlaceholder')" />
     <Input v-model="bookmarkRemindAt" type="datetime-local" class="w-full" />
     <div class="flex gap-2">
       <Button type="button" size="sm" @click="saveBookmark">{{ t('forum.topics.save') }}</Button>
@@ -1823,7 +1824,7 @@ async function copyPollShareLink() {
   </p>
   <p v-if="topic.solved_post_id" class="rounded-md bg-green-50 px-3 py-2 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-100">
     {{ t('forum.topics.topicSolved') }}
-    <button v-if="canMarkSolved" type="button" class="ml-2 rounded-sm underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="unsolveTopic">{{ t('forum.topics.unsolveTopic') }}</button>
+    <ArcoButton v-if="canMarkSolved" html-type="button" size="mini" type="text" @click="unsolveTopic">{{ t('forum.topics.unsolveTopic') }}</ArcoButton>
   </p>
   <p v-if="topic.slow_mode_seconds" class="rounded-md bg-purple-50 px-3 py-2 text-sm text-purple-900 dark:bg-purple-950/30 dark:text-purple-100">
   <template v-if="slowModeRemaining > 0">
@@ -1874,7 +1875,7 @@ async function copyPollShareLink() {
 
   <section v-if="topic.can_moderate && topic.staff_note_url" class="max-w-xl space-y-2 rounded-lg border p-4">
     <h2 class="text-sm font-semibold">{{ t('forum.topics.addStaffNote') }}</h2>
-    <textarea v-model="staffNoteBody" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.staffNotePlaceholder')" />
+    <ArcoTextarea v-model="staffNoteBody" :auto-size="{ minRows: 2, maxRows: 5 }" :placeholder="t('forum.topics.staffNotePlaceholder')" />
     <Button type="button" size="sm" :disabled="!staffNoteBody.trim()" @click="submitStaffNote">{{ t('forum.topics.saveStaffNote') }}</Button>
   </section>
 
@@ -1883,7 +1884,7 @@ async function copyPollShareLink() {
     <div v-if="topic.reply_bans?.length" class="space-y-1 text-sm">
       <div v-for="ban in topic.reply_bans" :key="ban.username" class="flex items-center justify-between gap-2">
         <span>{{ ban.username }}<span v-if="ban.expires_at" class="text-muted-foreground"> · {{ t('forum.topics.banUntil', { at: ban.expires_at }) }}</span></span>
-        <button type="button" class="shrink-0 rounded-sm text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="unbanReply(ban.username)">{{ t('forum.topics.unban') }}</button>
+        <ArcoButton html-type="button" size="mini" type="text" @click="unbanReply(ban.username)">{{ t('forum.topics.unban') }}</ArcoButton>
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -2133,7 +2134,7 @@ async function copyPollShareLink() {
           </header>
 
           <div v-if="staffNoticePostId === post.id" class="mb-3 space-y-2 rounded border bg-muted/30 p-3">
-            <textarea v-model="staffNoticeText" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.staffNoticePlaceholder')" />
+            <ArcoTextarea v-model="staffNoticeText" :auto-size="{ minRows: 2, maxRows: 5 }" :placeholder="t('forum.topics.staffNoticePlaceholder')" />
             <div class="flex gap-2">
               <Button type="button" size="sm" @click="saveStaffNotice(post)">{{ t('forum.topics.saveNotice') }}</Button>
               <Button type="button" size="sm" variant="outline" @click="staffNoticePostId = null">{{ t('forum.topics.cancel') }}</Button>
@@ -2158,7 +2159,7 @@ async function copyPollShareLink() {
           </div>
 
           <div v-if="editingPostBookmarkId === post.id && post.bookmark" class="mt-2 space-y-2 rounded border bg-muted/30 p-3">
-            <textarea v-model="postBookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.postBookmarkNote')" />
+            <ArcoTextarea v-model="postBookmarkNote" :auto-size="{ minRows: 2, maxRows: 5 }" :placeholder="t('forum.topics.postBookmarkNote')" />
             <Input v-model="postBookmarkRemindAt" type="datetime-local" class="w-full" />
             <div class="flex gap-2">
               <Button type="button" size="sm" @click="savePostBookmark(post)">{{ t('forum.topics.save') }}</Button>
@@ -2185,9 +2186,9 @@ async function copyPollShareLink() {
                 <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
                 <li v-for="attachment in editPendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2">
                   <span class="min-w-0 break-all">{{ attachment.filename }} <span class="whitespace-nowrap text-muted-foreground">({{ attachment.human_size }})</span></span>
-                  <button type="button" class="shrink-0 rounded-sm text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="removeEditPendingAttachment(attachment.id)">
+                  <ArcoButton html-type="button" size="mini" type="text" status="danger" @click="removeEditPendingAttachment(attachment.id)">
                     {{ t('components.attachmentUpload.remove') }}
-                  </button>
+                  </ArcoButton>
                 </li>
               </ul>
             </div>
@@ -2312,7 +2313,7 @@ async function copyPollShareLink() {
     <div v-if="replyPreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
       <div class="flex items-start justify-between gap-2">
         <p>{{ t('forum.topics.replyToPreview', { floor: replyPreview.floor_number, author: replyPreview.author }) }}</p>
-        <button type="button" class="shrink-0 rounded-sm text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="clearReplyTarget">{{ t('forum.topics.clearTarget') }}</button>
+        <ArcoButton html-type="button" size="mini" type="text" @click="clearReplyTarget">{{ t('forum.topics.clearTarget') }}</ArcoButton>
       </div>
     </div>
     <div v-if="quotePreviews.length" class="mb-3 space-y-2">
@@ -2326,10 +2327,10 @@ async function copyPollShareLink() {
             {{ t('forum.topics.quotePreview', { floor: quote.floor_number, author: quote.author }) }}
             {{ quote.excerpt }}
           </p>
-          <button type="button" class="shrink-0 rounded-sm text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="removeQuote(quote.id)">{{ t('forum.topics.remove') }}</button>
+          <ArcoButton html-type="button" size="mini" type="text" @click="removeQuote(quote.id)">{{ t('forum.topics.remove') }}</ArcoButton>
         </div>
       </div>
-      <button type="button" class="rounded-sm text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="clearQuotes">{{ t('forum.topics.clearAllQuotes') }}</button>
+      <ArcoButton html-type="button" size="mini" type="text" @click="clearQuotes">{{ t('forum.topics.clearAllQuotes') }}</ArcoButton>
     </div>
     <form class="space-y-4" :aria-busy="replyForm.processing" @submit.prevent="submitReply">
       <MarkdownEditor v-model="replyForm.post.body" :rows="6" :placeholder="t('forum.topics.replyPlaceholder')" required />
@@ -2346,9 +2347,9 @@ async function copyPollShareLink() {
           <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
           <li v-for="attachment in pendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2">
             <span class="min-w-0 break-all">{{ attachment.filename }} <span class="whitespace-nowrap text-muted-foreground">({{ attachment.human_size }})</span></span>
-            <button type="button" class="shrink-0 rounded-sm text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="removePendingAttachment(attachment.id)">
+            <ArcoButton html-type="button" size="mini" type="text" status="danger" @click="removePendingAttachment(attachment.id)">
               {{ t('components.attachmentUpload.remove') }}
-            </button>
+            </ArcoButton>
           </li>
         </ul>
       </div>

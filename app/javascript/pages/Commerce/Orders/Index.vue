@@ -16,6 +16,7 @@ import Select from '@/components/ui/Select.vue'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 import { useCopyToClipboard } from '@/lib/useClipboard'
+import { Button as ArcoButton } from '@mcweb/ui'
 
 defineOptions({ layout: PortalLayout })
 
@@ -201,16 +202,16 @@ async function copyExportUrl() {
 
   <div v-if="totalPresets?.length" class="mb-4 flex flex-wrap items-center gap-2">
     <span class="text-xs text-muted-foreground">{{ t('commerce.orders.amountPresets') }}</span>
-    <button
+    <ArcoButton
       v-for="preset in totalPresets"
       :key="preset.key"
-      type="button"
-      class="rounded-md border px-2.5 py-1 text-xs"
-      :class="preset.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+      html-type="button"
+      size="small"
+      :type="preset.active ? 'primary' : 'outline'"
       @click="applyTotalPreset(preset)"
     >
       {{ preset.label }}
-    </button>
+    </ArcoButton>
   </div>
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
@@ -231,7 +232,16 @@ async function copyExportUrl() {
       class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
     >
       {{ filter.label }}
-      <button type="button" class="hover:opacity-70" :title="t('commerce.orders.removeFilter')" @click="removeFilter(filter)">×</button>
+      <ArcoButton
+        html-type="button"
+        size="mini"
+        type="text"
+        :title="t('commerce.orders.removeFilter')"
+        :aria-label="t('commerce.orders.removeFilter')"
+        @click="removeFilter(filter)"
+      >
+        ×
+      </ArcoButton>
     </span>
   </div>
 

@@ -7,6 +7,8 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import AdminAlertBanners, { type AdminAlert } from '@/components/admin/AdminAlertBanners.vue'
 import NodeTasksTable, { type NodeTaskRow } from '@/components/admin/NodeTasksTable.vue'
 import MetricHistoryPanel, { type MetricPoint } from '@/components/admin/MetricHistoryPanel.vue'
+import WorldRestoreLifecycle from '@/components/admin/minecraft/WorldRestoreLifecycle.vue'
+import type { WorldSafetyProps } from '@/components/admin/minecraft/worldRestoreTypes'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
@@ -37,6 +39,7 @@ const props = defineProps<{
   nodeTasks: NodeTaskRow[]
   defaultLogPath: string
   controlUrls: Record<string, string>
+  worldSafety: WorldSafetyProps
   backUrl: string
   actions: PageAction[]
   connectorSecretOnce?: string | null
@@ -45,7 +48,6 @@ const props = defineProps<{
 const { t } = useI18n()
 const command = ref('')
 const consoleCommand = ref('')
-const restoreArchive = ref('')
 const logPath = ref(props.defaultLogPath)
 
 const serverFields = computed(() => [
@@ -102,25 +104,6 @@ function confirmOperation(title: string, content: string, operation: () => void,
     okButtonProps: danger ? { status: 'danger' } : undefined,
     onOk: operation,
   })
-}
-
-function backupWorld() {
-  if (!props.controlUrls.backup) return
-  confirmOperation(
-    t('adminMinecraft.backupNow'),
-    t('adminMinecraft.confirmBackup'),
-    () => router.post(props.controlUrls.backup),
-  )
-}
-
-function restoreWorld() {
-  if (!props.controlUrls.restore || !restoreArchive.value.trim()) return
-  confirmOperation(
-    t('adminMinecraft.restoreWorld'),
-    t('adminMinecraft.confirmRestore'),
-    () => router.post(props.controlUrls.restore, { archive: restoreArchive.value.trim() }),
-    true,
-  )
 }
 
 function tailLogs() {
@@ -205,6 +188,7 @@ connector-secret: "{{ server.plugin_config.connector_secret }}"</pre>
         v-if="controlUrls.start"
         type="primary"
         status="success"
+        :disabled="worldSafety.start_blocked"
         @click="router.post(controlUrls.start)"
       >
         {{ t('adminMinecraft.startServer') }}
@@ -212,11 +196,18 @@ connector-secret: "{{ server.plugin_config.connector_secret }}"</pre>
       <a-button v-if="controlUrls.stop" @click="router.post(controlUrls.stop)">
         {{ t('adminMinecraft.stopServer') }}
       </a-button>
-      <a-button v-if="controlUrls.restart" status="warning" @click="router.post(controlUrls.restart)">
+      <a-button
+        v-if="controlUrls.restart"
+        status="warning"
+        :disabled="worldSafety.start_blocked"
+        @click="router.post(controlUrls.restart)"
+      >
         {{ t('adminMinecraft.restartServer') }}
       </a-button>
     </a-space>
   </a-card>
+
+  <WorldRestoreLifecycle :model="worldSafety" />
 
   <a-grid :cols="{ xs: 1, sm: 1, lg: 2 }" :col-gap="16" :row-gap="16" class="mt-4">
     <a-grid-item v-if="controlUrls.exec">
@@ -239,23 +230,6 @@ connector-secret: "{{ server.plugin_config.connector_secret }}"</pre>
           search-button
           @search="runConsoleCommand"
         />
-      </a-card>
-    </a-grid-item>
-    <a-grid-item v-if="controlUrls.backup || controlUrls.restore">
-      <a-card :title="t('adminMinecraft.worldBackup')" :bordered="true">
-        <a-space direction="vertical" fill>
-          <a-button v-if="controlUrls.backup" @click="backupWorld">
-            {{ t('adminMinecraft.backupNow') }}
-          </a-button>
-          <a-input-search
-            v-if="controlUrls.restore"
-            v-model="restoreArchive"
-            :button-text="t('adminMinecraft.restoreWorld')"
-            :placeholder="t('adminMinecraft.restoreArchivePlaceholder')"
-            search-button
-            @search="restoreWorld"
-          />
-        </a-space>
       </a-card>
     </a-grid-item>
     <a-grid-item v-if="controlUrls.tail_logs">

@@ -19,19 +19,22 @@ import (
 	"github.com/mcweb/mcweb-node/internal/operation"
 	"github.com/mcweb/mcweb-node/internal/proxy"
 	"github.com/mcweb/mcweb-node/internal/spool"
+	"github.com/mcweb/mcweb-node/internal/worldstore"
 )
 
 type Agent struct {
-	cfg            *config.Config
-	client         *client.Client
-	exec           *executor.Executor
-	stats          *proxy.Stats
-	hostname       string
-	spool          *spool.Spool
-	operationStore *operation.Store
-	pollNow        chan struct{}
-	wakeSince      string
-	wakeMu         sync.Mutex
+	cfg              *config.Config
+	client           *client.Client
+	exec             *executor.Executor
+	stats            *proxy.Stats
+	hostname         string
+	spool            *spool.Spool
+	operationStore   *operation.Store
+	worldStore       *worldstore.Store
+	worldSafetyReady bool
+	pollNow          chan struct{}
+	wakeSince        string
+	wakeMu           sync.Mutex
 }
 
 func New(cfg *config.Config, stats *proxy.Stats) *Agent {
@@ -43,15 +46,35 @@ func New(cfg *config.Config, stats *proxy.Stats) *Agent {
 	if operationErr != nil {
 		log.Printf("operation store disabled: %v", operationErr)
 	}
+	worldStore, worldStoreErr := worldstore.New(
+		cfg.WorldBackupRoot,
+		filepath.Join(cfg.SpoolDir, "world-restores"),
+		cfg.NodeID,
+		cfg.WorldRestoreLimits,
+	)
+	worldSafetyReady := worldStoreErr == nil && operationErr == nil
+	var taskExecutor *executor.Executor
+	if !worldSafetyReady {
+		log.Printf(
+			"managed world safety unavailable; start/restart remain fail-closed: world_store=%v operation_store=%v",
+			worldStoreErr,
+			operationErr,
+		)
+		taskExecutor = executor.NewWithUnavailableWorldSafety()
+	} else {
+		taskExecutor = executor.NewWithWorldStore(worldStore)
+	}
 	return &Agent{
-		cfg:            cfg,
-		client:         client.New(cfg.RailsURL, cfg.NodeID, cfg.NodeSecret),
-		exec:           executor.New(),
-		stats:          stats,
-		hostname:       hostname(),
-		spool:          s,
-		operationStore: operationStore,
-		pollNow:        make(chan struct{}, 1),
+		cfg:              cfg,
+		client:           client.New(cfg.RailsURL, cfg.NodeID, cfg.NodeSecret),
+		exec:             taskExecutor,
+		stats:            stats,
+		hostname:         hostname(),
+		spool:            s,
+		operationStore:   operationStore,
+		worldStore:       worldStore,
+		worldSafetyReady: worldSafetyReady,
+		pollNow:          make(chan struct{}, 1),
 	}
 }
 
@@ -172,15 +195,48 @@ func (a *Agent) flushSpool(ctx context.Context) bool {
 }
 
 func (a *Agent) heartbeat(ctx context.Context) bool {
+	nodeProtocolVersions := []int{1}
+	operationTypes := []string{}
+	if a.operationStore != nil {
+		nodeProtocolVersions = append(nodeProtocolVersions, operation.ProtocolVersion)
+		operationTypes = append(operationTypes, "collect_metrics", "sync_files")
+	}
+	operationCapabilities := map[string]interface{}{}
+	recoveryRequired := true
+	if a.worldSafetyReady && a.worldStore != nil {
+		operationTypes = append(operationTypes, "world_backup_create", "world_restore_execute")
+		recoveryRequired = a.worldStore.RecoveryRequired()
+		common := map[string]interface{}{
+			"protocol_version":  2,
+			"manifest_versions": []int{worldstore.ManifestVersion},
+			"archive_formats":   []string{worldstore.ArchiveFormat},
+			"safety_profile":    worldstore.SafetyProfile,
+		}
+		backupCapability := copyStringInterfaceMap(common)
+		backupCapability["stopped_source_required"] = true
+		backupCapability["managed_storage"] = true
+		restoreCapability := copyStringInterfaceMap(common)
+		for _, flag := range []string{
+			"safe_extract", "same_filesystem_atomic_swap", "pre_restore_snapshot",
+			"durable_ledger", "crash_recovery", "rollback",
+		} {
+			restoreCapability[flag] = true
+		}
+		restoreCapability["local_limits"] = a.worldStore.Limits()
+		operationCapabilities["world_backup_create"] = backupCapability
+		operationCapabilities["world_restore_execute"] = restoreCapability
+	}
 	body := map[string]interface{}{
 		"hostname": a.hostname,
 		"metadata": map[string]interface{}{
-			"go_version":             runtime.Version(),
-			"num_cpu":                runtime.NumCPU(),
-			"os":                     runtime.GOOS,
-			"host_metrics":           metrics.CollectHost(),
-			"node_protocol_versions": []int{1, operation.ProtocolVersion},
-			"operation_types":        []string{"collect_metrics", "sync_files"},
+			"go_version":                      runtime.Version(),
+			"num_cpu":                         runtime.NumCPU(),
+			"os":                              runtime.GOOS,
+			"host_metrics":                    metrics.CollectHost(),
+			"node_protocol_versions":          nodeProtocolVersions,
+			"operation_types":                 operationTypes,
+			"operation_capabilities":          operationCapabilities,
+			"world_restore_recovery_required": recoveryRequired,
 		},
 		"connector_proxy": a.stats.Snapshot(),
 	}
@@ -328,6 +384,9 @@ func (a *Agent) executeOperationTargets(ctx context.Context, state *operation.St
 		}
 		startedAt := time.Now().UTC()
 		payload := mergePayloads(state.Batch.SharedPayload, target.Payload)
+		payload["operation_delivery_id"] = state.Batch.DeliveryID
+		payload["operation_payload_digest"] = state.Batch.PayloadDigest
+		payload["operation_id"] = state.Batch.OperationID
 		result := a.exec.Run(ctx, map[string]interface{}{
 			"task_type": target.TaskType,
 			"payload":   payload,
@@ -447,6 +506,14 @@ func mergePayloads(shared, target map[string]interface{}) map[string]interface{}
 		merged[key] = value
 	}
 	return merged
+}
+
+func copyStringInterfaceMap(value map[string]interface{}) map[string]interface{} {
+	copyValue := make(map[string]interface{}, len(value))
+	for key, child := range value {
+		copyValue[key] = child
+	}
+	return copyValue
 }
 
 func stringIdentifier(value interface{}) string {

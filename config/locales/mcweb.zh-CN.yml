@@ -244,6 +244,12 @@
       minecraft_servers_control:
         name: "控制 Minecraft 服务器"
         description: "启动、停止、重启 Minecraft 服务器并发送受支持的控制操作。"
+      minecraft_world_backups_manage:
+        name: "管理 Minecraft 世界备份"
+        description: "申请并查看由节点托管且经过完整性验证的 Minecraft 世界备份。"
+      minecraft_world_restores_execute:
+        name: "执行 Minecraft 世界恢复"
+        description: "规划、升阶授权并执行带审计、失败关闭的 Minecraft 世界恢复。"
       minecraft_players_view:
         name: "查看 Minecraft 玩家"
         description: "查看在线玩家及其当前服务器活动。"
@@ -856,6 +862,80 @@
           target_not_available: 请选择实际处于启用状态的目标板块。
           audit_failed: 审计记录写入失败，本次主题迁移已完整回滚。
       errors:
+        world_relative_path_required: 必须配置相对世界目录。
+        world_relative_path_invalid: 当前世界目录不是安全的相对路径。
+        world_backup_unauthorized: 你没有管理世界备份的权限。
+        world_backup_request_id_invalid: 备份请求 ID 无效。
+        world_backup_purpose_invalid: 备份用途无效。
+        world_backup_node_required: 此服务器尚未分配给托管节点。
+        world_backup_server_must_be_stopped: 创建托管世界备份前必须停止 Minecraft 服务器。
+        world_backup_restore_active: 当前世界恢复进入安全终态后才能创建新的备份。
+        world_backup_node_stale: 节点心跳已过期，请先恢复节点连接。
+        world_backup_node_capability_required: 节点未完整声明托管备份安全能力。
+        world_backup_node_recovery_required: 节点仍有未解决的世界恢复状态。
+        world_backup_idempotency_conflict: 此备份请求 ID 已被用于不同输入。
+        world_backup_enqueue_failed: 无法排队托管世界备份。
+        world_backup_manifest_invalid: 节点返回了无效或不受支持的备份清单。
+        world_backup_record_not_found: 找不到此节点操作对应的托管备份记录。
+        world_backup_unreported_node_failure: 节点操作结束时没有返回完整备份结果。
+        world_backup_failed: 托管世界备份失败。
+        world_backup_quarantined: 此托管备份已被隔离，不能继续使用。
+        world_restore_unauthorized: 你没有执行此次世界恢复的权限。
+        world_restore_request_id_invalid: 恢复请求 ID 无效。
+        world_restore_reason_required: 请填写此次世界恢复的原因。
+        world_restore_reason_too_long: 恢复原因不能超过 1,000 个字符。
+        world_restore_node_required: 此服务器尚未分配给托管节点。
+        world_restore_server_must_be_stopped: 规划或执行恢复前必须停止 Minecraft 服务器。
+        world_restore_node_stale: 节点心跳已过期，请先恢复节点连接。
+        world_restore_node_capability_required: 节点未完整声明 v2 世界恢复安全能力。
+        world_restore_node_recovery_required: 节点仍有需要恢复处理的未解决操作。
+        world_restore_backup_unavailable: 请选择可用且已通过完整性验证的托管备份。
+        world_restore_backup_wrong_target: 所选备份不属于此服务器及节点。
+        world_restore_backup_changed: 创建计划后，所选备份清单发生了变化。
+        world_restore_backup_path_changed: 备份的世界目录与当前恢复目标不一致。
+        world_restore_node_changed: 服务器已不再分配给冻结计划中的节点。
+        world_restore_configuration_changed: 创建计划后，服务器恢复目标配置发生了变化。
+        world_restore_capability_changed: 创建计划后，节点安全能力发生了变化。
+        world_restore_active: 此服务器已有进行中的世界恢复。
+        world_restore_plan_expired: 恢复计划已过期，请重新创建。
+        world_restore_idempotency_conflict: 此恢复请求 ID 已被用于不同输入。
+        world_restore_event_ledger_failed: 持久事件记录失败，本次恢复变更已回滚。
+        world_restore_plan_not_authorizable: 此恢复计划已无法授权。
+        world_restore_stale: 恢复计划刚刚发生变化，请刷新后重试。
+        world_restore_authorization_invalid: 恢复授权无效，或已不再匹配当前计划。
+        world_restore_authorization_failed: 无法完成此次恢复授权。
+        world_restore_plan_not_authorized: 执行恢复前请先完成升阶授权。
+        world_restore_confirmation_mismatch: 输入的确认文字与当前服务器、备份及计划不一致。
+        world_restore_authorization_expired: 恢复授权已过期，请重新授权。
+        world_restore_enqueue_failed: 无法排队世界恢复。
+        world_restore_plan_not_found: 找不到此节点操作对应的恢复计划。
+        world_restore_pre_snapshot_missing: 缺少必须的恢复前快照。
+        world_restore_pre_snapshot_invalid: 节点未能证明恢复前快照有效。
+        world_restore_result_invalid: 节点返回了无效恢复结果，服务器启动仍被阻断。
+        world_restore_recovery_required: 当前无法证明最终世界树安全，必须人工恢复处理。
+        world_restore_rolled_back: 恢复失败，原世界已安全回滚。
+        world_restore_node_failed: 节点在切换前执行恢复失败。
+        world_restore_ambiguous_node_result: 节点结果无法证明旧世界或新世界是否已安全安装。
+        world_restore_unreported_node_failure: 节点操作结束时没有返回完整恢复结果。
+        minecraft_world_restore_blocks_server_start: 进行中或待恢复处理的世界恢复会阻止启动和重启服务器。
+        world_operation_reconciliation_action_invalid: 世界操作对账动作无效。
+        world_operation_target_result_required: 缺少世界操作目标结果。
+        world_operation_start_failed: 世界操作无法进入持久运行状态。
+        world_operation_reconciliation_failed: 无法安全对账世界操作结果。
+        world_operation_requires_one_target: 托管世界操作必须且只能包含一个服务器目标。
+        world_operation_target_payloads_not_allowed: 托管世界操作不允许逐目标覆盖载荷。
+        world_operation_protocol_invalid: 托管世界操作协议版本无效。
+        world_operation_server_must_be_stopped: 托管世界操作要求服务器已停止。
+        world_operation_working_directory_required: 必须配置服务器工作目录。
+        world_operation_node_mismatch: 托管世界操作的节点身份与服务器不一致。
+        world_operation_safety_profile_invalid: 托管世界操作安全配置无效。
+        world_operation_contains_raw_path: 禁止传入原始归档、来源、目标或限制字段。
+        world_backup_id_invalid: 托管备份 ID 无效。
+        world_backup_request_digest_invalid: 托管备份请求摘要无效。
+        world_restore_managed_id_invalid: 托管恢复 ID 无效。
+        world_restore_digest_invalid: 冻结恢复摘要无效。
+        world_restore_expected_state_invalid: 恢复所需的进程状态必须为已停止。
+        legacy_world_operation_retired: 旧版基于路径的世界备份和恢复操作已停用。
         invalid_or_expired_verification_token: 验证链接无效或已过期。
         invalid_or_expired_reset_token: 重置链接无效或已过期。
         recipient_not_found: 找不到该用户。
@@ -2303,6 +2383,20 @@
         identity_data_export_downloaded: "个人数据导出已下载"
         identity_data_export_retried: "个人数据导出已重试"
         identity_data_export_revoked: "个人数据导出已撤销"
+        minecraft_world_backup_requested: "已申请 Minecraft 世界备份"
+        minecraft_world_backup_available: "Minecraft 世界备份已验证"
+        minecraft_world_backup_failed: "Minecraft 世界备份失败"
+        minecraft_world_backup_quarantined: "Minecraft 世界备份已隔离"
+        minecraft_world_restore_planned: "已创建 Minecraft 世界恢复计划"
+        minecraft_world_restore_authorized: "Minecraft 世界恢复已授权"
+        minecraft_world_restore_queued: "Minecraft 世界恢复已排队"
+        minecraft_world_restore_started: "Minecraft 世界恢复已开始"
+        minecraft_world_restore_pre_snapshot_available: "Minecraft 恢复前快照已验证"
+        minecraft_world_restore_completed: "Minecraft 世界恢复已完成"
+        minecraft_world_restore_failed: "Minecraft 世界恢复已在切换前安全失败"
+        minecraft_world_restore_rolled_back: "Minecraft 世界恢复已回滚"
+        minecraft_world_restore_recovery_required: "Minecraft 世界恢复需要人工处理"
+        minecraft_world_restore_expired: "Minecraft 世界恢复计划已过期"
         community_topic_created: "已创建论坛主题"
         community_post_created: "已发布论坛帖子"
         community_post_approved: "论坛帖子已通过审核"
@@ -3178,6 +3272,8 @@
         field_tps: TPS
         field_version: 版本
         secret_not_generated: 未生成
+        world_backup_queued: 托管世界备份已排队。
+        world_restore_queued: 世界恢复及其恢复前快照已排队。
         action_edit: 编辑
         action_rotate_secret: 轮换密钥
         action_delete: 删除

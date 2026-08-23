@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_193000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2031,6 +2031,122 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_140000) do
     t.index ["player_identity_id"], name: "index_minecraft_skin_refresh_requests_on_player_identity_id"
     t.index ["requested_by_id"], name: "index_minecraft_skin_refresh_requests_on_requested_by_id"
     t.index ["status", "started_at"], name: "idx_mc_skin_refresh_requests_recovery"
+  end
+
+  create_table "minecraft_world_backups", force: :cascade do |t|
+    t.bigint "archive_bytes"
+    t.string "archive_format"
+    t.string "archive_sha256", limit: 64
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.bigint "entry_count"
+    t.string "error_code"
+    t.datetime "failed_at"
+    t.integer "lock_version", default: 0, null: false
+    t.string "manifest_digest", limit: 64
+    t.jsonb "manifest_summary", default: {}, null: false
+    t.integer "manifest_version"
+    t.bigint "minecraft_node_id", null: false
+    t.bigint "minecraft_node_operation_id"
+    t.bigint "minecraft_server_id", null: false
+    t.string "public_id", null: false
+    t.string "purpose", null: false
+    t.string "request_digest", limit: 64, null: false
+    t.string "request_id", limit: 36, null: false
+    t.string "safety_profile"
+    t.string "status", default: "requested", null: false
+    t.bigint "uncompressed_bytes"
+    t.datetime "updated_at", null: false
+    t.datetime "verified_at"
+    t.check_constraint "archive_bytes IS NULL OR archive_bytes >= 0", name: "chk_minecraft_world_backups_archive_bytes"
+    t.check_constraint "archive_sha256 IS NULL OR archive_sha256::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_world_backups_archive_sha256"
+    t.check_constraint "entry_count IS NULL OR entry_count >= 0", name: "chk_minecraft_world_backups_entry_count"
+    t.check_constraint "manifest_digest IS NULL OR manifest_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_world_backups_manifest_digest"
+    t.check_constraint "purpose::text = ANY (ARRAY['manual'::character varying::text, 'scheduled'::character varying::text, 'pre_restore'::character varying::text])", name: "chk_minecraft_world_backups_purpose"
+    t.check_constraint "request_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_world_backups_request_digest"
+    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_world_backups_request_id"
+    t.check_constraint "status::text = ANY (ARRAY['requested'::character varying::text, 'queued'::character varying::text, 'creating'::character varying::text, 'available'::character varying::text, 'failed'::character varying::text, 'quarantined'::character varying::text])", name: "chk_minecraft_world_backups_status"
+    t.check_constraint "uncompressed_bytes IS NULL OR uncompressed_bytes >= 0", name: "chk_minecraft_world_backups_uncompressed_bytes"
+    t.index ["created_by_id"], name: "index_minecraft_world_backups_on_created_by_id"
+    t.index ["minecraft_node_id"], name: "index_minecraft_world_backups_on_minecraft_node_id"
+    t.index ["minecraft_node_operation_id"], name: "idx_minecraft_world_backups_operation", unique: true, where: "(minecraft_node_operation_id IS NOT NULL)"
+    t.index ["minecraft_server_id", "status", "created_at"], name: "idx_minecraft_world_backups_server_status"
+    t.index ["minecraft_server_id"], name: "index_minecraft_world_backups_on_minecraft_server_id"
+    t.index ["public_id"], name: "index_minecraft_world_backups_on_public_id", unique: true
+    t.index ["request_id"], name: "index_minecraft_world_backups_on_request_id", unique: true
+  end
+
+  create_table "minecraft_world_restore_events", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.bigint "minecraft_world_restore_plan_id", null: false
+    t.string "payload_digest", limit: 64, null: false
+    t.jsonb "payload_summary", default: {}, null: false
+    t.string "phase", null: false
+    t.integer "sequence", null: false
+    t.check_constraint "payload_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_events_digest"
+    t.check_constraint "event_type::text ~ '^minecraft\\.world_restore\\.[a-z0-9_]+$'::text", name: "chk_minecraft_restore_events_type"
+    t.check_constraint "phase::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'accepted'::character varying::text, 'process_stopped'::character varying::text, 'pre_snapshot_started'::character varying::text, 'pre_snapshot_durable'::character varying::text, 'archive_validated'::character varying::text, 'staging_started'::character varying::text, 'staging_verified'::character varying::text, 'live_preserved'::character varying::text, 'replacement_installed'::character varying::text, 'post_install_verified'::character varying::text, 'rollback_started'::character varying::text, 'rolled_back'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text])", name: "chk_minecraft_restore_events_phase"
+    t.check_constraint "sequence > 0", name: "chk_minecraft_restore_events_sequence"
+    t.index ["actor_id"], name: "index_minecraft_world_restore_events_on_actor_id"
+    t.index ["minecraft_world_restore_plan_id", "sequence"], name: "idx_minecraft_restore_events_sequence", unique: true
+    t.index ["minecraft_world_restore_plan_id"], name: "idx_minecraft_restore_events_plan"
+  end
+
+  create_table "minecraft_world_restore_plans", force: :cascade do |t|
+    t.bigint "actor_id", null: false
+    t.datetime "authorization_consumed_at"
+    t.string "authorization_digest", limit: 64
+    t.datetime "authorization_expires_at"
+    t.string "authorization_method"
+    t.datetime "authorized_at"
+    t.string "backup_manifest_digest", limit: 64, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.datetime "expires_at", null: false
+    t.datetime "failed_at"
+    t.datetime "frozen_server_updated_at", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.bigint "minecraft_node_id", null: false
+    t.bigint "minecraft_node_operation_id"
+    t.bigint "minecraft_server_id", null: false
+    t.bigint "minecraft_world_backup_id", null: false
+    t.string "node_capability_digest", limit: 64, null: false
+    t.string "plan_digest", limit: 64, null: false
+    t.bigint "pre_restore_world_backup_id"
+    t.string "public_id", null: false
+    t.datetime "queued_at"
+    t.text "reason", null: false
+    t.string "request_digest", limit: 64, null: false
+    t.string "request_id", limit: 36, null: false
+    t.jsonb "result_summary", default: {}, null: false
+    t.string "server_configuration_digest", limit: 64, null: false
+    t.datetime "started_at"
+    t.string "status", default: "planned", null: false
+    t.datetime "updated_at", null: false
+    t.string "world_relative_path", limit: 1024, null: false
+    t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_authorization"
+    t.check_constraint "authorization_method IS NULL OR authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text])", name: "chk_minecraft_restore_plans_auth_method"
+    t.check_constraint "backup_manifest_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_backup_manifest"
+    t.check_constraint "node_capability_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_node_capability"
+    t.check_constraint "plan_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_plan"
+    t.check_constraint "char_length(reason) >= 1 AND char_length(reason) <= 1000", name: "chk_minecraft_world_restore_plans_reason"
+    t.check_constraint "request_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_request"
+    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_world_restore_plans_request_id"
+    t.check_constraint "server_configuration_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_server_configuration"
+    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'rolled_back'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text])", name: "chk_minecraft_world_restore_plans_status"
+    t.index ["actor_id"], name: "index_minecraft_world_restore_plans_on_actor_id"
+    t.index ["minecraft_node_id"], name: "index_minecraft_world_restore_plans_on_minecraft_node_id"
+    t.index ["minecraft_node_operation_id"], name: "idx_minecraft_restore_plans_operation", unique: true, where: "(minecraft_node_operation_id IS NOT NULL)"
+    t.index ["minecraft_server_id", "status", "created_at"], name: "idx_minecraft_restore_plans_server_status"
+    t.index ["minecraft_server_id"], name: "idx_minecraft_restore_plans_one_active", unique: true, where: "((status)::text = ANY (ARRAY['planned'::text, 'authorized'::text, 'queued'::text, 'running'::text, 'recovery_required'::text]))"
+    t.index ["minecraft_server_id"], name: "index_minecraft_world_restore_plans_on_minecraft_server_id"
+    t.index ["minecraft_world_backup_id"], name: "index_minecraft_world_restore_plans_on_minecraft_world_backup_id"
+    t.index ["pre_restore_world_backup_id"], name: "idx_minecraft_restore_plans_pre_backup"
+    t.index ["public_id"], name: "index_minecraft_world_restore_plans_on_public_id", unique: true
+    t.index ["request_id"], name: "index_minecraft_world_restore_plans_on_request_id", unique: true
   end
 
   create_table "notification_preferences", force: :cascade do |t|
@@ -4243,6 +4359,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_140000) do
   add_foreign_key "minecraft_servers", "minecraft_nodes"
   add_foreign_key "minecraft_skin_refresh_requests", "minecraft_player_identities", column: "player_identity_id"
   add_foreign_key "minecraft_skin_refresh_requests", "users", column: "requested_by_id"
+  add_foreign_key "minecraft_world_backups", "minecraft_node_operations"
+  add_foreign_key "minecraft_world_backups", "minecraft_nodes"
+  add_foreign_key "minecraft_world_backups", "minecraft_servers"
+  add_foreign_key "minecraft_world_backups", "users", column: "created_by_id"
+  add_foreign_key "minecraft_world_restore_events", "minecraft_world_restore_plans"
+  add_foreign_key "minecraft_world_restore_events", "users", column: "actor_id"
+  add_foreign_key "minecraft_world_restore_plans", "minecraft_node_operations"
+  add_foreign_key "minecraft_world_restore_plans", "minecraft_nodes"
+  add_foreign_key "minecraft_world_restore_plans", "minecraft_servers"
+  add_foreign_key "minecraft_world_restore_plans", "minecraft_world_backups"
+  add_foreign_key "minecraft_world_restore_plans", "minecraft_world_backups", column: "pre_restore_world_backup_id"
+  add_foreign_key "minecraft_world_restore_plans", "users", column: "actor_id"
   add_foreign_key "notification_preferences", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "operations_durable_enqueue_attempts", "operations_durable_enqueue_intents", column: "intent_id", on_delete: :restrict
@@ -4404,6 +4532,105 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_140000) do
 
   # User-defined PostgreSQL trigger functions and triggers.
   # These database invariants must also exist after db:schema:load.
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_events_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'minecraft world restore events are append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.minecraft_world_backups_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.public_id IS DISTINCT FROM NEW.public_id
+        OR OLD.minecraft_server_id IS DISTINCT FROM NEW.minecraft_server_id
+        OR OLD.minecraft_node_id IS DISTINCT FROM NEW.minecraft_node_id
+        OR OLD.created_by_id IS DISTINCT FROM NEW.created_by_id
+        OR OLD.purpose IS DISTINCT FROM NEW.purpose
+        OR OLD.request_id IS DISTINCT FROM NEW.request_id
+        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest THEN
+        RAISE EXCEPTION 'minecraft world backup identity is immutable';
+      END IF;
+
+      IF OLD.status IN ('available', 'quarantined') AND (
+        OLD.manifest_version IS DISTINCT FROM NEW.manifest_version
+        OR OLD.safety_profile IS DISTINCT FROM NEW.safety_profile
+        OR OLD.archive_format IS DISTINCT FROM NEW.archive_format
+        OR OLD.manifest_digest IS DISTINCT FROM NEW.manifest_digest
+        OR OLD.archive_sha256 IS DISTINCT FROM NEW.archive_sha256
+        OR OLD.archive_bytes IS DISTINCT FROM NEW.archive_bytes
+        OR OLD.uncompressed_bytes IS DISTINCT FROM NEW.uncompressed_bytes
+        OR OLD.entry_count IS DISTINCT FROM NEW.entry_count
+        OR OLD.manifest_summary IS DISTINCT FROM NEW.manifest_summary
+      ) THEN
+        RAISE EXCEPTION 'verified minecraft world backup manifest is immutable';
+      END IF;
+      IF OLD.minecraft_node_operation_id IS NOT NULL
+        AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id THEN
+        RAISE EXCEPTION 'minecraft world backup operation binding is immutable';
+      END IF;
+      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
+        (OLD.status = 'requested' AND NEW.status IN ('queued', 'failed'))
+        OR (OLD.status = 'queued' AND NEW.status IN ('creating', 'available', 'failed'))
+        OR (OLD.status = 'creating' AND NEW.status IN ('available', 'failed'))
+        OR (OLD.status = 'available' AND NEW.status = 'quarantined')
+      ) THEN
+        RAISE EXCEPTION 'invalid minecraft world backup state transition';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_plans_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.public_id IS DISTINCT FROM NEW.public_id
+        OR OLD.minecraft_server_id IS DISTINCT FROM NEW.minecraft_server_id
+        OR OLD.minecraft_node_id IS DISTINCT FROM NEW.minecraft_node_id
+        OR OLD.minecraft_world_backup_id IS DISTINCT FROM NEW.minecraft_world_backup_id
+        OR OLD.actor_id IS DISTINCT FROM NEW.actor_id
+        OR OLD.reason IS DISTINCT FROM NEW.reason
+        OR OLD.request_id IS DISTINCT FROM NEW.request_id
+        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest
+        OR OLD.plan_digest IS DISTINCT FROM NEW.plan_digest
+        OR OLD.backup_manifest_digest IS DISTINCT FROM NEW.backup_manifest_digest
+        OR OLD.server_configuration_digest IS DISTINCT FROM NEW.server_configuration_digest
+        OR OLD.node_capability_digest IS DISTINCT FROM NEW.node_capability_digest
+        OR OLD.frozen_server_updated_at IS DISTINCT FROM NEW.frozen_server_updated_at
+        OR OLD.world_relative_path IS DISTINCT FROM NEW.world_relative_path
+        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at THEN
+        RAISE EXCEPTION 'minecraft world restore plan is immutable';
+      END IF;
+      IF (OLD.pre_restore_world_backup_id IS NOT NULL
+          AND OLD.pre_restore_world_backup_id IS DISTINCT FROM NEW.pre_restore_world_backup_id)
+        OR (OLD.minecraft_node_operation_id IS NOT NULL
+          AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id) THEN
+        RAISE EXCEPTION 'minecraft world restore execution binding is immutable';
+      END IF;
+      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
+        (OLD.status = 'planned' AND NEW.status IN ('authorized', 'expired', 'cancelled'))
+        OR (OLD.status = 'authorized' AND NEW.status IN ('queued', 'expired', 'cancelled'))
+        OR (OLD.status IN ('queued', 'running')
+          AND NEW.status IN ('running', 'completed', 'failed', 'rolled_back', 'recovery_required'))
+      ) THEN
+        RAISE EXCEPTION 'invalid minecraft world restore state transition';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.prevent_website_revision_mutation()
      RETURNS trigger
@@ -5580,6 +5807,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_140000) do
       RAISE EXCEPTION 'secure_evidence_attachments metadata cannot be deleted';
     END;
     $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER minecraft_world_restore_events_immutable BEFORE DELETE OR UPDATE ON public.minecraft_world_restore_events FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_events_immutable_fn();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER minecraft_world_backups_immutable BEFORE UPDATE ON public.minecraft_world_backups FOR EACH ROW EXECUTE FUNCTION minecraft_world_backups_immutable_fn();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER minecraft_world_restore_plans_immutable BEFORE UPDATE ON public.minecraft_world_restore_plans FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_plans_immutable_fn();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

@@ -9,8 +9,6 @@ module Minecraft
       exec_command
       collect_metrics
       tail_logs
-      backup_world
-      restore_world
       sync_files
     ].freeze
 
@@ -32,21 +30,9 @@ module Minecraft
         return url_check unless url_check.success?
       end
 
-      if @server && instance_lifecycle_task?
-        @server.update!(process_state: lifecycle_state)
-      end
-
       merged_payload = build_payload
-
-      task = Minecraft::NodeTask.create!(
-        node: @node,
-        server: @server,
-        task_type: @task_type,
-        delivery_id: @delivery_id || SecureRandom.uuid,
-        status: "pending",
-        priority: urgent_task? ? "urgent" : "normal",
-        payload: merged_payload
-      )
+      task = persist_task(merged_payload)
+      return task if task.is_a?(ServiceResult)
 
       if developer_mode_simulation?
         completion = Minecraft::NodeTaskDispatcher.call(
@@ -91,7 +77,7 @@ module Minecraft
     end
 
     def instance_task?
-      %w[start_instance stop_instance restart_instance exec_command tail_logs backup_world restore_world sync_files].include?(@task_type)
+      %w[start_instance stop_instance restart_instance exec_command tail_logs sync_files].include?(@task_type)
     end
 
     def instance_lifecycle_task?
@@ -105,6 +91,38 @@ module Minecraft
       when "restart_instance" then :starting
       else @server.process_state
       end
+    end
+
+    def persist_task(payload)
+      task = nil
+      blocked_by_restore = false
+      Minecraft::NodeTask.transaction do
+        if @server && instance_lifecycle_task?
+          @server.lock!
+          if %w[start_instance restart_instance].include?(@task_type) && @server.world_restore_blocks_start?
+            blocked_by_restore = true
+            next
+          end
+          @server.update!(process_state: lifecycle_state)
+        end
+
+        task = Minecraft::NodeTask.create!(
+          node: @node,
+          server: @server,
+          task_type: @task_type,
+          delivery_id: @delivery_id || SecureRandom.uuid,
+          status: "pending",
+          priority: urgent_task? ? "urgent" : "normal",
+          payload: payload
+        )
+      end
+      if blocked_by_restore
+        return ServiceResult.failure(
+          error: :minecraft_world_restore_blocks_server_start,
+          code: :minecraft_world_restore_blocks_server_start
+        )
+      end
+      task
     end
 
     def build_payload

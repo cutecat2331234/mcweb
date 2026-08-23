@@ -25,4 +25,8 @@ func TestSaveAndLoadPairedConfiguration(t *testing.T) {
 	if loaded.ProxyListen == "" || loaded.PollInterval == 0 || loaded.SpoolDir == "" {
 		t.Fatalf("defaults missing: %+v", loaded)
 	}
+	if loaded.WorldBackupRoot == "" || loaded.WorldRestoreLimits.MaxArchiveBytes <= 0 ||
+		loaded.WorldRestoreLimits.MaxExpansionRatio <= 0 {
+		t.Fatalf("world safety defaults missing: %+v", loaded)
+	}
 }

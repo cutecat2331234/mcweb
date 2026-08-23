@@ -12,6 +12,16 @@ module Minecraft
     has_many :target_results,
       through: :batches,
       source: :target_results
+    has_one :world_backup,
+      class_name: "Minecraft::WorldBackup",
+      foreign_key: :minecraft_node_operation_id,
+      inverse_of: :node_operation,
+      dependent: :restrict_with_error
+    has_one :world_restore_plan,
+      class_name: "Minecraft::WorldRestorePlan",
+      foreign_key: :minecraft_node_operation_id,
+      inverse_of: :node_operation,
+      dependent: :restrict_with_error
 
     enum :status, {
       queued: "queued",

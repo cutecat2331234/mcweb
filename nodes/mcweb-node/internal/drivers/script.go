@@ -2,6 +2,7 @@ package drivers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,10 +44,17 @@ func (d *ScriptDriver) Status(ctx context.Context, cfg ProcessConfig) (ProcessSt
 		return StateError, fmt.Errorf("script status not configured")
 	}
 	err := runScript(ctx, cfg.WorkingDirectory, script)
-	if err != nil {
+	if err == nil {
+		return StateRunning, nil
+	}
+	if ctx.Err() != nil {
+		return StateError, ctx.Err()
+	}
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) && exitError.ExitCode() == 1 {
 		return StateStopped, nil
 	}
-	return StateRunning, nil
+	return StateError, fmt.Errorf("script status is indeterminate: %w", err)
 }
 
 func runScript(ctx context.Context, dir, script string) error {

@@ -150,7 +150,7 @@ module Mcweb
         kind: :host_agent,
         host: "nodes/mcweb-node",
         capabilities: %w[
-          process_drivers metrics backup_world sync_files connector_proxy
+          process_drivers metrics managed_world_backups world_restore_safety sync_files connector_proxy
         ],
         limitations: [
           "不能修改论坛/商城业务逻辑",

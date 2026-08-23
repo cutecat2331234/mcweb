@@ -3,6 +3,7 @@
 module Minecraft
   class NodeOperationDispatcher < ApplicationService
     LEASE_DURATION = 5.minutes
+    class WorldOperationLifecycleError < StandardError; end
 
     def initialize(node:, batch_id: nil, envelope: {}, action: :claim)
       @node = node
@@ -21,6 +22,8 @@ module Minecraft
       end
     rescue ActiveRecord::RecordInvalid => error
       ServiceResult.failure(errors: error.record.errors.to_hash)
+    rescue WorldOperationLifecycleError => error
+      ServiceResult.failure(error: error.message, code: error.message)
     end
 
     private
@@ -60,6 +63,12 @@ module Minecraft
           status: "running",
           started_at: claimed.operation.started_at || now
         ) unless claimed.operation.status_running?
+        lifecycle_result = Minecraft::ReconcileWorldOperation.call(
+          operation: claimed.operation,
+          action: :started
+        )
+        raise WorldOperationLifecycleError, (lifecycle_result.code || "world_operation_start_failed") if
+          lifecycle_result.failure?
       end
 
       ServiceResult.success(batch: claimed, blocked_by: blocked_by)

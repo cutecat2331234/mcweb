@@ -3,6 +3,7 @@
 module Minecraft
   class ReconcileNodeOperationJob < ApplicationJob
     queue_as :minecraft
+    class WorldOperationReconciliationError < StandardError; end
 
     def perform(operation_id)
       operation = Minecraft::NodeOperation.find(operation_id)
@@ -39,6 +40,10 @@ module Minecraft
         operation.update!(attributes)
       end
 
+      if operation.terminal?
+        reconcile_world_operation!(operation: operation, action: :terminal)
+      end
+
       wake_nodes_with_pending_batches(operation)
       Minecraft::PrepareNodeOperationJob.perform_later if start_next_operation
     end
@@ -57,6 +62,13 @@ module Minecraft
           next if target_result.applied_at?
 
           apply_collect_metrics(target_result) if operation.operation_type == "collect_metrics"
+          if Minecraft::ReconcileWorldOperation::WORLD_OPERATION_TYPES.include?(operation.operation_type)
+            reconcile_world_operation!(
+              operation: operation,
+              action: :target_result,
+              target_result: target_result
+            )
+          end
           target_result.update!(applied_at: Time.current)
         end
       end
@@ -87,6 +99,14 @@ module Minecraft
         .where(id: operation.batches.select(:minecraft_node_id))
         .distinct
         .find_each(&:wake_for_tasks!)
+    end
+
+    def reconcile_world_operation!(**attributes)
+      result = Minecraft::ReconcileWorldOperation.call(**attributes)
+      return result if result.success?
+
+      raise WorldOperationReconciliationError,
+        (result.code.presence || "world_operation_reconciliation_failed")
     end
   end
 end

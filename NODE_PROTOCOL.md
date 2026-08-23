@@ -71,8 +71,13 @@ Go 节点必须先把活动批次及逐目标结果写入本地账本。`complet
 |---|---|
 | `collect_metrics` | 批次内每台目标服务器均返回指标或结构化错误 |
 | `sync_files` | 每台目标服务器完成原生 Go 下载、SHA-256 校验、原子替换并返回预期 revision，或返回结构化错误 |
+| `world_backup_create` | 单台已停止服务器完成节点托管备份、完整清单与归档摘要持久化，或返回稳定错误码 |
+| `world_restore_execute` | 单台已停止服务器完成恢复前快照、安全解压、同文件系统原子切换与安装后验证；失败时证明安全回滚或报告 `recovery_required` |
 
-心跳通过 `metadata.node_protocol_versions` 与 `metadata.operation_types` 上报能力。滚动升级期间，未声明 v2 的旧节点继续使用 v1；声明 v2 后自动加入任务团，避免 Rails 把新协议任务发给旧二进制。
+心跳通过 `metadata.node_protocol_versions`、`metadata.operation_types` 与结构化的
+`metadata.operation_capabilities` 上报能力。世界操作只有在节点初始化托管存储和恢复账本成功后才声明；Rails 对协议版本、清单版本、归档格式、安全配置、功能标志及节点硬上限执行精确匹配。初始化失败时节点不声明世界能力并保持启动/重启 fail-closed；账本存在未决恢复时继续声明精确协议能力，同时上报 `world_restore_recovery_required`，拒绝新世界操作及启动/重启，直到返回既有持久结果或完成恢复处理。
+
+世界归档由节点使用 Go 标准库写入和读取，不调用 shell `tar`。调用方只能提交托管备份 ID 和冻结摘要，不能提交归档路径、目标路径或自定义解压限额。完整安全契约见 `development-targets/minecraft-world-restore-safety.md`。
 
 ## Connector 透明代理（Go 本地）
 
@@ -88,11 +93,11 @@ Go 节点必须先把活动批次及逐目标结果写入本地账本。`complet
 | `exec_command` | 执行 shell（`command`, `timeout`, `cwd`）— Rails 侧可配置允许前缀 |
 | `collect_metrics` | 采集主机与实例指标；心跳亦上报主机指标 |
 | `tail_logs` | 读取日志尾部（`path`, `lines`） |
-| `backup_world` | 打包世界目录（`source` 相对路径, `destination` 绝对路径 `.tar.gz`） |
-| `restore_world` | 解压世界备份（`archive`, `target` 相对目录） |
 | `sync_files` | 从签名 URL 下载文件到 `destination`（插件/jar 部署） |
 
 v1 任务幂等：`delivery_id` 全局唯一。v2 批次还要求 `payload_digest` 一致，并记录每个目标的独立结果。
+
+旧 `backup_world` 与 `restore_world` 已退役：Rails 不再创建这两种 v1 任务，迁移会把仍处于 `pending`/`claimed` 的遗留记录标记失败，节点对意外重放返回稳定的 `legacy_world_operation_retired`，既有完成历史仍保留。
 
 ## 游戏内控制台（非 Node 任务）
 

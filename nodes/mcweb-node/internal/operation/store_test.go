@@ -15,7 +15,6 @@ func TestStorePersistsOneActiveBatchAndTargetLedger(t *testing.T) {
 			OperationID:     "operation-1",
 			DeliveryID:      "delivery-1",
 			OperationType:   "collect_metrics",
-			PayloadDigest:   "digest-1",
 			Targets: []Target{{
 				TargetKey: "server-1",
 				ServerID:  "server-1",
@@ -30,6 +29,11 @@ func TestStorePersistsOneActiveBatchAndTargetLedger(t *testing.T) {
 			Result:    map[string]interface{}{"success": true},
 		}},
 	}
+	digest, err := state.Batch.canonicalPayloadDigest()
+	if err != nil {
+		t.Fatalf("canonicalPayloadDigest: %v", err)
+	}
+	state.Batch.PayloadDigest = digest
 
 	if err := store.Save(state); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -58,7 +62,6 @@ func TestBatchRejectsMixedOrUnsupportedTasks(t *testing.T) {
 		OperationID:     "operation-1",
 		DeliveryID:      "delivery-1",
 		OperationType:   "sync_files",
-		PayloadDigest:   "digest-1",
 		Targets: []Target{{
 			TargetKey: "server-1",
 			ServerID:  "server-1",
@@ -66,6 +69,11 @@ func TestBatchRejectsMixedOrUnsupportedTasks(t *testing.T) {
 			Payload:   map[string]interface{}{},
 		}},
 	}
+	digest, err := batch.canonicalPayloadDigest()
+	if err != nil {
+		t.Fatalf("canonicalPayloadDigest: %v", err)
+	}
+	batch.PayloadDigest = digest
 	if err := batch.Validate(); err == nil {
 		t.Fatal("expected mixed task type to be rejected")
 	}

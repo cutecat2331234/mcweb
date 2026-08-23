@@ -4,3 +4,14 @@ node_secret: ""
 proxy_listen: "127.0.0.1:9876"
 poll_interval: 10s
 spool_dir: spool
+world_backup_root: spool/world-backups
+world_restore_limits:
+  max_archive_bytes: 68719476736
+  max_manifest_bytes: 268435456
+  max_uncompressed_bytes: 274877906944
+  max_file_bytes: 68719476736
+  max_entries: 2000000
+  max_directories: 1000000
+  max_depth: 64
+  max_path_bytes: 1024
+  max_expansion_ratio: 200

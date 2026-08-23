@@ -131,7 +131,7 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
     assert result.value[:active]
   end
 
-  test "EnqueueNodeTask accepts backup_world and sync_files" do
+  test "EnqueueNodeTask retires legacy world tasks while retaining sync_files" do
     %w[backup_world restore_world].each do |task_type|
       result = Minecraft::EnqueueNodeTask.call(
         node: @node,
@@ -139,7 +139,8 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
         task_type: task_type,
         payload: { destination: "/tmp/x" }
       )
-      assert result.success?, "expected success for #{task_type}"
+      assert result.failure?, "expected #{task_type} to remain retired"
+      assert_equal I18n.t("mcweb.services.errors.unknown_task_type"), result.error
     end
 
     sync_result = Minecraft::EnqueueNodeTask.call(

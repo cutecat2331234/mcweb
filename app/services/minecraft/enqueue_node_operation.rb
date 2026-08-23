@@ -2,8 +2,19 @@
 
 module Minecraft
   class EnqueueNodeOperation < ApplicationService
-    OPERATION_TYPES = %w[collect_metrics sync_files].freeze
+    OPERATION_TYPES = %w[
+      collect_metrics
+      sync_files
+      world_backup_create
+      world_restore_execute
+    ].freeze
+    WORLD_OPERATION_TYPES = %w[world_backup_create world_restore_execute].freeze
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/i
+    MANAGED_ID_PATTERN = /\A[A-Za-z0-9_-]{8,128}\z/
+    FORBIDDEN_WORLD_PAYLOAD_KEYS = %w[
+      archive archive_path destination source source_path target target_path
+      compressed_limit uncompressed_limit entry_limit max_bytes max_entries
+    ].freeze
     MAX_TARGETS = 5_000
 
     def initialize(
@@ -64,6 +75,48 @@ module Minecraft
       end
 
       return validate_sync_request if @operation_type == "sync_files"
+      return validate_world_request if WORLD_OPERATION_TYPES.include?(@operation_type)
+
+      ServiceResult.success(true)
+    end
+
+    def validate_world_request
+      return operation_failure(:world_operation_requires_one_target) unless @servers.one?
+      return operation_failure(:world_operation_target_payloads_not_allowed) if @target_payloads.present?
+
+      server = @servers.first
+      payload = effective_payload(server)
+      return operation_failure(:world_operation_protocol_invalid) unless payload["protocol_version"].to_i == 2
+      return operation_failure(:world_operation_server_must_be_stopped) unless server.process_state_stopped?
+      return operation_failure(:world_operation_working_directory_required) if server.working_directory.blank?
+      return operation_failure(:world_operation_node_mismatch) unless payload["node_id"] == server.node.public_id
+      return operation_failure(:world_operation_safety_profile_invalid) unless
+        payload["safety_profile"] == Minecraft::WorldBackupManifest::SAFETY_PROFILE
+      return operation_failure(:world_operation_contains_raw_path) if
+        (payload.keys & FORBIDDEN_WORLD_PAYLOAD_KEYS).any?
+
+      path_result = Minecraft::WorldPathPolicy.call(payload["world_relative_path"])
+      return path_result if path_result.failure?
+
+      if @operation_type == "world_backup_create"
+        return operation_failure(:world_backup_id_invalid) unless managed_id?(payload["backup_id"])
+        return operation_failure(:world_backup_request_digest_invalid) unless sha256?(payload["request_digest"])
+        return operation_failure(:world_backup_purpose_invalid) unless
+          Minecraft::WorldBackup::PURPOSES.include?(payload["purpose"].to_s)
+        return operation_failure(:world_backup_node_capability_required) unless
+          server.node.supports_managed_world_backups_v2?
+      else
+        %w[plan_id backup_id pre_restore_backup_id].each do |key|
+          return operation_failure(:world_restore_managed_id_invalid) unless managed_id?(payload[key])
+        end
+        %w[plan_digest backup_manifest_digest server_configuration_digest].each do |key|
+          return operation_failure(:world_restore_digest_invalid) unless sha256?(payload[key])
+        end
+        return operation_failure(:world_restore_expected_state_invalid) unless
+          payload["expected_process_state"] == "stopped"
+        return operation_failure(:world_restore_node_capability_required) unless
+          server.node.supports_managed_world_backups_v2? && server.node.supports_world_restore_v2?
+      end
 
       ServiceResult.success(true)
     end
@@ -87,6 +140,18 @@ module Minecraft
       return false if path.blank? || path.start_with?("/") || path.match?(/\A[A-Za-z]:/)
 
       path.split("/").none? { |part| part == ".." }
+    end
+
+    def managed_id?(value)
+      value.to_s.match?(MANAGED_ID_PATTERN)
+    end
+
+    def sha256?(value)
+      value.to_s.match?(SHA256_PATTERN)
+    end
+
+    def operation_failure(code)
+      ServiceResult.failure(error: code, code: code)
     end
 
     def build_request_payload

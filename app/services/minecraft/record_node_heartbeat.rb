@@ -2,15 +2,36 @@
 
 module Minecraft
   class RecordNodeHeartbeat < ApplicationService
+    AUTHORITATIVE_CAPABILITY_KEYS = %w[
+      node_protocol_versions operation_types operation_capabilities
+    ].freeze
+
     def initialize(node:, payload:)
       @node = node
       @payload = payload.deep_stringify_keys
     end
 
     def call
-      metadata = @node.metadata.merge(@payload.fetch("metadata", {}))
+      heartbeat_metadata = @payload["metadata"].is_a?(Hash) ? @payload["metadata"] : {}
+      previously_world_capable = @node.metadata.dig(
+        "operation_capabilities", "world_restore_execute"
+      ).is_a?(Hash)
+      advertises_world_capability = heartbeat_metadata.dig(
+        "operation_capabilities", "world_restore_execute"
+      ).is_a?(Hash)
+      metadata = @node.metadata.merge(heartbeat_metadata)
+      AUTHORITATIVE_CAPABILITY_KEYS.each do |key|
+        metadata[key] = heartbeat_metadata.fetch(key, key == "operation_capabilities" ? {} : [])
+      end
+      metadata["world_restore_recovery_required"] = if heartbeat_metadata.key?(
+        "world_restore_recovery_required"
+      )
+        ActiveModel::Type::Boolean.new.cast(heartbeat_metadata["world_restore_recovery_required"])
+      else
+        previously_world_capable || advertises_world_capability
+      end
       metadata["connector_proxy"] = @payload["connector_proxy"] if @payload["connector_proxy"].present?
-      if (host_metrics = @payload.dig("metadata", "host_metrics")).present?
+      if (host_metrics = heartbeat_metadata["host_metrics"]).present?
         metadata["host_metrics"] = host_metrics
         metadata["host_metrics_at"] = Time.current.iso8601
         Minecraft::RecordNodeMetricSnapshot.call(

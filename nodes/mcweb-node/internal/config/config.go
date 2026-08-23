@@ -6,16 +6,19 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mcweb/mcweb-node/internal/worldstore"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	RailsURL     string        `yaml:"rails_url"`
-	NodeID       string        `yaml:"node_id"`
-	NodeSecret   string        `yaml:"node_secret"`
-	ProxyListen  string        `yaml:"proxy_listen"`
-	PollInterval time.Duration `yaml:"poll_interval"`
-	SpoolDir     string        `yaml:"spool_dir"`
+	RailsURL           string            `yaml:"rails_url"`
+	NodeID             string            `yaml:"node_id"`
+	NodeSecret         string            `yaml:"node_secret"`
+	ProxyListen        string            `yaml:"proxy_listen"`
+	PollInterval       time.Duration     `yaml:"poll_interval"`
+	SpoolDir           string            `yaml:"spool_dir"`
+	WorldBackupRoot    string            `yaml:"world_backup_root"`
+	WorldRestoreLimits worldstore.Limits `yaml:"world_restore_limits"`
 }
 
 func Load(path string) (*Config, error) {
@@ -41,6 +44,10 @@ func (cfg *Config) ApplyDefaults() {
 	if cfg.SpoolDir == "" {
 		cfg.SpoolDir = "spool"
 	}
+	if cfg.WorldBackupRoot == "" {
+		cfg.WorldBackupRoot = filepath.Join(cfg.SpoolDir, "world-backups")
+	}
+	cfg.WorldRestoreLimits = worldstore.NormalizeLimits(cfg.WorldRestoreLimits)
 }
 
 func Save(path string, cfg *Config) error {

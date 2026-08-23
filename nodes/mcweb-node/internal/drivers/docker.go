@@ -34,7 +34,7 @@ func (d *DockerDriver) Status(ctx context.Context, cfg ProcessConfig) (ProcessSt
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	out, err := cmd.Output()
 	if err != nil {
-		return StateStopped, nil
+		return StateError, fmt.Errorf("docker status is indeterminate: %w", err)
 	}
 	if strings.Contains(string(out), service) {
 		return StateRunning, nil

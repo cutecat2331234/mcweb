@@ -43,16 +43,20 @@ func (d *NssmDriver) Status(ctx context.Context, cfg ProcessConfig) (ProcessStat
 	}
 	out, err := exec.CommandContext(ctx, nssmBin(cfg), "status", service).CombinedOutput()
 	if err != nil {
-		return StateStopped, nil
+		return StateError, fmt.Errorf("nssm status is indeterminate: %w", err)
 	}
 	text := strings.ToLower(strings.TrimSpace(string(out)))
 	switch {
-	case strings.Contains(text, "running"), strings.Contains(text, "service_running"):
+	case strings.Contains(text, "service_running"):
 		return StateRunning, nil
-	case strings.Contains(text, "paused"):
+	case strings.Contains(text, "service_start_pending"):
+		return StateStarting, nil
+	case strings.Contains(text, "service_stop_pending"), strings.Contains(text, "service_paused"):
 		return StateStopping, nil
-	default:
+	case strings.Contains(text, "service_stopped"):
 		return StateStopped, nil
+	default:
+		return StateError, fmt.Errorf("nssm returned an unknown service state")
 	}
 }
 

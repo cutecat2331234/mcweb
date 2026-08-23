@@ -61,6 +61,7 @@ Required full-manifest fields:
 - server_id
 - node_id
 - purpose: manual, scheduled, or pre_restore
+- request_digest
 - created_at in UTC
 - archive_format: tar.gz
 - archive_sha256
@@ -311,6 +312,7 @@ Audit actions include:
 - minecraft.world_backup.requested
 - minecraft.world_backup.available
 - minecraft.world_backup.failed
+- minecraft.world_backup.quarantined
 - minecraft.world_restore.planned
 - minecraft.world_restore.authorized
 - minecraft.world_restore.queued
@@ -320,6 +322,7 @@ Audit actions include:
 - minecraft.world_restore.failed
 - minecraft.world_restore.rolled_back
 - minecraft.world_restore.recovery_required
+- minecraft.world_restore.expired
 
 Audit metadata contains opaque public IDs, status/phase, reason, request ID, digest suffixes, counts/sizes, and stable error codes only. Step-up secrets, full digests where unnecessary, filesystem paths, archive entries, and process configuration are excluded.
 
@@ -366,8 +369,8 @@ Audit metadata contains opaque public IDs, status/phase, reason, request ID, dig
 - app/controllers/admin/minecraft/world_backups_controller.rb
 - app/controllers/admin/minecraft/world_restores_controller.rb
 - app/javascript/components/admin/minecraft/WorldRestoreLifecycle.vue
+- app/javascript/components/admin/minecraft/worldRestoreTypes.ts
 - test/services/minecraft/world_restore_lifecycle_test.rb
-- test/integration/admin/minecraft_world_restore_lifecycle_admin_test.rb
 - test/javascript/admin_minecraft_world_restore_ui_test.ts
 
 ### Existing CE Rails/Admin files expected to change
@@ -381,6 +384,8 @@ Audit metadata contains opaque public IDs, status/phase, reason, request ID, dig
 - app/models/minecraft/server.rb
 - app/services/minecraft/enqueue_node_operation.rb
 - app/services/minecraft/enqueue_node_task.rb
+- app/services/minecraft/node_operation_dispatcher.rb
+- app/services/minecraft/record_node_heartbeat.rb
 - app/services/identity/permission_catalog.rb
 - config/routes.rb
 - config/locales/mcweb.en.yml
@@ -388,8 +393,9 @@ Audit metadata contains opaque public IDs, status/phase, reason, request ID, dig
 - app/javascript/locales/en.ts
 - app/javascript/locales/zh-CN.ts
 - db/schema.rb
-- test/services/minecraft/node_operation_test.rb
 - test/services/minecraft_p2_features_test.rb
+- NODE_PROTOCOL.md
+- lib/mcweb/application_registry.rb
 
 ### New CE node files
 
@@ -400,21 +406,25 @@ Audit metadata contains opaque public IDs, status/phase, reason, request ID, dig
 - nodes/mcweb-node/internal/worldstore/store.go
 - nodes/mcweb-node/internal/worldstore/ledger.go
 - nodes/mcweb-node/internal/worldstore/restore.go
+- nodes/mcweb-node/internal/worldstore/filesystem.go
 - nodes/mcweb-node/internal/worldstore/filesystem_unix.go
 - nodes/mcweb-node/internal/worldstore/filesystem_windows.go
-- nodes/mcweb-node/internal/worldstore/archive_test.go
-- nodes/mcweb-node/internal/worldstore/ledger_test.go
+- nodes/mcweb-node/internal/worldstore/policy_test.go
 - nodes/mcweb-node/internal/worldstore/restore_test.go
 
 ### Existing CE node files expected to change
 
 - nodes/mcweb-node/internal/agent/agent.go
-- nodes/mcweb-node/internal/agent/agent_test.go
 - nodes/mcweb-node/internal/config/config.go
 - nodes/mcweb-node/internal/config/config_test.go
 - nodes/mcweb-node/config/mcweb-node.example.yml
 - nodes/mcweb-node/internal/executor/executor.go
 - nodes/mcweb-node/internal/operation/types.go
+- nodes/mcweb-node/internal/operation/store_test.go
+- nodes/mcweb-node/internal/drivers/script.go
+- nodes/mcweb-node/internal/drivers/systemd.go
+- nodes/mcweb-node/internal/drivers/docker.go
+- nodes/mcweb-node/internal/drivers/nssm.go
 
 No go.mod/go.sum change is planned unless implementation proves a standard-library-only portable collision policy impossible; adding a dependency requires an explicit plan update before staging.
 
@@ -443,42 +453,42 @@ Implementation must re-run status after the follow-up and stop again if any pros
 - [x] Assign the highest reusable owner to CE and document why.
 - [x] Inspect the current legacy backup/restore path, v2 operation protocol, process-state model, step-up verifier, audit service, Admin UI library, and dirty-tree overlaps without editing existing files.
 - [x] Freeze data, manifest, protocol, archive, cutover, recovery, permission, audit, i18n, legacy, and rollout contracts in this document.
-- [ ] Receive explicit follow-up that the CE tree is clean.
-- [ ] Re-check main, status, prospective paths, and migration filename before any implementation.
+- [x] Receive explicit follow-up that the CE tree is clean.
+- [x] Re-check main, status, prospective paths, and migration filename before any implementation.
 
 ### Phase 1 — schema and Rails domain invariants
 
-- [ ] Add backup, restore-plan, and immutable restore-event tables with foreign keys, checks, idempotency indexes, append-only guards, and one-active-restore-per-server enforcement.
-- [ ] Add models/associations and frozen-field/status-transition protections.
-- [ ] Add portable relative-world-path, manifest-summary, digest, request, capability, and state validators.
-- [ ] Add permissions and bilingual domain error/audit labels.
+- [x] Add backup, restore-plan, and immutable restore-event tables with foreign keys, checks, idempotency indexes, append-only guards, and one-active-restore-per-server enforcement.
+- [x] Add models/associations and frozen-field/status-transition protections.
+- [x] Add portable relative-world-path, manifest-summary, digest, request, capability, and state validators.
+- [x] Add permissions and bilingual domain error/audit labels.
 
 ### Phase 2 — node managed storage and safety engine
 
-- [ ] Add node-local managed backup root/config defaults and fail capability advertisement when initialization/recovery is unavailable.
-- [ ] Add canonical manifest writer/reader and stopped-only managed backup creation.
-- [ ] Add the complete malicious archive validation matrix and two-pass extraction.
-- [ ] Add sibling staging, free-space preflight, durable pre-restore snapshot, same-filesystem rename cutover, verification, rollback, and phase-ledger recovery.
-- [ ] Add platform helpers for Unix and Windows no-follow/reparse, filesystem identity, durable rename, and directory sync behavior.
-- [ ] Add v2 operation types/results and dynamic structured capability advertisement.
-- [ ] Remove executable legacy archive restore/backup paths.
+- [x] Add node-local managed backup root/config defaults, fail capability advertisement when initialization is unavailable, and advertise an explicit recovery blocker for unresolved ledgers.
+- [x] Add canonical manifest writer/reader and stopped-only managed backup creation.
+- [x] Add the complete malicious archive validation matrix and two-pass extraction.
+- [x] Add sibling staging, free-space preflight, durable pre-restore snapshot, same-filesystem rename cutover, verification, rollback, and phase-ledger recovery.
+- [x] Add platform helpers for Unix and Windows no-follow/reparse, filesystem identity, durable rename, and directory sync behavior.
+- [x] Add v2 operation types/results and dynamic structured capability advertisement.
+- [x] Remove executable legacy archive restore/backup paths.
 
 ### Phase 3 — Rails orchestration and reconciliation
 
-- [ ] Implement idempotent managed backup creation for manual and scheduled callers.
-- [ ] Implement frozen plan, step-up authorization, one-time execute, and start/restart/configuration gating.
-- [ ] Enqueue exactly one v2 operation and preallocate exactly one pre-restore backup.
-- [ ] Reconcile node results once, including unreported operation failures, rollback, and recovery-required states.
-- [ ] Append sanitized restore events and AuditLog entries at every material transition.
-- [ ] Retire legacy routes/tasks and preserve old history/archives without importing or deleting them.
+- [x] Implement idempotent managed backup creation for manual and scheduled callers.
+- [x] Implement frozen plan, step-up authorization, one-time execute, and start/restart/configuration gating.
+- [x] Enqueue exactly one v2 operation and preallocate exactly one pre-restore backup.
+- [x] Reconcile node results once, including unreported operation failures, rollback, and recovery-required states.
+- [x] Append sanitized restore events and AuditLog entries at every material transition.
+- [x] Retire legacy routes/tasks and preserve old history/archives without importing or deleting them.
 
 ### Phase 4 — Admin UI and language
 
-- [ ] Replace raw archive-path restore with the managed lifecycle panel on the existing server detail page.
-- [ ] Add backup list/create, explicit blockers, three-step restore, typed confirmation, current phase, rollback/recovery state, and refresh.
-- [ ] Use only existing Arco/@mcweb/ui components and current Admin layout/tokens.
-- [ ] Add complete Simplified Chinese/English Admin Minecraft copy and Rails service/permission/audit copy.
-- [ ] Add focused static contracts for component use, no raw path field, step-up inputs, i18n parity, and route/permission coherence.
+- [x] Replace raw archive-path restore with the managed lifecycle panel on the existing server detail page.
+- [x] Add backup list/create, explicit blockers, three-step restore, typed confirmation, current phase, rollback/recovery state, and refresh.
+- [x] Use only existing Arco/@mcweb/ui components and current Admin layout/tokens.
+- [x] Add complete Simplified Chinese/English Admin Minecraft copy and Rails service/permission/audit copy.
+- [x] Add focused static contracts for component use, no raw path field, step-up inputs, i18n parity, and route/permission coherence.
 
 ### Phase 5 — adversarial verification and CE commit
 
@@ -486,9 +496,9 @@ Implementation must re-run status after the follow-up and stop again if any pros
 - [ ] Inject crashes at every durable phase and prove old-or-new convergence, idempotent resume, safe rollback, and recovery-required blocking.
 - [ ] Cover running/unknown/stale states, capability downgrade, node/server movement, backup quarantine, plan/token expiry, replay/conflict, concurrency, and start/restart races.
 - [ ] Cover pre-restore snapshot success/failure and restoration from that managed backup through a new authorized plan.
-- [ ] Locally run only scoped formatting, Ruby syntax, Go compile/static checks, TypeScript/static contracts, and i18n parity checks.
+- [x] Locally run only gofmt, Ruby syntax, static manual review, i18n parity inspection, and git diff checks; all test execution, typechecks, and builds remain CNB-only.
 - [ ] Use CNB for the focused Rails database tests, node unit/race tests on Linux and Windows targets where available, frontend type/build tests, and broader cached suites.
-- [ ] Review git diff and status; stage only the exact owned files above.
+- [x] Review git diff and status; stage only the exact owned files above.
 - [ ] Commit directly to CE main with no feature branch and no push.
 - [ ] Report exact checks, commit ID, remaining CNB/platform gaps, and unchanged unrelated work.
 

@@ -41,12 +41,22 @@ func (d *SystemdDriver) Status(ctx context.Context, cfg ProcessConfig) (ProcessS
 	if unit == "" {
 		return StateError, fmt.Errorf("systemd unit not configured")
 	}
-	out, err := exec.CommandContext(ctx, "systemctl", "is-active", unit).Output()
-	if err != nil {
-		return StateStopped, nil
-	}
-	if strings.TrimSpace(string(out)) == "active" {
+	out, commandErr := exec.CommandContext(ctx, "systemctl", "is-active", unit).CombinedOutput()
+	switch strings.TrimSpace(string(out)) {
+	case "active", "reloading":
 		return StateRunning, nil
+	case "activating":
+		return StateStarting, nil
+	case "deactivating":
+		return StateStopping, nil
+	case "inactive":
+		return StateStopped, nil
+	case "failed":
+		return StateError, fmt.Errorf("systemd unit is failed")
+	default:
+		if commandErr != nil {
+			return StateError, fmt.Errorf("systemd status is indeterminate: %w", commandErr)
+		}
+		return StateError, fmt.Errorf("systemd returned an unknown active state")
 	}
-	return StateStopped, nil
 }

@@ -11,22 +11,10 @@ module Minecraft
         occurrence = backup_occurrence(server)
         next unless occurrence
 
-        backup_dir = server.metadata["backup_directory"].presence ||
-          File.join(server.working_directory.to_s, "backups")
-        filename = "world-#{Time.current.strftime('%Y%m%d-%H%M%S')}.tar.gz"
-        dest = File.join(backup_dir, filename)
-
-        Minecraft::EnqueueNodeTask.call(
-          node: server.node,
+        Minecraft::CreateWorldBackup.call(
           server: server,
-          task_type: "backup_world",
-          # Key the delivery on the scheduled occurrence (not Time.now) so a retry or a
-          # second wrapper tick within the window dedups to one backup per occurrence.
-          delivery_id: "backup-#{server.public_id}-#{occurrence.strftime('%Y%m%d%H%M')}",
-          payload: {
-            source: server.metadata["world_directory"].presence || "world",
-            destination: dest
-          }
+          purpose: "scheduled",
+          request_id: occurrence_request_id(server, occurrence)
         )
       end
     end
@@ -58,6 +46,13 @@ module Minecraft
       previous
     rescue LoadError, StandardError
       nil
+    end
+
+    def occurrence_request_id(server, occurrence)
+      hex = Digest::SHA256.hexdigest(
+        "scheduled-world-backup:v1:#{server.public_id}:#{occurrence.utc.iso8601}"
+      ).first(32)
+      [ hex[0, 8], hex[8, 4], hex[12, 4], hex[16, 4], hex[20, 12] ].join("-")
     end
   end
 end

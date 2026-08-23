@@ -631,6 +631,25 @@ module Identity
         ]
       ),
       build_entry.call(
+        "minecraft.world_backups.manage",
+        "管理 Minecraft 世界备份",
+        execution_points: [
+          "app/controllers/admin/minecraft/world_backups_controller.rb#create",
+          "app/services/minecraft/create_world_backup.rb",
+          "app/jobs/minecraft/scheduled_backup_world_job.rb"
+        ]
+      ),
+      build_entry.call(
+        "minecraft.world_restores.execute",
+        "执行 Minecraft 世界恢复",
+        execution_points: [
+          "app/controllers/admin/minecraft/world_restores_controller.rb",
+          "app/services/minecraft/plan_world_restore.rb",
+          "app/services/minecraft/authorize_world_restore.rb",
+          "app/services/minecraft/execute_world_restore.rb"
+        ]
+      ),
+      build_entry.call(
         "minecraft.players.view",
         "查看在线玩家",
         execution_points: [

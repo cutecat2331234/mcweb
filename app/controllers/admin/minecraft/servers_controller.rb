@@ -7,7 +7,7 @@ module Admin
       before_action -> { require_permission("minecraft.servers.manage") }
       before_action :set_server, only: %i[
         show edit update destroy rotate_secret start stop restart exec_command console_command
-        tail_logs backup_world restore_world sync_files
+        tail_logs sync_files
       ]
 
       def index
@@ -71,6 +71,7 @@ module Admin
           nodeTasks: node_tasks.map { |task| serialize_node_task(task) },
           defaultLogPath: default_server_log_path(@server),
           controlUrls: control_urls(@server),
+          worldSafety: world_safety_props(@server),
           backUrl: admin_minecraft_servers_path,
           actions: [
             { label: t("mcweb.admin.minecraft.action_edit"), href: edit_admin_minecraft_server_path(@server) },
@@ -135,30 +136,6 @@ module Admin
         result = Minecraft::EnqueueConsoleCommand.call(server: @server, command: command)
         record_server_audit!("minecraft.server.console", command: command) if result.success?
         redirect_after_control(result, t("mcweb.flash.console_command_queued"))
-      end
-
-      def backup_world
-        enqueue_control!(
-          :backup_world,
-          t("mcweb.flash.backup_queued"),
-          audit_action: "minecraft.server.backup",
-          payload: backup_payload
-        )
-      end
-
-      def restore_world
-        archive = params[:archive].to_s.strip
-        if archive.blank?
-          redirect_to admin_minecraft_server_path(@server), alert: t("mcweb.flash.archive_required")
-          return
-        end
-
-        enqueue_control!(
-          :restore_world,
-          t("mcweb.flash.restore_queued"),
-          audit_action: "minecraft.server.restore",
-          payload: { archive: archive }
-        )
       end
 
       def sync_files
@@ -257,7 +234,7 @@ module Admin
         metadata = (@server&.metadata || {}).dup
         %w[
           graceful_stop_enabled graceful_stop_countdown graceful_stop_message graceful_stop_commands
-          graceful_stop_timeout restart_schedule backup_enabled backup_schedule backup_directory world_directory
+          graceful_stop_timeout restart_schedule backup_enabled backup_schedule world_directory
         ].each do |key|
           metadata[key] = permitted.delete(key) if permitted.key?(key)
         end
@@ -274,7 +251,7 @@ module Admin
           name address port status minecraft_node_id connection_mode proxy_listen_url
           process_driver process_config working_directory
           graceful_stop_enabled graceful_stop_countdown graceful_stop_message graceful_stop_commands
-          graceful_stop_timeout restart_schedule backup_enabled backup_schedule backup_directory world_directory
+          graceful_stop_timeout restart_schedule backup_enabled backup_schedule world_directory
         ])[:server]
       end
 
@@ -302,7 +279,6 @@ module Admin
             restart_schedule: meta["restart_schedule"].to_s,
             backup_enabled: meta["backup_enabled"].nil? ? "" : meta["backup_enabled"].to_s,
             backup_schedule: meta["backup_schedule"].to_s,
-            backup_directory: meta["backup_directory"].to_s,
             world_directory: meta["world_directory"].presence || "world"
           },
           suggestedNode: suggest.value&.dig(:node)&.name,
@@ -358,20 +334,86 @@ module Admin
           exec: exec_command_admin_minecraft_server_path(server),
           console: console_command_admin_minecraft_server_path(server),
           tail_logs: tail_logs_admin_minecraft_server_path(server),
-          backup: backup_world_admin_minecraft_server_path(server),
-          restore: restore_world_admin_minecraft_server_path(server),
           sync_files: sync_files_admin_minecraft_server_path(server)
         }
       end
 
-      def backup_payload
-        backup_dir = @server.metadata["backup_directory"].presence ||
-          File.join(@server.working_directory.to_s, "backups")
-        filename = "world-#{Time.current.strftime('%Y%m%d-%H%M%S')}.tar.gz"
+      def world_safety_props(server)
+        can_backup = current_user.permission?("minecraft.world_backups.manage")
+        can_restore = current_user.permission?("minecraft.world_restores.execute")
+        visible = can_backup || can_restore
+        node = server.node
+        recovery_required = ActiveModel::Type::Boolean.new.cast(
+          node&.metadata.to_h.fetch("world_restore_recovery_required", false)
+        )
+        common_blockers = []
+        common_blockers << "node_unmanaged" unless node
+        common_blockers << "server_not_stopped" unless server.process_state_stopped?
+        common_blockers << "working_directory_missing" if server.working_directory.blank?
+        common_blockers << "node_stale" if node && !node.fresh_heartbeat?
+        common_blockers << "recovery_required" if recovery_required
+        common_blockers << "active_restore" if server.world_restore_plans.active.exists?
+
+        path_result = ::Minecraft::WorldPathPolicy.call(server.metadata["world_directory"].presence || "world")
+        common_blockers << "world_path_invalid" if path_result.failure?
+        backup_blockers = common_blockers.dup
+        restore_blockers = common_blockers.dup
+        backup_blockers << "backup_capability_missing" if node && !node.supports_managed_world_backups_v2?
+        restore_blockers << "restore_capability_missing" if node && !(
+          node.supports_managed_world_backups_v2? && node.supports_world_restore_v2?
+        )
+
         {
-          source: @server.metadata["world_directory"].presence || "world",
-          destination: File.join(backup_dir, filename)
+          visible: visible,
+          can_create_backup: can_backup,
+          can_restore: can_restore,
+          create_backup_url: can_backup ? admin_minecraft_server_world_backups_path(server) : nil,
+          create_restore_url: can_restore ? admin_minecraft_server_world_restores_path(server) : nil,
+          refresh_url: admin_minecraft_server_path(server),
+          start_blocked: server.world_restore_blocks_start?,
+          backup_blockers: backup_blockers.uniq,
+          restore_blockers: restore_blockers.uniq,
+          backups: visible ? server.world_backups.recent.limit(50).map { |backup| serialize_world_backup(backup) } : [],
+          plans: can_restore ? server.world_restore_plans.recent.limit(20).map { |plan| serialize_world_restore_plan(server, plan) } : []
         }
+      end
+
+      def serialize_world_backup(backup)
+        {
+          id: backup.public_id,
+          purpose: backup.purpose,
+          status: backup.status,
+          restorable: backup.restorable?,
+          target_compatible: backup.manifest_summary.to_h["world_relative_path"] ==
+            (@server.metadata["world_directory"].presence || "world"),
+          created_at: backup.created_at&.utc&.iso8601(6),
+          verified_at: backup.verified_at&.utc&.iso8601(6),
+          archive_bytes: backup.archive_bytes,
+          uncompressed_bytes: backup.uncompressed_bytes,
+          entry_count: backup.entry_count,
+          manifest_digest_short: backup.manifest_digest&.last(12),
+          world_relative_path: backup.manifest_summary.to_h["world_relative_path"],
+          error_code: backup.error_code
+        }.compact
+      end
+
+      def serialize_world_restore_plan(server, plan)
+        own_action = plan.actor_id == current_user.id
+        {
+          id: plan.public_id,
+          backup_id: plan.world_backup.public_id,
+          pre_restore_backup_id: plan.pre_restore_world_backup&.public_id,
+          status: plan.status,
+          reason: plan.reason,
+          created_at: plan.created_at&.utc&.iso8601(6),
+          expires_at: plan.expires_at&.utc&.iso8601(6),
+          phase: plan.result_summary.to_h["phase"],
+          rolled_back: plan.result_summary.to_h["rolled_back"],
+          recovery_required: plan.result_summary.to_h["recovery_required"],
+          error_code: plan.error_code,
+          authorize_url: own_action ? authorize_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          execute_url: own_action ? execute_admin_minecraft_server_world_restore_path(server, plan) : nil
+        }.compact
       end
 
       def record_server_audit!(action, metadata = {})

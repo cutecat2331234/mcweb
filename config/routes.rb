@@ -430,6 +430,13 @@ Rails.application.routes.draw do
     end
     namespace :minecraft do
       resources :servers do
+        resources :world_backups, only: :create
+        resources :world_restores, only: :create, param: :public_id do
+          member do
+            post :authorize
+            post :execute
+          end
+        end
         member do
           post :rotate_secret
           post :start
@@ -438,8 +445,6 @@ Rails.application.routes.draw do
           post :exec_command
           post :console_command
           post :tail_logs
-          post :backup_world
-          post :restore_world
           post :sync_files
         end
       end

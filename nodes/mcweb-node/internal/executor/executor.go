@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,12 +17,24 @@ import (
 
 	"github.com/mcweb/mcweb-node/internal/drivers"
 	"github.com/mcweb/mcweb-node/internal/metrics"
+	"github.com/mcweb/mcweb-node/internal/worldstore"
 )
 
-type Executor struct{}
+type Executor struct {
+	worldStore          *worldstore.Store
+	worldSafetyRequired bool
+}
 
 func New() *Executor {
-	return &Executor{}
+	return NewWithUnavailableWorldSafety()
+}
+
+func NewWithWorldStore(store *worldstore.Store) *Executor {
+	return &Executor{worldStore: store, worldSafetyRequired: true}
+}
+
+func NewWithUnavailableWorldSafety() *Executor {
+	return &Executor{worldSafetyRequired: true}
 }
 
 func (e *Executor) Run(ctx context.Context, task map[string]interface{}) map[string]interface{} {
@@ -37,10 +50,12 @@ func (e *Executor) Run(ctx context.Context, task map[string]interface{}) map[str
 		return e.collectMetrics(ctx, payload)
 	case "tail_logs":
 		return e.tailLogs(ctx, payload)
-	case "backup_world":
-		return e.backupWorld(ctx, payload)
-	case "restore_world":
-		return e.restoreWorld(ctx, payload)
+	case "backup_world", "restore_world":
+		return failCode("legacy_world_operation_retired")
+	case "world_backup_create":
+		return e.createManagedWorldBackup(ctx, payload)
+	case "world_restore_execute":
+		return e.executeManagedWorldRestore(ctx, payload)
 	case "sync_files":
 		return e.syncFiles(ctx, payload)
 	default:
@@ -49,6 +64,11 @@ func (e *Executor) Run(ctx context.Context, task map[string]interface{}) map[str
 }
 
 func (e *Executor) lifecycle(ctx context.Context, taskType string, task, payload map[string]interface{}) map[string]interface{} {
+	if taskType == "start_instance" || taskType == "restart_instance" {
+		if e.worldSafetyRequired && (e.worldStore == nil || e.worldStore.BlocksServer(strVal(payload, "server_id"))) {
+			return failCode("world_restore_recovery_required")
+		}
+	}
 	driverName := strVal(payload, "process_driver")
 	configMap := mapVal(payload, "process_config")
 	wd := strVal(payload, "working_directory")
@@ -177,61 +197,95 @@ func (e *Executor) tailLogs(ctx context.Context, payload map[string]interface{})
 	}
 }
 
-func (e *Executor) backupWorld(ctx context.Context, payload map[string]interface{}) map[string]interface{} {
-	cwd := strVal(payload, "working_directory")
-	source := strVal(payload, "source")
-	if source == "" {
-		source = "world"
+func (e *Executor) createManagedWorldBackup(ctx context.Context, payload map[string]interface{}) map[string]interface{} {
+	if e.worldStore == nil {
+		return failCode("managed_world_store_unavailable")
 	}
-	dest := strVal(payload, "destination")
-	if dest == "" {
-		return fail("destination required")
+	if strVal(payload, "safety_profile") != worldstore.SafetyProfile || numberVal(payload, "protocol_version") != 2 {
+		return failCode("managed_world_protocol_invalid")
 	}
-	srcPath := source
-	if cwd != "" && !strings.HasPrefix(source, "/") {
-		srcPath = filepathJoin(cwd, source)
-	}
-	if err := os.MkdirAll(filepathDir(dest), 0o755); err != nil {
-		return fail(err.Error())
-	}
-	out, err := exec.CommandContext(ctx, "tar", "-czf", dest, "-C", filepathDir(srcPath), filepathBase(srcPath)).CombinedOutput()
+	manifest, err := e.worldStore.CreateBackup(ctx, worldstore.BackupRequest{
+		BackupID:          strVal(payload, "backup_id"),
+		ServerID:          strVal(payload, "server_id"),
+		NodeID:            strVal(payload, "node_id"),
+		Purpose:           strVal(payload, "purpose"),
+		RequestDigest:     strVal(payload, "request_digest"),
+		WorkingDirectory:  strVal(payload, "working_directory"),
+		WorldRelativePath: strVal(payload, "world_relative_path"),
+		CheckStopped:      stoppedCheck(payload),
+	})
 	if err != nil {
-		return fail(string(out) + ": " + err.Error())
-	}
-	return map[string]interface{}{
-		"success":     true,
-		"status":      "completed",
-		"message":     "backup created",
-		"destination": dest,
-	}
-}
-
-func (e *Executor) restoreWorld(ctx context.Context, payload map[string]interface{}) map[string]interface{} {
-	cwd := strVal(payload, "working_directory")
-	archive := strVal(payload, "archive")
-	if archive == "" {
-		return fail("archive required")
-	}
-	target := strVal(payload, "target")
-	if target == "" {
-		target = "world"
-	}
-	destDir := target
-	if cwd != "" && !strings.HasPrefix(target, "/") {
-		destDir = filepathJoin(cwd, target)
-	}
-	if err := os.MkdirAll(filepathDir(destDir), 0o755); err != nil {
-		return fail(err.Error())
-	}
-	out, err := exec.CommandContext(ctx, "tar", "-xzf", archive, "-C", destDir).CombinedOutput()
-	if err != nil {
-		return fail(string(out) + ": " + err.Error())
+		return worldOperationFailure(err, nil, "backup")
 	}
 	return map[string]interface{}{
 		"success": true,
 		"status":  "completed",
-		"message": "world restored",
+		"message": "managed world backup created",
+		"backup":  manifest,
 	}
+}
+
+func (e *Executor) executeManagedWorldRestore(ctx context.Context, payload map[string]interface{}) map[string]interface{} {
+	if e.worldStore == nil {
+		return failCode("managed_world_store_unavailable")
+	}
+	if strVal(payload, "safety_profile") != worldstore.SafetyProfile || numberVal(payload, "protocol_version") != 2 ||
+		strVal(payload, "expected_process_state") != "stopped" {
+		return failCode("managed_world_protocol_invalid")
+	}
+	result, err := e.worldStore.Restore(ctx, worldstore.RestoreRequest{
+		PlanID:                    strVal(payload, "plan_id"),
+		PlanDigest:                strVal(payload, "plan_digest"),
+		OperationDeliveryID:       strVal(payload, "operation_delivery_id"),
+		OperationPayloadDigest:    strVal(payload, "operation_payload_digest"),
+		ServerID:                  strVal(payload, "server_id"),
+		NodeID:                    strVal(payload, "node_id"),
+		BackupID:                  strVal(payload, "backup_id"),
+		BackupManifestDigest:      strVal(payload, "backup_manifest_digest"),
+		PreRestoreBackupID:        strVal(payload, "pre_restore_backup_id"),
+		ServerConfigurationDigest: strVal(payload, "server_configuration_digest"),
+		ProcessDriver:             strVal(payload, "process_driver"),
+		ProcessConfig:             mapVal(payload, "process_config"),
+		WorkingDirectory:          strVal(payload, "working_directory"),
+		WorldRelativePath:         strVal(payload, "world_relative_path"),
+		CheckStopped:              stoppedCheck(payload),
+	})
+	if err != nil {
+		return worldOperationFailure(err, result, "restore")
+	}
+	return map[string]interface{}{
+		"success": true,
+		"status":  "completed",
+		"message": "managed world restore completed",
+		"restore": result,
+	}
+}
+
+func stoppedCheck(payload map[string]interface{}) worldstore.CheckStopped {
+	config := drivers.ProcessConfig{
+		Driver:           strVal(payload, "process_driver"),
+		Config:           mapVal(payload, "process_config"),
+		WorkingDirectory: strVal(payload, "working_directory"),
+	}
+	return func(ctx context.Context) error {
+		state, err := drivers.For(config.Driver).Status(ctx, config)
+		if err != nil {
+			return err
+		}
+		if state != drivers.StateStopped {
+			return fmt.Errorf("process state is %s", state)
+		}
+		return nil
+	}
+}
+
+func worldOperationFailure(err error, result interface{}, resultKey string) map[string]interface{} {
+	code := worldstore.Code(err)
+	response := failCode(code)
+	if result != nil {
+		response[resultKey] = result
+	}
+	return response
 }
 
 func (e *Executor) syncFiles(ctx context.Context, payload map[string]interface{}) map[string]interface{} {
@@ -394,6 +448,15 @@ func fail(msg string) map[string]interface{} {
 	}
 }
 
+func failCode(code string) map[string]interface{} {
+	return map[string]interface{}{
+		"success":    false,
+		"status":     "failed",
+		"error":      code,
+		"error_code": code,
+	}
+}
+
 func strVal(m map[string]interface{}, key string) string {
 	if m == nil {
 		return ""
@@ -414,6 +477,23 @@ func mapVal(m map[string]interface{}, key string) map[string]interface{} {
 		return map[string]interface{}{}
 	}
 	return v
+}
+
+func numberVal(m map[string]interface{}, key string) int {
+	if m == nil {
+		return 0
+	}
+	switch value := m[key].(type) {
+	case float64:
+		return int(value)
+	case int:
+		return value
+	case json.Number:
+		integer, _ := value.Int64()
+		return int(integer)
+	default:
+		return 0
+	}
 }
 
 func filepathJoin(elem ...string) string {

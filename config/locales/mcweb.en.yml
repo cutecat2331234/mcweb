@@ -244,6 +244,12 @@ en:
       minecraft_servers_control:
         name: "Control Minecraft servers"
         description: "Start, stop, restart, and send supported control actions to Minecraft servers."
+      minecraft_world_backups_manage:
+        name: "Manage Minecraft world backups"
+        description: "Request and inspect managed, integrity-verified Minecraft world backups."
+      minecraft_world_restores_execute:
+        name: "Execute Minecraft world restores"
+        description: "Plan, step-up authorize, and execute audited fail-closed Minecraft world restores."
       minecraft_players_view:
         name: "View Minecraft players"
         description: "View connected players and their current server activity."
@@ -856,6 +862,80 @@ en:
           target_not_available: Select an effectively active destination section.
           audit_failed: The topic migration was rolled back because its audit record could not be written.
       errors:
+        world_relative_path_required: A relative world directory is required.
+        world_relative_path_invalid: The configured world directory is not a safe relative path.
+        world_backup_unauthorized: You do not have permission to manage world backups.
+        world_backup_request_id_invalid: The backup request ID is invalid.
+        world_backup_purpose_invalid: The backup purpose is invalid.
+        world_backup_node_required: This server is not assigned to a managed node.
+        world_backup_server_must_be_stopped: Stop the Minecraft server before creating a managed world backup.
+        world_backup_restore_active: Wait for the active world restore to reach a safe terminal state before creating another backup.
+        world_backup_node_stale: The node heartbeat is stale. Restore node connectivity before continuing.
+        world_backup_node_capability_required: The node does not advertise the complete managed-backup safety capability.
+        world_backup_node_recovery_required: The node has an unresolved world-restore recovery state.
+        world_backup_idempotency_conflict: This backup request ID was already used for different input.
+        world_backup_enqueue_failed: The managed backup could not be queued.
+        world_backup_manifest_invalid: The node returned an invalid or unsupported backup manifest.
+        world_backup_record_not_found: The managed backup record for this node operation is missing.
+        world_backup_unreported_node_failure: The node operation ended without a complete backup result.
+        world_backup_failed: The managed backup failed.
+        world_backup_quarantined: This managed backup is quarantined and cannot be reused.
+        world_restore_unauthorized: You do not have permission to execute this world restore.
+        world_restore_request_id_invalid: The restore request ID is invalid.
+        world_restore_reason_required: Enter a reason for this world restore.
+        world_restore_reason_too_long: The restore reason cannot exceed 1,000 characters.
+        world_restore_node_required: This server is not assigned to a managed node.
+        world_restore_server_must_be_stopped: Stop the Minecraft server before planning or executing a restore.
+        world_restore_node_stale: The node heartbeat is stale. Restore node connectivity before continuing.
+        world_restore_node_capability_required: The node does not advertise the complete v2 world-restore safety profile.
+        world_restore_node_recovery_required: The node has an unresolved restore that requires recovery.
+        world_restore_backup_unavailable: Select an available, integrity-verified managed backup.
+        world_restore_backup_wrong_target: The selected backup does not belong to this server and node.
+        world_restore_backup_changed: The selected backup manifest changed after this plan was frozen.
+        world_restore_backup_path_changed: The backup world directory does not match the current restore target.
+        world_restore_node_changed: The server is no longer assigned to the frozen node.
+        world_restore_configuration_changed: The server restore target configuration changed after this plan was frozen.
+        world_restore_capability_changed: The node safety capability changed after this plan was frozen.
+        world_restore_active: Another world restore is already active for this server.
+        world_restore_plan_expired: This restore plan has expired. Create a new plan.
+        world_restore_idempotency_conflict: This restore request ID was already used for different input.
+        world_restore_event_ledger_failed: The restore was rolled back because its durable event could not be recorded.
+        world_restore_plan_not_authorizable: This restore plan can no longer be authorized.
+        world_restore_stale: The restore plan changed concurrently. Refresh and try again.
+        world_restore_authorization_invalid: The restore authorization is invalid or no longer matches this plan.
+        world_restore_authorization_failed: The restore authorization could not be completed.
+        world_restore_plan_not_authorized: Complete step-up authorization before executing this restore.
+        world_restore_confirmation_mismatch: The typed confirmation does not match this exact server, backup, and plan.
+        world_restore_authorization_expired: The restore authorization expired. Authorize again.
+        world_restore_enqueue_failed: The restore could not be queued.
+        world_restore_plan_not_found: The restore plan for this node operation is missing.
+        world_restore_pre_snapshot_missing: The required pre-restore snapshot is missing.
+        world_restore_pre_snapshot_invalid: The node did not prove a valid pre-restore snapshot.
+        world_restore_result_invalid: The node returned an invalid restore result. Server start remains blocked.
+        world_restore_recovery_required: The restore cannot prove a safe final tree and requires recovery.
+        world_restore_rolled_back: The restore failed and the previous world was safely restored.
+        world_restore_node_failed: The node failed the restore before cutover.
+        world_restore_ambiguous_node_result: The node result cannot prove whether the old or new world is safely installed.
+        world_restore_unreported_node_failure: The node operation ended without a complete restore result.
+        minecraft_world_restore_blocks_server_start: An active or recovery-required world restore blocks server start and restart.
+        world_operation_reconciliation_action_invalid: The world operation reconciliation action is invalid.
+        world_operation_target_result_required: The world operation target result is missing.
+        world_operation_start_failed: The world operation could not enter its durable running state.
+        world_operation_reconciliation_failed: The world operation result could not be reconciled safely.
+        world_operation_requires_one_target: Managed world operations require exactly one server target.
+        world_operation_target_payloads_not_allowed: Per-target payload overrides are not allowed for managed world operations.
+        world_operation_protocol_invalid: The managed world operation protocol version is invalid.
+        world_operation_server_must_be_stopped: Managed world operations require a stopped server.
+        world_operation_working_directory_required: The server working directory is required.
+        world_operation_node_mismatch: The managed world operation node identity does not match the server.
+        world_operation_safety_profile_invalid: The managed world operation safety profile is invalid.
+        world_operation_contains_raw_path: Raw archive, source, destination, target, or limit fields are forbidden.
+        world_backup_id_invalid: The managed backup ID is invalid.
+        world_backup_request_digest_invalid: The managed backup request digest is invalid.
+        world_restore_managed_id_invalid: A managed restore ID is invalid.
+        world_restore_digest_invalid: A frozen restore digest is invalid.
+        world_restore_expected_state_invalid: The expected restore process state must be stopped.
+        legacy_world_operation_retired: Legacy path-based world backup and restore operations are retired.
         invalid_or_expired_verification_token: Verification link is invalid or expired.
         invalid_or_expired_reset_token: Reset link is invalid or expired.
         recipient_not_found: Recipient not found.
@@ -2303,6 +2383,20 @@ en:
         identity_data_export_downloaded: "Personal data export downloaded"
         identity_data_export_retried: "Personal data export retried"
         identity_data_export_revoked: "Personal data export revoked"
+        minecraft_world_backup_requested: "Minecraft world backup requested"
+        minecraft_world_backup_available: "Minecraft world backup verified"
+        minecraft_world_backup_failed: "Minecraft world backup failed"
+        minecraft_world_backup_quarantined: "Minecraft world backup quarantined"
+        minecraft_world_restore_planned: "Minecraft world restore planned"
+        minecraft_world_restore_authorized: "Minecraft world restore authorized"
+        minecraft_world_restore_queued: "Minecraft world restore queued"
+        minecraft_world_restore_started: "Minecraft world restore started"
+        minecraft_world_restore_pre_snapshot_available: "Minecraft pre-restore snapshot verified"
+        minecraft_world_restore_completed: "Minecraft world restore completed"
+        minecraft_world_restore_failed: "Minecraft world restore failed safely before cutover"
+        minecraft_world_restore_rolled_back: "Minecraft world restore rolled back"
+        minecraft_world_restore_recovery_required: "Minecraft world restore requires recovery"
+        minecraft_world_restore_expired: "Minecraft world restore plan expired"
         community_topic_created: "Forum topic created"
         community_post_created: "Forum post created"
         community_post_approved: "Forum post approved"
@@ -3178,6 +3272,8 @@ en:
         field_tps: TPS
         field_version: Version
         secret_not_generated: Not generated
+        world_backup_queued: Managed world backup queued.
+        world_restore_queued: World restore queued with its pre-restore snapshot.
         action_edit: Edit
         action_rotate_secret: Rotate secret
         action_delete: Delete

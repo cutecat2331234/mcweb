@@ -1,6 +1,10 @@
 package operation
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -13,8 +17,10 @@ const (
 )
 
 var supportedOperationTypes = map[string]struct{}{
-	"collect_metrics": {},
-	"sync_files":      {},
+	"collect_metrics":       {},
+	"sync_files":            {},
+	"world_backup_create":   {},
+	"world_restore_execute": {},
 }
 
 type Batch struct {
@@ -32,7 +38,7 @@ type Target struct {
 	TargetKey        string                 `json:"target_key"`
 	ServerID         string                 `json:"server_id"`
 	TaskType         string                 `json:"task_type"`
-	ExpectedRevision string                 `json:"expected_revision,omitempty"`
+	ExpectedRevision *string                `json:"expected_revision"`
 	Payload          map[string]interface{} `json:"payload"`
 }
 
@@ -68,6 +74,19 @@ func (b Batch) Validate() error {
 	if len(b.Targets) == 0 {
 		return fmt.Errorf("operation batch has no targets")
 	}
+	if len(b.PayloadDigest) != sha256.Size*2 {
+		return fmt.Errorf("operation payload digest is invalid")
+	}
+	if _, err := hex.DecodeString(b.PayloadDigest); err != nil {
+		return fmt.Errorf("operation payload digest is invalid")
+	}
+	expectedDigest, err := b.canonicalPayloadDigest()
+	if err != nil || expectedDigest != b.PayloadDigest {
+		return fmt.Errorf("operation payload digest mismatch")
+	}
+	if (b.OperationType == "world_backup_create" || b.OperationType == "world_restore_execute") && len(b.Targets) != 1 {
+		return fmt.Errorf("managed world operation requires exactly one target")
+	}
 
 	seen := make(map[string]struct{}, len(b.Targets))
 	for _, target := range b.Targets {
@@ -83,6 +102,45 @@ func (b Batch) Validate() error {
 		seen[target.TargetKey] = struct{}{}
 	}
 	return nil
+}
+
+func (b Batch) canonicalPayloadDigest() (string, error) {
+	targets := make([]map[string]interface{}, 0, len(b.Targets))
+	for _, target := range b.Targets {
+		targets = append(targets, map[string]interface{}{
+			"target_key":        target.TargetKey,
+			"server_id":         target.ServerID,
+			"task_type":         target.TaskType,
+			"expected_revision": target.ExpectedRevision,
+			"payload":           target.Payload,
+		})
+	}
+	payload := map[string]interface{}{
+		"protocol_version": b.ProtocolVersion,
+		"operation_id":     b.OperationID,
+		"operation_type":   b.OperationType,
+		"shared_payload":   b.SharedPayload,
+		"targets":          targets,
+	}
+	encoded, err := railsCanonicalJSON(payload)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+func railsCanonicalJSON(value interface{}) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+	encoded := bytes.TrimSuffix(buffer.Bytes(), []byte{'\n'})
+	encoded = bytes.ReplaceAll(encoded, []byte(`\u2028`), []byte("\u2028"))
+	encoded = bytes.ReplaceAll(encoded, []byte(`\u2029`), []byte("\u2029"))
+	return encoded, nil
 }
 
 func (s *State) HasResult(targetKey string) bool {

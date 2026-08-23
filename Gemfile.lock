@@ -254,7 +254,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.5.0)
     racc (1.8.1)
-    rack (3.2.6)
+    rack (3.2.7)
     rack-proxy (0.8.3)
       rack
     rack-session (2.1.2)
@@ -359,7 +359,7 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
-    sidekiq (8.1.6)
+    sidekiq (8.1.7)
       connection_pool (>= 3.0.0)
       json (>= 2.16.0)
       logger (>= 1.7.0)
@@ -484,7 +484,7 @@ DEPENDENCIES
   rubyzip (~> 3.4)
   sanitize (~> 7.0)
   selenium-webdriver
-  sidekiq (~> 8.0)
+  sidekiq (~> 8.1)
   sidekiq-cron (~> 2.0)
   solid_cache
   stimulus-rails

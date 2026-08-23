@@ -464,6 +464,10 @@ Rails.application.routes.draw do
           post :kick
         end
       end
+      resources :player_access_rules,
+        only: %i[index create destroy],
+        param: :public_id,
+        path: "player-access-rules"
       post "players/:user_id/primary-account",
         to: "primary_accounts#create",
         as: :primary_account

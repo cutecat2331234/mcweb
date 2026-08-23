@@ -10,6 +10,7 @@ module Minecraft
     scope :claimable, -> { where(status: :pending).order(:created_at) }
 
     after_commit :simulate_in_developer_mode, on: %i[create update]
+    after_commit :reconcile_player_access_rule, on: :update
 
     def claim!
       update!(status: :claimed, claimed_at: Time.current)
@@ -51,6 +52,25 @@ module Minecraft
     rescue StandardError => error
       Rails.logger.error(
         "[Minecraft::ConnectorTask] Developer Mode simulation failed " \
+        "task_id=#{id} error=#{error.class}"
+      )
+    end
+
+    def reconcile_player_access_rule
+      return unless previous_changes.key?("status")
+      return unless completed? || failed?
+      return unless defined?(Minecraft::PlayerAccessRule)
+
+      result = Minecraft::ReconcilePlayerAccessRule.call(task: self)
+      return if result.success?
+
+      Rails.logger.error(
+        "[Minecraft::ConnectorTask] player access rule reconciliation failed " \
+        "task_id=#{id} code=#{result.code}"
+      )
+    rescue StandardError => error
+      Rails.logger.error(
+        "[Minecraft::ConnectorTask] player access rule reconciliation failed " \
         "task_id=#{id} error=#{error.class}"
       )
     end

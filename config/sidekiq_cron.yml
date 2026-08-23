@@ -4,6 +4,12 @@ recover_durable_enqueue:
   queue: maintenance
   active_job: true
 
+expire_minecraft_player_access_rules:
+  cron: "* * * * *"
+  class: "Minecraft::ExpirePlayerAccessRulesJob"
+  queue: minecraft
+  active_job: true
+
 expire_pending_orders:
   cron: "*/15 * * * *"
   class: "Commerce::ExpirePendingOrdersJob"

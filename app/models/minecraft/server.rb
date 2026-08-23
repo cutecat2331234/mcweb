@@ -12,6 +12,11 @@ module Minecraft
     has_many :processed_deliveries, class_name: "Minecraft::ProcessedDelivery", foreign_key: :minecraft_server_id, dependent: :destroy
     has_many :server_snapshots, class_name: "Minecraft::ServerSnapshot", foreign_key: :minecraft_server_id, dependent: :destroy
     has_many :player_sessions, class_name: "Minecraft::PlayerSession", foreign_key: :minecraft_server_id, dependent: :destroy
+    has_many :player_access_rules,
+      class_name: "Minecraft::PlayerAccessRule",
+      foreign_key: :minecraft_server_id,
+      inverse_of: :server,
+      dependent: :restrict_with_error
     has_many :world_backups,
       class_name: "Minecraft::WorldBackup",
       foreign_key: :minecraft_server_id,

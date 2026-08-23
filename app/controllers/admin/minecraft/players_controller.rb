@@ -17,6 +17,8 @@ module Admin
           title: t("mcweb.admin.minecraft.players"),
           players: result.success? ? result.value[:players] : [],
           kickUrl: kick_admin_minecraft_players_path,
+          accessRulesUrl: admin_minecraft_player_access_rules_path,
+          accessRulesLabel: t("mcweb.admin.minecraft.player_access_rules.open"),
           backUrl: admin_minecraft_servers_path,
           primaryAccountPermissions: {
             review: current_user.permission?("minecraft.primary_accounts.review"),

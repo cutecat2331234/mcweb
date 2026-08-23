@@ -1,0 +1,76 @@
+zh-CN:
+  mcweb:
+    admin:
+      minecraft:
+        player_access_rules:
+          title: 玩家访问规则
+          subtitle: 通过固定且可审计的 Connector 操作管理白名单与封禁决定。
+          open: 访问规则
+          back: 返回玩家列表
+          createTitle: 应用访问规则
+          historyTitle: 访问规则记录
+          server: 服务器
+          serverPlaceholder: 选择服务器
+          connectorReady: Connector 可用
+          connectorOffline: Connector 离线
+          type: 规则类型
+          username: Minecraft 用户名
+          usernamePlaceholder: 1–16 位字母、数字或下划线
+          playerUuid: 玩家 UUID
+          playerUuidPlaceholder: 可选的标准玩家 UUID
+          reason: 原因
+          reasonPlaceholder: 记录作出本次决定的原因。
+          expiresAt: 到期时间
+          optional: 可选
+          submit: 加入执行队列
+          noServers: 请先配置 Minecraft 服务器，再创建访问规则。
+          empty: 暂无访问规则记录。
+          status: 状态
+          target: 玩家
+          createdBy: 创建人
+          createdAt: 创建时间
+          taskStatus: Connector 投递
+          actions: 操作
+          revoke: 撤销
+          revokeTitle: 撤销访问规则
+          revokeDescription: 只有在 Connector 确认固定移除命令后，规则才会标记为已撤销。
+          revokeReason: 撤销原因
+          revokeReasonPlaceholder: 说明为什么移除这条访问规则。
+          cancel: 取消
+          loadOlder: 加载更早记录
+          ruleTypes:
+            whitelist: 白名单
+            ban: 封禁
+          statuses:
+            pending_apply: 正在应用
+            active: 生效中
+            pending_revoke: 正在撤销
+            revoked: 已撤销
+            failed: 执行失败
+          taskStatuses:
+            pending: 等待中
+            claimed: 已领取
+            completed: 已完成
+            failed: 失败
+    flash:
+      player_access_rule_queued: 访问规则已加入 Connector 执行队列。
+      player_access_rule_revoke_queued: 规则移除操作已加入 Connector 执行队列。
+      player_access_rule_unchanged: 请求的访问规则状态已经生效。
+    services:
+      errors:
+        minecraft_access_rule_state_required: 必须明确指定访问规则目标状态。
+        minecraft_access_rule_type_invalid: 请选择白名单或封禁。
+        minecraft_access_rule_username_invalid: 请输入有效的 Minecraft 用户名。
+        minecraft_access_rule_reason_invalid: 原因需为 1–500 个字符，且不能包含控制字符。
+        minecraft_access_rule_idempotency_invalid: 请刷新页面后重试。
+        minecraft_access_rule_uuid_invalid: 请输入有效的玩家 UUID，或将其留空。
+        minecraft_access_rule_expiry_invalid: 到期时间必须是有效的未来时间。
+        minecraft_access_rule_lock_version_required: 请刷新访问规则记录后再撤销。
+        minecraft_access_rule_stale: 这条规则已在其他会话中变化，请刷新后重试。
+        minecraft_access_rule_invalid: 无法保存访问规则。
+        minecraft_access_rule_conflict: 该玩家已有不同规则正在生效或处理中。
+        minecraft_access_rule_delivery_failed: Connector 无法接收这次访问规则操作。
+        minecraft_access_rule_not_active: 这条规则并未生效。
+        minecraft_access_rule_apply_pending: 请等待应用操作完成后再撤销。
+        minecraft_access_rule_revoke_pending: 这条规则已经在撤销中。
+        minecraft_access_rule_reconcile_failed: 无法收敛 Connector 执行结果，请检查任务后安全重试。

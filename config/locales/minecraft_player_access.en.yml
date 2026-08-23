@@ -1,0 +1,76 @@
+en:
+  mcweb:
+    admin:
+      minecraft:
+        player_access_rules:
+          title: Player access rules
+          subtitle: Manage whitelist and ban decisions through fixed, audited Connector operations.
+          open: Access rules
+          back: Back to players
+          createTitle: Apply an access rule
+          historyTitle: Access rule history
+          server: Server
+          serverPlaceholder: Select a server
+          connectorReady: Connector ready
+          connectorOffline: Connector offline
+          type: Rule type
+          username: Minecraft username
+          usernamePlaceholder: 1–16 letters, numbers, or underscores
+          playerUuid: Player UUID
+          playerUuidPlaceholder: Optional canonical player UUID
+          reason: Reason
+          reasonPlaceholder: Record the operational reason for this decision.
+          expiresAt: Expires at
+          optional: optional
+          submit: Queue rule
+          noServers: Configure a Minecraft server before creating access rules.
+          empty: No access rule has been recorded.
+          status: Status
+          target: Player
+          createdBy: Created by
+          createdAt: Created at
+          taskStatus: Connector delivery
+          actions: Actions
+          revoke: Revoke
+          revokeTitle: Revoke access rule
+          revokeDescription: The rule is marked revoked only after the Connector confirms the fixed removal command.
+          revokeReason: Revoke reason
+          revokeReasonPlaceholder: Explain why this access rule is being removed.
+          cancel: Cancel
+          loadOlder: Load older records
+          ruleTypes:
+            whitelist: Whitelist
+            ban: Ban
+          statuses:
+            pending_apply: Applying
+            active: Active
+            pending_revoke: Revoking
+            revoked: Revoked
+            failed: Failed
+          taskStatuses:
+            pending: Pending
+            claimed: Claimed
+            completed: Completed
+            failed: Failed
+    flash:
+      player_access_rule_queued: The access rule was queued for the Connector.
+      player_access_rule_revoke_queued: The rule removal was queued for the Connector.
+      player_access_rule_unchanged: The requested access-rule state is already in effect.
+    services:
+      errors:
+        minecraft_access_rule_state_required: An explicit access-rule state is required.
+        minecraft_access_rule_type_invalid: Select whitelist or ban.
+        minecraft_access_rule_username_invalid: Enter a valid Minecraft username.
+        minecraft_access_rule_reason_invalid: Enter a reason of 1–500 characters without control characters.
+        minecraft_access_rule_idempotency_invalid: Refresh the page and retry the request.
+        minecraft_access_rule_uuid_invalid: Enter a valid player UUID or leave it blank.
+        minecraft_access_rule_expiry_invalid: Expiry must be a valid future time.
+        minecraft_access_rule_lock_version_required: Reload the access-rule history before revoking this rule.
+        minecraft_access_rule_stale: This rule changed in another session. Reload and try again.
+        minecraft_access_rule_invalid: The access rule could not be saved.
+        minecraft_access_rule_conflict: A different rule for this player is already active or being changed.
+        minecraft_access_rule_delivery_failed: The Connector could not accept the access-rule operation.
+        minecraft_access_rule_not_active: This rule is not active.
+        minecraft_access_rule_apply_pending: Wait for the apply operation to finish before revoking the rule.
+        minecraft_access_rule_revoke_pending: This rule is already being revoked.
+        minecraft_access_rule_reconcile_failed: The Connector result could not be reconciled. Review the task and retry safely.

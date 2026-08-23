@@ -32,6 +32,8 @@ const props = defineProps<{
     linked_user?: { id: string; username: string } | null
   }>
   kickUrl: string
+  accessRulesUrl: string
+  accessRulesLabel: string
   backUrl: string
   primaryAccountPermissions: {
     review: boolean
@@ -162,7 +164,12 @@ function statusColor(status: string) {
 <template>
   <a-page-header :title="title" :show-back="false">
     <template #extra>
-      <a-button @click="router.visit(backUrl)">{{ t('adminMinecraft.backToServers') }}</a-button>
+      <a-space>
+        <a-button type="primary" @click="router.visit(accessRulesUrl)">
+          {{ accessRulesLabel }}
+        </a-button>
+        <a-button @click="router.visit(backUrl)">{{ t('adminMinecraft.backToServers') }}</a-button>
+      </a-space>
     </template>
   </a-page-header>
 

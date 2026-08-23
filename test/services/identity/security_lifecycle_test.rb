@@ -270,18 +270,20 @@ module Identity
       @user.setup_totp!
       @user.update!(totp_enabled: true)
       session_record = create_test_session(@user).value.fetch(:session)
-      captured = nil
 
-      MailDeliveryJob.stub(:perform_later, ->(*args, **kwargs) { captured = [ args, kwargs ] }) do
-        result = RecoverTotp.call(
-          email: @user.email,
-          ip_address: "127.0.0.1",
-          user_agent: "Security lifecycle test"
-        )
-        assert result.success?
-      end
+      request = RecoverTotp.call(
+        email: @user.email,
+        ip_address: "127.0.0.1",
+        user_agent: "Security lifecycle test"
+      )
+      assert request.success?
 
-      token = captured.last.fetch(:args).last
+      token = @user.reload.totp_recovery_token
+      assert token.present?
+      assert Operations::DurableEnqueueIntent.exists?(
+        handler_key: Identity::SecurityRecoveryMailDelivery::HANDLER_KEY,
+        source_id: @user.id
+      )
       result = RecoverTotp.call(
         token: token,
         password: "password123",
@@ -294,9 +296,18 @@ module Identity
       refute @user.totp_enabled?
       assert_nil @user.totp_secret
       assert_empty Array(@user.recovery_codes)
+      assert_nil @user.totp_recovery_token
       assert_nil @user.totp_recovery_token_digest
       assert session_record.reload.revoked?
       assert AuditLog.exists?(action: "identity.totp_recovered", resource_id: @user.id)
+
+      replay = RecoverTotp.call(
+        token: token,
+        password: "password123",
+        ip_address: "127.0.0.1"
+      )
+      assert replay.failure?
+      assert_equal "invalid_or_expired_totp_recovery_token", replay.code
     end
 
     test "expired totp recovery token cannot change account state" do

@@ -1,0 +1,26 @@
+zh-CN:
+  mcweb:
+    admin:
+      jobs:
+        security_recovery:
+          title: "身份安全恢复邮件投递"
+          description: "显示最近的密码找回与 TOTP 恢复投递意图。仅可将死信失败项的意图 ID 复制到上方受限的持久任务重试入口，并填写审计原因；用户重新发送仍使用现有恢复表单并受频率限制。"
+          empty: "暂无身份安全恢复邮件投递请求。"
+          intent_id: "意图 ID"
+          user_id: "用户 ID"
+          purpose: "用途"
+          status: "状态"
+          attempts: "尝试次数"
+          requested_at: "请求时间"
+          last_event_at: "最近事件"
+          reason: "原因代码"
+          retry: "重试状态"
+          retryable: "可重新开启"
+          terminal: "不可重新开启"
+          purposes:
+            password_reset: "密码找回"
+            totp_recovery: "TOTP 恢复"
+          statuses:
+            pending: "待投递"
+            sent: "已发送"
+            failed: "失败"

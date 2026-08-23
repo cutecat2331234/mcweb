@@ -1,0 +1,26 @@
+en:
+  mcweb:
+    admin:
+      jobs:
+        security_recovery:
+          title: "Security recovery email delivery"
+          description: "Latest password-reset and TOTP-recovery delivery intents. Retry only dead-lettered failures by copying the intent ID into the restricted durable retry task above and providing an audit reason. Public resend remains rate-limited on the existing recovery forms."
+          empty: "No security recovery delivery has been requested."
+          intent_id: "Intent ID"
+          user_id: "User ID"
+          purpose: "Purpose"
+          status: "Status"
+          attempts: "Attempts"
+          requested_at: "Requested"
+          last_event_at: "Last event"
+          reason: "Reason code"
+          retry: "Retry state"
+          retryable: "Reopenable"
+          terminal: "No reopen"
+          purposes:
+            password_reset: "Password reset"
+            totp_recovery: "TOTP recovery"
+          statuses:
+            pending: "Pending"
+            sent: "Sent"
+            failed: "Failed"

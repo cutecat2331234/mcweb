@@ -163,17 +163,21 @@ class Identity::PermissionCheckerTest < ActiveSupport::TestCase
 end
 
 class Identity::ResetPasswordTest < ActiveSupport::TestCase
-  test "sends reset email for existing user" do
+  test "records durable reset email for existing user" do
     user = create_user(email: "reset@example.com", username: "resetuser")
 
-    assert_enqueued_with(job: MailDeliveryJob) do
-      result = Identity::ResetPassword.call(email: "reset@example.com")
-      assert result.success?
-      assert result.value[:reset_token].present?
-    end
+    result = Identity::ResetPassword.call(email: "reset@example.com")
+    assert result.success?
+    assert result.value[:reset_token].present?
 
     user.reload
     assert user.password_reset_token_digest.present?
+    assert user.password_reset_token.present?
+    intent = Operations::DurableEnqueueIntent.find_by!(
+      handler_key: Identity::SecurityRecoveryMailDelivery::HANDLER_KEY,
+      source_id: user.id
+    )
+    assert_equal "password_reset", intent.arguments.fetch("purpose")
   end
 
   test "completion revokes sessions through the model lifecycle" do
@@ -191,16 +195,35 @@ class Identity::ResetPasswordTest < ActiveSupport::TestCase
       updated_at: 2.days.ago
     )
     previous_updated_at = session.reload.updated_at
+    totp_recovery_token = SecureRandom.urlsafe_base64(32)
+    user.update!(
+      totp_recovery_token: totp_recovery_token,
+      totp_recovery_token_digest: Digest::SHA256.hexdigest(totp_recovery_token),
+      totp_recovery_sent_at: Time.current
+    )
     request = Identity::ResetPassword.call(email: user.email)
 
     result = Identity::ResetPassword.call(
       token: request.value.fetch(:reset_token),
-      new_password: "newpassword456"
+      new_password: "newpassword456",
+      ip_address: "203.0.113.21",
+      user_agent: "Reset completion test"
     )
 
     assert_predicate result, :success?
     assert_predicate session.reload, :revoked?
     assert_operator session.updated_at, :>, previous_updated_at
+    user.reload
+    assert_nil user.password_reset_token
+    assert_nil user.totp_recovery_token
+    audit = AuditLog.find_by!(
+      action: "identity.password_reset_completed",
+      resource_id: user.id
+    )
+    assert_equal "203.0.113.21", audit.ip_address
+    assert_equal "Reset completion test", audit.user_agent
+    refute_includes audit.attributes.to_json, request.value.fetch(:reset_token)
+    refute_includes audit.attributes.to_json, "newpassword456"
   end
 end
 

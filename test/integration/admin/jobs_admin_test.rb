@@ -34,7 +34,33 @@ module Admin
         assert_equal true, props.dig(:operationsMetrics, :available)
         assert_equal "24h", props.dig(:operationsMetrics, :range)
         assert_equal false, props.dig(:operationsMetrics, :truncated)
+        assert_equal [], props.fetch(:securityRecoveryDeliveries)
+        assert props.dig(:securityRecoveryCopy, :title).present?
         assert_operator props.dig(:operationsMetrics, :row_count), :<=, 5_000
+      end
+
+      test "jobs page exposes recent security recovery delivery state without secrets" do
+        recovery_user = create_user
+        request_result = Identity::ResetPassword.call(
+          email: recovery_user.email,
+          ip_address: "203.0.113.20",
+          user_agent: "Jobs audit test"
+        )
+        token = request_result.value.fetch(:reset_token)
+        intent = request_result.value.fetch(:delivery_intent)
+
+        get admin_system_jobs_path
+
+        assert_response :success
+        delivery = inertia.props.deep_symbolize_keys
+          .fetch(:securityRecoveryDeliveries)
+          .find { |row| row.fetch(:publicId) == intent.public_id }
+        assert delivery
+        assert_equal recovery_user.id, delivery.fetch(:userId)
+        assert_equal "password_reset", delivery.fetch(:purpose)
+        assert_equal "pending", delivery.fetch(:status)
+        assert_equal false, delivery.fetch(:retryable)
+        refute_includes delivery.to_json, token
       end
 
       test "developer mode warns that cron is paused while manual jobs remain linked" do

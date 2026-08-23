@@ -331,17 +331,24 @@ class PasswordResetRateLimitSecurityTest < ActiveSupport::TestCase
 
   test "password reset request is rate limited per email and ip" do
     email = @user.email
-    5.times do
-      assert_enqueued_jobs 1, only: MailDeliveryJob do
-        Identity::ResetPassword.call(email: email, ip_address: "203.0.113.10")
-      end
-      clear_enqueued_jobs
+    results = 5.times.map do
+      Identity::ResetPassword.call(email: email, ip_address: "203.0.113.10")
     end
 
-    assert_no_enqueued_jobs only: MailDeliveryJob do
-      result = Identity::ResetPassword.call(email: email, ip_address: "203.0.113.10")
-      assert result.success?
-    end
+    assert results.all?(&:success?)
+    assert_equal 1, results.map { |result| result.value[:reset_token] }.compact.uniq.size
+    assert_equal 1, Operations::DurableEnqueueIntent.where(
+      handler_key: Identity::SecurityRecoveryMailDelivery::HANDLER_KEY,
+      source_id: @user.id
+    ).count
+
+    result = Identity::ResetPassword.call(email: email, ip_address: "203.0.113.10")
+    assert result.success?
+    assert_nil result.value[:reset_token]
+    assert_equal 1, Operations::DurableEnqueueIntent.where(
+      handler_key: Identity::SecurityRecoveryMailDelivery::HANDLER_KEY,
+      source_id: @user.id
+    ).count
   end
 end
 

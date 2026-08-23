@@ -2,7 +2,7 @@
 
 module Identity
   class ResetPassword < ApplicationService
-    TOKEN_TTL = 1.hour
+    TOKEN_TTL = SecurityRecoveryMailDelivery::PASSWORD_RESET_TTL
 
     class CompletionStepFailed < StandardError
       attr_reader :result
@@ -13,11 +13,12 @@ module Identity
       end
     end
 
-    def initialize(email: nil, token: nil, new_password: nil, ip_address: nil)
+    def initialize(email: nil, token: nil, new_password: nil, ip_address: nil, user_agent: nil)
       @email = email&.to_s&.strip&.downcase
       @token = token
       @new_password = new_password
       @ip_address = ip_address
+      @user_agent = user_agent
     end
 
     def call
@@ -54,26 +55,29 @@ module Identity
         )
       end
 
-      reset_token = generate_token
-      user.update!(
-        password_reset_token_digest: digest_token(reset_token),
-        password_reset_sent_at: Time.current
+      delivery = SecurityRecoveryMailDelivery.issue!(
+        user:,
+        purpose: SecurityRecoveryMailDelivery::PASSWORD_RESET,
+        ip_address: @ip_address,
+        user_agent: @user_agent
       )
 
-      Administration::AuditLogger.call(
-        actor: user,
-        action: "identity.password_reset_requested",
-        resource: user
+      ServiceResult.success(
+        user: delivery.user,
+        reset_token: delivery.token,
+        delivery_intent: delivery.intent,
+        delivery_status: SecurityRecoveryMailDelivery.status(delivery.intent),
+        duplicate: delivery.reused
       )
-
-      MailDeliveryJob.perform_later(
-        "Identity::Mailer",
-        "password_reset_email",
-        "deliver_now",
-        args: [ user.id, reset_token ]
+    rescue SecurityRecoveryMailDelivery::AuditFailed,
+           Operations::DurableEnqueue::InvalidRequest,
+           Operations::DurableEnqueue::IdempotencyConflict,
+           ActiveRecord::RecordInvalid,
+           ActiveRecord::RecordNotFound => error
+      Rails.logger.error("[identity.password_reset] durable_delivery_unavailable error=#{error.class}")
+      ServiceResult.success(
+        message: I18n.t("mcweb.user_copy.password_reset_request_accepted")
       )
-
-      ServiceResult.success(user: user, reset_token: reset_token)
     end
 
     def complete_reset
@@ -100,13 +104,13 @@ module Identity
           raise ActiveRecord::Rollback
         end
 
-        user.update!(
+        user.update!(SecurityRecoveryMailDelivery.clear_attributes(
+          SecurityRecoveryMailDelivery::PASSWORD_RESET
+        ).merge(
           password: @new_password,
-          password_reset_token_digest: nil,
-          password_reset_sent_at: nil,
           failed_login_count: 0,
           locked_until: nil
-        )
+        ))
 
         # Keep credential mutation, token consumption, revocation and audit in
         # one transaction. Model-level revocation remains the extension point
@@ -116,7 +120,9 @@ module Identity
         audit_result = Administration::AuditLogger.call(
           actor: user,
           action: "identity.password_reset_completed",
-          resource: user
+          resource: user,
+          ip_address: @ip_address,
+          user_agent: @user_agent
         )
         raise CompletionStepFailed, audit_result if audit_result.failure?
 
@@ -134,10 +140,6 @@ module Identity
 
     def token_expired?(user)
       user.password_reset_sent_at.blank? || user.password_reset_sent_at < TOKEN_TTL.ago
-    end
-
-    def generate_token
-      SecureRandom.urlsafe_base64(32)
     end
 
     def digest_token(token)

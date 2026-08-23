@@ -32,6 +32,8 @@ module Admin
           manualTaskRunUrl: run_admin_system_jobs_path,
           manualTasks: manual_task_catalog,
           manualTaskRuns: recent_manual_task_runs,
+          securityRecoveryDeliveries: recent_security_recovery_deliveries,
+          securityRecoveryCopy: security_recovery_copy,
           queueSnapshot: queue_result.value,
           workerHeartbeat: worker_heartbeat_snapshot,
           operationsMetrics: metrics_query_factory.call(
@@ -133,6 +135,58 @@ module Admin
         end
       rescue ActiveRecord::ActiveRecordError
         []
+      end
+
+      def recent_security_recovery_deliveries
+        return [] unless ActiveRecord::Base.connection.data_source_exists?(
+          "operations_durable_enqueue_intents"
+        )
+
+        Identity::SecurityRecoveryMailDelivery.recent_statuses(limit: 25).map do |delivery|
+          {
+            publicId: delivery.fetch(:public_id),
+            userId: delivery.fetch(:user_id),
+            purpose: delivery.fetch(:purpose),
+            status: delivery.fetch(:status),
+            durableStatus: delivery.fetch(:durable_status),
+            retryable: delivery.fetch(:retryable),
+            attemptCount: delivery.fetch(:attempt_count),
+            requestedAt: delivery[:requested_at]&.iso8601,
+            lastEventAt: delivery[:last_event_at]&.iso8601,
+            reasonCode: delivery[:reason_code]
+          }
+        end
+      rescue ActiveRecord::ActiveRecordError
+        []
+      end
+
+      def security_recovery_copy
+        scope = "mcweb.admin.jobs.security_recovery"
+        {
+          title: t("#{scope}.title"),
+          description: t("#{scope}.description"),
+          empty: t("#{scope}.empty"),
+          intentId: t("#{scope}.intent_id"),
+          userId: t("#{scope}.user_id"),
+          purpose: t("#{scope}.purpose"),
+          status: t("#{scope}.status"),
+          attempts: t("#{scope}.attempts"),
+          requestedAt: t("#{scope}.requested_at"),
+          lastEventAt: t("#{scope}.last_event_at"),
+          reason: t("#{scope}.reason"),
+          retry: t("#{scope}.retry"),
+          retryable: t("#{scope}.retryable"),
+          terminal: t("#{scope}.terminal"),
+          purposes: {
+            password_reset: t("#{scope}.purposes.password_reset"),
+            totp_recovery: t("#{scope}.purposes.totp_recovery")
+          },
+          statuses: {
+            pending: t("#{scope}.statuses.pending"),
+            sent: t("#{scope}.statuses.sent"),
+            failed: t("#{scope}.statuses.failed")
+          }
+        }
       end
 
       def safe_manual_task_result(run)

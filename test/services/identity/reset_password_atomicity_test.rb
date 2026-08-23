@@ -9,9 +9,15 @@ module Identity
       user = create_user
       token = SecureRandom.urlsafe_base64(32)
       digest = Digest::SHA256.hexdigest(token)
+      totp_recovery_token = SecureRandom.urlsafe_base64(32)
+      totp_recovery_digest = Digest::SHA256.hexdigest(totp_recovery_token)
       user.update!(
+        password_reset_token: token,
         password_reset_token_digest: digest,
-        password_reset_sent_at: Time.current
+        password_reset_sent_at: Time.current,
+        totp_recovery_token: totp_recovery_token,
+        totp_recovery_token_digest: totp_recovery_digest,
+        totp_recovery_sent_at: Time.current
       )
       session_record = create_test_session(user).value.fetch(:session)
       error = invalid_record(AuditLog)
@@ -28,7 +34,8 @@ module Identity
         Identity::ResetPassword.call(
           token:,
           new_password: "replacement456",
-          ip_address: "127.0.0.1"
+          ip_address: "127.0.0.1",
+          user_agent: "Atomicity test"
         )
       end
 
@@ -36,7 +43,10 @@ module Identity
       user.reload
       assert user.authenticate("password123")
       refute user.authenticate("replacement456")
+      assert_equal token, user.password_reset_token
       assert_equal digest, user.password_reset_token_digest
+      assert_equal totp_recovery_token, user.totp_recovery_token
+      assert_equal totp_recovery_digest, user.totp_recovery_token_digest
       assert_nil session_record.reload.revoked_at
       refute AuditLog.exists?(
         action: "identity.password_reset_completed",
@@ -61,6 +71,7 @@ module Identity
       @token = SecureRandom.urlsafe_base64(32)
       @token_digest = Digest::SHA256.hexdigest(@token)
       @user.update!(
+        password_reset_token: @token,
         password_reset_token_digest: @token_digest,
         password_reset_sent_at: Time.current
       )
@@ -127,6 +138,7 @@ module Identity
       @user.reload
       refute @user.authenticate("password123")
       assert [ "replacement456", "replacement789" ].any? { |password| @user.authenticate(password) }
+      assert_nil @user.password_reset_token
       assert_nil @user.password_reset_token_digest
       assert_predicate @session.reload, :revoked?
       audits = AuditLog.where(

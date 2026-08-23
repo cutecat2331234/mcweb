@@ -11,7 +11,8 @@ module Identity
     def create
       result = Identity::ResetPassword.call(
         email: password_reset_params[:email],
-        ip_address: request.remote_ip
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
       )
 
       if result.success?
@@ -43,7 +44,8 @@ module Identity
       result = Identity::ResetPassword.call(
         token: params[:token],
         new_password: p[:password],
-        ip_address: request.remote_ip
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
       )
 
       if result.success?

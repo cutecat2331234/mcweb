@@ -26,6 +26,7 @@ module Operations
       end
 
       Identity::EmailChangeDelivery.register(registry)
+      Identity::SecurityRecoveryMailDelivery.register(registry)
 
       registry.register(
         key: "community.web_push",

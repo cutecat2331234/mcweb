@@ -9,6 +9,8 @@ class User < ApplicationRecord
   has_secure_password
 
   has_encrypted :email_verification_token
+  has_encrypted :password_reset_token
+  has_encrypted :totp_recovery_token
   has_encrypted :totp_secret
   has_encrypted :recovery_codes, type: :array
 
@@ -104,6 +106,12 @@ class User < ApplicationRecord
 
   before_validation :normalize_locale
   before_validation :track_developer_mode_relaxed_password, if: -> { password.present? }
+  before_update :invalidate_security_recovery_for_credential_change,
+                if: :security_recovery_credential_change?
+  before_update :invalidate_totp_recovery_when_disabled,
+                if: -> { will_save_change_to_totp_enabled? && !totp_enabled? }
+  before_update :invalidate_security_recovery_for_account_deactivation,
+                if: -> { will_save_change_to_status? && status != "active" }
   before_update :acquire_permission_mutation_lock_for_access_change,
                 if: -> { will_save_change_to_status? || will_save_change_to_account_type? }
   after_update :refresh_permission_snapshot_after_access_change,
@@ -268,6 +276,7 @@ class User < ApplicationRecord
   def generate_password_reset_token!
     token = SecureRandom.urlsafe_base64(32)
     update!(
+      password_reset_token: token,
       password_reset_token_digest: digest_token(token),
       password_reset_sent_at: Time.current
     )
@@ -279,6 +288,7 @@ class User < ApplicationRecord
     return false if password_reset_sent_at < 1.hour.ago
 
     self.password = new_password
+    self.password_reset_token = nil
     self.password_reset_token_digest = nil
     self.password_reset_sent_at = nil
     save!
@@ -339,6 +349,38 @@ class User < ApplicationRecord
   end
 
   private
+
+  def security_recovery_credential_change?
+    will_save_change_to_password_digest? ||
+      will_save_change_to_email? ||
+      (will_save_change_to_email_verified? && !email_verified?)
+  end
+
+  def invalidate_security_recovery_for_credential_change
+    clear_password_reset_recovery
+    clear_totp_recovery
+  end
+
+  def invalidate_totp_recovery_when_disabled
+    clear_totp_recovery
+  end
+
+  def invalidate_security_recovery_for_account_deactivation
+    clear_password_reset_recovery
+    clear_totp_recovery
+  end
+
+  def clear_password_reset_recovery
+    self.password_reset_token = nil
+    self.password_reset_token_digest = nil
+    self.password_reset_sent_at = nil
+  end
+
+  def clear_totp_recovery
+    self.totp_recovery_token = nil
+    self.totp_recovery_token_digest = nil
+    self.totp_recovery_sent_at = nil
+  end
 
   def normalize_locale
     self.locale = Mcweb::LocaleResolver.normalize(locale) || locale.to_s

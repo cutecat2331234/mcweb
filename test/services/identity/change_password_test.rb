@@ -20,9 +20,15 @@ module Identity
       second_other = create_test_session(@user).value.fetch(:session)
       expired_session = create_test_session(@user).value.fetch(:session)
       expired_session.update!(expires_at: 1.minute.ago)
+      reset_token = SecureRandom.urlsafe_base64(32)
+      totp_recovery_token = SecureRandom.urlsafe_base64(32)
       @user.update!(
-        password_reset_token_digest: "pending-reset",
+        password_reset_token: reset_token,
+        password_reset_token_digest: Digest::SHA256.hexdigest(reset_token),
         password_reset_sent_at: Time.current,
+        totp_recovery_token: totp_recovery_token,
+        totp_recovery_token_digest: Digest::SHA256.hexdigest(totp_recovery_token),
+        totp_recovery_sent_at: Time.current,
         failed_login_count: 4,
         locked_until: 10.minutes.from_now
       )
@@ -52,8 +58,12 @@ module Identity
       assert first_other.reload.revoked?
       assert second_other.reload.revoked?
       refute expired_session.reload.revoked?
+      assert_nil @user.password_reset_token
       assert_nil @user.password_reset_token_digest
       assert_nil @user.password_reset_sent_at
+      assert_nil @user.totp_recovery_token
+      assert_nil @user.totp_recovery_token_digest
+      assert_nil @user.totp_recovery_sent_at
       assert_equal 0, @user.failed_login_count
       assert_nil @user.locked_until
       assert_equal 2, result.value.fetch(:revoked_session_count)

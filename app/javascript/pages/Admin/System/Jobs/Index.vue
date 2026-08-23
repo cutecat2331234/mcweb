@@ -108,6 +108,36 @@ const props = defineProps<{
     finishedAt?: string | null
     errorCode?: string | null
   }>
+  securityRecoveryDeliveries: Array<{
+    publicId: string
+    userId: number
+    purpose: 'password_reset' | 'totp_recovery'
+    status: 'pending' | 'sent' | 'failed'
+    durableStatus: string
+    retryable: boolean
+    attemptCount: number
+    requestedAt?: string | null
+    lastEventAt?: string | null
+    reasonCode?: string | null
+  }>
+  securityRecoveryCopy: {
+    title: string
+    description: string
+    empty: string
+    intentId: string
+    userId: string
+    purpose: string
+    status: string
+    attempts: string
+    requestedAt: string
+    lastEventAt: string
+    reason: string
+    retry: string
+    retryable: string
+    terminal: string
+    purposes: Record<'password_reset' | 'totp_recovery', string>
+    statuses: Record<'pending' | 'sent' | 'failed', string>
+  }
   queueSnapshot: {
     available: boolean
     adapter: string
@@ -269,6 +299,12 @@ function manualTaskStatusColor(status: string) {
   if (status === 'succeeded') return 'green'
   if (status === 'failed') return 'red'
   if (status === 'running') return 'arcoblue'
+  return 'orange'
+}
+
+function securityRecoveryStatusColor(status: string) {
+  if (status === 'sent') return 'green'
+  if (status === 'failed') return 'red'
   return 'orange'
 }
 
@@ -490,6 +526,86 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
           </template>
         </a-table>
         <a-empty v-else :description="t('admin.jobsPage.manualTasks.noRuns')" />
+      </a-space>
+    </a-card>
+
+    <a-card
+      :title="securityRecoveryCopy.title"
+      :bordered="true"
+      data-testid="security-recovery-deliveries"
+    >
+      <a-space direction="vertical" :size="12" fill>
+        <a-alert type="info" show-icon>
+          {{ securityRecoveryCopy.description }}
+        </a-alert>
+        <a-table
+          v-if="securityRecoveryDeliveries.length > 0"
+          :data="securityRecoveryDeliveries"
+          :pagination="false"
+          row-key="publicId"
+          :scroll="{ x: 1480 }"
+        >
+          <template #columns>
+            <a-table-column :title="securityRecoveryCopy.intentId" :width="315">
+              <template #cell="{ record }">
+                <a-typography-text code copyable>
+                  {{ record.publicId }}
+                </a-typography-text>
+              </template>
+            </a-table-column>
+            <a-table-column
+              data-index="userId"
+              :title="securityRecoveryCopy.userId"
+              :width="100"
+            />
+            <a-table-column :title="securityRecoveryCopy.purpose" :width="160">
+              <template #cell="{ record }">
+                {{ securityRecoveryCopy.purposes[record.purpose] }}
+              </template>
+            </a-table-column>
+            <a-table-column :title="securityRecoveryCopy.status" :width="130">
+              <template #cell="{ record }">
+                <a-tooltip :content="record.durableStatus">
+                  <a-tag :color="securityRecoveryStatusColor(record.status)">
+                    {{ securityRecoveryCopy.statuses[record.status] }}
+                  </a-tag>
+                </a-tooltip>
+              </template>
+            </a-table-column>
+            <a-table-column
+              data-index="attemptCount"
+              :title="securityRecoveryCopy.attempts"
+              :width="100"
+            />
+            <a-table-column :title="securityRecoveryCopy.requestedAt" :width="190">
+              <template #cell="{ record }">
+                {{ formatDate(record.requestedAt) }}
+              </template>
+            </a-table-column>
+            <a-table-column :title="securityRecoveryCopy.lastEventAt" :width="190">
+              <template #cell="{ record }">
+                {{ formatDate(record.lastEventAt) }}
+              </template>
+            </a-table-column>
+            <a-table-column :title="securityRecoveryCopy.reason" :width="190">
+              <template #cell="{ record }">
+                {{ record.reasonCode || t('common.notAvailable') }}
+              </template>
+            </a-table-column>
+            <a-table-column :title="securityRecoveryCopy.retry" :width="150">
+              <template #cell="{ record }">
+                <a-tag :color="record.retryable ? 'orange' : 'gray'">
+                  {{
+                    record.retryable
+                      ? securityRecoveryCopy.retryable
+                      : securityRecoveryCopy.terminal
+                  }}
+                </a-tag>
+              </template>
+            </a-table-column>
+          </template>
+        </a-table>
+        <a-empty v-else :description="securityRecoveryCopy.empty" />
       </a-space>
     </a-card>
 

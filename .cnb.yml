@@ -1,0 +1,455 @@
+main:
+  push:
+    - name: validate-security-scan-configuration
+      stages:
+        - name: validate-code-scan-config
+          image: cnbcool/code-security-config
+          args:
+            - validate
+
+    - name: static-application-quality
+      runner:
+        cpus: 8
+      docker:
+        build:
+          dockerfile: deploy/cnb/quality-dependencies.Dockerfile
+          buildArgs:
+            MCWEB_DOWNSTREAM_NODE_PACKAGE_DIR: deploy/cnb/empty-node-package
+          by:
+            - deploy/cnb/quality-dependencies.Dockerfile
+            - deploy/cnb/empty-node-package/package.json
+            - deploy/cnb/empty-node-package/package-lock.json
+            - Gemfile
+            - Gemfile.lock
+            - package.json
+            - package-lock.json
+          versionBy:
+            - deploy/cnb/quality-dependencies.Dockerfile
+            - deploy/cnb/empty-node-package/package.json
+            - deploy/cnb/empty-node-package/package-lock.json
+            - Gemfile
+            - Gemfile.lock
+            - package.json
+            - package-lock.json
+          sync: true
+      stages:
+        - name: attach-locked-dependencies
+          script: |
+            set -eu
+            test ! -e node_modules
+            ln -s /opt/mcweb-quality/root/node_modules node_modules
+            bundle check
+            test -x node_modules/.bin/tsc
+
+        - name: lint-and-static-security
+          script: |
+            set -eu
+            bin/rubocop
+            bundle exec brakeman --no-pager
+          timeout: 45m
+
+        - name: verify-language-types-and-contracts
+          script: |
+            set -eu
+            bundle exec ruby scripts/check-rails-i18n.rb
+            npm run check:i18n
+            npm run check:user-copy
+            npm run typecheck
+            npm run test:javascript
+            npm run test:e2e:list
+          timeout: 60m
+
+        - name: build-and-budget-vite-assets
+          script: |
+            set -eu
+            bundle exec rails tailwindcss:build
+            bin/vite build
+            npm run check:vite-resource-boundaries
+            npm run check:vite-budgets
+          timeout: 60m
+
+    - name: rails-full-suite-fresh-postgres
+      runner:
+        cpus: 8
+      services:
+        - docker
+      docker:
+        build:
+          dockerfile: deploy/cnb/quality-dependencies.Dockerfile
+          buildArgs:
+            MCWEB_DOWNSTREAM_NODE_PACKAGE_DIR: deploy/cnb/empty-node-package
+          by:
+            - deploy/cnb/quality-dependencies.Dockerfile
+            - deploy/cnb/empty-node-package/package.json
+            - deploy/cnb/empty-node-package/package-lock.json
+            - Gemfile
+            - Gemfile.lock
+            - package.json
+            - package-lock.json
+          versionBy:
+            - deploy/cnb/quality-dependencies.Dockerfile
+            - deploy/cnb/empty-node-package/package.json
+            - deploy/cnb/empty-node-package/package-lock.json
+            - Gemfile
+            - Gemfile.lock
+            - package.json
+            - package-lock.json
+          sync: true
+      env:
+        CI: "1"
+        RAILS_ENV: test
+        DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/mcweb_test
+        LOCKBOX_MASTER_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        PARALLEL_WORKERS: "1"
+      stages:
+        - name: cache-postgresql-test-image
+          type: docker:cache
+          options:
+            dockerfile: deploy/cnb/postgres-test.Dockerfile
+            by:
+              - deploy/cnb/postgres-test.Dockerfile
+            versionBy:
+              - deploy/cnb/postgres-test.Dockerfile
+            sync: true
+          exports:
+            name: MCWEB_POSTGRES_TEST_IMAGE
+
+        - name: start-fresh-postgresql
+          script: |
+            set -eu
+            test -n "${MCWEB_POSTGRES_TEST_IMAGE:-}"
+            docker pull "${MCWEB_POSTGRES_TEST_IMAGE}"
+            docker run --detach --rm \
+              --name mcweb-test-postgres \
+              --env POSTGRES_USER=postgres \
+              --env POSTGRES_PASSWORD=postgres \
+              --publish 5432:5432 \
+              "${MCWEB_POSTGRES_TEST_IMAGE}"
+            ready=0
+            for attempt in $(seq 1 60); do
+              if docker exec mcweb-test-postgres pg_isready --username postgres; then
+                ready=1
+                break
+              fi
+              sleep 1
+            done
+            test "${ready}" = 1
+          timeout: 10m
+
+        - name: attach-locked-dependencies
+          script: |
+            set -eu
+            test ! -e node_modules
+            ln -s /opt/mcweb-quality/root/node_modules node_modules
+            bundle check
+
+        - name: build-test-assets
+          script: |
+            set -eu
+            bundle exec rails tailwindcss:build
+            bin/vite build --mode=test
+          timeout: 60m
+
+        - name: prepare-fresh-test-database
+          script: bin/rails db:prepare
+          timeout: 30m
+
+        - name: run-complete-rails-suite
+          script: bin/rails test
+          timeout: 4h
+
+        - name: verify-schema-delivery
+          script: |
+            set -eu
+            bin/rails db:schema:dump
+            git diff --exit-code -- db/schema.rb
+          timeout: 30m
+
+    - name: chromium-system-acceptance
+      runner:
+        cpus: 8
+      services:
+        - docker
+      docker:
+        build:
+          dockerfile: deploy/cnb/quality-dependencies.Dockerfile
+          buildArgs:
+            MCWEB_DOWNSTREAM_NODE_PACKAGE_DIR: deploy/cnb/empty-node-package
+          by:
+            - deploy/cnb/quality-dependencies.Dockerfile
+            - deploy/cnb/empty-node-package/package.json
+            - deploy/cnb/empty-node-package/package-lock.json
+            - Gemfile
+            - Gemfile.lock
+            - package.json
+            - package-lock.json
+          versionBy:
+            - deploy/cnb/quality-dependencies.Dockerfile
+            - deploy/cnb/empty-node-package/package.json
+            - deploy/cnb/empty-node-package/package-lock.json
+            - Gemfile
+            - Gemfile.lock
+            - package.json
+            - package-lock.json
+          sync: true
+      env:
+        CI: "1"
+        MCWEB_E2E_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/mcweb_test_e2e
+        LOCKBOX_MASTER_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        PARALLEL_WORKERS: "1"
+        PLAYWRIGHT_BROWSERS_PATH: /opt/mcweb-quality/ms-playwright
+      stages:
+        - name: cache-postgresql-test-image
+          type: docker:cache
+          options:
+            dockerfile: deploy/cnb/postgres-test.Dockerfile
+            by:
+              - deploy/cnb/postgres-test.Dockerfile
+            versionBy:
+              - deploy/cnb/postgres-test.Dockerfile
+            sync: true
+          exports:
+            name: MCWEB_POSTGRES_TEST_IMAGE
+
+        - name: start-fresh-postgresql
+          script: |
+            set -eu
+            test -n "${MCWEB_POSTGRES_TEST_IMAGE:-}"
+            docker pull "${MCWEB_POSTGRES_TEST_IMAGE}"
+            docker run --detach --rm \
+              --name mcweb-e2e-postgres \
+              --env POSTGRES_USER=postgres \
+              --env POSTGRES_PASSWORD=postgres \
+              --publish 5432:5432 \
+              "${MCWEB_POSTGRES_TEST_IMAGE}"
+            ready=0
+            for attempt in $(seq 1 60); do
+              if docker exec mcweb-e2e-postgres pg_isready --username postgres; then
+                ready=1
+                break
+              fi
+              sleep 1
+            done
+            test "${ready}" = 1
+          timeout: 10m
+
+        - name: attach-locked-dependencies
+          script: |
+            set -eu
+            test ! -e node_modules
+            ln -s /opt/mcweb-quality/root/node_modules node_modules
+            bundle check
+            find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -print -quit | grep -q .
+
+        - name: run-reviewed-chromium-acceptance
+          script: |
+            set -eu
+            npm run check:e2e-baselines
+            npm run test:e2e
+          timeout: 2h
+
+    - name: build-rails-production-image
+      services:
+        - docker
+      stages:
+        - name: cache-production-dependencies
+          type: docker:cache
+          options:
+            dockerfile: deploy/docker/Dockerfile
+            target: dependencies
+            buildArgs:
+              BUILDKIT_INLINE_CACHE: "T"
+            by:
+              - deploy/docker/Dockerfile
+              - Gemfile
+              - Gemfile.lock
+              - package.json
+              - package-lock.json
+            versionBy:
+              - deploy/docker/Dockerfile
+              - Gemfile
+              - Gemfile.lock
+              - package.json
+              - package-lock.json
+            sync: true
+          exports:
+            name: MCWEB_PRODUCTION_DEPENDENCY_IMAGE
+
+        - name: cache-production-runtime
+          type: docker:cache
+          options:
+            dockerfile: deploy/docker/Dockerfile
+            target: runtime-base
+            buildArgs:
+              BUILDKIT_INLINE_CACHE: "T"
+            by:
+              - deploy/docker/Dockerfile
+            versionBy:
+              - deploy/docker/Dockerfile
+            sync: true
+          exports:
+            name: MCWEB_PRODUCTION_RUNTIME_IMAGE
+
+        - name: build-production-image
+          script: |
+            set -eu
+            test -n "${MCWEB_PRODUCTION_DEPENDENCY_IMAGE:-}"
+            test -n "${MCWEB_PRODUCTION_RUNTIME_IMAGE:-}"
+            docker pull "${MCWEB_PRODUCTION_DEPENDENCY_IMAGE}"
+            docker pull "${MCWEB_PRODUCTION_RUNTIME_IMAGE}"
+            image_tag="mcweb-ce:${CNB_COMMIT_SHORT:-local}"
+            DOCKER_BUILDKIT=1 docker build \
+              --build-arg BUILDKIT_INLINE_CACHE=1 \
+              --cache-from "${MCWEB_PRODUCTION_DEPENDENCY_IMAGE}" \
+              --cache-from "${MCWEB_PRODUCTION_RUNTIME_IMAGE}" \
+              --file deploy/docker/Dockerfile \
+              --tag "${image_tag}" \
+              .
+          timeout: 2h
+
+    - name: production-data-lifecycle-acceptance
+      runner:
+        cpus: 8
+      services:
+        - docker
+      docker:
+        build:
+          dockerfile: deploy/cnb/production-acceptance-dependencies.Dockerfile
+          by:
+            - deploy/cnb/production-acceptance-dependencies.Dockerfile
+            - deploy/cnb/postgresql-client-cache.version
+            - Gemfile
+            - Gemfile.lock
+          versionBy:
+            - deploy/cnb/production-acceptance-dependencies.Dockerfile
+            - deploy/cnb/postgresql-client-cache.version
+            - Gemfile
+            - Gemfile.lock
+          sync: true
+      env:
+        CI: "1"
+        MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS: "1"
+        MCWEB_ACCEPTANCE_SKIP_APP_IMAGE_BUILD: "1"
+      stages:
+        - name: cache-acceptance-postgresql
+          type: docker:cache
+          options:
+            dockerfile: deploy/cnb/postgres-test.Dockerfile
+            by:
+              - deploy/cnb/postgres-test.Dockerfile
+            versionBy:
+              - deploy/cnb/postgres-test.Dockerfile
+            sync: true
+          exports:
+            name: MCWEB_ACCEPTANCE_POSTGRES_IMAGE
+
+        - name: cache-acceptance-redis
+          type: docker:cache
+          options:
+            dockerfile: deploy/cnb/redis-test.Dockerfile
+            by:
+              - deploy/cnb/redis-test.Dockerfile
+            versionBy:
+              - deploy/cnb/redis-test.Dockerfile
+            sync: true
+          exports:
+            name: MCWEB_ACCEPTANCE_REDIS_IMAGE
+
+        - name: cache-acceptance-minio
+          type: docker:cache
+          options:
+            dockerfile: deploy/acceptance/minio.Dockerfile
+            by:
+              - deploy/acceptance/minio.Dockerfile
+            versionBy:
+              - deploy/acceptance/minio.Dockerfile
+            sync: true
+          exports:
+            name: MCWEB_ACCEPTANCE_MINIO_IMAGE
+
+        - name: verify-cached-production-acceptance-runner
+          script: |
+            set -eu
+            test -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}"
+            test -n "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-}"
+            test -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}"
+            bundle check
+            docker --version
+            docker compose version
+            pg_dump --version | grep -Eq ' 18\.'
+            pg_restore --version | grep -Eq ' 18\.'
+
+        - name: run-production-data-lifecycle-acceptance
+          script: bash scripts/run-production-acceptance.sh
+          timeout: 90m
+
+    - name: test-and-build-go-components
+      docker:
+        build:
+          dockerfile: deploy/cnb/go-dependencies.Dockerfile
+          by:
+            - deploy/cnb/go-dependencies.Dockerfile
+            - host/mcweb-hostd/go.mod
+            - host/mcweb-hostd/go.sum
+            - nodes/mcweb-node/go.mod
+            - nodes/mcweb-node/go.sum
+          versionBy:
+            - deploy/cnb/go-dependencies.Dockerfile
+            - host/mcweb-hostd/go.mod
+            - host/mcweb-hostd/go.sum
+            - nodes/mcweb-node/go.mod
+            - nodes/mcweb-node/go.sum
+          sync: true
+        volumes:
+          - /root/.cache/go-build:copy-on-write
+      env:
+        GOPROXY: "off"
+        GOSUMDB: "off"
+        GOTOOLCHAIN: "local"
+      stages:
+        - name: go-test-and-build
+          script: |
+            set -eu
+            for module in host/mcweb-hostd nodes/mcweb-node; do
+              (
+                cd "${module}"
+                go mod verify
+                go test ./...
+                go build ./...
+              )
+            done
+          timeout: 60m
+
+    - name: test-and-build-minecraft-connectors
+      docker:
+        build:
+          dockerfile: deploy/cnb/gradle-dependencies.Dockerfile
+          by:
+            - deploy/cnb/gradle-dependencies.Dockerfile
+            - plugins/mcweb-connector
+            - deploy/cnb/gradle-cache.version
+          versionBy:
+            - deploy/cnb/gradle-dependencies.Dockerfile
+            - deploy/cnb/gradle-cache.version
+            - plugins/mcweb-connector/gradlew
+            - plugins/mcweb-connector/gradlew.bat
+            - plugins/mcweb-connector/gradle/wrapper/gradle-wrapper.jar
+            - plugins/mcweb-connector/gradle/wrapper/gradle-wrapper.properties
+            - plugins/mcweb-connector/settings.gradle.kts
+            - plugins/mcweb-connector/build.gradle.kts
+            - plugins/mcweb-connector/mcweb-connector-common/build.gradle.kts
+            - plugins/mcweb-connector/mcweb-connector-bukkit-legacy/build.gradle.kts
+            - plugins/mcweb-connector/mcweb-connector-bukkit-modern/build.gradle.kts
+            - plugins/mcweb-connector/mcweb-connector-bungee/build.gradle.kts
+            - plugins/mcweb-connector/mcweb-connector-velocity/build.gradle.kts
+          sync: true
+      stages:
+        - name: build-connectors-from-cached-dependencies
+          script: |
+            set -eu
+            test -x "${MCWEB_JDK8_HOME}/bin/java"
+            test -x "${MCWEB_JDK17_HOME}/bin/java"
+            cd plugins/mcweb-connector
+            chmod +x gradlew
+            ./gradlew --offline --no-daemon clean build
+          timeout: 60m

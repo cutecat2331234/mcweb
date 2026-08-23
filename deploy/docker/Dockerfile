@@ -1,6 +1,6 @@
-FROM node:26-bookworm-slim AS node
+FROM node:26-bookworm-slim@sha256:cd565714d4da3e84bfd341e31448f81d47c6362198f152345297c9c1154e6341 AS node
 
-FROM ruby:4.0.6-slim-bookworm AS build
+FROM ruby:4.0.6-slim-bookworm@sha256:c5650da02325ecb3e7dd96e7074772c3ae2ecd093a9acf2cdbcf1a2fdc680726 AS dependencies
 
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends build-essential libpq-dev libvips42 && \
@@ -21,6 +21,10 @@ ENV RAILS_ENV=production \
 COPY Gemfile Gemfile.lock package.json package-lock.json ./
 RUN bundle install && npm ci
 
+ENV npm_config_offline=true
+
+FROM dependencies AS build
+
 COPY . .
 RUN SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')" \
     LOCKBOX_MASTER_KEY="$(ruby -rsecurerandom -e 'print SecureRandom.hex(32)')" \
@@ -35,7 +39,7 @@ RUN SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')" \
     bundle exec rails assets:precompile && \
     rm -rf node_modules tmp/cache
 
-FROM ruby:4.0.6-slim-bookworm AS runtime
+FROM ruby:4.0.6-slim-bookworm@sha256:c5650da02325ecb3e7dd96e7074772c3ae2ecd093a9acf2cdbcf1a2fdc680726 AS runtime-base
 
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends curl fonts-noto-cjk libpq5 libvips42 && \
@@ -44,6 +48,8 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd --system --gid 1000 mcweb && \
     useradd --system --uid 1000 --gid mcweb --create-home --home-dir /home/mcweb mcweb
+
+FROM runtime-base AS runtime
 
 WORKDIR /app
 ENV RAILS_ENV=production \

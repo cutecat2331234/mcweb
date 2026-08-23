@@ -51,13 +51,13 @@ The existing CNB build and its rebuild both ran against remote `main` commit
 
 ### Reusable CNB cache primitives
 
-- CE owns the reusable `.cnb.yml`, security-scan configuration, and `deploy/cnb/**` dependency-image recipes. EE inherits them without an adapter commit.
+- CE owns the reusable `.cnb.yml`, `.scanignore`, security-scan configuration, and `deploy/cnb/**` dependency-image recipes. EE inherits them without an adapter commit.
 - The CE quality dependency image installs the root locked Ruby/npm/Chromium toolchain and exposes one neutral downstream Node-package extension input. CE provides an empty default package contract; EE-PVP selects `pvp/site` only in its adapter configuration.
 - Cache keys include the Dockerfile and every lock/version input that changes image contents. Source, tests, probes, or scripts not copied into a dependency image must not invalidate that image.
 - The Go image caches both module graphs while checked-out source remains the build input. Runtime Go work stays offline with a local toolchain.
 - The Gradle image caches the wrapper, dependency graph, and JDK 8/17 toolchains; checked-out connector work stays offline. `gradle-cache.version` remains the explicit refresh input for mutable upstream artifacts.
 - The production image imports dependency and runtime cache images. CNB `docker:cache` receives the nonnumeric Docker boolean string `"T"` for `BUILDKIT_INLINE_CACHE`; the final Docker build retains explicit BuildKit cache imports.
-- The acceptance runner pins major PostgreSQL client compatibility at 18 and verifies `pg_dump`/`pg_restore` at image-build time. It must not pin a repository revision that PGDG removes. An explicit cache-version file controls intentional runner refreshes.
+- The acceptance runner pins PostgreSQL client compatibility at 18 and verifies `pg_dump`/`pg_restore` at image-build time. Exact package revisions come from PGDG's signed archive rather than the rolling repository that removes superseded revisions. An explicit cache-version file controls intentional runner refreshes.
 - PostgreSQL, Redis, and MinIO service images remain digest-pinned Docker cache images and are required inputs to CNB production acceptance.
 - No dependency directory, package-manager cache, browser download, JDK, database image, or generated build output may be stored in Git or Git LFS.
 

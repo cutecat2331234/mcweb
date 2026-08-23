@@ -1,0 +1,7 @@
+secrets:
+  scan:
+    ignoreFrom: .scanignore
+
+software-composition-analysis:
+  scan:
+    ignoreFrom: .scanignore

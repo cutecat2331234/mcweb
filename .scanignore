@@ -1,0 +1,11 @@
+# Generated dependency trees and build output are not source inputs.
+/node_modules/
+/public/assets/
+/public/vite/
+/tmp/
+/log/
+/plugins/mcweb-connector/**/build/
+
+# These lockfiles describe upstream Arco reference repositories retained for
+# source comparison. The application build uses the reviewed root lockfile.
+/vendor/arco-design-*/**/pnpm-lock.yaml

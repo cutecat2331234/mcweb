@@ -3,6 +3,8 @@
 module Admin
   module Forum
     class PointsController < Admin::Forum::BaseController
+      include RegisteredSiteSettingUpdates
+
       before_action -> { require_permission("forum.points.manage") }
 
       POINT_SETTING_KEYS = %w[
@@ -57,17 +59,26 @@ module Admin
 
       # PATCH /admin/forum/points/settings
       def update_settings
-        settings_params.each do |key, value|
-          SiteSetting.set(key, value.to_s)
+        updates = normalize_registered_site_setting_updates(
+          settings_params,
+          owner: "admin.forum.points"
+        )
+        SiteSetting.transaction do
+          updates.each do |key, value|
+            SiteSetting.set(key, value)
+          end
         end
 
         Administration::AuditLogger.call(
           actor: current_user,
           action: "admin.forum_points_settings_updated",
-          metadata: settings_params.to_h
+          metadata: { keys: updates.keys }
         )
 
         redirect_to admin_forum_points_settings_path, notice: t("mcweb.flash.point_settings_saved")
+      rescue Mcweb::SettingsNamespaceRegistry::ValidationError => error
+        redirect_to admin_forum_points_settings_path,
+          alert: registered_site_setting_error(error)
       end
 
       # GET /admin/forum/points/adjust

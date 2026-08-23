@@ -170,6 +170,14 @@ class Mcweb::PluginApi::V1::HostTest < ActiveSupport::TestCase
     assert_equal "configured", setting.value
     assert_predicate setting.value, :frozen?
 
+    secret_key = "plugin.api.delivery_token"
+    secret = "must-not-leave-host-#{SecureRandom.hex(8)}"
+    SiteSetting.set(secret_key, secret)
+    sensitive = @api.site.setting(secret_key)
+    assert_predicate sensitive, :failure?
+    assert_equal "setting_sensitive", sensitive.code
+    refute_includes sensitive.to_h.to_json, secret
+
     features = @api.site.features
     assert_equal FeatureFlags.frontend_hash, features.value
     assert_equal FeatureFlags.enabled?(:forum), @api.site.feature("forum").value

@@ -15,7 +15,9 @@ export interface ForumSettingItem {
   value: string
   label: string
   hint?: string | null
-  input_type: 'text' | 'boolean'
+  input_type: 'text' | 'number' | 'boolean' | 'password'
+  sensitive?: boolean
+  configured?: boolean
 }
 
 export interface SavedSearchForTest {
@@ -162,12 +164,23 @@ async function sendTestAllEventWebhooks() {
           </p>
           <a-checkbox
             v-if="setting.input_type === 'boolean'"
-            :model-value="form.settings[setting.key] === 'true'"
+            :model-value="['true', '1'].includes(form.settings[setting.key])"
             @change="(value: boolean) => { form.settings[setting.key] = value ? 'true' : 'false' }"
           >
             {{ t('admin.common.enable') }}
           </a-checkbox>
-          <a-input v-else v-model="form.settings[setting.key]" allow-clear />
+          <a-input-password
+            v-else-if="setting.input_type === 'password'"
+            v-model="form.settings[setting.key]"
+            :placeholder="setting.configured ? '••••••••' : undefined"
+            allow-clear
+          />
+          <a-input
+            v-else
+            v-model="form.settings[setting.key]"
+            :input-attrs="setting.input_type === 'number' ? { type: 'number' } : undefined"
+            allow-clear
+          />
         </a-card>
 
         <div>

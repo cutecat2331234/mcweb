@@ -62,11 +62,20 @@ module Commerce
       def update_from_params!(raw_params)
         permitted = raw_params.respond_to?(:permit) ? raw_params.permit(*DEFINITIONS.map { |d| d.id.to_s }) : raw_params.to_h
 
-        DEFINITIONS.each do |definition|
+        normalized_updates = DEFINITIONS.each_with_object({}) do |definition, updates|
           next unless permitted.key?(definition.id.to_s)
 
-          enabled = ActiveModel::Type::Boolean.new.cast(permitted[definition.id.to_s])
-          SiteSetting.set(definition.key, enabled ? "true" : "false")
+          updates[definition.key] = Mcweb::SettingsNamespaceRegistry.normalize_for_write(
+            definition.key,
+            permitted[definition.id.to_s],
+            surface: :dedicated,
+            owner: "admin.store.settings"
+          )
+        end
+        SiteSetting.transaction do
+          normalized_updates.each do |key, value|
+            SiteSetting.set(key, value)
+          end
         end
 
         ServiceResult.success(true)

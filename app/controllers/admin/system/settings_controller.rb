@@ -5,6 +5,8 @@ require "uri"
 module Admin
   module System
     class SettingsController < BaseController
+      include RegisteredSiteSettingUpdates
+
       BASIC_SETTING_KEYS = %w[
         general.site_name
         site.name
@@ -141,6 +143,7 @@ module Admin
           )
           return
         end
+        values = registry_normalized_basic_settings(values)
 
         updates = {
           "general.site_name" => values.fetch(:site_name),
@@ -163,6 +166,18 @@ module Admin
 
         redirect_to admin_system_settings_path,
           notice: t("mcweb.flash.system_settings_saved")
+      rescue Mcweb::SettingsNamespaceRegistry::ValidationError => error
+        field = error.key == "site.url" ? :site_url : :site_name
+        code = {
+          "too_long" => "name_too_long",
+          "invalid_characters" => "name_invalid",
+          "invalid_url" => "url_invalid"
+        }.fetch(error.code, error.code)
+        render_page(
+          basic_settings: values || basic_settings_props,
+          form_errors: { field => code },
+          status: :unprocessable_entity
+        )
       end
 
       def update_system_settings
@@ -174,6 +189,11 @@ module Admin
 
         updates = settings_params.except(*READ_ONLY_SETTING_KEYS)
         updates.reject! { |key, value| sensitive_key?(key) && value.blank? }
+        updates = normalize_registered_site_setting_updates(
+          updates,
+          owner: "admin.system.settings.generic",
+          surface: :generic
+        )
 
         feature_updates = feature_flag_updates(updates)
         if feature_updates.any?
@@ -201,6 +221,9 @@ module Admin
 
         redirect_to admin_system_settings_path,
           notice: t("mcweb.flash.system_settings_saved")
+      rescue Mcweb::SettingsNamespaceRegistry::ValidationError => error
+        redirect_to admin_system_settings_path,
+          alert: registered_site_setting_error(error)
       end
 
       def render_page(
@@ -222,7 +245,10 @@ module Admin
         hint_maps = translation_maps("hints")
 
         SiteSetting.where.not(key: BASIC_SETTING_KEYS).order(:key).filter_map do |setting|
-          next if Mcweb::SettingsNamespaceRegistry.protected?(setting.key)
+          next unless Mcweb::SettingsNamespaceRegistry.visible_on?(
+            setting.key,
+            surface: :generic
+          )
 
           sensitive = sensitive_key?(setting.key)
           {
@@ -232,7 +258,12 @@ module Admin
               t("mcweb.admin.system.settings.custom_label"),
             hint: translated_setting_value(setting.key, hint_maps),
             sensitive: sensitive,
-            configured: sensitive && setting.value.present?
+            configured: sensitive && setting.value.present?,
+            input_type: Mcweb::SettingsNamespaceRegistry.input_type_for(setting.key).to_s,
+            read_only: !Mcweb::SettingsNamespaceRegistry.writable_on?(
+              setting.key,
+              surface: :generic
+            )
           }
         end
       end
@@ -256,6 +287,23 @@ module Admin
 
       def normalize_site_url(value)
         value.to_s.strip.sub(%r{/+\z}, "")
+      end
+
+      def registry_normalized_basic_settings(values)
+        {
+          site_name: Mcweb::SettingsNamespaceRegistry.normalize_for_write(
+            "general.site_name",
+            values.fetch(:site_name),
+            surface: :basic,
+            owner: "admin.system.settings.basic"
+          ),
+          site_url: Mcweb::SettingsNamespaceRegistry.normalize_for_write(
+            "site.url",
+            values.fetch(:site_url),
+            surface: :basic,
+            owner: "admin.system.settings.basic"
+          )
+        }
       end
 
       def basic_settings_errors(values)
@@ -326,8 +374,8 @@ module Admin
       end
 
       def settings_params
-        allowed_keys = SiteSetting.where.not(key: BASIC_SETTING_KEYS).pluck(:key).reject do |key|
-          Mcweb::SettingsNamespaceRegistry.protected?(key)
+        allowed_keys = SiteSetting.where.not(key: BASIC_SETTING_KEYS).pluck(:key).select do |key|
+          Mcweb::SettingsNamespaceRegistry.writable_on?(key, surface: :generic)
         end
         params.fetch(:settings, {}).permit(*allowed_keys).to_h
       end
@@ -338,7 +386,9 @@ module Admin
 
         submitted.keys
           .map(&:to_s)
-          .select { |key| Mcweb::SettingsNamespaceRegistry.protected?(key) }
+          .reject do |key|
+            Mcweb::SettingsNamespaceRegistry.writable_on?(key, surface: :generic)
+          end
           .uniq
           .sort
       end
@@ -376,7 +426,8 @@ module Admin
       end
 
       def sensitive_key?(key)
-        key.match?(SENSITIVE_KEY_PATTERN)
+        Mcweb::SettingsNamespaceRegistry.sensitive?(key) ||
+          key.match?(SENSITIVE_KEY_PATTERN)
       end
 
       def serialized_value(value)

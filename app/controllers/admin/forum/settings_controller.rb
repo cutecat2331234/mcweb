@@ -3,6 +3,8 @@
 module Admin
   module Forum
     class SettingsController < Admin::BaseController
+      include RegisteredSiteSettingUpdates
+
       before_action -> { require_admin_module!("system") }
       before_action -> { require_permission("system.settings.manage") }
 
@@ -66,7 +68,10 @@ module Admin
       end
 
       def update
-        updates = normalized_settings_params
+        updates = normalize_registered_site_setting_updates(
+          normalized_settings_params,
+          owner: "admin.forum.settings"
+        )
         if (error = forum_event_webhook_settings_error(updates))
           redirect_to admin_forum_settings_path, alert: error
           return
@@ -83,6 +88,9 @@ module Admin
         )
 
         redirect_to admin_forum_settings_path, notice: t("mcweb.flash.forum_settings_saved")
+      rescue Mcweb::SettingsNamespaceRegistry::ValidationError => error
+        redirect_to admin_forum_settings_path,
+          alert: registered_site_setting_error(error)
       end
 
       def test_webhook
@@ -137,13 +145,11 @@ module Admin
 
       def forum_settings_props
         FORUM_SETTING_KEYS.map do |key|
-          {
+          registered_site_setting_value(key, default_for(key)).merge(
             key: key,
-            value: SiteSetting.get(key, default_for(key)).to_s,
             label: setting_label(key),
-            hint: setting_hint(key),
-            input_type: setting_input_type(key)
-          }
+            hint: setting_hint(key)
+          )
         end
       end
 
@@ -165,9 +171,11 @@ module Admin
       end
 
       def forum_event_webhook_settings_error(updates)
-        url = updates["forum.event_webhook_url"]
-        if url.present? && !UrlSafety.public_http_url?(url)
-          return t("mcweb.services.errors.webhook_url_private")
+        %w[forum.event_webhook_url forum.saved_search_webhook_url].each do |key|
+          url = updates[key]
+          if url.present? && !UrlSafety.public_http_url?(url)
+            return t("mcweb.services.errors.webhook_url_private")
+          end
         end
 
         raw_events = updates["forum.event_webhook_events"]
@@ -231,21 +239,6 @@ module Admin
         return nil unless hints.is_a?(Hash)
 
         hints[key.to_sym] || hints[key]
-      end
-
-      def setting_input_type(key)
-        return "boolean" if key == "forum.group_pm_creator_only_add"
-        return "boolean" if key == "forum.allow_op_close"
-        return "boolean" if key == "forum.signatures_enabled"
-        return "text" if key == "forum.saved_search_webhook_secret"
-        return "text" if key == "forum.saved_search_webhook_url"
-        return "text" if key == "forum.event_webhook_secret"
-        return "text" if key == "forum.event_webhook_url"
-        return "text" if key == "forum.event_webhook_events"
-        return "text" if key == "webhook.failure_alert_email"
-        return "text" if key == "webhook.failure_alert_locale"
-
-        "text"
       end
 
       def saved_searches_for_test_props

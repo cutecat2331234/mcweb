@@ -51,6 +51,8 @@ export interface SettingItem {
   hint?: string | null
   sensitive?: boolean
   configured?: boolean
+  input_type?: SystemSettingInputType
+  read_only?: boolean
 }
 
 interface DisplaySetting extends SettingItem {
@@ -126,8 +128,9 @@ const displaySettings = computed<DisplaySetting[]>(() =>
   props.settings.map((setting) => ({
     ...setting,
     group: systemSettingGroup(setting.key),
-    inputType: setting.sensitive ? 'password' : systemSettingInputType(setting.key),
-    readOnly: systemSettingReadOnly(setting.key),
+    inputType: setting.input_type
+      || (setting.sensitive ? 'password' : systemSettingInputType(setting.key)),
+    readOnly: setting.read_only ?? systemSettingReadOnly(setting.key),
   })),
 )
 

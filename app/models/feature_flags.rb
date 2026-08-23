@@ -77,11 +77,13 @@ class FeatureFlags
         return ServiceResult.failure(error: :feature_portal_required)
       end
 
-      DEFINITIONS.each do |definition|
+      updates = DEFINITIONS.each_with_object({}) do |definition, values|
         next unless permitted.key?(definition.id.to_s)
 
-        enabled = ActiveModel::Type::Boolean.new.cast(permitted[definition.id.to_s])
-        SiteSetting.set(definition.key, enabled ? "true" : "false")
+        values[definition.key] = normalized_value(definition, permitted[definition.id.to_s])
+      end
+      SiteSetting.transaction do
+        updates.each { |key, value| SiteSetting.set(key, value) }
       end
 
       ServiceResult.success(true)
@@ -91,7 +93,7 @@ class FeatureFlags
       DEFINITIONS.to_h do |definition|
         key = definition.id.to_s
         value = if permitted.key?(key)
-          ActiveModel::Type::Boolean.new.cast(permitted[key])
+          normalized_value(definition, permitted[key]) == "true"
         else
           enabled?(definition.id)
         end
@@ -123,6 +125,15 @@ class FeatureFlags
     end
 
     private
+
+    def normalized_value(definition, value)
+      Mcweb::SettingsNamespaceRegistry.normalize_for_write(
+        definition.key,
+        value,
+        surface: :dedicated,
+        owner: "admin.system.feature_toggles"
+      )
+    end
 
     def truthy?(value)
       value.to_s.in?(%w[true 1])

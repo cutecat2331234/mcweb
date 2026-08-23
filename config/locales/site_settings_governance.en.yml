@@ -1,0 +1,21 @@
+en:
+  mcweb:
+    site_settings:
+      errors:
+        invalid: "The setting %{key} is invalid. Review the value and try again."
+        required: "The setting %{key} is required."
+        too_long: "The setting %{key} must be no longer than %{max} characters."
+        invalid_characters: "The setting %{key} contains unsupported control characters."
+        invalid_boolean: "The setting %{key} must be enabled or disabled."
+        invalid_integer: "The setting %{key} must be a whole number."
+        below_minimum: "The setting %{key} must be at least %{min}."
+        above_maximum: "The setting %{key} must be no greater than %{max}."
+        invalid_url: "The setting %{key} must be a valid HTTP(S) URL."
+        invalid_email: "The setting %{key} must be a valid email address."
+        invalid_locale: "The setting %{key} must use a supported language."
+        invalid_choice: "The setting %{key} contains an unsupported option."
+        invalid_json: "The setting %{key} must use the expected structured-data format."
+        invalid_timestamp: "The setting %{key} must use a valid ISO 8601 date and time."
+        read_only: "The setting %{key} is managed by the system and cannot be edited."
+        wrong_owner: "The setting %{key} belongs to another configuration page and was not changed."
+        wrong_surface: "The setting %{key} belongs to a dedicated configuration page and was not changed."

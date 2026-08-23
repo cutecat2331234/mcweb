@@ -1,0 +1,21 @@
+zh-CN:
+  mcweb:
+    site_settings:
+      errors:
+        invalid: "配置 %{key} 无效，请检查后重试。"
+        required: "配置 %{key} 不能为空。"
+        too_long: "配置 %{key} 不能超过 %{max} 个字符。"
+        invalid_characters: "配置 %{key} 包含不支持的控制字符。"
+        invalid_boolean: "配置 %{key} 必须选择启用或停用。"
+        invalid_integer: "配置 %{key} 必须是整数。"
+        below_minimum: "配置 %{key} 不能小于 %{min}。"
+        above_maximum: "配置 %{key} 不能大于 %{max}。"
+        invalid_url: "配置 %{key} 必须是有效的 HTTP(S) 地址。"
+        invalid_email: "配置 %{key} 必须是有效的电子邮箱地址。"
+        invalid_locale: "配置 %{key} 必须使用受支持的语言。"
+        invalid_choice: "配置 %{key} 使用了不支持的选项。"
+        invalid_json: "配置 %{key} 必须使用规定的结构化数据格式。"
+        invalid_timestamp: "配置 %{key} 必须使用有效的 ISO 8601 日期时间。"
+        read_only: "配置 %{key} 由系统维护，不能手动修改。"
+        wrong_owner: "配置 %{key} 属于另一个专用配置页面，本次未作更改。"
+        wrong_surface: "配置 %{key} 由专用配置页面管理，本次未作更改。"

@@ -3,6 +3,8 @@
 module Admin
   module System
     class FeatureTogglesController < BaseController
+      include RegisteredSiteSettingUpdates
+
       before_action -> { require_permission("system.settings.manage") }
 
       def show
@@ -25,6 +27,9 @@ module Admin
         )
 
         redirect_to admin_system_feature_toggles_path, notice: t("mcweb.flash.feature_toggles_saved")
+      rescue Mcweb::SettingsNamespaceRegistry::ValidationError => error
+        redirect_to admin_system_feature_toggles_path,
+          alert: registered_site_setting_error(error)
       end
     end
   end

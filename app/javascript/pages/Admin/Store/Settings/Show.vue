@@ -15,7 +15,9 @@ export interface StoreSettingItem {
   value: string
   label: string
   hint?: string | null
-  input_type: 'text' | 'number'
+  input_type: 'text' | 'number' | 'boolean' | 'password'
+  sensitive?: boolean
+  configured?: boolean
 }
 
 export interface ShippingMethodItem {
@@ -310,7 +312,14 @@ async function sendTestAllWebhooks() {
             :validate-status="fieldError(setting.key) ? 'error' : undefined"
             :help="fieldError(setting.key) || setting.hint || undefined"
           >
+            <a-input-password
+              v-if="setting.input_type === 'password'"
+              v-model="form.settings[setting.key]"
+              :placeholder="setting.configured ? '••••••••' : undefined"
+              allow-clear
+            />
             <a-input
+              v-else
               v-model="form.settings[setting.key]"
               :input-attrs="setting.input_type === 'number' ? { type: 'number', min: 0 } : undefined"
               allow-clear

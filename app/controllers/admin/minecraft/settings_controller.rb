@@ -3,6 +3,8 @@
 module Admin
   module Minecraft
     class SettingsController < BaseController
+      include RegisteredSiteSettingUpdates
+
       before_action -> { require_permission("minecraft.servers.manage") }
       def show
         render inertia: "Admin/Minecraft/Settings/Show", props: {
@@ -33,27 +35,56 @@ module Admin
       end
 
       def update
-        return unless update_primary_account_settings
+        primary_account_updates = primary_account_setting_updates
+        return if primary_account_updates.nil?
 
-        SiteSetting.set("minecraft.link_command", params[:link_command]) if params[:link_command]
-        SiteSetting.set("minecraft.profile.skin_mode", params[:skin_mode]) if params[:skin_mode]
-        SiteSetting.set("minecraft.bridges.enabled", params[:bridges_enabled]) if params[:bridges_enabled]
-        SiteSetting.set("minecraft.bridges.placeholders", params[:bridge_placeholders]) if params.key?(:bridge_placeholders)
-        SiteSetting.set("minecraft.profile.sections", params[:profile_sections]) if params[:profile_sections]
-        SiteSetting.set("minecraft.graceful_stop.enabled", params[:graceful_stop_enabled]) if params.key?(:graceful_stop_enabled)
-        SiteSetting.set("minecraft.graceful_stop.countdown_seconds", params[:graceful_stop_countdown]) if params[:graceful_stop_countdown]
-        SiteSetting.set("minecraft.graceful_stop.message", params[:graceful_stop_message]) if params[:graceful_stop_message]
-        SiteSetting.set("minecraft.graceful_stop.commands", params[:graceful_stop_commands]) if params[:graceful_stop_commands]
-        SiteSetting.set("minecraft.exec_command.allowed_prefixes", params[:exec_command_allowed_prefixes]) if params.key?(:exec_command_allowed_prefixes)
-        SiteSetting.set("minecraft.commerce.pause_fulfill_during_maintenance", params[:pause_fulfill_during_maintenance]) if params.key?(:pause_fulfill_during_maintenance)
-        SiteSetting.set("minecraft.backup.enabled", params[:backup_enabled]) if params.key?(:backup_enabled)
-        SiteSetting.set("minecraft.backup.schedule", params[:backup_schedule]) if params[:backup_schedule]
+        updates = normalize_registered_site_setting_updates(
+          minecraft_settings_params.merge(primary_account_updates),
+          owner: "admin.minecraft.settings"
+        )
+        SiteSetting.transaction do
+          updates.each { |key, value| SiteSetting.set(key, value) }
+        end
+        if updates.any?
+          Administration::AuditLogger.call(
+            actor: current_user,
+            action: "admin.minecraft_settings_updated",
+            metadata: { keys: updates.keys }
+          )
+        end
         redirect_to admin_minecraft_settings_path, notice: t("mcweb.flash.minecraft_settings_saved")
+      rescue Mcweb::SettingsNamespaceRegistry::ValidationError => error
+        redirect_to admin_minecraft_settings_path,
+          alert: registered_site_setting_error(error)
       end
 
       private
 
-      def update_primary_account_settings
+      SETTING_PARAM_MAP = {
+        link_command: "minecraft.link_command",
+        skin_mode: "minecraft.profile.skin_mode",
+        bridges_enabled: "minecraft.bridges.enabled",
+        bridge_placeholders: "minecraft.bridges.placeholders",
+        profile_sections: "minecraft.profile.sections",
+        graceful_stop_enabled: "minecraft.graceful_stop.enabled",
+        graceful_stop_countdown: "minecraft.graceful_stop.countdown_seconds",
+        graceful_stop_message: "minecraft.graceful_stop.message",
+        graceful_stop_commands: "minecraft.graceful_stop.commands",
+        exec_command_allowed_prefixes: "minecraft.exec_command.allowed_prefixes",
+        pause_fulfill_during_maintenance: "minecraft.commerce.pause_fulfill_during_maintenance",
+        backup_enabled: "minecraft.backup.enabled",
+        backup_schedule: "minecraft.backup.schedule"
+      }.freeze
+
+      def minecraft_settings_params
+        SETTING_PARAM_MAP.each_with_object({}) do |(param_key, setting_key), updates|
+          next unless params.key?(param_key)
+
+          updates[setting_key] = params[param_key]
+        end
+      end
+
+      def primary_account_setting_updates
         updates = {}
         if params.key?(:primary_account_switch_policy)
           policy = params[:primary_account_switch_policy].to_s
@@ -85,21 +116,20 @@ module Admin
           updates["minecraft.primary_account.request_expiry_hours"] = hours.to_s
         end
 
-        updates.each { |key, value| SiteSetting.set(key, value) }
-        true
+        updates
       end
 
       def reject_primary_account_settings
         redirect_to admin_minecraft_settings_path,
                     alert: t("mcweb.flash.primary_account_policy_invalid")
-        false
+        nil
       end
 
       def bounded_integer(value, minimum:, maximum:)
         integer = Integer(value, exception: false)
-        return unless integer
+        return unless integer&.between?(minimum, maximum)
 
-        integer.clamp(minimum, maximum)
+        integer
       end
     end
   end

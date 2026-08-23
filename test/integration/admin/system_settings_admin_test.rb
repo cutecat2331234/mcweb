@@ -24,47 +24,49 @@ module Admin
       SiteSetting.set("owned_test.policy_version", "7")
     end
 
-    test "settings expose localized labels instead of raw keys" do
+    test "generic settings hide every dedicated core namespace" do
       get admin_system_settings_path
 
       assert_response :success
       settings = inertia.props.deep_symbolize_keys.fetch(:settings)
-
-      assert_setting_label(settings, "features.forum.enabled", "社区功能")
-      assert_setting_label(settings, "forum.bump_cooldown_hours", "主题顶起冷却（小时）")
-      assert_setting_label(settings, "store.flat_shipping_cents", "固定运费（分）")
+      keys = settings.map { |setting| setting.fetch(:key) }
+      refute_includes keys, "features.forum.enabled"
+      refute_includes keys, "forum.bump_cooldown_hours"
+      refute_includes keys, "store.flat_shipping_cents"
+      refute_includes keys, "owned_test.policy_version"
     end
 
-    test "labels follow the active English locale" do
+    test "unknown keys inside core namespaces remain hidden in every locale" do
       @admin.update!(locale: "en")
+      SiteSetting.set("forum.future_policy", "must-remain-dedicated")
 
       get admin_system_settings_path
 
       assert_response :success
       settings = inertia.props.deep_symbolize_keys.fetch(:settings)
-      assert_setting_label(settings, "features.forum.enabled", "Community feature")
-      assert_setting_label(settings, "forum.bump_cooldown_hours", "Topic bump cooldown (hours)")
+      refute settings.any? { |setting| setting[:key] == "forum.future_policy" }
     end
 
     test "sensitive setting values are never returned and blank updates preserve them" do
+      SiteSetting.set("test.system.webhook_secret", "server-only-secret")
       get admin_system_settings_path
 
       setting = inertia.props.deep_symbolize_keys.fetch(:settings)
-        .find { |item| item[:key] == "forum.vapid_private_key" }
+        .find { |item| item[:key] == "test.system.webhook_secret" }
 
       assert_equal "", setting[:value]
       assert setting[:sensitive]
       assert setting[:configured]
 
       patch admin_system_settings_path, params: {
-        settings: { "forum.vapid_private_key" => "" }
+        settings: { "test.system.webhook_secret" => "" }
       }
 
       assert_redirected_to admin_system_settings_path
-      assert_equal "server-only-secret", SiteSetting.get("forum.vapid_private_key")
+      assert_equal "server-only-secret", SiteSetting.get("test.system.webhook_secret")
     end
 
-    test "generic settings cannot disable both portal modules" do
+    test "generic settings cannot write dedicated feature flags" do
       patch admin_system_settings_path, params: {
         settings: {
           "features.forum.enabled" => "false",
@@ -75,7 +77,7 @@ module Admin
       assert_redirected_to admin_system_settings_path
       assert_equal "true", SiteSetting.get("features.forum.enabled")
       assert_equal "true", SiteSetting.get("features.store.enabled")
-      assert_equal "论坛和商城至少需要保留一个开启。", flash[:alert]
+      assert_equal "此配置由专用配置页面管理，本次未作任何更改。", flash[:alert]
     end
 
     test "dedicated namespaces are hidden and rejected atomically without auditing values" do

@@ -38,6 +38,12 @@ module Mcweb
           unless key.length.between?(1, MAX_SETTING_KEY_LENGTH)
             return Result.failure(code: "invalid_argument", error: "invalid setting key")
           end
+          if Mcweb::SettingsNamespaceRegistry.sensitive?(key)
+            return Result.failure(
+              code: "setting_sensitive",
+              error: "sensitive site settings are not exposed"
+            )
+          end
 
           Result.success(SiteSetting.get(key, default))
         rescue StandardError => e

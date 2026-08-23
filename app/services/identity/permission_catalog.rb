@@ -191,7 +191,11 @@ module Identity
         execution_points: [
           "app/controllers/admin/website/pages_controller.rb#index",
           "app/controllers/admin/website/pages_controller.rb#show",
-          "app/controllers/admin/website/pages_controller.rb#preview"
+          "app/controllers/admin/website/pages_controller.rb#preview",
+          "app/controllers/admin/website/themes_controller.rb#index",
+          "app/controllers/admin/website/themes_controller.rb#show",
+          "app/controllers/admin/website/theme_revisions_controller.rb#index",
+          "app/controllers/admin/website/theme_revisions_controller.rb#show"
         ]
       ),
       build_entry.call(
@@ -201,7 +205,12 @@ module Identity
           "app/controllers/admin/website/pages_controller.rb#create",
           "app/controllers/admin/website/pages_controller.rb#update",
           "app/controllers/admin/website/pages_controller.rb#discard",
-          "app/controllers/admin/website/blocks_controller.rb"
+          "app/controllers/admin/website/blocks_controller.rb",
+          "app/controllers/admin/website/themes_controller.rb#create",
+          "app/controllers/admin/website/themes_controller.rb#update",
+          "app/controllers/admin/website/themes_controller.rb#destroy",
+          "app/controllers/admin/website/theme_revisions_controller.rb#restore",
+          "app/services/website/mutate_theme.rb#call"
         ]
       ),
       build_entry.call(
@@ -210,7 +219,8 @@ module Identity
         execution_points: [
           "app/controllers/admin/website/pages_controller.rb#publish",
           "app/controllers/admin/website/pages_controller.rb#schedule",
-          "app/controllers/admin/website/themes_controller.rb#activate"
+          "app/controllers/admin/website/themes_controller.rb#activate",
+          "app/services/website/mutate_theme.rb#call"
         ]
       ),
       build_entry.call(
@@ -245,8 +255,10 @@ module Identity
         execution_points: [
           "app/controllers/admin/website/recycle_bin_controller.rb#index",
           "app/controllers/admin/website/recycle_bin_controller.rb#restore",
+          "app/controllers/admin/website/theme_revisions_controller.rb#restore",
           "app/services/website/restore_content.rb#call",
-          "app/services/website/restore_revision.rb#call"
+          "app/services/website/restore_revision.rb#call",
+          "app/services/website/restore_theme_revision.rb#call"
         ]
       ),
       build_entry.call(

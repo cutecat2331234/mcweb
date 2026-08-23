@@ -10,7 +10,7 @@ const { t } = useI18n()
 
 const props = defineProps<{
   title: string
-  theme: { name: string; key: string; tokens_json: string }
+  theme: { name: string; key: string; tokens_json: string; lock_version: number | null }
   submitUrl: string
   deleteUrl?: string | null
   method: 'post' | 'patch'
@@ -22,6 +22,10 @@ const form = useForm({ theme: { ...props.theme } })
 
 function fieldError(key: string) {
   return props.form_errors?.[key]?.join(' ') || ''
+}
+
+function tokensError() {
+  return fieldError('tokens_json') || fieldError('tokens')
 }
 
 function submit() {
@@ -78,8 +82,8 @@ async function destroy() {
             <a-form-item
               field="tokens_json"
               :label="t('admin.website.themes.tokensJson')"
-              :validate-status="fieldError('tokens_json') ? 'error' : undefined"
-              :help="fieldError('tokens_json')"
+              :validate-status="tokensError() ? 'error' : undefined"
+              :help="tokensError()"
             >
               <a-textarea
                 v-model="form.theme.tokens_json"

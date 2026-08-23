@@ -41,7 +41,9 @@ module Admin
 
       get admin_website_theme_path(theme)
       assert_response :success
-      assert_empty inertia.props.deep_symbolize_keys.fetch(:actions)
+      actions = inertia.props.deep_symbolize_keys.fetch(:actions)
+      assert_equal [ admin_website_theme_revisions_path(theme) ], actions.pluck(:href)
+      assert actions.all? { |action| action[:method].blank? }
     end
 
     test "theme write entry requires read permission" do
@@ -63,7 +65,7 @@ module Admin
         active: false,
         tokens: {}
       )
-      active_theme.activate!
+      active_theme.activate!(actor: @editor)
       candidate = ::Website::Theme.create!(
         name: "Candidate theme",
         key: "candidate-#{SecureRandom.hex(4)}",
@@ -76,7 +78,8 @@ module Admin
           name: candidate.name,
           key: candidate.key,
           active: true,
-          tokens_json: "{}"
+          tokens_json: "{}",
+          lock_version: candidate.lock_version
         }
       }
       assert_redirected_to admin_website_theme_path(candidate)
@@ -97,7 +100,7 @@ module Admin
       assert_equal [active_theme.id], ::Website::Theme.active_themes.pluck(:id)
     end
 
-    test "website editors can update navigation and delete themes referenced by discarded pages" do
+    test "website editors can update navigation but cannot orphan immutable Theme history" do
       item = ::Website::NavItem.create!(
         label: "Before update",
         url: "/before",
@@ -134,12 +137,18 @@ module Admin
       assert_equal "footer", item.location
       assert_not item.visible?
 
-      theme = ::Website::Theme.create!(
-        name: "Disposable theme",
-        key: "disposable-#{SecureRandom.hex(4)}",
-        active: false,
-        tokens: {}
+      created = ::Website::MutateTheme.call(
+        operation: :create,
+        theme: ::Website::Theme.new,
+        actor: @editor,
+        attributes: {
+          name: "Governed theme",
+          key: "governed-delete-#{SecureRandom.hex(4)}",
+          tokens: {}
+        }
       )
+      assert_predicate created, :success?, created.error
+      theme = created.value.fetch(:theme)
       discarded_page = ::Website::Page.create!(
         title: "Discarded themed page",
         slug: "discarded-themed-page-#{SecureRandom.hex(4)}",
@@ -158,13 +167,14 @@ module Admin
 
       get edit_admin_website_theme_path(theme)
       assert_response :success
-      assert_equal admin_website_theme_path(theme),
-                   inertia.props.deep_symbolize_keys.fetch(:deleteUrl)
+      assert_nil inertia.props.deep_symbolize_keys.fetch(:deleteUrl)
 
       delete admin_website_theme_path(theme)
-      assert_redirected_to admin_website_themes_path
-      assert_not ::Website::Theme.exists?(theme.id)
-      assert_nil ::Website::Page.with_lifecycle.find(discarded_page.id).website_theme_id
+      assert_redirected_to admin_website_theme_path(theme)
+      assert ::Website::Theme.exists?(theme.id)
+      assert_equal theme.id,
+                   ::Website::Page.with_lifecycle.find(discarded_page.id).website_theme_id
+      assert_predicate theme.revisions, :exists?
     end
 
     test "lifecycle revision deep links return read-only staff to an authorized list" do

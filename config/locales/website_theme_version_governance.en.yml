@@ -1,0 +1,77 @@
+en:
+  mcweb:
+    admin:
+      website:
+        theme_version_governance:
+          history_action: Version history
+          history_title: Theme version history
+          detail_title: Theme revision
+          restored: The Theme version was restored as a new successor revision.
+          events:
+            create: Created
+            update: Edited
+            activate: Activated
+            deactivate: Deactivated by another activation
+            restore: Restored from a revision
+            legacy: Legacy baseline
+          copy:
+            back: Back
+            revision: Revision
+            event: Event
+            actor: Administrator
+            reason: Reason
+            created_at: Created at
+            view: View
+            empty: No Theme revisions are available.
+            range: Showing __from__-__to__ of __count__ revisions
+            source_revision: Restored from
+            predecessor: Compared with
+            snapshot: Version snapshot
+            name: Name
+            key: Key
+            tokens: Theme tokens
+            differences: Changes from the previous revision
+            path: Field
+            before: Before
+            after: After
+            no_differences: This revision has no field differences from its predecessor.
+            missing: Not present
+            active: Active
+            inactive: Inactive
+            restore_title: Restore this content version
+            restore_warning: Restoring creates a new revision and does not alter historical records. The Theme's current activation state is preserved.
+            restore_reason: Recovery reason
+            restore_confirmation: Confirm target revision
+            restore_confirmation_hint: Enter the exact revision number __revision__.
+            restore_action: Restore as successor revision
+    audit:
+      actions:
+        website_theme_created: Website Theme created
+        website_theme_updated: Website Theme edited
+        website_theme_activated: Website Theme activated
+        website_theme_deactivated: Website Theme deactivated
+        website_theme_revision_restored: Website Theme revision restored
+    services:
+      errors:
+        website_theme_revision_immutable: Theme revisions are immutable.
+        website_theme_snapshot_invalid: The Theme revision snapshot is invalid.
+        website_theme_restore_contract_invalid: The Theme restore revision contract is incomplete.
+        website_theme_revision_contract_invalid: The Theme revision operation contract is invalid.
+        website_theme_tokens_invalid: Theme tokens must be a JSON object.
+        website_theme_revision_event_invalid: The Theme revision event is invalid.
+        website_theme_reason_required: Enter a recovery reason.
+        website_theme_reason_too_long: The recovery reason must be 1,000 characters or fewer.
+        website_theme_idempotency_key_invalid: The recovery request identifier is invalid. Refresh and try again.
+        website_theme_version_required: The current Theme version is required. Refresh and try again.
+        website_theme_conflict: The Theme changed in another request. Refresh before trying again.
+        website_theme_audit_failed: The Theme action could not be audited, so no changes were kept.
+        website_theme_operation_invalid: The Theme operation is invalid.
+        website_theme_mutation_failed: The Theme could not be saved.
+        website_theme_key_taken: The Theme key is already in use.
+        website_theme_not_found: The Theme no longer exists.
+        website_theme_revision_not_found: The selected Theme revision does not exist.
+        website_theme_confirmation_mismatch: Enter the exact target revision number to continue.
+        website_theme_restore_failed: The Theme revision could not be restored. No partial changes were kept.
+        website_theme_idempotency_key_reused: This recovery request identifier was already used for a different operation.
+        website_theme_activation_failed: The Theme could not be activated.
+        website_theme_delete_blocked: This Theme has immutable version history and cannot be permanently deleted.

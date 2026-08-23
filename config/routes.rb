@@ -420,6 +420,14 @@ Rails.application.routes.draw do
         member do
           post :activate
         end
+        resources :revisions,
+          controller: "theme_revisions",
+          only: %i[index show],
+          param: :revision_number do
+          member do
+            post :restore
+          end
+        end
       end
     end
     namespace :frontend do

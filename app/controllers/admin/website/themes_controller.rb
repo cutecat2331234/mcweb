@@ -57,11 +57,18 @@ module Admin
         attrs = theme_attributes(theme)
         return render_theme_form(theme, :unprocessable_entity) if attrs.nil?
 
-        theme.assign_attributes(attrs)
-        if theme.save
+        result = ::Website::MutateTheme.call(
+          operation: :create,
+          theme: theme,
+          actor: current_user,
+          attributes: attrs
+        )
+        if result.success?
           redirect_to admin_website_theme_path(theme), notice: t("mcweb.flash.created", resource: t("mcweb.resources.theme"))
         else
-          render inertia: "Admin/Website/Themes/Form", props: form_props(theme), status: :unprocessable_entity
+          theme = result.value&.fetch(:theme, nil) || theme
+          flash.now[:alert] = service_error_message(result)
+          render_theme_form(theme, :unprocessable_entity)
         end
       end
 
@@ -73,26 +80,58 @@ module Admin
         attrs = theme_attributes(@theme)
         return render_theme_form(@theme, :unprocessable_entity) if attrs.nil?
 
-        if @theme.update(attrs)
-          redirect_to admin_website_theme_path(@theme), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.theme"))
+        expected_lock_version = attrs.delete(:lock_version)
+        result = ::Website::MutateTheme.call(
+          operation: :update,
+          theme: @theme,
+          actor: current_user,
+          attributes: attrs,
+          expected_lock_version: expected_lock_version
+        )
+        if result.success?
+          theme = result.value.fetch(:theme)
+          redirect_to admin_website_theme_path(theme), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.theme"))
         else
-          render inertia: "Admin/Website/Themes/Form", props: form_props(@theme), status: :unprocessable_entity
+          theme = result.value&.fetch(:theme, nil) || @theme
+          flash.now[:alert] = service_error_message(result)
+          render_theme_form(theme, :unprocessable_entity)
         end
       end
 
       def destroy
+        deleted = false
         ::Website::Theme.transaction do
-          ::Website::Page.with_lifecycle
-            .where(website_theme_id: @theme.id)
-            .update_all(website_theme_id: nil)
-          @theme.destroy!
+          @theme.lock!
+          unless @theme.revisions.exists?
+            ::Website::Page.with_lifecycle
+              .where(website_theme_id: @theme.id)
+              .update_all(website_theme_id: nil)
+            @theme.destroy!
+            deleted = true
+          end
         end
-        redirect_to admin_website_themes_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.theme"))
+
+        if deleted
+          redirect_to admin_website_themes_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.theme"))
+        else
+          redirect_to admin_website_theme_path(@theme),
+            alert: t("mcweb.services.errors.website_theme_delete_blocked")
+        end
       end
 
       def activate
-        @theme.activate!
-        redirect_to admin_website_theme_path(@theme), notice: t("mcweb.admin.website.themes.activated", default: "Theme activated")
+        result = ::Website::MutateTheme.call(
+          operation: :activate,
+          theme: @theme,
+          actor: current_user,
+          expected_lock_version: params[:lock_version]
+        )
+        if result.success?
+          redirect_to admin_website_theme_path(result.value.fetch(:theme)),
+            notice: t("mcweb.admin.website.themes.activated", default: "Theme activated")
+        else
+          redirect_to admin_website_theme_path(@theme), alert: service_error_message(result)
+        end
       end
 
       private
@@ -102,11 +141,16 @@ module Admin
         if current_user.permission?("website.pages.edit")
           actions << { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_theme_path(@theme) }
         end
+        actions << {
+          label: t("mcweb.admin.website.theme_version_governance.history_action"),
+          href: admin_website_theme_revisions_path(@theme)
+        }
         if current_user.permission?("website.pages.publish") && !@theme.active?
           actions << {
             label: t("mcweb.admin.website.themes.activate", default: "Activate"),
             href: activate_admin_website_theme_path(@theme),
-            method: "post"
+            method: "post",
+            data: { lock_version: @theme.lock_version }
           }
         end
         actions
@@ -117,7 +161,7 @@ module Admin
       end
 
       def theme_attributes(theme)
-        permitted = params.require(:theme).permit(:name, :key, :tokens_json, tokens: {})
+        permitted = params.require(:theme).permit(:name, :key, :tokens_json, :lock_version, tokens: {})
         if permitted[:tokens_json].present?
           begin
             permitted[:tokens] = JSON.parse(permitted.delete(:tokens_json))
@@ -141,10 +185,11 @@ module Admin
           theme: {
             name: theme.name,
             key: theme.key,
-            tokens_json: JSON.pretty_generate(theme.tokens.presence || {})
+            tokens_json: JSON.pretty_generate(theme.tokens.presence || {}),
+            lock_version: theme.persisted? ? theme.lock_version : nil
           },
           submitUrl: theme.persisted? ? admin_website_theme_path(theme) : admin_website_themes_path,
-          deleteUrl: theme.persisted? ? admin_website_theme_path(theme) : nil,
+          deleteUrl: theme.persisted? && !theme.revisions.exists? ? admin_website_theme_path(theme) : nil,
           method: theme.persisted? ? "patch" : "post",
           backUrl: theme.persisted? ? admin_website_theme_path(theme) : admin_website_themes_path,
           form_errors: theme.errors.to_hash(true)

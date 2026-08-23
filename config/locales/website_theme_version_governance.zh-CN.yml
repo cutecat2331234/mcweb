@@ -1,0 +1,77 @@
+"zh-CN":
+  mcweb:
+    admin:
+      website:
+        theme_version_governance:
+          history_action: 版本历史
+          history_title: Theme 版本历史
+          detail_title: Theme 修订版本
+          restored: Theme 版本已恢复，并形成新的后继修订。
+          events:
+            create: 创建
+            update: 编辑
+            activate: 激活
+            deactivate: 因其他 Theme 激活而停用
+            restore: 从修订版本恢复
+            legacy: 历史基线
+          copy:
+            back: 返回
+            revision: 修订版本
+            event: 事件
+            actor: 管理员
+            reason: 理由
+            created_at: 创建时间
+            view: 查看
+            empty: 暂无 Theme 修订版本。
+            range: 显示第 __from__-__to__ 条，共 __count__ 条修订
+            source_revision: 恢复来源
+            predecessor: 对比版本
+            snapshot: 版本快照
+            name: 名称
+            key: 标识
+            tokens: Theme 令牌
+            differences: 相对上一修订的差异
+            path: 字段
+            before: 变更前
+            after: 变更后
+            no_differences: 此修订与上一修订没有字段差异。
+            missing: 不存在
+            active: 已激活
+            inactive: 未激活
+            restore_title: 恢复此内容版本
+            restore_warning: 恢复会创建新的修订，不会改写任何历史记录；Theme 当前的激活状态保持不变。
+            restore_reason: 恢复理由
+            restore_confirmation: 确认目标版本
+            restore_confirmation_hint: 请输入准确的修订版本号 __revision__。
+            restore_action: 恢复为后继修订
+    audit:
+      actions:
+        website_theme_created: 官网 Theme 已创建
+        website_theme_updated: 官网 Theme 已编辑
+        website_theme_activated: 官网 Theme 已激活
+        website_theme_deactivated: 官网 Theme 已停用
+        website_theme_revision_restored: 官网 Theme 修订已恢复
+    services:
+      errors:
+        website_theme_revision_immutable: Theme 修订记录不可修改。
+        website_theme_snapshot_invalid: Theme 修订快照无效。
+        website_theme_restore_contract_invalid: Theme 恢复修订合同不完整。
+        website_theme_revision_contract_invalid: Theme 修订操作合同无效。
+        website_theme_tokens_invalid: Theme 令牌必须是 JSON 对象。
+        website_theme_revision_event_invalid: Theme 修订事件无效。
+        website_theme_reason_required: 请输入恢复理由。
+        website_theme_reason_too_long: 恢复理由不能超过 1000 个字符。
+        website_theme_idempotency_key_invalid: 恢复请求标识无效，请刷新后重试。
+        website_theme_version_required: 缺少 Theme 当前版本，请刷新后重试。
+        website_theme_conflict: Theme 已被其他请求修改，请刷新后重试。
+        website_theme_audit_failed: 无法记录 Theme 操作审计，因此未保留任何变更。
+        website_theme_operation_invalid: Theme 操作无效。
+        website_theme_mutation_failed: 无法保存 Theme。
+        website_theme_key_taken: Theme 标识已被使用。
+        website_theme_not_found: Theme 已不存在。
+        website_theme_revision_not_found: 选择的 Theme 修订版本不存在。
+        website_theme_confirmation_mismatch: 请输入准确的目标修订版本号后继续。
+        website_theme_restore_failed: 无法恢复 Theme 修订版本，未保留任何部分变更。
+        website_theme_idempotency_key_reused: 此恢复请求标识已用于其他操作。
+        website_theme_activation_failed: 无法激活 Theme。
+        website_theme_delete_blocked: 此 Theme 已有不可变版本历史，不能永久删除。

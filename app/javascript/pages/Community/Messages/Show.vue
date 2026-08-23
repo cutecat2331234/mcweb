@@ -7,6 +7,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
@@ -200,9 +201,25 @@ async function removeParticipant(participant: { username: string; remove_url?: s
   router.delete(participant.remove_url, { preserveScroll: true })
 }
 
-function deleteMessage(msg: { delete_url?: string | null }) {
+const deletingMessageId = ref<number | null>(null)
+
+async function deleteMessage(msg: { id: number; delete_url?: string | null }) {
   if (!msg.delete_url) return
-  router.delete(msg.delete_url, { preserveScroll: true })
+  const ok = await confirm({
+    title: t('forum.messages.confirmDeleteTitle'),
+    message: t('forum.messages.confirmDeleteMessage'),
+    confirmLabel: t('forum.messages.deleteMessage'),
+    variant: 'destructive',
+  })
+  if (!ok) return
+
+  deletingMessageId.value = msg.id
+  router.delete(msg.delete_url, {
+    preserveScroll: true,
+    onFinish: () => {
+      deletingMessageId.value = null
+    },
+  })
 }
 
 const editingId = ref<number | null>(null)
@@ -303,15 +320,18 @@ function submit() {
       <span v-for="p in participants" :key="p.username" class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
         <UserLink variant="inline" size="xs" :username="p.username" :avatar-url="p.avatar_url" avatar-class="h-4 w-4" name-class="text-xs" />
         <span v-if="p.is_creator" class="text-muted-foreground">{{ t('forum.messages.groupOwner') }}</span>
-        <button
+        <Button
           v-if="p.remove_url"
           type="button"
-          class="ml-1 text-muted-foreground hover:text-destructive"
+          size="xs"
+          variant="ghost"
+          class="ml-1 h-auto min-h-6 px-1 py-0 text-muted-foreground hover:text-destructive"
           :title="p.is_self ? t('forum.messages.leaveGroup') : t('forum.messages.removeMember')"
+          :aria-label="p.is_self ? t('forum.messages.leaveGroup') : t('forum.messages.removeMember')"
           @click="removeParticipant(p)"
         >
           {{ p.is_self ? t('forum.messages.leave') : '×' }}
-        </button>
+        </Button>
       </span>
     </div>
     <form v-if="addParticipantUrl && canAddParticipant" class="mt-3 flex max-w-sm gap-2" @submit.prevent="addParticipant">
@@ -345,11 +365,11 @@ function submit() {
       >
         <p v-if="conversation.is_group && !msg.is_mine" class="mb-1 text-xs font-medium opacity-80">{{ msg.author }}</p>
         <div v-if="editingId === msg.id" class="space-y-1">
-          <textarea v-model="editBody" rows="3" class="w-full rounded border bg-background px-2 py-1 text-sm text-foreground" />
+          <Textarea v-model="editBody" :rows="3" class="min-h-20 bg-background text-foreground" />
           <p v-if="editError" role="alert" class="text-xs text-destructive">{{ editError }}</p>
           <div class="flex gap-2">
-            <button type="button" class="text-xs underline" @click="saveEdit(msg)">{{ t('forum.messages.saveEdit') }}</button>
-            <button type="button" class="text-xs underline" @click="cancelEdit">{{ t('forum.messages.cancelEdit') }}</button>
+            <Button type="button" size="xs" @click="saveEdit(msg)">{{ t('forum.messages.saveEdit') }}</Button>
+            <Button type="button" size="xs" variant="outline" @click="cancelEdit">{{ t('forum.messages.cancelEdit') }}</Button>
           </div>
         </div>
         <div v-else class="prose prose-sm max-w-none dark:prose-invert" v-html="msg.body_html" />
@@ -358,8 +378,18 @@ function submit() {
           {{ msg.created_at }}
           <span v-if="msg.edited" class="ml-1 italic">{{ t('forum.messages.editedMarker') }}</span>
           <span v-if="msg.is_mine && msg.read_by?.length" class="ml-1">{{ t('forum.messages.readBy', { users: msg.read_by.join(t('common.listSeparator')) }) }}</span>
-          <button v-if="msg.edit_url && editingId !== msg.id" type="button" class="ml-1 underline hover:opacity-100" @click="startEdit(msg)">{{ t('forum.messages.editMessage') }}</button>
-          <button v-if="msg.delete_url" type="button" class="ml-1 underline hover:opacity-100" @click="deleteMessage(msg)">{{ t('forum.messages.deleteMessage') }}</button>
+          <Button v-if="msg.edit_url && editingId !== msg.id" type="button" size="xs" variant="ghost" class="ml-1 h-auto px-1 py-0 text-[10px] underline" @click="startEdit(msg)">{{ t('forum.messages.editMessage') }}</Button>
+          <Button
+            v-if="msg.delete_url"
+            type="button"
+            size="xs"
+            variant="ghost"
+            class="ml-1 h-auto px-1 py-0 text-[10px] underline"
+            :disabled="deletingMessageId === msg.id"
+            @click="deleteMessage(msg)"
+          >
+            {{ t('forum.messages.deleteMessage') }}
+          </Button>
           <Button v-if="msg.report_url" as-child type="button" size="xs" variant="ghost" class="ml-1 h-auto px-1 py-0 text-[10px] underline">
             <Link :href="msg.report_url">{{ t('forum.messages.reportMessage') }}</Link>
           </Button>

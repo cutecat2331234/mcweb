@@ -4246,6 +4246,8 @@ export default {
       lockInvites: '锁定邀请（仅群主）',
       unlockInvites: '允许成员邀请',
       deleteMessage: '删除',
+      confirmDeleteTitle: '删除这条消息？',
+      confirmDeleteMessage: '删除后消息内容将从当前会话中移除。确认继续吗？',
       editMessage: '编辑',
       reportMessage: '举报',
       removeAttachment: '移除 {filename}',

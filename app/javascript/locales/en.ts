@@ -4246,6 +4246,8 @@ export default {
       lockInvites: 'Lock invites (owner only)',
       unlockInvites: 'Allow members to invite',
       deleteMessage: 'Delete',
+      confirmDeleteTitle: 'Delete this message?',
+      confirmDeleteMessage: 'The message content will be removed from this conversation. Continue?',
       editMessage: 'Edit',
       reportMessage: 'Report',
       removeAttachment: 'Remove {filename}',

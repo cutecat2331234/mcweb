@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2160,6 +2160,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
     t.datetime "created_at", null: false
     t.string "error_code"
     t.integer "expected_plan_lock_version", null: false
+    t.datetime "expired_at"
+    t.datetime "expires_at", null: false
+    t.string "lifecycle_action"
+    t.bigint "lifecycle_actor_id"
+    t.datetime "lifecycle_authorized_at"
+    t.string "lifecycle_authorization_method"
+    t.datetime "lifecycle_completed_at"
+    t.text "lifecycle_reason"
+    t.string "lifecycle_request_digest", limit: 64
+    t.string "lifecycle_request_id", limit: 36
     t.integer "lock_version", default: 0, null: false
     t.bigint "minecraft_node_operation_id"
     t.bigint "minecraft_world_restore_plan_id", null: false
@@ -2176,10 +2186,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
     t.string "server_configuration_digest", limit: 64, null: false
     t.datetime "started_at"
     t.string "status", default: "planned", null: false
+    t.bigint "supersedes_resolution_id"
     t.datetime "updated_at", null: false
     t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_authorization"
     t.check_constraint "authorization_method IS NULL OR authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text])", name: "chk_minecraft_restore_resolutions_auth_method"
     t.check_constraint "expected_plan_lock_version >= 0", name: "chk_minecraft_restore_resolutions_plan_lock"
+    t.check_constraint "expires_at > created_at", name: "chk_minecraft_restore_resolutions_expires"
+    t.check_constraint "status::text = ANY (ARRAY['cancelled'::character varying::text, 'taken_over'::character varying::text]) AND lifecycle_action::text = CASE status WHEN 'cancelled'::text THEN 'cancel'::text ELSE 'takeover'::text END AND lifecycle_actor_id IS NOT NULL AND char_length(lifecycle_reason) >= 1 AND char_length(lifecycle_reason) <= 1000 AND lifecycle_request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text AND lifecycle_request_digest::text ~ '^[0-9a-f]{64}$'::text AND lifecycle_authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text]) AND lifecycle_authorized_at IS NOT NULL AND lifecycle_completed_at IS NOT NULL AND expired_at IS NULL OR status::text = 'expired'::text AND expired_at IS NOT NULL AND lifecycle_action IS NULL AND lifecycle_actor_id IS NULL AND lifecycle_reason IS NULL AND lifecycle_request_id IS NULL AND lifecycle_request_digest IS NULL AND lifecycle_authorization_method IS NULL AND lifecycle_authorized_at IS NULL AND lifecycle_completed_at IS NULL OR status::text <> ALL (ARRAY['expired'::character varying::text, 'cancelled'::character varying::text, 'taken_over'::character varying::text]) AND expired_at IS NULL AND lifecycle_action IS NULL AND lifecycle_actor_id IS NULL AND lifecycle_reason IS NULL AND lifecycle_request_id IS NULL AND lifecycle_request_digest IS NULL AND lifecycle_authorization_method IS NULL AND lifecycle_authorized_at IS NULL AND lifecycle_completed_at IS NULL", name: "chk_minecraft_restore_resolutions_lifecycle"
     t.check_constraint "node_capability_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_node_capability"
     t.check_constraint "plan_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_plan"
     t.check_constraint "pre_restore_manifest_digest IS NULL OR pre_restore_manifest_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_pre_manifest"
@@ -2188,13 +2201,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
     t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_restore_resolutions_request_id"
     t.check_constraint "resolution_action::text = ANY (ARRAY['resume'::character varying::text, 'rollback'::character varying::text, 'reconcile'::character varying::text])", name: "chk_minecraft_restore_resolutions_action"
     t.check_constraint "server_configuration_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_server_configuration"
-    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'recovery_required'::character varying::text])", name: "chk_minecraft_restore_resolutions_status"
+    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text, 'taken_over'::character varying::text])", name: "chk_minecraft_restore_resolutions_status"
     t.index ["actor_id"], name: "index_minecraft_world_restore_resolutions_on_actor_id"
+    t.index ["expires_at"], name: "idx_minecraft_restore_resolutions_expires"
+    t.index ["lifecycle_actor_id"], name: "index_minecraft_world_restore_resolutions_on_lifecycle_actor_id"
+    t.index ["lifecycle_request_id"], name: "idx_minecraft_restore_resolutions_lifecycle_request", unique: true, where: "(lifecycle_request_id IS NOT NULL)"
     t.index ["minecraft_node_operation_id"], name: "idx_minecraft_restore_resolutions_operation", unique: true, where: "(minecraft_node_operation_id IS NOT NULL)"
     t.index ["minecraft_world_restore_plan_id"], name: "idx_minecraft_restore_resolutions_one_active", unique: true, where: "((status)::text = ANY (ARRAY['planned'::text, 'authorized'::text, 'queued'::text, 'running'::text]))"
     t.index ["minecraft_world_restore_plan_id"], name: "idx_minecraft_restore_resolutions_plan"
     t.index ["public_id"], name: "index_minecraft_world_restore_resolutions_on_public_id", unique: true
     t.index ["request_id"], name: "index_minecraft_world_restore_resolutions_on_request_id", unique: true
+    t.index ["supersedes_resolution_id"], name: "idx_minecraft_restore_resolutions_supersedes", unique: true, where: "(supersedes_resolution_id IS NOT NULL)"
   end
 
   create_table "notification_preferences", force: :cascade do |t|
@@ -2881,6 +2898,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
     t.index ["last_blocked_at"], name: "index_rate_limit_counters_on_last_blocked_at"
     t.index ["window_start"], name: "index_rate_limit_counters_on_window_start"
     t.check_constraint "blocked_count >= 0", name: "rate_limit_counters_blocked_count_nonnegative"
+  end
+
+  create_table "sensitive_action_rate_limit_reservations", force: :cascade do |t|
+    t.string "context_digest", limit: 64, null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "ip_counter_key", null: false
+    t.integer "limit", null: false
+    t.string "public_id", null: false
+    t.string "scope", null: false
+    t.datetime "settled_at"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.string "user_counter_key", null: false
+    t.integer "window_seconds", null: false
+    t.check_constraint "context_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_sensitive_action_reservations_context"
+    t.check_constraint "\"limit\" > 0 AND window_seconds > 0", name: "chk_sensitive_action_reservations_limits"
+    t.check_constraint "status::text = 'pending'::text AND settled_at IS NULL OR (status::text = ANY (ARRAY['succeeded'::character varying::text, 'failed'::character varying::text])) AND settled_at IS NOT NULL", name: "chk_sensitive_action_reservations_settlement"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'succeeded'::character varying::text, 'failed'::character varying::text])", name: "chk_sensitive_action_reservations_status"
+    t.index ["ip_counter_key", "status", "expires_at"], name: "idx_sensitive_action_reservations_ip_bucket"
+    t.index ["public_id"], name: "index_sensitive_action_rate_limit_reservations_on_public_id", unique: true
+    t.index ["status", "expires_at"], name: "idx_sensitive_action_reservations_active"
+    t.index ["user_counter_key", "status", "expires_at"], name: "idx_sensitive_action_reservations_user_bucket"
+    t.index ["user_id"], name: "index_sensitive_action_rate_limit_reservations_on_user_id"
   end
 
   create_table "role_permissions", force: :cascade do |t|
@@ -4420,8 +4462,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
   add_foreign_key "minecraft_world_restore_plans", "minecraft_world_backups", column: "pre_restore_world_backup_id"
   add_foreign_key "minecraft_world_restore_plans", "users", column: "actor_id"
   add_foreign_key "minecraft_world_restore_resolutions", "minecraft_node_operations"
+  add_foreign_key "minecraft_world_restore_resolutions", "minecraft_world_restore_resolutions", column: "supersedes_resolution_id"
   add_foreign_key "minecraft_world_restore_resolutions", "minecraft_world_restore_plans"
   add_foreign_key "minecraft_world_restore_resolutions", "users", column: "actor_id"
+  add_foreign_key "minecraft_world_restore_resolutions", "users", column: "lifecycle_actor_id"
   add_foreign_key "notification_preferences", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "operations_durable_enqueue_attempts", "operations_durable_enqueue_intents", column: "intent_id", on_delete: :restrict
@@ -4458,6 +4502,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
   add_foreign_key "plugin_setting_versions", "users", column: "actor_id"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
+  add_foreign_key "sensitive_action_rate_limit_reservations", "users"
   add_foreign_key "secure_evidence_attachment_events", "secure_evidence_attachments", on_delete: :cascade
   add_foreign_key "secure_evidence_attachment_events", "users", column: "actor_id", on_delete: :nullify
   add_foreign_key "secure_evidence_attachments", "users", column: "uploader_id"
@@ -4669,18 +4714,49 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
         OR OLD.plan_digest IS DISTINCT FROM NEW.plan_digest
         OR OLD.server_configuration_digest IS DISTINCT FROM NEW.server_configuration_digest
         OR OLD.node_capability_digest IS DISTINCT FROM NEW.node_capability_digest
-        OR OLD.pre_restore_manifest_digest IS DISTINCT FROM NEW.pre_restore_manifest_digest THEN
+        OR OLD.pre_restore_manifest_digest IS DISTINCT FROM NEW.pre_restore_manifest_digest
+        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
+        OR OLD.supersedes_resolution_id IS DISTINCT FROM NEW.supersedes_resolution_id
+        OR (OLD.expired_at IS NOT NULL AND OLD.expired_at IS DISTINCT FROM NEW.expired_at)
+        OR (OLD.lifecycle_action IS NOT NULL AND OLD.lifecycle_action IS DISTINCT FROM NEW.lifecycle_action)
+        OR (OLD.lifecycle_actor_id IS NOT NULL AND OLD.lifecycle_actor_id IS DISTINCT FROM NEW.lifecycle_actor_id)
+        OR (OLD.lifecycle_reason IS NOT NULL AND OLD.lifecycle_reason IS DISTINCT FROM NEW.lifecycle_reason)
+        OR (OLD.lifecycle_request_id IS NOT NULL AND OLD.lifecycle_request_id IS DISTINCT FROM NEW.lifecycle_request_id)
+        OR (OLD.lifecycle_request_digest IS NOT NULL AND OLD.lifecycle_request_digest IS DISTINCT FROM NEW.lifecycle_request_digest)
+        OR (OLD.lifecycle_authorization_method IS NOT NULL AND OLD.lifecycle_authorization_method IS DISTINCT FROM NEW.lifecycle_authorization_method)
+        OR (OLD.lifecycle_authorized_at IS NOT NULL AND OLD.lifecycle_authorized_at IS DISTINCT FROM NEW.lifecycle_authorized_at)
+        OR (OLD.lifecycle_completed_at IS NOT NULL AND OLD.lifecycle_completed_at IS DISTINCT FROM NEW.lifecycle_completed_at) THEN
         RAISE EXCEPTION 'minecraft world restore resolution contract is immutable';
       END IF;
       IF OLD.minecraft_node_operation_id IS NOT NULL
         AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id THEN
         RAISE EXCEPTION 'minecraft world restore resolution operation binding is immutable';
       END IF;
+      IF (OLD.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over')
+          OR NEW.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over'))
+        AND (OLD.authorization_digest IS DISTINCT FROM NEW.authorization_digest
+          OR OLD.authorization_method IS DISTINCT FROM NEW.authorization_method
+          OR OLD.authorization_expires_at IS DISTINCT FROM NEW.authorization_expires_at
+          OR OLD.authorized_at IS DISTINCT FROM NEW.authorized_at
+          OR OLD.authorization_consumed_at IS DISTINCT FROM NEW.authorization_consumed_at) THEN
+        RAISE EXCEPTION 'terminal recovery resolution authorization is immutable';
+      END IF;
+      IF OLD.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over')
+        AND (OLD.result_summary IS DISTINCT FROM NEW.result_summary
+          OR OLD.error_code IS DISTINCT FROM NEW.error_code
+          OR OLD.started_at IS DISTINCT FROM NEW.started_at
+          OR OLD.completed_at IS DISTINCT FROM NEW.completed_at
+          OR OLD.queued_at IS DISTINCT FROM NEW.queued_at
+          OR OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id) THEN
+        RAISE EXCEPTION 'terminal recovery resolution evidence is immutable';
+      END IF;
       IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
         (OLD.status = 'planned' AND NEW.status IN ('authorized', 'failed'))
         OR (OLD.status = 'authorized' AND NEW.status IN ('queued', 'failed'))
         OR (OLD.status IN ('queued', 'running')
           AND NEW.status IN ('running', 'completed', 'failed', 'recovery_required'))
+        OR (OLD.status IN ('planned', 'authorized')
+          AND NEW.status IN ('expired', 'cancelled', 'taken_over'))
       ) THEN
         RAISE EXCEPTION 'invalid minecraft world restore resolution state transition';
       END IF;
@@ -4736,6 +4812,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
           ))
       ) THEN
         RAISE EXCEPTION 'invalid minecraft world restore state transition';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.sensitive_action_rate_limit_reservations_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.public_id IS DISTINCT FROM NEW.public_id
+        OR OLD.scope IS DISTINCT FROM NEW.scope
+        OR OLD.user_id IS DISTINCT FROM NEW.user_id
+        OR OLD.user_counter_key IS DISTINCT FROM NEW.user_counter_key
+        OR OLD.ip_counter_key IS DISTINCT FROM NEW.ip_counter_key
+        OR OLD.context_digest IS DISTINCT FROM NEW.context_digest
+        OR OLD.limit IS DISTINCT FROM NEW.limit
+        OR OLD.window_seconds IS DISTINCT FROM NEW.window_seconds
+        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
+        OR (OLD.settled_at IS NOT NULL AND OLD.settled_at IS DISTINCT FROM NEW.settled_at)
+        OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+        RAISE EXCEPTION 'sensitive action reservation contract is immutable';
+      END IF;
+      IF OLD.status <> NEW.status AND NOT (
+        OLD.status = 'pending' AND NEW.status IN ('succeeded', 'failed')
+      ) THEN
+        RAISE EXCEPTION 'invalid sensitive action reservation transition';
       END IF;
       RETURN NEW;
     END;
@@ -5934,6 +6039,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_220000) do
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER minecraft_world_restore_resolutions_immutable BEFORE UPDATE ON public.minecraft_world_restore_resolutions FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_resolutions_immutable_fn();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER sensitive_action_rate_limit_reservations_immutable BEFORE UPDATE ON public.sensitive_action_rate_limit_reservations FOR EACH ROW EXECUTE FUNCTION sensitive_action_rate_limit_reservations_immutable_fn();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

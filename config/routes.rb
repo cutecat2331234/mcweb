@@ -438,6 +438,8 @@ Rails.application.routes.draw do
             post :plan_recovery
             post :authorize_recovery
             post :execute_recovery
+            post :cancel_recovery
+            post :takeover_recovery
           end
         end
         member do

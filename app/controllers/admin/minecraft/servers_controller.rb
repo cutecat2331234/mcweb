@@ -450,14 +450,24 @@ module Admin
           reason: resolution.reason,
           lock_version: resolution.lock_version,
           created_at: resolution.created_at&.utc&.iso8601(6),
+          expires_at: resolution.expires_at&.utc&.iso8601(6),
           authorization_expires_at: resolution.authorization_expires_at&.utc&.iso8601(6),
+          expired_at: resolution.expired_at&.utc&.iso8601(6),
+          lifecycle_action: resolution.lifecycle_action,
+          lifecycle_reason: resolution.lifecycle_reason,
+          lifecycle_actor_id: resolution.lifecycle_actor&.public_id,
+          supersedes_resolution_id: resolution.superseded_resolution&.public_id,
           error_code: resolution.error_code,
           recovery_resolution_proof: resolution.result_summary.to_h["recovery_resolution_proof"],
           verified_world_state: resolution.result_summary.to_h["verified_world_state"],
           authorize_url: can_resolve && own_action && resolution.status.in?(%w[planned authorized]) ?
             authorize_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
           execute_url: can_resolve && own_action && resolution.status_authorized? ?
-            execute_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil
+            execute_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          cancel_url: can_resolve && resolution.status.in?(%w[planned authorized]) ?
+            cancel_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          takeover_url: can_resolve && resolution.status.in?(%w[planned authorized]) ?
+            takeover_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil
         }.compact
       end
 

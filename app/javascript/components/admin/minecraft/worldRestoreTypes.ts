@@ -40,12 +40,20 @@ export interface WorldRestoreResolutionRow {
   reason: string
   lock_version: number
   created_at?: string
+  expires_at?: string
   authorization_expires_at?: string
+  expired_at?: string
+  lifecycle_action?: 'cancel' | 'takeover'
+  lifecycle_reason?: string
+  lifecycle_actor_id?: string
+  supersedes_resolution_id?: string
   error_code?: string
   recovery_resolution_proof?: boolean
   verified_world_state?: string
   authorize_url?: string
   execute_url?: string
+  cancel_url?: string
+  takeover_url?: string
 }
 
 export interface WorldSafetyProps {

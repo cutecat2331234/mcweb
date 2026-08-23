@@ -8,12 +8,17 @@ module Admin
       before_action -> { require_permission("minecraft.world_restores.execute") },
         only: %i[create authorize execute]
       before_action -> { require_permission("minecraft.world_restores.resolve_recovery") },
-        only: %i[plan_recovery authorize_recovery execute_recovery]
+        only: %i[
+          plan_recovery authorize_recovery execute_recovery cancel_recovery takeover_recovery
+        ]
       before_action :set_server
       before_action :set_plan, only: %i[
         authorize execute plan_recovery authorize_recovery execute_recovery
+        cancel_recovery takeover_recovery
       ]
-      before_action :set_resolution, only: %i[authorize_recovery execute_recovery]
+      before_action :set_resolution, only: %i[
+        authorize_recovery execute_recovery cancel_recovery takeover_recovery
+      ]
       before_action :prevent_response_storage
 
       def create
@@ -124,6 +129,14 @@ module Admin
         }, status: value.fetch(:idempotent) ? :ok : :accepted
       end
 
+      def cancel_recovery
+        render_recovery_lifecycle("cancel")
+      end
+
+      def takeover_recovery
+        render_recovery_lifecycle("takeover")
+      end
+
       private
 
       def set_server
@@ -169,13 +182,48 @@ module Admin
           reason: resolution.reason,
           lock_version: resolution.lock_version,
           created_at: resolution.created_at&.utc&.iso8601(6),
+          expires_at: resolution.expires_at&.utc&.iso8601(6),
           authorization_expires_at: resolution.authorization_expires_at&.utc&.iso8601(6),
+          expired_at: resolution.expired_at&.utc&.iso8601(6),
+          lifecycle_action: resolution.lifecycle_action,
+          lifecycle_reason: resolution.lifecycle_reason,
+          lifecycle_actor_id: resolution.lifecycle_actor&.public_id,
+          supersedes_resolution_id: resolution.superseded_resolution&.public_id,
           error_code: resolution.error_code,
           recovery_resolution_proof: resolution.result_summary.to_h["recovery_resolution_proof"],
           verified_world_state: resolution.result_summary.to_h["verified_world_state"],
           authorize_url: authorize_recovery_admin_minecraft_server_world_restore_path(@server, @plan),
-          execute_url: execute_recovery_admin_minecraft_server_world_restore_path(@server, @plan)
+          execute_url: execute_recovery_admin_minecraft_server_world_restore_path(@server, @plan),
+          cancel_url: cancel_recovery_admin_minecraft_server_world_restore_path(@server, @plan),
+          takeover_url: takeover_recovery_admin_minecraft_server_world_restore_path(@server, @plan)
         }.compact
+      end
+
+      def render_recovery_lifecycle(action)
+        result = ::Minecraft::ManageWorldRestoreRecoveryResolution.call(
+          resolution: @resolution,
+          actor: current_user,
+          lifecycle_action: action,
+          resolution_action: params[:resolution_action],
+          reason: params[:reason],
+          request_id: params[:request_id],
+          expected_plan_lock_version: params[:expected_plan_lock_version],
+          expected_resolution_lock_version: params[:expected_resolution_lock_version],
+          password: params[:password],
+          code: params[:code],
+          ip_address: request.remote_ip
+        )
+        return render_service_error(result) if result.failure?
+
+        value = result.value
+        render json: {
+          plan: serialize_plan(@plan.reload),
+          resolution: serialize_resolution(value.fetch(:resolution).reload),
+          replacement: serialize_resolution(value[:replacement]&.reload),
+          confirmation: value[:confirmation],
+          idempotent: value.fetch(:idempotent),
+          message: t("mcweb.admin.minecraft.world_restore_recovery_lifecycle_#{action}")
+        }.compact, status: value.fetch(:idempotent) ? :ok : :accepted
       end
 
       def render_service_error(result)

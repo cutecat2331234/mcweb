@@ -35,6 +35,26 @@ module Minecraft
         @plan.association(:pre_restore_world_backup).target = pre_restore_backup
         @resolution = @plan.recovery_resolutions.lock.find(@resolution.id)
 
+        now = Time.current
+        authorization_expired = @resolution.status_authorized? && (
+          @resolution.authorization_expires_at.blank? || @resolution.authorization_expires_at <= now
+        )
+        if @resolution.expired_by_time?(now) || authorization_expired
+          Minecraft::ExpireWorldRestoreRecoveryResolution.expire_locked!(
+            @resolution,
+            now: now,
+            force: authorization_expired,
+            error_code: authorization_expired ?
+              "world_restore_recovery_authorization_expired" :
+              "world_restore_recovery_resolution_expired"
+          )
+          result = failure(
+            authorization_expired ?
+              :world_restore_recovery_authorization_expired :
+              :world_restore_recovery_resolution_expired
+          )
+          next
+        end
         unless secure_match?(
           @confirmation,
           Minecraft::PlanWorldRestoreRecovery.confirmation_for(@resolution)
@@ -65,11 +85,6 @@ module Minecraft
           result = failure(:world_restore_recovery_stale)
           next
         end
-        if @resolution.authorization_expires_at.blank? || @resolution.authorization_expires_at <= Time.current
-          result = failure(:world_restore_recovery_authorization_expired)
-          next
-        end
-
         verification = Minecraft::AuthorizeWorldRestoreRecovery.verify(
           @authorization_token,
           resolution: @resolution,
@@ -148,6 +163,8 @@ module Minecraft
       failure(:world_restore_recovery_idempotency_conflict)
     rescue ActiveRecord::RecordInvalid => error
       ServiceResult.failure(errors: error.record.errors.to_hash)
+    rescue Minecraft::ExpireWorldRestoreRecoveryResolution::ExpirationError => error
+      failure(error.message.to_sym)
     rescue ExecutionError => error
       failure(error.message.to_sym)
     end

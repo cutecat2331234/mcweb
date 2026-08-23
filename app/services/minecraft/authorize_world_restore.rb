@@ -86,29 +86,35 @@ module Minecraft
           next
         end
 
-        throttle = sensitive_action_limit(:check)
-        if throttle.failure?
+        reservation = sensitive_action_reserve
+        if reservation.failure?
           audit_authorization_failure(rate_limited: true)
           result = ServiceResult.failure(
             error: :world_restore_authorization_rate_limited,
             code: :rate_limited,
-            retry_after: throttle.retry_after
+            retry_after: reservation.retry_after
           )
           next
         end
 
+        reservation_id = reservation.value.fetch(:reservation_id)
         verification = Identity::SensitiveActionVerifier.call(
           user: @actor,
           password: @password,
           code: @code
         )
         if verification.failure?
-          sensitive_action_limit(:failure)
+          sensitive_action_settle(:failure, reservation_id)
           audit_authorization_failure(rate_limited: false)
           result = failure(:world_restore_authorization_failed)
           next
         end
-        sensitive_action_limit(:success)
+        settlement = sensitive_action_settle(:success, reservation_id)
+        if settlement.failure?
+          audit_authorization_failure(rate_limited: false)
+          result = failure(:world_restore_authorization_failed)
+          next
+        end
 
         method = verification.value.fetch(:method)
         authorized_at = Time.current
@@ -193,12 +199,22 @@ module Minecraft
       }
     end
 
-    def sensitive_action_limit(action)
+    def sensitive_action_reserve
       Administration::SensitiveActionRateLimit.call(
         scope: RATE_LIMIT_SCOPE,
         user: @actor,
         ip_address: @ip_address,
-        action: action
+        context: @plan.public_id,
+        action: :reserve
+      )
+    end
+
+    def sensitive_action_settle(action, reservation_id)
+      Administration::SensitiveActionRateLimit.call(
+        scope: RATE_LIMIT_SCOPE,
+        user: @actor,
+        action: action,
+        reservation_id: reservation_id
       )
     end
 

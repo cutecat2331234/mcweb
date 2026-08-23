@@ -656,9 +656,12 @@ module Identity
           "app/controllers/admin/minecraft/world_restores_controller.rb#plan_recovery",
           "app/controllers/admin/minecraft/world_restores_controller.rb#authorize_recovery",
           "app/controllers/admin/minecraft/world_restores_controller.rb#execute_recovery",
+          "app/controllers/admin/minecraft/world_restores_controller.rb#cancel_recovery",
+          "app/controllers/admin/minecraft/world_restores_controller.rb#takeover_recovery",
           "app/services/minecraft/plan_world_restore_recovery.rb",
           "app/services/minecraft/authorize_world_restore_recovery.rb",
-          "app/services/minecraft/execute_world_restore_recovery.rb"
+          "app/services/minecraft/execute_world_restore_recovery.rb",
+          "app/services/minecraft/manage_world_restore_recovery_resolution.rb"
         ]
       ),
       build_entry.call(

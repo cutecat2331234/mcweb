@@ -949,6 +949,11 @@ en:
         world_restore_recovery_unresolved: The node could not prove a safe converged world state. Server start remains blocked.
         world_restore_recovery_state_changed: Recovery state changed while applying node proof. Server start remains blocked.
         world_restore_recovery_unreported_node_failure: The node operation ended without a complete recovery-resolution result.
+        world_restore_recovery_resolution_expired: This planned or authorized recovery resolution expired. Create a new plan or perform an audited takeover.
+        world_restore_recovery_lifecycle_action_invalid: Select cancellation or takeover for this recovery-resolution lifecycle action.
+        world_restore_recovery_lifecycle_not_allowed: Only an unexpired planned or authorized recovery resolution can be cancelled or taken over.
+        world_restore_recovery_lifecycle_rate_limited: Too many recovery lifecycle authorization attempts. Wait before trying again.
+        world_restore_recovery_lifecycle_authorization_failed: Recovery lifecycle authorization failed. Credential type is intentionally not disclosed.
         minecraft_world_restore_blocks_server_start: An active or recovery-required world restore blocks server start and restart.
         world_operation_reconciliation_action_invalid: The world operation reconciliation action is invalid.
         world_operation_target_result_required: The world operation target result is missing.
@@ -2437,6 +2442,10 @@ en:
         minecraft_world_restore_recovery_resolution_started: "Minecraft world restore recovery resolution started"
         minecraft_world_restore_recovery_resolution_completed: "Minecraft world restore recovery resolution completed"
         minecraft_world_restore_recovery_resolution_failed: "Minecraft world restore recovery resolution remains blocked"
+        minecraft_world_restore_recovery_resolution_expired: "Minecraft world restore recovery resolution expired"
+        minecraft_world_restore_recovery_resolution_cancelled: "Minecraft world restore recovery resolution cancelled"
+        minecraft_world_restore_recovery_resolution_taken_over: "Minecraft world restore recovery resolution taken over"
+        minecraft_world_restore_recovery_resolution_lifecycle_authorization_failed: "Minecraft world restore recovery lifecycle authorization failed"
         community_topic_created: "Forum topic created"
         community_post_created: "Forum post created"
         community_post_approved: "Forum post approved"
@@ -3315,6 +3324,8 @@ en:
         world_backup_queued: Managed world backup queued.
         world_restore_queued: World restore queued with its pre-restore snapshot.
         world_restore_recovery_queued: Recovery-resolution operation queued; server start remains blocked until node proof is acknowledged.
+        world_restore_recovery_lifecycle_cancel: Recovery resolution cancelled; server start remains blocked until a node-proven resolution completes.
+        world_restore_recovery_lifecycle_takeover: Recovery resolution taken over and replanned for the current operator.
         action_edit: Edit
         action_rotate_secret: Rotate secret
         action_delete: Delete

@@ -41,6 +41,7 @@ test('server controls expose managed lifecycle props and remain blocked during r
   assert.match(routes, /resources :world_backups, only: :create/)
   assert.match(routes, /resources :world_restores, only: :create[\s\S]*post :authorize[\s\S]*post :execute/)
   assert.match(routes, /post :plan_recovery[\s\S]*post :authorize_recovery[\s\S]*post :execute_recovery/)
+  assert.match(routes, /post :cancel_recovery[\s\S]*post :takeover_recovery/)
 })
 
 test('recovery resolution uses Arco controls and node-proven step-up execution', () => {
@@ -50,6 +51,10 @@ test('recovery resolution uses Arco controls and node-proven step-up execution',
   assert.match(lifecycle, /resolution_action: recoveryAction\.value/)
   assert.match(lifecycle, /authorization_token: recoveryAuthorizationToken\.value/)
   assert.match(lifecycle, /<a-select[\s\S]*<a-input-password[\s\S]*<a-textarea/)
+  assert.match(lifecycle, /expected_plan_lock_version: recoveryPlan\.value\.lock_version/)
+  assert.match(lifecycle, /expected_resolution_lock_version: recoveryResolution\.value\.lock_version/)
+  assert.match(lifecycle, /manageRecoveryLifecycle\('cancel'\)[\s\S]*manageRecoveryLifecycle\('takeover'\)/)
+  assert.match(lifecycle, /recoveryResolution\.value\.cancel_url[\s\S]*recoveryResolution\.value\.takeover_url/)
   assert.doesNotMatch(lifecycle, /<(?:input|select|button|table)(?:\s|>)/)
 })
 

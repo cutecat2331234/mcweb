@@ -256,17 +256,27 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
       assert_equal :world_restore_authorization_failed, result.code
     end
 
-    blocked = Minecraft::AuthorizeWorldRestore.call(
-      plan: plan,
-      actor: @actor,
-      password: "password123",
-      code: "000000",
-      ip_address: "203.0.113.20"
-    )
+    blocked = Identity::SensitiveActionVerifier.stub(:call, ->(**) { flunk("blocked reserve reached credential verification") }) do
+      Minecraft::AuthorizeWorldRestore.call(
+        plan: plan,
+        actor: @actor,
+        password: "password123",
+        code: "000000",
+        ip_address: "203.0.113.20"
+      )
+    end
     assert_predicate blocked, :failure?
     assert_equal :rate_limited, blocked.code
     assert_operator blocked.retry_after, :>, 0
     assert_equal 2, RateLimitCounter.where("key LIKE ?", "sensitive:minecraft_world_restore_authorize:%").count
+    assert_equal 5, Administration::SensitiveActionRateLimitReservation.where(
+      scope: Minecraft::AuthorizeWorldRestore::RATE_LIMIT_SCOPE,
+      status: "failed"
+    ).count
+    assert_equal 0, Administration::SensitiveActionRateLimitReservation.where(
+      scope: Minecraft::AuthorizeWorldRestore::RATE_LIMIT_SCOPE,
+      status: "pending"
+    ).count
   end
 
   test "node-proven recovery resolution is the only path out of recovery required" do
@@ -348,6 +358,155 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     assert_nil plan.reload.node_operation
     assert_nil plan.pre_restore_world_backup
     assert plan.status_authorized?
+  end
+
+  test "stale planned recovery resolution expires on the server before replanning" do
+    plan, = execute_restore_into_recovery
+    first = Minecraft::PlanWorldRestoreRecovery.call(
+      plan: plan,
+      actor: @actor,
+      resolution_action: "reconcile",
+      reason: "Initial incident owner",
+      request_id: SecureRandom.uuid,
+      expected_plan_lock_version: plan.lock_version
+    ).value.fetch(:resolution)
+
+    replacement = nil
+    travel Minecraft::PlanWorldRestoreRecovery::EXPIRES_IN + 1.second do
+      @node.update!(last_heartbeat_at: Time.current)
+      replacement = Minecraft::PlanWorldRestoreRecovery.call(
+        plan: plan,
+        actor: @actor,
+        resolution_action: "reconcile",
+        reason: "Replan after server-enforced expiry",
+        request_id: SecureRandom.uuid,
+        expected_plan_lock_version: plan.reload.lock_version
+      )
+    end
+
+    assert_predicate replacement, :success?
+    assert first.reload.status_expired?
+    assert first.expired_at?
+    assert_not_equal first.id, replacement.value.fetch(:resolution).id
+    assert_equal 1, plan.events.where(
+      event_type: "minecraft.world_restore.recovery_resolution_expired"
+    ).count
+  end
+
+  test "step-up takeover preserves the former authorized resolution and rejects its token" do
+    plan, = execute_restore_into_recovery
+    first = Minecraft::PlanWorldRestoreRecovery.call(
+      plan: plan,
+      actor: @actor,
+      resolution_action: "reconcile",
+      reason: "Original incident owner",
+      request_id: SecureRandom.uuid,
+      expected_plan_lock_version: plan.lock_version
+    ).value.fetch(:resolution)
+    authorization = Minecraft::AuthorizeWorldRestoreRecovery.call(
+      resolution: first,
+      actor: @actor,
+      password: "password123",
+      ip_address: "203.0.113.24",
+      expected_lock_version: first.lock_version
+    )
+    assert_predicate authorization, :success?
+    first.reload
+
+    takeover_actor = create_user(account_type: "staff")
+    grant_permission(takeover_actor, "minecraft.world_restores.resolve_recovery")
+    @actor.ban!(reason: "Operator left incident response")
+    takeover = Minecraft::ManageWorldRestoreRecoveryResolution.call(
+      resolution: first,
+      actor: takeover_actor,
+      lifecycle_action: "takeover",
+      resolution_action: "reconcile",
+      reason: "On-call takeover for INC-44",
+      request_id: SecureRandom.uuid,
+      expected_plan_lock_version: plan.reload.lock_version,
+      expected_resolution_lock_version: first.lock_version,
+      password: "password123",
+      ip_address: "203.0.113.25"
+    )
+
+    assert_predicate takeover, :success?
+    successor = takeover.value.fetch(:replacement)
+    assert first.reload.status_taken_over?
+    assert_equal takeover_actor.id, first.lifecycle_actor_id
+    assert_equal first.id, successor.supersedes_resolution_id
+    assert_equal takeover_actor.id, successor.actor_id
+    assert successor.status_planned?
+    assert_nil successor.authorization_digest
+    assert_equal first.authorization_digest, Digest::SHA256.hexdigest(
+      authorization.value.fetch(:authorization_token)
+    )
+
+    @actor.unban!
+    replay = Minecraft::ExecuteWorldRestoreRecovery.call(
+      resolution: first,
+      actor: @actor,
+      authorization_token: authorization.value.fetch(:authorization_token),
+      confirmation: authorization.value.fetch(:confirmation),
+      expected_lock_version: first.lock_version
+    )
+    assert_predicate replay, :failure?
+    assert_nil successor.reload.node_operation
+    assert_equal 1, plan.events.where(
+      event_type: "minecraft.world_restore.recovery_resolution_taken_over"
+    ).count
+  end
+
+  test "explicit recovery resolution cancellation requires fresh step-up and preserves the record" do
+    plan, = execute_restore_into_recovery
+    resolution = Minecraft::PlanWorldRestoreRecovery.call(
+      plan: plan,
+      actor: @actor,
+      resolution_action: "reconcile",
+      reason: "Cancel obsolete response plan",
+      request_id: SecureRandom.uuid,
+      expected_plan_lock_version: plan.lock_version
+    ).value.fetch(:resolution)
+    request_id = SecureRandom.uuid
+    expected_plan_lock_version = plan.reload.lock_version
+    expected_resolution_lock_version = resolution.lock_version
+    cancelled = Minecraft::ManageWorldRestoreRecoveryResolution.call(
+      resolution: resolution,
+      actor: @actor,
+      lifecycle_action: "cancel",
+      reason: "Evidence changed; cancel before replanning",
+      request_id: request_id,
+      expected_plan_lock_version: expected_plan_lock_version,
+      expected_resolution_lock_version: expected_resolution_lock_version,
+      password: "password123",
+      ip_address: "203.0.113.26"
+    )
+
+    assert_predicate cancelled, :success?
+    assert resolution.reload.status_cancelled?
+    assert_equal request_id, resolution.lifecycle_request_id
+    assert_nil resolution.node_operation
+    assert plan.reload.status_recovery_required?
+    replay = Identity::SensitiveActionVerifier.stub(
+      :call,
+      ->(**) { flunk("idempotent cancellation repeated credential verification") }
+    ) do
+      Minecraft::ManageWorldRestoreRecoveryResolution.call(
+        resolution: resolution,
+        actor: @actor,
+        lifecycle_action: "cancel",
+        reason: "Evidence changed; cancel before replanning",
+        request_id: request_id,
+        expected_plan_lock_version: expected_plan_lock_version,
+        expected_resolution_lock_version: expected_resolution_lock_version,
+        password: nil,
+        ip_address: "203.0.113.26"
+      )
+    end
+    assert_predicate replay, :success?
+    assert replay.value.fetch(:idempotent)
+    assert_equal 1, plan.events.where(
+      event_type: "minecraft.world_restore.recovery_resolution_cancelled"
+    ).count
   end
 
   private

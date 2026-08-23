@@ -43,6 +43,15 @@ interface RecoveryAuthorizationResponse {
   resolution: WorldRestoreResolutionRow
 }
 
+interface RecoveryLifecycleResponse {
+  message?: string
+  plan: WorldRestorePlanRow
+  resolution: WorldRestoreResolutionRow
+  replacement?: WorldRestoreResolutionRow
+  confirmation?: string
+  idempotent: boolean
+}
+
 const props = defineProps<{ model: WorldSafetyProps }>()
 const { t, locale } = useI18n()
 
@@ -80,6 +89,12 @@ const recoveryPlanning = ref(false)
 const recoveryAuthorizing = ref(false)
 const recoveryExecuting = ref(false)
 const recoveryQueued = ref(false)
+const lifecycleReason = ref('')
+const lifecyclePassword = ref('')
+const lifecycleCode = ref('')
+const lifecycleCancelRequestId = ref(createIdempotencyKey())
+const lifecycleTakeoverRequestId = ref(createIdempotencyKey())
+const lifecycleManaging = ref<'cancel' | 'takeover' | ''>('')
 
 const availableBackups = computed(() => props.model.backups.filter((backup) => (
   backup.restorable && backup.target_compatible
@@ -132,6 +147,21 @@ const canExecuteRecovery = computed(() => (
   && !recoveryExecuting.value
   && !recoveryQueued.value
 ))
+const lifecycleInputValid = computed(() => (
+  lifecycleReason.value.trim().length > 0
+  && lifecycleReason.value.trim().length <= 1000
+  && lifecyclePassword.value.length > 0
+  && lifecycleManaging.value === ''
+))
+const canCancelRecovery = computed(() => (
+  Boolean(recoveryResolution.value?.cancel_url)
+  && lifecycleInputValid.value
+))
+const canTakeoverRecovery = computed(() => (
+  Boolean(recoveryResolution.value?.takeover_url)
+  && props.model.recovery_blockers.length === 0
+  && lifecycleInputValid.value
+))
 
 watch([selectedBackupId, reason], () => {
   if (!plan.value) requestId.value = createIdempotencyKey()
@@ -142,8 +172,15 @@ watch(() => recoveryPlan.value?.recovery_resolution, (value) => {
 })
 
 watch([recoveryAction, recoveryReason], () => {
-  if (!recoveryResolution.value || ['failed', 'recovery_required'].includes(recoveryResolution.value.status)) {
+  if (!recoveryResolution.value || ['failed', 'recovery_required', 'expired', 'cancelled', 'taken_over'].includes(recoveryResolution.value.status)) {
     recoveryRequestId.value = createIdempotencyKey()
+  }
+})
+
+watch([lifecycleReason, lifecyclePassword, lifecycleCode, recoveryAction], () => {
+  if (!lifecycleManaging.value) {
+    lifecycleCancelRequestId.value = createIdempotencyKey()
+    lifecycleTakeoverRequestId.value = createIdempotencyKey()
   }
 })
 
@@ -376,6 +413,44 @@ async function executeRecoveryResolution() {
     recoveryExecuting.value = false
   }
 }
+
+async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
+  if (!recoveryResolution.value || !recoveryPlan.value) return
+  const url = action === 'cancel'
+    ? recoveryResolution.value.cancel_url
+    : recoveryResolution.value.takeover_url
+  if (!url || (action === 'cancel' ? !canCancelRecovery.value : !canTakeoverRecovery.value)) return
+
+  lifecycleManaging.value = action
+  errorMessage.value = ''
+  try {
+    const result = await postJson<RecoveryLifecycleResponse>(url, {
+      resolution_id: recoveryResolution.value.id,
+      resolution_action: action === 'takeover' ? recoveryAction.value : undefined,
+      reason: lifecycleReason.value.trim(),
+      request_id: action === 'cancel'
+        ? lifecycleCancelRequestId.value
+        : lifecycleTakeoverRequestId.value,
+      expected_plan_lock_version: recoveryPlan.value.lock_version,
+      expected_resolution_lock_version: recoveryResolution.value.lock_version,
+      password: lifecyclePassword.value,
+      code: lifecycleCode.value,
+    })
+    recoveryResolution.value = result.replacement || result.resolution
+    recoveryRequiredConfirmation.value = result.confirmation || ''
+    recoveryAuthorizationToken.value = ''
+    recoveryConfirmation.value = ''
+    lifecyclePassword.value = ''
+    lifecycleCode.value = ''
+    lifecycleReason.value = ''
+    Message.success(result.message || t(`adminMinecraft.worldSafety.recoveryLifecycle${action === 'cancel' ? 'Cancelled' : 'TakenOver'}`))
+    refresh()
+  } catch (error) {
+    errorMessage.value = errorText(error)
+  } finally {
+    lifecycleManaging.value = ''
+  }
+}
 </script>
 
 <template>
@@ -585,6 +660,12 @@ async function executeRecoveryResolution() {
                 {{ translateRecoveryAction(recoveryResolution.resolution_action) }}
               </a-descriptions-item>
               <a-descriptions-item
+                v-if="recoveryResolution?.expires_at"
+                :label="t('adminMinecraft.worldSafety.recoveryResolutionExpiresAt')"
+              >
+                {{ formatDate(recoveryResolution.expires_at) }}
+              </a-descriptions-item>
+              <a-descriptions-item
                 v-if="recoveryResolution?.verified_world_state"
                 :label="t('adminMinecraft.worldSafety.verifiedWorldState')"
               >
@@ -593,7 +674,7 @@ async function executeRecoveryResolution() {
             </a-descriptions>
 
             <a-form layout="vertical">
-              <template v-if="!recoveryResolution || ['failed', 'recovery_required'].includes(recoveryResolution.status)">
+              <template v-if="!recoveryResolution || ['failed', 'recovery_required', 'expired', 'cancelled', 'taken_over'].includes(recoveryResolution.status)">
                 <a-form-item field="recoveryAction" :label="t('adminMinecraft.worldSafety.recoveryAction')" required>
                   <a-select v-model="recoveryAction" :disabled="recoveryPlanning">
                     <a-option value="reconcile">{{ translateRecoveryAction('reconcile') }}</a-option>
@@ -622,7 +703,7 @@ async function executeRecoveryResolution() {
                 </a-button>
               </template>
 
-              <template v-else-if="!recoveryAuthorizationToken && !recoveryQueued && ['planned', 'authorized'].includes(recoveryResolution.status)">
+              <template v-else-if="!recoveryAuthorizationToken && !recoveryQueued && recoveryResolution.authorize_url && ['planned', 'authorized'].includes(recoveryResolution.status)">
                 <a-form-item field="recoveryPassword" :label="t('adminMinecraft.worldSafety.password')" required>
                   <a-input-password
                     v-model="recoveryPassword"
@@ -674,6 +755,70 @@ async function executeRecoveryResolution() {
                 </a-button>
               </template>
             </a-form>
+
+            <template v-if="recoveryResolution && ['planned', 'authorized'].includes(recoveryResolution.status)">
+              <a-divider />
+              <a-alert type="warning" show-icon :closable="false">
+                <template #title>{{ t('adminMinecraft.worldSafety.recoveryLifecycleTitle') }}</template>
+                {{ t('adminMinecraft.worldSafety.recoveryLifecycleBody') }}
+              </a-alert>
+              <a-form layout="vertical">
+                <a-form-item field="takeoverRecoveryAction" :label="t('adminMinecraft.worldSafety.takeoverRecoveryAction')" required>
+                  <a-select v-model="recoveryAction" :disabled="Boolean(lifecycleManaging)">
+                    <a-option value="reconcile">{{ translateRecoveryAction('reconcile') }}</a-option>
+                    <a-option value="resume">{{ translateRecoveryAction('resume') }}</a-option>
+                    <a-option value="rollback">{{ translateRecoveryAction('rollback') }}</a-option>
+                  </a-select>
+                </a-form-item>
+                <a-form-item field="lifecycleReason" :label="t('adminMinecraft.worldSafety.recoveryLifecycleReason')" required>
+                  <a-textarea
+                    v-model="lifecycleReason"
+                    :max-length="1000"
+                    show-word-limit
+                    :auto-size="{ minRows: 3, maxRows: 6 }"
+                    :disabled="Boolean(lifecycleManaging)"
+                  />
+                </a-form-item>
+                <a-form-item field="lifecyclePassword" :label="t('adminMinecraft.worldSafety.password')" required>
+                  <a-input-password
+                    v-model="lifecyclePassword"
+                    autocomplete="current-password"
+                    :disabled="Boolean(lifecycleManaging)"
+                  />
+                </a-form-item>
+                <a-form-item
+                  field="lifecycleCode"
+                  :label="t('adminMinecraft.worldSafety.verificationCode')"
+                  :extra="t('adminMinecraft.worldSafety.verificationCodeHint')"
+                >
+                  <a-input
+                    v-model="lifecycleCode"
+                    autocomplete="one-time-code"
+                    inputmode="numeric"
+                    :disabled="Boolean(lifecycleManaging)"
+                  />
+                </a-form-item>
+                <a-space wrap>
+                  <a-button
+                    status="warning"
+                    :loading="lifecycleManaging === 'cancel'"
+                    :disabled="!canCancelRecovery"
+                    @click="manageRecoveryLifecycle('cancel')"
+                  >
+                    {{ t('adminMinecraft.worldSafety.cancelRecoveryResolution') }}
+                  </a-button>
+                  <a-button
+                    type="primary"
+                    status="danger"
+                    :loading="lifecycleManaging === 'takeover'"
+                    :disabled="!canTakeoverRecovery"
+                    @click="manageRecoveryLifecycle('takeover')"
+                  >
+                    {{ t('adminMinecraft.worldSafety.takeoverRecoveryResolution') }}
+                  </a-button>
+                </a-space>
+              </a-form>
+            </template>
           </a-space>
         </a-card>
 

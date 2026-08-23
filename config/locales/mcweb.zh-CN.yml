@@ -949,6 +949,11 @@
         world_restore_recovery_unresolved: 节点无法证明世界已安全收敛，服务器启动仍被阻断。
         world_restore_recovery_state_changed: 应用节点证明时恢复状态发生变化，服务器启动仍被阻断。
         world_restore_recovery_unreported_node_failure: 节点操作结束时没有返回完整的恢复处理结果。
+        world_restore_recovery_resolution_expired: 此恢复处理方案或授权已到期，请重新规划或执行经审计的接管。
+        world_restore_recovery_lifecycle_action_invalid: 请选择取消或接管此恢复处理生命周期操作。
+        world_restore_recovery_lifecycle_not_allowed: 只有未到期且处于已规划或已授权状态的恢复处理才能取消或接管。
+        world_restore_recovery_lifecycle_rate_limited: 恢复处理生命周期授权尝试过多，请稍后再试。
+        world_restore_recovery_lifecycle_authorization_failed: 恢复处理生命周期授权失败；系统不会透露失败的凭据类型。
         minecraft_world_restore_blocks_server_start: 进行中或待恢复处理的世界恢复会阻止启动和重启服务器。
         world_operation_reconciliation_action_invalid: 世界操作对账动作无效。
         world_operation_target_result_required: 缺少世界操作目标结果。
@@ -2437,6 +2442,10 @@
         minecraft_world_restore_recovery_resolution_started: "Minecraft 世界恢复处理已开始"
         minecraft_world_restore_recovery_resolution_completed: "Minecraft 世界恢复处理已由节点证明完成"
         minecraft_world_restore_recovery_resolution_failed: "Minecraft 世界恢复处理仍保持阻断"
+        minecraft_world_restore_recovery_resolution_expired: "Minecraft 世界恢复处理已到期"
+        minecraft_world_restore_recovery_resolution_cancelled: "Minecraft 世界恢复处理已取消"
+        minecraft_world_restore_recovery_resolution_taken_over: "Minecraft 世界恢复处理已接管"
+        minecraft_world_restore_recovery_resolution_lifecycle_authorization_failed: "Minecraft 世界恢复处理生命周期授权失败"
         community_topic_created: "已创建论坛主题"
         community_post_created: "已发布论坛帖子"
         community_post_approved: "论坛帖子已通过审核"
@@ -3315,6 +3324,8 @@
         world_backup_queued: 托管世界备份已排队。
         world_restore_queued: 世界恢复及其恢复前快照已排队。
         world_restore_recovery_queued: 恢复处理已排队；在节点证明被确认前，服务器启动仍保持阻断。
+        world_restore_recovery_lifecycle_cancel: 恢复处理已取消；节点证明完成前，服务器启动仍保持阻断。
+        world_restore_recovery_lifecycle_takeover: 恢复处理已由当前操作者接管并重新规划。
         action_edit: 编辑
         action_rotate_secret: 轮换密钥
         action_delete: 删除

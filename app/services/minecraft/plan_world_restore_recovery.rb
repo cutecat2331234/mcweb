@@ -4,6 +4,7 @@ module Minecraft
   class PlanWorldRestoreRecovery < ApplicationService
     REQUEST_ID_PATTERN = PlanWorldRestore::REQUEST_ID_PATTERN
     PERMISSION = "minecraft.world_restores.resolve_recovery"
+    EXPIRES_IN = 10.minutes
 
     class << self
       def confirmation_for(resolution)
@@ -79,6 +80,12 @@ module Minecraft
           )
         end
 
+        @plan.recovery_resolutions.expirable
+          .where("expires_at <= ?", Time.current)
+          .order(:id)
+          .lock
+          .each { |candidate| Minecraft::ExpireWorldRestoreRecoveryResolution.expire_locked!(candidate) }
+
         raise RecoveryPlanError, "world_restore_recovery_stale" unless @plan.lock_version == @expected_plan_lock_version
         if (error = self.class.current_contract_error(
           @plan,
@@ -102,7 +109,8 @@ module Minecraft
           plan_digest: @plan.plan_digest,
           server_configuration_digest: @plan.server_configuration_digest,
           node_capability_digest: node.world_recovery_capability_digest,
-          pre_restore_manifest_digest: @plan.pre_restore_world_backup&.manifest_digest
+          pre_restore_manifest_digest: @plan.pre_restore_world_backup&.manifest_digest,
+          expires_at: Time.current + EXPIRES_IN
         )
         append_event!(
           resolution,
@@ -127,6 +135,8 @@ module Minecraft
       failure(:world_restore_recovery_active)
     rescue ActiveRecord::RecordInvalid => error
       ServiceResult.failure(errors: error.record.errors.to_hash)
+    rescue Minecraft::ExpireWorldRestoreRecoveryResolution::ExpirationError => error
+      failure(error.message.to_sym)
     end
 
     private

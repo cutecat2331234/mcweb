@@ -38,6 +38,7 @@ import FlashMessages from '@/components/portal/FlashMessages.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import PortalAnnouncements from '@/components/portal/PortalAnnouncements.vue'
 import {
+  isApplicationShellNavigationItemVisible,
   useApplicationShell,
   type ApplicationShellNavigationItem,
 } from '@/lib/applicationShell'
@@ -94,7 +95,11 @@ const currentPath = computed(() => page.url.split('?')[0])
 const visibleGroups = computed(() => shell.navigation
   .map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.requiresAuthentication || auth.value.user),
+    items: group.items.filter((item) => isApplicationShellNavigationItemVisible(
+      item,
+      page.props,
+      Boolean(auth.value.user),
+    )),
   }))
   .filter((group) => group.items.length > 0))
 const allItems = computed(() => visibleGroups.value.flatMap((group) => group.items))

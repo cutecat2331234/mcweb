@@ -38,7 +38,10 @@ import { useTheme } from '@/lib/useTheme'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
 import { safeSignOut } from '@/lib/safeSignOut'
-import { useApplicationShell } from '@/lib/applicationShell'
+import {
+  isApplicationShellNavigationItemVisible,
+  useApplicationShell,
+} from '@/lib/applicationShell'
 
 const page = usePage()
 const { t } = useI18n()
@@ -63,7 +66,12 @@ const auth = computed(
 const currentPath = computed(() => page.url.split('?')[0])
 const contributedNavigationItems = computed(() => applicationShell.navigation
   .filter((group) => group.id !== 'staff-workspace')
-  .flatMap((group) => group.items))
+  .flatMap((group) => group.items)
+  .filter((item) => isApplicationShellNavigationItemVisible(
+    item,
+    page.props,
+    Boolean(auth.value.user),
+  )))
 const selectedContribution = computed(() => contributedNavigationItems.value
   .filter((item) => currentPath.value === item.href || currentPath.value.startsWith(`${item.href}/`))
   .sort((left, right) => right.href.length - left.href.length)[0])

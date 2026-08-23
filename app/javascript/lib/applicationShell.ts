@@ -8,6 +8,7 @@ export type ApplicationShellNavigationItem = Readonly<{
   href: string
   labelKey: string
   badgeProp?: string
+  visibilityProp?: string
   requiresAuthentication?: boolean
 }>
 
@@ -28,6 +29,26 @@ export type ApplicationShellNavigationContribution = Readonly<{
   contributionId: string
   groups: readonly ApplicationShellNavigationGroup[]
 }>
+
+function resolveShellProp(props: unknown, path: string): unknown {
+  let value = props
+  for (const segment of path.split('.')) {
+    if (value === null || typeof value !== 'object'
+      || !Object.prototype.hasOwnProperty.call(value, segment)) return undefined
+    value = (value as Record<string, unknown>)[segment]
+  }
+  return value
+}
+
+export function isApplicationShellNavigationItemVisible(
+  item: ApplicationShellNavigationItem,
+  pageProps: unknown,
+  authenticated: boolean,
+): boolean {
+  if (item.requiresAuthentication && !authenticated) return false
+  if (item.visibilityProp && resolveShellProp(pageProps, item.visibilityProp) !== true) return false
+  return true
+}
 
 function freezeNavigationGroup(
   group: ApplicationShellNavigationGroup,

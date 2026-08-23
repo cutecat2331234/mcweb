@@ -58,3 +58,35 @@ test('navigation and prefetch resolve route kind instead of treating all app pat
   assert.match(prefetch, /match\.rule\.kind !== 'inertia_page'/)
   assert.doesNotMatch(prefetch, /PREFETCHABLE_PREFIXES/)
 })
+
+test('downstream navigation visibility is a shared fail-closed server-prop contract', () => {
+  const schema = readFileSync(
+    resolve(root, 'config/frontend_applications/schema.json'),
+    'utf8',
+  )
+  const serverRegistry = readFileSync(
+    resolve(root, 'app/services/frontend/application_registry.rb'),
+    'utf8',
+  )
+  const clientRegistry = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    'utf8',
+  )
+  const adapters = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplicationAdapters.ts'),
+    'utf8',
+  )
+  const shell = readFileSync(
+    resolve(root, 'app/javascript/lib/applicationShell.ts'),
+    'utf8',
+  )
+
+  for (const source of [schema, serverRegistry, clientRegistry, adapters]) {
+    assert.match(source, /visibility_prop|visibilityProp/)
+  }
+  assert.match(shell, /resolveShellProp\(pageProps, item\.visibilityProp\) !== true/)
+  for (const layout of ['PortalLayout.vue', 'StaffLayout.vue', 'ArcoAdminLayout.vue']) {
+    const source = readFileSync(resolve(root, 'app/javascript/layouts', layout), 'utf8')
+    assert.match(source, /isApplicationShellNavigationItemVisible/)
+  }
+})

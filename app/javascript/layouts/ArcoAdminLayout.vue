@@ -28,7 +28,10 @@ import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { useArcoLocale } from '@/lib/i18n'
 import { useTheme } from '@/lib/useTheme'
-import { useApplicationShell } from '@/lib/applicationShell'
+import {
+  isApplicationShellNavigationItemVisible,
+  useApplicationShell,
+} from '@/lib/applicationShell'
 
 interface NavItem {
   label: string
@@ -599,10 +602,16 @@ const nav = computed<NavGroup[]>(() => {
       key: group.id,
       label: t(group.labelKey),
       icon: IconCommand,
-      items: group.items.map((item) => ({
-        label: t(item.labelKey),
-        href: item.href,
-      })),
+      items: group.items
+        .filter((item) => isApplicationShellNavigationItemVisible(
+          item,
+          page.props,
+          Boolean(auth.value.user),
+        ))
+        .map((item) => ({
+          label: t(item.labelKey),
+          href: item.href,
+        })),
     })
   }
 

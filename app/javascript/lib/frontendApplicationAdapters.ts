@@ -112,6 +112,7 @@ function navigationSignature(
         if (!item || typeof item !== 'object' || typeof item.href !== 'string'
           || typeof item.labelKey !== 'string'
           || (item.badgeProp !== undefined && typeof item.badgeProp !== 'string')
+          || (item.visibilityProp !== undefined && typeof item.visibilityProp !== 'string')
           || (item.requiresAuthentication !== undefined
             && typeof item.requiresAuthentication !== 'boolean')) {
           throw new Error(`Frontend adapter ${contributionId} has invalid navigation items`)
@@ -120,6 +121,7 @@ function navigationSignature(
           href: item.href,
           labelKey: item.labelKey,
           badgeProp: item.badgeProp ?? null,
+          visibilityProp: item.visibilityProp ?? null,
           requiresAuthentication: item.requiresAuthentication ?? null,
         }
       }),

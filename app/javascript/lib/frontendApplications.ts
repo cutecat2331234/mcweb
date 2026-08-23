@@ -351,7 +351,7 @@ function buildNavigation(
       const item = objectValue(rawItem, itemSource)
       assertExactKeys(
         item,
-        ['href', 'label_key', 'badge_prop', 'requires_authentication'],
+        ['href', 'label_key', 'badge_prop', 'visibility_prop', 'requires_authentication'],
         itemSource,
         ['href', 'label_key'],
       )
@@ -364,6 +364,13 @@ function buildNavigation(
         labelKey: adapterNameValue(item.label_key, itemSource, 'label_key'),
         ...(item.badge_prop === undefined ? {} : {
           badgeProp: adapterNameValue(item.badge_prop, itemSource, 'badge_prop'),
+        }),
+        ...(item.visibility_prop === undefined ? {} : {
+          visibilityProp: adapterNameValue(
+            item.visibility_prop,
+            itemSource,
+            'visibility_prop',
+          ),
         }),
         ...(item.requires_authentication === undefined ? {} : {
           requiresAuthentication: item.requires_authentication,

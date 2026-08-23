@@ -155,6 +155,7 @@
         "href": { "$ref": "#/$defs/path" },
         "label_key": { "$ref": "#/$defs/adapterName" },
         "badge_prop": { "$ref": "#/$defs/adapterName" },
+        "visibility_prop": { "$ref": "#/$defs/adapterName" },
         "requires_authentication": { "type": "boolean" }
       },
       "additionalProperties": false

@@ -99,6 +99,7 @@ module Frontend
       :href,
       :label_key,
       :badge_prop,
+      :visibility_prop,
       :requires_authentication,
       keyword_init: true
     )
@@ -849,7 +850,7 @@ module Frontend
           assert_required_keys!(raw_item, %w[href label_key], item_source)
           assert_exact_keys!(
             raw_item,
-            %w[href label_key badge_prop requires_authentication],
+            %w[href label_key badge_prop visibility_prop requires_authentication],
             item_source
           )
           authentication = raw_item.fetch("requires_authentication", false)
@@ -862,6 +863,8 @@ module Frontend
             label_key: validate_adapter_name!(raw_item.fetch("label_key"), item_source),
             badge_prop: raw_item["badge_prop"].presence &&
               validate_adapter_name!(raw_item["badge_prop"], item_source),
+            visibility_prop: raw_item["visibility_prop"].presence &&
+              validate_adapter_name!(raw_item["visibility_prop"], item_source),
             requires_authentication: authentication
           )
         end

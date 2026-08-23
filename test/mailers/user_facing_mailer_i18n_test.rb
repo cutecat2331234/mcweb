@@ -4,7 +4,7 @@ require "test_helper"
 
 class UserFacingMailerI18nTest < ActionMailer::TestCase
   IDENTITY_SUBJECTS = %w[
-    verification password_reset password_changed totp_recovery
+    verification password_reset password_changed totp_enabled totp_recovery
     email_change_confirmation email_change_security_notice
   ].freeze
   FORUM_SUBJECTS = %w[
@@ -48,6 +48,21 @@ class UserFacingMailerI18nTest < ActionMailer::TestCase
     assert_includes decoded_body(english), "Reset password"
     assert_equal "您的 McWeb 密码已修改", chinese.subject
     assert_includes decoded_body(chinese), "已撤销 1 个其他登录会话"
+    assert_includes decoded_body(chinese), "重置密码"
+  end
+
+  test "two-factor enrollment security notice is localized and includes recovery guidance" do
+    enabled_at = Time.zone.parse("2026-08-24 12:30:00")
+    english = Identity::Mailer.totp_enabled_email(@english_user.id, enabled_at.iso8601, 2)
+    chinese = Identity::Mailer.totp_enabled_email(@chinese_user.id, enabled_at.iso8601, 1)
+
+    assert_equal "Two-factor authentication was enabled on your McWeb account", english.subject
+    assert_includes decoded_body(english), "2 other signed-in sessions were revoked"
+    assert_includes decoded_body(english), "Recover two-factor authentication"
+    assert_includes decoded_body(english), "Reset password"
+    assert_equal "您的 McWeb 账户已启用两步验证", chinese.subject
+    assert_includes decoded_body(chinese), "已撤销 1 个其他登录会话"
+    assert_includes decoded_body(chinese), "恢复两步验证"
     assert_includes decoded_body(chinese), "重置密码"
   end
 

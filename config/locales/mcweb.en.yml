@@ -404,7 +404,7 @@ en:
       totp_setup_stale: This two-factor setup was replaced in another browser. Start setup again.
       totp_setup_missing: Start two-factor setup before confirming.
       totp_invalid: Invalid two-factor code.
-      totp_enabled: Two-factor authentication is enabled.
+      totp_enabled: Two-factor authentication is enabled. Other signed-in devices were signed out.
       totp_disabled: Two-factor authentication is disabled.
       totp_already_enabled: Two-factor authentication is already enabled.
       totp_setup_required: Your account must enable two-factor authentication before continuing.
@@ -1003,6 +1003,8 @@ en:
         new_password_required: Enter a new password.
         password_unchanged: Choose a password different from your current password.
         current_session_required: Your current sign-in session could not be verified. Sign in again before changing your password.
+        totp_current_session_required: Your current sign-in session could not be verified. Sign in again before enabling two-factor authentication.
+        totp_enable_audit_failed: Two-factor authentication was not enabled because its security record could not be saved. Please retry.
         two_factor_not_enabled: Two-factor authentication is not enabled.
         email_required: Enter a replacement email address.
         email_unchanged: The replacement address is the same as the current address.
@@ -4128,6 +4130,7 @@ en:
           email_change_security_notice: "Security notice: McWeb email change requested"
           password_reset: "Reset your McWeb password"
           password_changed: "Your McWeb password was changed"
+          totp_enabled: "Two-factor authentication was enabled on your McWeb account"
           totp_recovery: "McWeb two-factor recovery"
         verification:
           intro: "Please verify your email address using the link below:"
@@ -4152,6 +4155,17 @@ en:
             other: "%{count} other signed-in sessions were revoked."
           review_security: "Review account security"
           not_you: "If you did not make this change, reset your password immediately and review account security."
+          reset_password: "Reset password"
+        totp_enabled:
+          intro: "Two-factor authentication was enabled for your McWeb account."
+          enabled_at: "Enabled at: %{at}"
+          revoked_sessions:
+            zero: "No other signed-in sessions needed to be revoked."
+            one: "1 other signed-in session was revoked."
+            other: "%{count} other signed-in sessions were revoked."
+          review_security: "Review account security"
+          not_you: "If you did not enable two-factor authentication, recover it first and then reset your password immediately."
+          recover_totp: "Recover two-factor authentication"
           reset_password: "Reset password"
       commerce:
         subjects:

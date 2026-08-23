@@ -5548,6 +5548,7 @@ export default {
       requiredNotice: 'An administrator requires two-factor authentication before you can continue.',
       scanQr: 'Scan the QR code with your authenticator app, or enter the secret manually.',
       startTotp: 'Set up two-factor authentication',
+      confirmTotpHint: 'Re-enter your password to protect enrollment. Enabling two-factor authentication signs out every other device.',
       confirmTotp: 'Confirm and enable',
       disableTotp: 'Disable two-factor authentication',
       disableTotpHint: 'Your current authenticator secret and all recovery codes become invalid immediately.',

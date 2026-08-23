@@ -26,6 +26,17 @@ module Identity
       mail(to: @user.email, subject: recipient_t("mcweb.mail.identity.subjects.password_changed"))
     end
 
+    def totp_enabled_email(user_id, enabled_at, revoked_session_count)
+      @user = User.find(user_id)
+      @enabled_at = Time.zone.parse(enabled_at.to_s)
+      @revoked_session_count = revoked_session_count.to_i
+      @security_url = identity_security_url
+      @recovery_url = new_identity_totp_recovery_url
+      @reset_url = identity_password_resets_landing_url
+
+      mail(to: @user.email, subject: recipient_t("mcweb.mail.identity.subjects.totp_enabled"))
+    end
+
     def totp_recovery_email(user_id, token)
       @user = User.find(user_id)
       @recovery_url = edit_identity_totp_recovery_url(token: token)

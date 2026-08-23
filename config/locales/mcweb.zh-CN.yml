@@ -404,7 +404,7 @@
       totp_setup_stale: 此两步验证设置已被另一浏览器中的新设置替换，请重新开始。
       totp_setup_missing: 请先开始两步验证设置。
       totp_invalid: 两步验证码无效。
-      totp_enabled: 两步验证已启用。
+      totp_enabled: 两步验证已启用，其他已登录设备均已退出。
       totp_disabled: 两步验证已关闭。
       totp_already_enabled: 两步验证已经启用。
       totp_setup_required: 管理员要求启用两步验证，请先完成设置。
@@ -1003,6 +1003,8 @@
         new_password_required: 请输入新密码。
         password_unchanged: 新密码不能与当前密码相同。
         current_session_required: 无法验证当前登录会话，请重新登录后再修改密码。
+        totp_current_session_required: 无法验证当前登录会话，请重新登录后再启用两步验证。
+        totp_enable_audit_failed: 无法保存本次操作的安全记录，两步验证未启用，请重试。
         two_factor_not_enabled: 尚未启用两步验证。
         email_required: 请输入新邮箱。
         email_unchanged: 新邮箱与当前邮箱相同。
@@ -4128,6 +4130,7 @@
           email_change_security_notice: "安全提醒：有人申请修改 McWeb 邮箱"
           password_reset: "McWeb 密码重置"
           password_changed: "您的 McWeb 密码已修改"
+          totp_enabled: "您的 McWeb 账户已启用两步验证"
           totp_recovery: "McWeb 两步验证恢复"
         verification:
           intro: "请点击以下链接验证您的邮箱地址："
@@ -4152,6 +4155,17 @@
             other: "已撤销 %{count} 个其他登录会话。"
           review_security: "检查账户安全"
           not_you: "如果并非您本人操作，请立即重置密码并检查账户安全设置。"
+          reset_password: "重置密码"
+        totp_enabled:
+          intro: "您的 McWeb 账户已启用两步验证。"
+          enabled_at: "启用时间：%{at}"
+          revoked_sessions:
+            zero: "没有其他登录会话需要撤销。"
+            one: "已撤销 1 个其他登录会话。"
+            other: "已撤销 %{count} 个其他登录会话。"
+          review_security: "检查账户安全"
+          not_you: "如果并非您本人启用，请先恢复两步验证，然后立即重置密码。"
+          recover_totp: "恢复两步验证"
           reset_password: "重置密码"
       commerce:
         subjects:

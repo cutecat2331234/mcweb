@@ -49,7 +49,7 @@ watch(
 )
 
 const confirmForm = useForm({
-  totp: { code: '' },
+  totp: { password: '', code: '' },
 })
 
 const disableForm = useForm({
@@ -283,7 +283,20 @@ function dismissRecoveryCodes() {
             <p class="break-all font-mono text-xs text-muted-foreground">{{ pending_totp.secret }}</p>
           </div>
         </div>
-        <form class="flex flex-wrap items-end gap-3" @submit.prevent="confirmTotp">
+        <p class="text-sm text-muted-foreground">
+          {{ t('identity.security.confirmTotpHint') }}
+        </p>
+        <form class="grid gap-4 md:grid-cols-2" @submit.prevent="confirmTotp">
+          <div class="space-y-2">
+            <Label for="confirm_password">{{ t('auth.signIn.password') }}</Label>
+            <Input
+              id="confirm_password"
+              v-model="confirmForm.totp.password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
           <div class="space-y-2">
             <Label for="confirm_code">{{ t('auth.signIn.totp') }}</Label>
             <Input
@@ -293,9 +306,11 @@ function dismissRecoveryCodes() {
               required
             />
           </div>
-          <Button type="submit" :disabled="confirmForm.processing">
-            {{ t('identity.security.confirmTotp') }}
-          </Button>
+          <div class="md:col-span-2">
+            <Button type="submit" :disabled="confirmForm.processing">
+              {{ t('identity.security.confirmTotp') }}
+            </Button>
+          </div>
         </form>
       </template>
 

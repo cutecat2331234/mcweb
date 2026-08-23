@@ -5548,6 +5548,7 @@ export default {
       requiredNotice: '管理员要求你启用两步验证后才能继续使用站点。',
       scanQr: '使用验证器应用扫描二维码，或手动输入密钥。',
       startTotp: '开始设置两步验证',
+      confirmTotpHint: '请重新输入密码以保护绑定流程。启用两步验证后，其他设备会全部退出登录。',
       confirmTotp: '确认并启用',
       disableTotp: '关闭两步验证',
       disableTotpHint: '关闭后，现有验证器密钥和恢复码会立即失效。',

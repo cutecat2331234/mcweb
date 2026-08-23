@@ -45,42 +45,34 @@ module Identity
       secret = session[:pending_totp_secret].presence
       return redirect_to identity_security_path, alert: t("mcweb.flash.totp_setup_missing") if secret.blank?
 
-      confirmation = :invalid
-      recovery_codes = nil
-      User.transaction do
-        current_user.lock!
-        if current_user.totp_enabled?
-          confirmation = :already_enabled
-        elsif !secure_totp_secret_match?(current_user.totp_secret.to_s, secret)
-          confirmation = :stale
-        elsif User.verify_totp_code(secret, confirm_params[:code])
-          current_user.update!(totp_enabled: true)
-          Administration::AuditLogger.call(
-            actor: current_user,
-            action: "identity.totp_enabled",
-            resource: current_user,
-            metadata: { recovery_code_count: Array(current_user.recovery_codes).size },
-            ip_address: request.remote_ip,
-            user_agent: request.user_agent
-          )
-          recovery_codes = Array(current_user.recovery_codes)
-          confirmation = :enabled
+      result = Identity::EnableTotp.call(
+        user: current_user,
+        secret: secret,
+        password: confirm_params[:password],
+        code: confirm_params[:code],
+        current_session: current_session,
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
+      )
+
+      unless result.success?
+        apply_retry_after_header(result)
+        if result.code == "totp_setup_stale"
+          session.delete(:pending_totp_secret)
+          return redirect_to identity_security_path, alert: t("mcweb.flash.totp_setup_stale")
         end
+
+        return redirect_to identity_security_path, alert: service_error_message(result)
       end
 
-      case confirmation
-      when :enabled
-        session.delete(:pending_totp_secret)
-        session[:identity_recovery_codes] = recovery_codes
-      when :stale
-        session.delete(:pending_totp_secret)
-        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_setup_stale")
-      when :already_enabled
-        session.delete(:pending_totp_secret)
-        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_already_enabled")
-      else
-        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_invalid")
+      if result.value[:session_token].present?
+        replace_sign_in_token(
+          session_record: result.value.fetch(:current_session),
+          token: result.value.fetch(:session_token)
+        )
       end
+      session.delete(:pending_totp_secret)
+      session[:identity_recovery_codes] = result.value.fetch(:recovery_codes)
 
       redirect_to identity_security_path, notice: t("mcweb.flash.totp_enabled")
     end
@@ -209,7 +201,7 @@ module Identity
     end
 
     def confirm_params
-      params.expect(totp: [ :code ])
+      params.expect(totp: %i[password code])
     end
 
     def disable_params

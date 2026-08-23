@@ -16,15 +16,24 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "totp confirmation presents recovery codes once" do
+    current_session = @user.sessions.active.order(created_at: :desc).first
+    original_current_digest = current_session.token_digest
+    other_session = create_test_session(@user).value.fetch(:session)
     post identity_security_totp_setup_path
     assert_redirected_to identity_security_path
     @user.reload
     code = ROTP::TOTP.new(@user.totp_secret).now
     first_recovery_code = @user.recovery_codes.first
 
-    post identity_security_totp_confirm_path, params: { totp: { code: code } }
+    post identity_security_totp_confirm_path, params: {
+      totp: { password: "password123", code: code }
+    }
 
     assert_redirected_to identity_security_path
+    assert @user.reload.totp_enabled?
+    assert other_session.reload.revoked?
+    refute current_session.reload.revoked?
+    refute_equal original_current_digest, current_session.token_digest
     follow_redirect!
     assert_response :success
     assert_includes response.body, first_recovery_code
@@ -32,6 +41,22 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
     get identity_security_path
     assert_response :success
     refute_includes response.body, first_recovery_code
+  end
+
+  test "totp confirmation rejects a stolen session without the current password" do
+    other_session = create_test_session(@user).value.fetch(:session)
+    post identity_security_totp_setup_path
+    code = ROTP::TOTP.new(@user.reload.totp_secret).now
+
+    post identity_security_totp_confirm_path, params: {
+      totp: { password: "wrong-password", code: code }
+    }
+
+    assert_redirected_to identity_security_path
+    refute @user.reload.totp_enabled?
+    refute other_session.reload.revoked?
+    follow_redirect!
+    assert_includes response.body, I18n.t("mcweb.services.errors.password_incorrect")
   end
 
   test "a stale browser cannot enable the secret installed by a newer totp setup" do
@@ -58,14 +83,14 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
     refute_equal secret_a, secret_b
 
     browser_a.post identity_security_totp_confirm_path, params: {
-      totp: { code: ROTP::TOTP.new(secret_a).now }
+      totp: { password: "password123", code: ROTP::TOTP.new(secret_a).now }
     }
     assert_equal 302, browser_a.response.status
     refute @user.reload.totp_enabled?
     assert_equal secret_b, @user.totp_secret
 
     browser_b.post identity_security_totp_confirm_path, params: {
-      totp: { code: ROTP::TOTP.new(secret_b).now }
+      totp: { password: "password123", code: ROTP::TOTP.new(secret_b).now }
     }
     assert_equal 302, browser_b.response.status
     assert @user.reload.totp_enabled?

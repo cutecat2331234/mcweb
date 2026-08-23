@@ -1,0 +1,13 @@
+<p><%= t("mcweb.mail.greeting_formal", username: @user.display_name.presence || @user.username) %></p>
+
+<p><%= t("mcweb.mail.identity.totp_enabled.intro") %></p>
+
+<p><%= t("mcweb.mail.identity.totp_enabled.enabled_at", at: l(@enabled_at, format: :long)) %></p>
+
+<p><%= t("mcweb.mail.identity.totp_enabled.revoked_sessions", count: @revoked_session_count) %></p>
+
+<p><%= link_to t("mcweb.mail.identity.totp_enabled.review_security"), @security_url %></p>
+
+<p><%= t("mcweb.mail.identity.totp_enabled.not_you") %></p>
+<p><%= link_to t("mcweb.mail.identity.totp_enabled.recover_totp"), @recovery_url %></p>
+<p><%= link_to t("mcweb.mail.identity.totp_enabled.reset_password"), @reset_url %></p>

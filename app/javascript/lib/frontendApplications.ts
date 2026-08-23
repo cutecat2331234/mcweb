@@ -70,6 +70,7 @@ export type FrontendApplicationContribution = Readonly<{
   productOwner: string
   runtimeOwner: string
   adapterModule: string | null
+  pageRoots: readonly string[]
   styles: readonly string[]
   locales: readonly string[]
   errorBoundary: string | null
@@ -384,6 +385,17 @@ function buildNavigation(
       items,
     }
   })
+}
+
+function pageRootsValue(value: unknown, source: string): string[] {
+  const roots = uniqueStrings(
+    value ?? ['app/javascript/pages'],
+    source,
+    'page_roots',
+    { pattern: /^(?:[a-z][a-z0-9_-]*\/)*app\/javascript\/pages$/ },
+  )
+  if (roots.length === 0) manifestError(source, 'page_roots must not be empty')
+  return roots
 }
 
 function buildBudget(value: unknown, source: string): FrontendApplicationBudget {
@@ -834,6 +846,7 @@ for (const { source, raw } of contributionEntries) {
       'runtime_owner',
       'creates_application',
       'adapter_module',
+      'page_roots',
       'draft_contract',
     ],
     source,
@@ -862,11 +875,13 @@ for (const { source, raw } of contributionEntries) {
   if (raw.adapter_module !== undefined) {
     application.adapterModules.push(adapterModule as string)
   }
+  const pageRoots = pageRootsValue(raw.page_roots, source)
   application.contributions.push({
     id: contributionId,
     productOwner: application.productOwner,
     runtimeOwner: application.runtimeOwner,
     adapterModule,
+    pageRoots,
     styles: application.styles.filter((style) => !SHARED_ADAPTER_STYLES.has(style)),
     locales: application.locales.filter((locale) => !SHARED_ADAPTER_LOCALES.has(locale)),
     errorBoundary: application.errorBoundaries[0] ?? null,
@@ -916,6 +931,7 @@ for (const { source, raw } of contributionEntries) {
       'capabilities',
       'error_boundary',
       'adapter_module',
+      'page_roots',
       'draft_contract',
       'navigation',
       'budget',
@@ -1011,12 +1027,14 @@ for (const { source, raw } of contributionEntries) {
   const contributionAdapterModule = raw.adapter_module === undefined
     ? null
     : adapterModuleValue(raw.adapter_module, source, target.id)
+  const contributionPageRoots = pageRootsValue(raw.page_roots, source)
   const contributionBudget = raw.budget === undefined ? null : buildBudget(raw.budget, source)
   target.contributions.push({
     id: contributionId,
     productOwner,
     runtimeOwner,
     adapterModule: contributionAdapterModule,
+    pageRoots: contributionPageRoots,
     styles: contributionStyles,
     locales: contributionLocales,
     errorBoundary: contributionErrorBoundary,
@@ -1508,6 +1526,7 @@ function freezeApplication(application: MutableApplication): FrontendApplication
     adapterModules: Object.freeze([...application.adapterModules]),
     contributions: Object.freeze(application.contributions.map((contribution) => Object.freeze({
       ...contribution,
+      pageRoots: Object.freeze([...contribution.pageRoots]),
       styles: Object.freeze([...contribution.styles]),
       locales: Object.freeze([...contribution.locales]),
       draftContract: contribution.draftContract

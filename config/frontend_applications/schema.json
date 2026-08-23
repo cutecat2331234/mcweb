@@ -20,6 +20,16 @@
       "type": "string",
       "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[:\\\\]).+$"
     },
+    "pageRoot": {
+      "type": "string",
+      "pattern": "^(?:[a-z][a-z0-9_-]*/)*app/javascript/pages$"
+    },
+    "pageRoots": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/pageRoot" }
+    },
     "componentPrefix": {
       "type": "string",
       "pattern": "^[A-Z][A-Za-z0-9]*(/[A-Z][A-Za-z0-9]*)*/$"
@@ -289,6 +299,7 @@
           "type": "string",
           "pattern": "^app/javascript/frontend-application-adapters/[a-z0-9_./-]+\\.ts$"
         },
+        "page_roots": { "$ref": "#/$defs/pageRoots" },
         "draft_contract": { "$ref": "#/$defs/draftContract" },
         "navigation": {
           "type": "array",

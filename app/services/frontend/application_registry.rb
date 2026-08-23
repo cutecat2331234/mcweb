@@ -109,6 +109,7 @@ module Frontend
       :product_owner,
       :runtime_owner,
       :adapter_module,
+      :page_roots,
       :styles,
       :locales,
       :error_boundary,
@@ -335,6 +336,15 @@ module Frontend
             "#{descriptor.source}: adapter module #{adapter_module.inspect} does not exist"
         end
 
+        descriptor.contributions.each do |contribution|
+          contribution.page_roots.each do |page_root|
+            next if @root.join(page_root).directory?
+
+            raise InvalidManifest,
+              "#{contribution.source}: page root #{page_root.inspect} does not exist"
+          end
+        end
+
         descriptor.renderer_adapters.each do |renderer_adapter|
           next if Frontend::WebsiteRenderer.registered?(
             renderer_adapter,
@@ -400,7 +410,7 @@ module Frontend
           data,
           %w[
             schema_version contribution_id product_owner runtime_owner
-            creates_application adapter_module draft_contract
+            creates_application adapter_module page_roots draft_contract
           ],
           source
         )
@@ -431,6 +441,10 @@ module Frontend
           product_owner: descriptor.product_owner,
           runtime_owner: descriptor.runtime_owner,
           adapter_module: descriptor.adapter_modules.last,
+          page_roots: validate_page_roots!(
+            data.fetch("page_roots", ["app/javascript/pages"]),
+            source
+          ),
           styles: descriptor.styles.reject { |style| SHARED_ADAPTER_STYLES.include?(style) },
           locales: descriptor.locales.reject { |locale| SHARED_ADAPTER_LOCALES.include?(locale) },
           error_boundary: descriptor.error_boundaries.first,
@@ -594,7 +608,7 @@ module Frontend
       allowed = %w[
         schema_version contribution_id product_owner runtime_owner extends_application
         component_prefixes component_names routes styles locales capabilities error_boundary
-        adapter_module draft_contract navigation budget renderer_adapter exclusive_renderer
+        adapter_module page_roots draft_contract navigation budget renderer_adapter exclusive_renderer
         renderer_runtime_kind renderer_entrypoint renderer_shell_adapter renderer_ui_adapter
         renderer_preview_kind renderer_manifest_path
       ]
@@ -664,12 +678,17 @@ module Frontend
       end
       contribution_adapter_module = data["adapter_module"].present? ?
         validate_adapter_module!(data["adapter_module"], source, target.id) : nil
+      contribution_page_roots = validate_page_roots!(
+        data.fetch("page_roots", ["app/javascript/pages"]),
+        source
+      )
       contribution_budget = data["budget"].present? ? validate_budget!(data["budget"], source) : nil
       target.contributions << ContributionResource.new(
         id: data.fetch("contribution_id"),
         product_owner:,
         runtime_owner:,
         adapter_module: contribution_adapter_module,
+        page_roots: contribution_page_roots,
         styles: contribution_styles,
         locales: contribution_locales,
         error_boundary: contribution_error_boundary,
@@ -1444,6 +1463,20 @@ module Frontend
       raise InvalidManifest, "#{source}: invalid #{field} #{candidate.inspect}" if invalid
 
       candidate
+    end
+
+    def validate_page_roots!(values, source)
+      roots = Array(values).map do |value|
+        candidate = validate_repository_path!(value, source, "page_roots")
+        unless candidate.match?(%r{\A(?:[a-z][a-z0-9_-]*/)*app/javascript/pages\z})
+          raise InvalidManifest, "#{source}: invalid page root #{candidate.inspect}"
+        end
+        candidate
+      end
+      ensure_unique!(roots, source, "page_roots")
+      raise InvalidManifest, "#{source}: page_roots must not be empty" if roots.empty?
+
+      roots
     end
 
     def validate_component_prefixes!(values, source, allow_empty: false)

@@ -129,11 +129,20 @@ function navigationSignature(
   }))
 }
 
-function canonicalPagePath(pagePath: string): string {
+function canonicalPagePath(pagePath: string, pageRoots: readonly string[]): string {
   const normalized = pagePath.replaceAll('\\', '/')
-  const relativeMatch = normalized.match(/^(?:\.\.\/)+pages\/(.+)$/)
-  const rootedMatch = normalized.match(/^\/?app\/javascript\/pages\/(.+)$/)
-  const relative = relativeMatch?.[1] ?? rootedMatch?.[1] ?? null
+  const candidates = [normalized.replace(/^\/?/, ''), normalized.replace(/^(?:\.\.\/)+/, '')]
+  const localRelative = normalized.match(/^(?:\.\.\/)+pages\/(.+)$/)?.[1]
+  if (localRelative) candidates.push(`app/javascript/pages/${localRelative}`)
+  let relative: string | null = null
+  for (const root of pageRoots) {
+    const prefix = `${root}/`
+    const candidate = candidates.find((entry) => entry.startsWith(prefix))
+    if (candidate) {
+      relative = candidate.slice(prefix.length)
+      break
+    }
+  }
   if (!relative || !relative.endsWith('.vue') || relative.includes('..')
     || relative.startsWith('/') || relative.includes('//')) {
     throw new Error(`Frontend adapter has unsafe page path: ${pagePath}`)
@@ -253,7 +262,7 @@ export function loadFrontendApplicationAdapters(
         if (typeof loader !== 'function') {
           throw new Error(`Frontend adapter ${adapter.contributionId} has a non-executable page loader`)
         }
-        const canonicalPath = canonicalPagePath(pagePath)
+        const canonicalPath = canonicalPagePath(pagePath, contribution.pageRoots)
         const component = canonicalPath.slice('../pages/'.length, -'.vue'.length)
         const owner = assertFrontendComponent(applicationId, component)
         if (!owner.contribution || owner.contributionId !== adapter.contributionId) {

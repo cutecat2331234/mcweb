@@ -90,3 +90,28 @@ test('downstream navigation visibility is a shared fail-closed server-prop contr
     assert.match(source, /isApplicationShellNavigationItemVisible/)
   }
 })
+
+test('downstream page loaders are confined to declared repository page roots', () => {
+  const schema = readFileSync(
+    resolve(root, 'config/frontend_applications/schema.json'),
+    'utf8',
+  )
+  const serverRegistry = readFileSync(
+    resolve(root, 'app/services/frontend/application_registry.rb'),
+    'utf8',
+  )
+  const clientRegistry = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    'utf8',
+  )
+  const adapters = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplicationAdapters.ts'),
+    'utf8',
+  )
+
+  assert.match(schema, /"page_roots"/)
+  assert.match(serverRegistry, /validate_page_roots!/)
+  assert.match(clientRegistry, /pageRootsValue/)
+  assert.match(adapters, /canonicalPagePath\(pagePath, contribution\.pageRoots\)/)
+  assert.match(adapters, /app\/javascript\/pages/)
+})

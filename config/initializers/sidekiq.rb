@@ -4,6 +4,8 @@ require "sidekiq/web"
 require "sidekiq/cron"
 require_relative "../../lib/mcweb/sidekiq_cron_schedule"
 
+Sidekiq::Web.app_url = "/admin/system/sidekiq"
+
 redis_url = ENV.fetch("REDIS_URL", "redis://localhost:6379/0")
 
 Mcweb::SidekiqCronSchedule.configure_scheduler!(

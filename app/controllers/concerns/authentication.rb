@@ -114,9 +114,7 @@ module Authentication
 
   def require_totp_setup
     return unless logged_in?
-    return if Mcweb::DeveloperMode.allow?(:skip_two_factor)
-    return if current_user.totp_enabled?
-    return unless current_user.require_totp?
+    return unless current_user.mandatory_totp_setup_pending?
 
     return if controller_path.start_with?("identity/security", "identity/sessions", "identity/email_verification", "identity/email_verification_resends")
 

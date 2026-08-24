@@ -34,6 +34,8 @@ class Identity::PermissionCatalogTest < ActiveSupport::TestCase
     system.plugins.rollback
     system.plugins.uninstall_preserve
     system.plugins.uninstall_purge
+    system.sidekiq.read
+    system.sidekiq.manage
   ].freeze
 
   test "catalog entries are unique and expose their complete contract" do

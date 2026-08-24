@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
 
 const { t, te, locale } = useI18n()
+const page = usePage()
+const canAccessSidekiq = computed(() => {
+  const auth = page.props.auth as {
+    user?: { admin_permissions?: string[] } | null
+  } | undefined
+  return auth?.user?.admin_permissions?.includes('system.sidekiq.read') === true
+})
 const metricsLoading = ref(false)
 const manualTaskLoading = ref<string | null>(null)
 const manualTaskArguments = reactive<Record<string, string | number | undefined>>({})
@@ -425,7 +432,7 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
         </a-card>
       </a-grid-item>
 
-      <a-grid-item>
+      <a-grid-item v-if="canAccessSidekiq">
         <a-card :title="t('admin.jobsPage.dashboardTitle')" :bordered="true">
           <a-space direction="vertical" :size="12" fill>
             <a-typography-paragraph>

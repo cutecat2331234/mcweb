@@ -310,6 +310,12 @@
       system_jobs_manage:
         name: "执行受控后台任务"
         description: "执行明确列入允许列表的手动维护任务，并查看执行记录。"
+      system_sidekiq_read:
+        name: "查看 Sidekiq 控制台"
+        description: "查看 Sidekiq 原生队列、重试、调度和工作进程诊断。"
+      system_sidekiq_manage:
+        name: "管理 Sidekiq 控制台"
+        description: "执行 Sidekiq 原生重试、删除、队列、调度和工作进程操作。"
       system_jobs_retry:
         name: "重试后台任务（规划中）"
         description: "为后续受控重试流程保留；当前不会授予任何重试操作。"

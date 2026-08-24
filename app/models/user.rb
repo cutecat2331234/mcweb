@@ -214,6 +214,12 @@ class User < ApplicationRecord
       (developer_mode_persona.blank? || Mcweb::DeveloperMode.enabled?)
   end
 
+  def mandatory_totp_setup_pending?
+    return false if Mcweb::DeveloperMode.allow?(:skip_two_factor)
+
+    require_totp? && !totp_enabled?
+  end
+
   def ban_active?
     return false unless banned?
 

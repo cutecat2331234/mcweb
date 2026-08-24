@@ -76,7 +76,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 
 ### 后台任务
 
-生产环境使用 **Sidekiq + Redis** 异步处理支付 Webhook、订单履约、Minecraft 发货、邮件、定时发布、Webhook 投递等。队列（见 `config/sidekiq.yml`）：`default` / `mailers` / `payments` / `minecraft` / `maintenance` / `website` / `notifications`。监控 UI 位于 `/jobs`（需管理员 `admin.access` 权限）。
+生产环境使用 **Sidekiq + Redis** 异步处理支付 Webhook、订单履约、Minecraft 发货、邮件、定时发布、Webhook 投递等。队列（见 `config/sidekiq.yml`）：`default` / `mailers` / `payments` / `minecraft` / `maintenance` / `website` / `notifications`。管理员通过 `/admin/system/sidekiq` 在后台外壳中查看监控；读取与原生操作分别受 `system.sidekiq.read`、`system.sidekiq.manage` 保护，底层 `/jobs` 仅作为同源受保护的嵌入端点。
 
 ---
 

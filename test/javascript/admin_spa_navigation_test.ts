@@ -235,7 +235,7 @@ test('admin source keeps internal links on Inertia or delegated Arco navigation 
       'app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue|exportUrl',
       'app/javascript/pages/Admin/System/DeveloperWorkbench/Show.vue|diagnosticUrl',
       'app/javascript/pages/Admin/System/Applications/Index.vue|plugin.homepage',
-      'app/javascript/pages/Admin/System/Sidekiq/Index.vue|adminRoutes.sidekiqWeb',
+      'app/javascript/pages/Admin/System/Sidekiq/Index.vue|standaloneUrl',
     ].sort(),
   )
 })

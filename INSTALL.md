@@ -315,7 +315,7 @@ REDIS_URL=redis://127.0.0.1:6379/0
 ```
 
 3. 确保 `mcweb-worker` 服务已启用（systemd 单元执行 `bundle exec sidekiq -C config/sidekiq.yml`）
-4. 管理员可在 `/jobs` 查看 Sidekiq Web 监控（需登录且具有 `admin.access` 权限）
+4. 管理员可在 `/admin/system/sidekiq` 的后台外壳中查看 Sidekiq Web 监控（需有效管理员会话、system 模块及 `system.sidekiq.read`；原生写操作另需 `system.sidekiq.manage`）
 
 ### 开发环境
 

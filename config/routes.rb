@@ -532,7 +532,10 @@ Rails.application.routes.draw do
       resources :jobs, only: %i[index] do
         post :run, on: :collection
       end
-      get "sidekiq", to: "sidekiq#index", as: :sidekiq
+      get "sidekiq(/*sidekiq_path)",
+        to: "sidekiq#index",
+        as: :sidekiq,
+        format: false
       resources :ip_bans, only: %i[index create destroy]
       resources :email_bans, only: %i[index new create edit update destroy]
       resources :api_keys, only: %i[index new create], path: "api-keys" do

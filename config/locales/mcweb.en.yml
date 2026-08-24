@@ -310,6 +310,12 @@ en:
       system_jobs_manage:
         name: "Run approved background jobs"
         description: "Run explicitly allowlisted manual maintenance tasks and view their execution records."
+      system_sidekiq_read:
+        name: "View Sidekiq console"
+        description: "View native Sidekiq queue, retry, schedule, and worker diagnostics."
+      system_sidekiq_manage:
+        name: "Manage Sidekiq console"
+        description: "Run native Sidekiq retry, delete, queue, schedule, and worker actions."
       system_jobs_retry:
         name: "Retry background jobs (planned)"
         description: "Reserved for a future controlled retry workflow; it currently grants no retry action."

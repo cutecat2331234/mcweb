@@ -374,6 +374,11 @@ html.dark body.mcweb-admin {
   height: clamp(600px, calc(100dvh - 236px), 1080px);
   border: 0;
   background: #fff;
+  visibility: hidden;
+}
+
+.arco-admin-main .mc-admin-embedded-tool__frame.is-ready {
+  visibility: visible;
 }
 
 @media (max-width: 768px) {

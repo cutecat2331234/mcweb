@@ -842,8 +842,7 @@ module Identity
         "查看后台任务",
         execution_points: [
           "app/controllers/admin/system/jobs_controller.rb#index",
-          "app/services/operations/metrics/trend_query.rb#call",
-          "app/constraints/sidekiq_web_constraint.rb"
+          "app/services/operations/metrics/trend_query.rb#call"
         ]
       ),
       build_entry.call(
@@ -853,6 +852,23 @@ module Identity
           "app/controllers/admin/system/jobs_controller.rb#run",
           "app/services/operations/enqueue_manual_task.rb#call"
         ]
+      ),
+      build_entry.call(
+        "system.sidekiq.read",
+        "View the Sidekiq console",
+        execution_points: [
+          "app/controllers/admin/system/sidekiq_controller.rb#index",
+          "app/constraints/sidekiq_web_constraint.rb"
+        ],
+        fallback_description: "View native Sidekiq queue, retry, schedule, and worker diagnostics."
+      ),
+      build_entry.call(
+        "system.sidekiq.manage",
+        "Manage the Sidekiq console",
+        execution_points: [
+          "app/constraints/sidekiq_web_constraint.rb"
+        ],
+        fallback_description: "Run native Sidekiq retry, delete, queue, schedule, and worker actions."
       ),
       build_entry.call(
         "system.jobs.retry",

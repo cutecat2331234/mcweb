@@ -100,6 +100,8 @@ class Mcweb::SidekiqCronScheduleTest < ActiveSupport::TestCase
     assert_includes initializer, "Mcweb::SidekiqCronSchedule.configure_scheduler!"
     assert_includes initializer, "Mcweb::SidekiqCronSchedule.register!"
     assert_includes initializer, "Sidekiq::Cron::Job.load_from_hash!"
+    assert_includes initializer,
+      'Sidekiq::Web.app_url = "/admin/system/sidekiq"'
     assert_includes routes,
       'mount Mcweb::SidekiqWebFramePolicy.new(Sidekiq::Web), at: "/jobs"'
   end

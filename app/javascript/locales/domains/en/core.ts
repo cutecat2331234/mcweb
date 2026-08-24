@@ -15,6 +15,7 @@ export default {
     "browse": "Browse",
     "back": "Back",
     "view": "View",
+    "preview": "Preview",
     "edit": "Edit",
     "delete": "Delete",
     "actions": "Actions",

@@ -15,6 +15,7 @@ export default {
     "browse": "浏览",
     "back": "返回",
     "view": "查看",
+    "preview": "预览",
     "edit": "编辑",
     "delete": "删除",
     "actions": "操作",

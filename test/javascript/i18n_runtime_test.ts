@@ -14,6 +14,8 @@ import {
 } from '../../app/javascript/lib/storagePreferenceTransaction.ts'
 import englishMessages from '../../app/javascript/locales/en.ts'
 import chineseMessages from '../../app/javascript/locales/zh-CN.ts'
+import englishCoreMessages from '../../app/javascript/locales/domains/en/core.ts'
+import chineseCoreMessages from '../../app/javascript/locales/domains/zh-CN/core.ts'
 
 function messageAt(messages: object, key: string): unknown {
   return key.split('.').reduce<unknown>((value, segment) => {
@@ -50,6 +52,13 @@ test('application locale domains extend shared roots without erasing base copy',
   assert.equal(messageAt(merged, 'admin.dashboard.title'), 'Dashboard')
   assert.equal(messageAt(merged, 'admin.chatManagement.nav'), 'Channel management')
   assert.equal(messageAt(merged, 'enterprise.nav.channels'), 'Channels')
+})
+
+test('shared preview copy stays available in the base and derived core catalogs', () => {
+  assert.equal(messageAt(englishMessages, 'common.preview'), 'Preview')
+  assert.equal(messageAt(chineseMessages, 'common.preview'), '预览')
+  assert.equal(messageAt(englishCoreMessages, 'common.preview'), 'Preview')
+  assert.equal(messageAt(chineseCoreMessages, 'common.preview'), '预览')
 })
 
 test('locale synchronization keeps the document language aligned after SPA visits', () => {

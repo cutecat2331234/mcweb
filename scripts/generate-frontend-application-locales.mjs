@@ -40,9 +40,32 @@ function placeholders(value) {
     .join(',')
 }
 
+function hasUnsafeLiteralAtSign(value) {
+  if (typeof value !== 'string' || !value.includes('@')) return false
+
+  const withoutLiteralInterpolations = value.replace(/\{\s*(['"])@\1\s*\}/g, '')
+  const withoutLinkedMessages = withoutLiteralInterpolations.replace(
+    /@(?:\.[A-Za-z0-9_-]+)?:[A-Za-z0-9_.\-[\]]+/g,
+    '',
+  )
+  return withoutLinkedMessages.includes('@')
+}
+
 const catalogs = Object.fromEntries(
   await Promise.all(locales.map(async (locale) => [locale, await loadCatalog(locale)])),
 )
+
+for (const locale of locales) {
+  const unsafeAtSigns = [...flatten(catalogs[locale]).entries()]
+    .filter(([, value]) => hasUnsafeLiteralAtSign(value))
+    .map(([key]) => key)
+  if (unsafeAtSigns.length) {
+    throw new Error(
+      `${locale} locale contains unescaped literal @ signs: ${unsafeAtSigns.join(', ')}. `
+        + "Use {'@'} for visible @ characters.",
+    )
+  }
+}
 
 for (const [domain, keys] of Object.entries(domainKeys)) {
   const domainCatalogs = Object.fromEntries(locales.map((locale) => [

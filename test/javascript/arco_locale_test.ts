@@ -87,6 +87,24 @@ test('every shared Arco shell binds its provider to the vue-i18n locale', () => 
   }
 })
 
+test('portal layout relies on the application provider instead of nesting Arco providers', () => {
+  const portalLayout = readFileSync(
+    resolve(process.cwd(), 'app/javascript/layouts/PortalLayout.vue'),
+    'utf8',
+  )
+
+  assert.doesNotMatch(portalLayout, /ConfigProvider|useArcoLocale|arcoLocale/)
+
+  for (const application of ['account', 'forum', 'store']) {
+    const entrypoint = readFileSync(
+      resolve(process.cwd(), `app/javascript/entrypoints/${application}.ts`),
+      'utf8',
+    )
+
+    assert.match(entrypoint, /provider:\s*true/)
+  }
+})
+
 test('portal provider keeps Arco controls synchronized with the shared dark theme', () => {
   const source = readFileSync(
     resolve(process.cwd(), 'app/javascript/components/AppProvider.vue'),

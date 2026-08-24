@@ -7,7 +7,6 @@ import {
   Alert,
   Badge,
   Button,
-  ConfigProvider,
   Drawer,
   Dropdown,
   Doption,
@@ -42,7 +41,6 @@ import {
   useApplicationShell,
   type ApplicationShellNavigationItem,
 } from '@/lib/applicationShell'
-import { useArcoLocale } from '@/lib/i18n'
 import { routes } from '@/lib/routes'
 import { safeSignOut } from '@/lib/safeSignOut'
 import { useTheme } from '@/lib/useTheme'
@@ -52,7 +50,6 @@ const DeveloperModeTools = __MCWEB_DEVELOPER_BUILD__
   ? defineAsyncComponent(() => import('@/components/portal/DeveloperModeTools.vue'))
   : null
 const { t } = useI18n()
-const arcoLocale = useArcoLocale()
 const shell = useApplicationShell()
 const { isDark, toggleTheme } = useTheme()
 const mobileNavOpen = ref(false)
@@ -164,7 +161,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
 </script>
 
 <template>
-  <ConfigProvider :locale="arcoLocale" global>
     <a href="#application-content" class="mc-shell-skip-link">
       {{ t('common.skipToContent') }}
     </a>
@@ -381,5 +377,4 @@ watch(isDark, syncArcoTheme, { immediate: true })
     </Drawer>
 
     <component :is="shell.accessory" v-if="shell.accessory" />
-  </ConfigProvider>
 </template>

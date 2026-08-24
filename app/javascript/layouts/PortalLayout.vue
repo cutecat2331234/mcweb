@@ -28,7 +28,7 @@ import {
   IconMoon,
   IconNotification,
   IconPoweroff,
-  IconShoppingCart,
+  IconGift,
   IconSun,
   IconUser,
 } from '@arco-design/web-vue/es/icon'
@@ -281,7 +281,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
                 :aria-label="t('common.cart')"
                 @click="visit(cart.url)"
               >
-                <template #icon><IconShoppingCart /></template>
+                <template #icon><IconGift /></template>
               </Button>
             </Badge>
             <Dropdown v-if="auth.user" trigger="click" position="br">

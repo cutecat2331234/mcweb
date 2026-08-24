@@ -18,6 +18,8 @@ test('portal application chrome preserves owned counters and status surfaces', (
   assert.match(layout, /v-if="auth\.user && notifications"/)
   assert.match(layout, /shell\.applicationId === 'forum' && auth\.user && messagesUnread/)
   assert.match(layout, /shell\.applicationId === 'store' && cart/)
+  assert.match(layout, /<template #icon><IconGift \/><\/template>/)
+  assert.doesNotMatch(layout, /IconShoppingCart/)
   assert.match(layout, /<PortalAnnouncements/)
   assert.match(accountShell, /badgeProp: 'notifications\.unread_count'/)
   assert.match(forumShell, /badgeProp: 'messages_unread\.count'/)

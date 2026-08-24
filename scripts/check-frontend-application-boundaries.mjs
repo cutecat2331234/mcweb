@@ -191,7 +191,7 @@ for (const descriptor of applications.values()) {
 for (const domain of walk(resolve(root, 'app/javascript/locales/domains'))) {
   if (!domain.endsWith('.ts')) continue
   const source = readFileSync(domain, 'utf8')
-  if (/from ['"]\.\.\/\.\.\/(?:en|zh-CN)['"]/.test(source)) {
+  if (/(?:from\s+|import\s*\(\s*)['"](?:@\/locales\/|\.\.\/\.\.\/)(?:en|zh-CN)(?:\.ts)?['"]/.test(source)) {
     throw new Error(`Locale domain imports the monolithic catalogue: ${domain}`)
   }
 }

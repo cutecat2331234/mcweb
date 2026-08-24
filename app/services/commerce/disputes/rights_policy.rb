@@ -11,7 +11,8 @@ module Commerce
         idempotency_prefix:,
         actor: nil,
         reason: nil,
-        subjects: nil
+        subjects: nil,
+        externally_unsynced_memberships: []
       )
         @dispute = dispute
         @action = action.to_s
@@ -19,13 +20,16 @@ module Commerce
         @actor = actor
         @reason = reason.to_s.presence
         @limited_subjects = subjects.nil? ? nil : Array(subjects).compact.uniq
+        @externally_unsynced_memberships = Array(
+          externally_unsynced_memberships
+        ).compact.uniq
         @membership_syncs = []
       end
 
       def call
         return ServiceResult.failure(error: "dispute_rights_action_invalid") unless ACTIONS.include?(@action)
         return ServiceResult.failure(error: "dispute_idempotency_invalid") if @idempotency_prefix.blank?
-        unless limited_subjects_valid?
+        unless limited_subjects_valid? && externally_unsynced_memberships_valid?
           return ServiceResult.failure(error: "dispute_rights_subject_invalid")
         end
 
@@ -116,6 +120,17 @@ module Commerce
             subject.persisted? &&
             item_ids.include?(subject.source_order_item_id) &&
             subject.user_id == @dispute.order.user_id
+        end
+      end
+
+      def externally_unsynced_memberships_valid?
+        return true if @externally_unsynced_memberships.empty?
+        return false unless @limited_subjects
+
+        @externally_unsynced_memberships.all? do |membership|
+          membership.is_a?(Commerce::UserMembership) &&
+            membership.persisted? &&
+            @limited_subjects.include?(membership)
         end
       end
 
@@ -220,6 +235,10 @@ module Commerce
       def schedule_membership_sync(subject, before:, after:)
         return unless subject.is_a?(Commerce::UserMembership)
         return if before["currently_active"] == after["currently_active"]
+        if !after["currently_active"] &&
+            @externally_unsynced_memberships.any? { |item| item.id == subject.id }
+          return
+        end
 
         @membership_syncs << [
           subject.id,

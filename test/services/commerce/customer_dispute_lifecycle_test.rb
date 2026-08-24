@@ -239,25 +239,31 @@ module Commerce
       )
 
       dispatch_count = 0
+      scheduled_syncs = []
       first = nil
       replay = nil
-      Commerce::DispatchMembershipCommands.stub(
-        :call,
-        lambda { |**_arguments|
-          dispatch_count += 1
-          ServiceResult.success
-        }
+      Commerce::SyncDisputeMembershipRightsJob.stub(
+        :perform_later,
+        lambda { |*arguments| scheduled_syncs << arguments }
       ) do
-        first = Commerce::GrantMembership.call(
-          user: @customer,
-          membership_type:,
-          source_order_item: membership_item
-        )
-        replay = Commerce::GrantMembership.call(
-          user: @customer,
-          membership_type:,
-          source_order_item: membership_item
-        )
+        Commerce::DispatchMembershipCommands.stub(
+          :call,
+          lambda { |**_arguments|
+            dispatch_count += 1
+            ServiceResult.success
+          }
+        ) do
+          first = Commerce::GrantMembership.call(
+            user: @customer,
+            membership_type:,
+            source_order_item: membership_item
+          )
+          replay = Commerce::GrantMembership.call(
+            user: @customer,
+            membership_type:,
+            source_order_item: membership_item
+          )
+        end
       end
 
       assert_predicate first, :success?, first.error
@@ -266,7 +272,24 @@ module Commerce
       assert_equal dispute.id, membership.reload.risk_hold_dispute_id
       assert_not membership.currently_active?
       assert_equal 0, dispatch_count
+      assert_empty scheduled_syncs
       assert_equal 1, dispute.rights_actions.where(subject: membership, action: "freeze").count
+
+      restoration_syncs = []
+      withdrawal = nil
+      Commerce::SyncDisputeMembershipRightsJob.stub(
+        :perform_later,
+        lambda { |*arguments| restoration_syncs << arguments }
+      ) do
+        withdrawal = withdraw_case(dispute)
+      end
+      assert_predicate withdrawal, :success?, withdrawal.error
+      assert_nil membership.reload.risk_hold_dispute_id
+      assert membership.currently_active?
+      assert_equal(
+        [ [ membership.id, "grant" ] ],
+        restoration_syncs.map { |arguments| arguments.first(2) }
+      )
 
       other_membership = Commerce::UserMembership.create!(
         user: @customer,
@@ -308,6 +331,77 @@ module Commerce
         end
       end
       assert_equal 1, aggregate_keys.uniq.size
+    end
+
+    test "externally synced memberships are revoked and restored around an active case" do
+      membership_type = Commerce::MembershipType.create!(
+        slug: "dispute-existing-membership-#{SecureRandom.hex(4)}",
+        name: "Dispute existing membership",
+        duration_mode: "fixed_days",
+        duration_days: 30,
+        game_permission_enabled: true,
+        active: true
+      )
+      membership_product = Commerce::Product.create!(
+        name: "Existing dispute membership product",
+        slug: "existing-dispute-membership-#{SecureRandom.hex(5)}",
+        product_type: "membership",
+        status: "active",
+        price_cents: 100,
+        currency: "CNY",
+        membership_type:
+      )
+      membership_item = Commerce::OrderItem.create!(
+        order: @order,
+        product: membership_product,
+        product_name: membership_product.name,
+        unit_price_cents: 100,
+        quantity: 1,
+        total_cents: 100,
+        fulfillment_snapshot: { "product_type" => "membership" }
+      )
+
+      external_grants = 0
+      grant = Commerce::DispatchMembershipCommands.stub(
+        :call,
+        lambda { |**_arguments|
+          external_grants += 1
+          ServiceResult.success
+        }
+      ) do
+        Commerce::GrantMembership.call(
+          user: @customer,
+          membership_type:,
+          source_order_item: membership_item
+        )
+      end
+      assert_predicate grant, :success?, grant.error
+      assert_equal 1, external_grants
+
+      membership = grant.value
+      scheduled_syncs = []
+      dispute = nil
+      Commerce::SyncDisputeMembershipRightsJob.stub(
+        :perform_later,
+        lambda { |*arguments| scheduled_syncs << arguments }
+      ) do
+        dispute = open_case.value.fetch(:dispute)
+        assert_equal dispute.id, membership.reload.risk_hold_dispute_id
+        assert_not membership.currently_active?
+
+        withdrawal = withdraw_case(dispute)
+        assert_predicate withdrawal, :success?, withdrawal.error
+      end
+
+      assert_nil membership.reload.risk_hold_dispute_id
+      assert membership.currently_active?
+      assert_equal(
+        [ [ membership.id, "revoke" ], [ membership.id, "grant" ] ],
+        scheduled_syncs.map { |arguments| arguments.first(2) }
+      )
+      assert scheduled_syncs.all? { |arguments| arguments.fetch(2).present? }
+      assert_equal 1, dispute.rights_actions.where(subject: membership, action: "freeze").count
+      assert_equal 1, dispute.rights_actions.where(subject: membership, action: "restore").count
     end
 
     test "full refund resolution never reactivates refund-revoked entitlements" do

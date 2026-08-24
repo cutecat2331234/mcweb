@@ -39,7 +39,10 @@ module Commerce
           source_order_item: @source_order_item
         )
 
-        protection_result = protect_dispute_rights(membership)
+        protection_result = protect_dispute_rights(
+          membership,
+          membership_was_externally_synced: false
+        )
         raise ActiveRecord::Rollback if protection_result.failure?
         membership = protection_result.value.fetch(:subject, membership)
 
@@ -125,12 +128,16 @@ module Commerce
         .none?
     end
 
-    def protect_dispute_rights(membership)
+    def protect_dispute_rights(
+      membership,
+      membership_was_externally_synced: true
+    )
       return ServiceResult.success(skipped: true) unless @source_order_item
 
       Commerce::Disputes::ProtectGrantedSubject.call(
         order: @source_order_item.order,
-        subject: membership
+        subject: membership,
+        membership_was_externally_synced:
       )
     end
   end

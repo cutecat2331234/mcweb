@@ -8,9 +8,10 @@ module Commerce
         Commerce::UserMembership
       ].freeze
 
-      def initialize(order:, subject:)
+      def initialize(order:, subject:, membership_was_externally_synced: true)
         @order = order
         @subject = subject
+        @membership_was_externally_synced = membership_was_externally_synced
       end
 
       def call
@@ -35,7 +36,8 @@ module Commerce
               action:,
               idempotency_prefix: idempotency_prefix(dispute, subject),
               reason: "granted_during_payment_dispute",
-              subjects: [ subject ]
+              subjects: [ subject ],
+              externally_unsynced_memberships: externally_unsynced_memberships(subject)
             )
             unless protection.success?
               subject.errors.add(
@@ -104,6 +106,13 @@ module Commerce
 
       def idempotency_prefix(dispute, subject)
         "dispute-granted-subject:#{dispute.id}:#{subject.class.name}:#{subject.id}"
+      end
+
+      def externally_unsynced_memberships(subject)
+        return [] unless subject.is_a?(Commerce::UserMembership)
+        return [] unless @membership_was_externally_synced == false
+
+        [ subject ]
       end
 
       def subject_state(subject)

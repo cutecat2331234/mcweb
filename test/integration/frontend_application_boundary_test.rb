@@ -3,6 +3,15 @@
 require "test_helper"
 
 class FrontendApplicationBoundaryTest < ActionDispatch::IntegrationTest
+  test "integration authentication identifies the account application source" do
+    user = create_user
+
+    sign_in_as(user)
+
+    assert session[Authentication::SESSION_COOKIE].present? ||
+      cookies[Authentication::SESSION_COOKIE].present?
+  end
+
   test "cross-application Inertia GET becomes a no-store document recovery" do
     get "/app/forum/latest", headers: {
       "X-Inertia" => "true",

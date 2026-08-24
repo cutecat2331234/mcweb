@@ -79,8 +79,14 @@ module ActiveSupport
       if is_a?(ActionDispatch::IntegrationTest)
         post identity_session_path, params: {
           session: { email: user.email, password: password, remember_me: remember_me ? "1" : "0" }
-        }
+        }, headers: frontend_application_request_headers(
+          application_id: "account",
+          referer: identity_sign_in_url
+        )
         assert_response :redirect, "Sign in failed for #{user.email}"
+        assert session[Authentication::SESSION_COOKIE].present? ||
+          cookies[Authentication::SESSION_COOKIE].present?,
+          "Sign in did not create a session for #{user.email}"
         return
       end
 
@@ -94,6 +100,13 @@ module ActiveSupport
       @current_session = result.value[:session]
       cookies.signed[:session_token] = token
       token
+    end
+
+    def frontend_application_request_headers(application_id:, referer:)
+      {
+        "X-McWeb-Application" => application_id.to_s,
+        "HTTP_REFERER" => referer.to_s
+      }
     end
 
     def create_test_session(user, **attributes)

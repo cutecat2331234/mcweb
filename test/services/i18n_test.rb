@@ -136,6 +136,12 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "en", inertia.props.deep_symbolize_keys[:locale]
+    assert_equal "en", session[:locale]
+
+    get identity_sign_in_path
+
+    assert_response :success
+    assert_match(/<html\s+lang="en"/, response.body)
   end
 
   test "explicit locale takes precedence over the inertia locale header" do
@@ -156,6 +162,26 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
     assert_match(/<html\s+lang="zh-CN"/, response.body)
   end
 
+  test "signed-in explicit locale survives a native cross-application document navigation" do
+    SiteSetting.set("features.forum.enabled", "true")
+    user = create_user(locale: "en")
+    sign_in_as(user)
+
+    get account_path, params: { locale: "zh-CN" }
+
+    assert_response :success
+    assert_equal "zh-CN", inertia.props.deep_symbolize_keys[:locale]
+    assert_equal "zh-CN", session[:locale]
+    assert_equal "en", user.reload.locale
+
+    get forum_sections_path
+
+    assert_response :success
+    assert_equal "Community/Sections/Index", inertia.component
+    assert_equal "zh-CN", inertia.props.deep_symbolize_keys[:locale]
+    assert_equal "zh-CN", session[:locale]
+  end
+
   private
 
   def inertia_headers
@@ -163,5 +189,86 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
       "X-Inertia" => "true",
       "X-Inertia-Version" => InertiaRails.configuration.version
     }
+  end
+end
+
+class LocaleResolutionHarness
+  def self.around_action(*_args)
+  end
+
+  include LocaleSettable
+
+  attr_reader :params, :session, :cookies, :request
+
+  def initialize(params: {}, session: {}, cookies: {}, user: nil, headers: {}, accept_language: nil)
+    @params = params
+    @session = session
+    @cookies = cookies
+    @user = user
+    @request = Struct.new(:headers, :env).new(
+      headers,
+      { "HTTP_ACCEPT_LANGUAGE" => accept_language }
+    )
+  end
+
+  def logged_in?
+    @user.present?
+  end
+
+  def current_user
+    @user
+  end
+
+  public :resolved_locale
+end
+
+class I18nLocaleResolutionPriorityTest < ActiveSupport::TestCase
+  test "account locale remains the fallback when no locale bridge exists" do
+    user = Struct.new(:locale).new("en")
+    resolver = LocaleResolutionHarness.new(user: user)
+
+    assert_equal "en", resolver.resolved_locale
+  end
+
+  test "session and cookie bridges take precedence over the signed-in account locale" do
+    user = Struct.new(:locale).new("en")
+
+    session_resolver = LocaleResolutionHarness.new(
+      session: { locale: "zh-CN" },
+      cookies: { LocaleSettable::LOCALE_COOKIE => "en" },
+      user: user
+    )
+    cookie_resolver = LocaleResolutionHarness.new(
+      cookies: { LocaleSettable::LOCALE_COOKIE => "zh-CN" },
+      user: user
+    )
+
+    assert_equal "zh-CN", session_resolver.resolved_locale
+    assert_equal "zh-CN", cookie_resolver.resolved_locale
+  end
+
+  test "explicit locale and genuine Inertia headers precede the current bridge" do
+    inertia_headers = {
+      "X-Inertia" => "true",
+      "X-McWeb-Locale" => "en"
+    }
+
+    explicit_resolver = LocaleResolutionHarness.new(
+      params: { locale: "zh-CN" },
+      session: { locale: "en" },
+      headers: inertia_headers
+    )
+    inertia_resolver = LocaleResolutionHarness.new(
+      session: { locale: "zh-CN" },
+      headers: inertia_headers
+    )
+    non_inertia_resolver = LocaleResolutionHarness.new(
+      session: { locale: "zh-CN" },
+      headers: inertia_headers.merge("X-Inertia" => "false")
+    )
+
+    assert_equal "zh-CN", explicit_resolver.resolved_locale
+    assert_equal "en", inertia_resolver.resolved_locale
+    assert_equal "zh-CN", non_inertia_resolver.resolved_locale
   end
 end

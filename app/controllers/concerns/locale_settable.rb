@@ -19,13 +19,22 @@ module LocaleSettable
   end
 
   def resolved_locale
-    candidate = explicit_locale_param
-    candidate ||= current_user&.locale if respond_to?(:logged_in?, true) && logged_in?
-    candidate ||= session[:locale].presence
-    candidate ||= cookies[LOCALE_COOKIE].presence
-    candidate ||= inertia_locale_header
-    candidate ||= accept_language_locale
-    normalize_locale(candidate) || I18n.default_locale
+    explicit_locale_param ||
+      inertia_locale_header ||
+      locale_bridge ||
+      account_locale ||
+      accept_language_locale ||
+      I18n.default_locale
+  end
+
+  def locale_bridge
+    normalize_locale(session[:locale]) || normalize_locale(cookies[LOCALE_COOKIE])
+  end
+
+  def account_locale
+    return unless respond_to?(:logged_in?, true) && logged_in?
+
+    normalize_locale(current_user&.locale)
   end
 
   def synchronize_locale_bridge(locale)
@@ -63,7 +72,7 @@ module LocaleSettable
   end
 
   def inertia_locale_header
-    return unless request.headers["X-Inertia"].present?
+    return unless request.headers["X-Inertia"].to_s.casecmp?("true")
 
     normalize_locale(request.headers["X-McWeb-Locale"])
   end

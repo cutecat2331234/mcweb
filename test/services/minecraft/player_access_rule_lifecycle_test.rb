@@ -126,6 +126,7 @@ module Minecraft
       rule.apply_task.complete!("success" => true)
 
       travel_to(expires_at + 1.second) do
+        @server.heartbeat!
         Minecraft::ExpirePlayerAccessRulesJob.perform_now
       end
 

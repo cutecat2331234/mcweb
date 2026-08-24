@@ -13,7 +13,8 @@ class FrontendPortalThemeCssTest < ActiveSupport::TestCase
   test "portal layout skips template css injection to avoid website theme bleed" do
     source = Rails.root.join("app/javascript/layouts/PortalLayout.vue").read
 
-    assert_includes source, ':include-css="false"'
+    refute_includes source, "TemplateAssets"
+    refute_includes source, "styles/theme.css"
   end
 
   test "page header element stays separate from portal top nav" do

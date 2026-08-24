@@ -60,9 +60,9 @@ class Website::PagePublisherTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal "published", page.reload.status
 
-    page.create_revision!(author: author)
     page.update!(title: "Changed Title")
     revision = page.revisions.ordered.first
+    assert_equal "publish", revision.event_type
 
     page.update!(
       title: revision.snapshot["title"],

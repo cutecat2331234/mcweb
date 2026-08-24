@@ -483,7 +483,7 @@ module Community
       assert_equal [ "actioned" ], cases.map { |item| item.reload.status }.uniq
     end
 
-    test "bulk report dismissals clear a shared hide after the last pending report" do
+    test "bulk report dismissals preserve a shared hide without durable provenance" do
       _, post = create_topic_and_post(status: "hidden")
       reports = [ create_report(post), create_report(post) ]
       cases = reports.map do |report|
@@ -494,12 +494,12 @@ module Community
         actor: @moderator,
         action: "dismiss_report",
         cases: cases,
-        reason: "Dismiss both reports and restore the shared target after the final review."
+        reason: "Dismiss both reports without reopening content hidden by another path."
       )
 
       assert_predicate result, :success?, result.error
       assert_equal [ "dismissed" ], reports.map { |item| item.reload.status }.uniq
-      assert_equal "published", post.reload.status
+      assert_equal "hidden", post.reload.status
       assert_equal 1, result.value.fetch(:results).count { |item| item[:shared_target] }
     end
 

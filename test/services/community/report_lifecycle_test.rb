@@ -4,8 +4,6 @@ require "test_helper"
 
 module Community
   class ReportLifecycleTest < ActiveSupport::TestCase
-    include Rails.application.routes.url_helpers
-
     setup do
       @reporter = create_user
       @reviewer = create_user
@@ -60,8 +58,9 @@ module Community
       assert_equal "report_version_conflict", stale.code
 
       supplement = report.supplements.first
-      supplement.body = "changed"
-      assert_not supplement.save
+      assert_raises ActiveRecord::ReadonlyAttributeError do
+        supplement.body = "changed"
+      end
       assert_equal "Additional context", supplement.reload.body
       assert_raises ActiveRecord::StatementInvalid do
         Community::ReportSupplement.transaction(requires_new: true) do
@@ -280,7 +279,7 @@ module Community
       report = create_report
       result = decide(report:, key: SecureRandom.uuid)
       assert_predicate result, :success?, result.error
-      assert_predicate report.reload, :reviewed?
+      assert_predicate report.reload, :actioned?
 
       assert_raises ActiveRecord::StatementInvalid do
         Community::Report.transaction(requires_new: true) do
@@ -291,7 +290,7 @@ module Community
           )
         end
       end
-      assert_predicate report.reload, :reviewed?
+      assert_predicate report.reload, :actioned?
 
       assert_raises ActiveRecord::StatementInvalid do
         Community::Report.transaction(requires_new: true) do
@@ -302,7 +301,7 @@ module Community
           )
         end
       end
-      assert_predicate report.reload, :reviewed?
+      assert_predicate report.reload, :actioned?
     end
 
     test "bulk decisions create one outcome per report without cross reporter metadata" do
@@ -400,6 +399,10 @@ module Community
     end
 
     private
+
+    def forum_report_path(report)
+      Rails.application.routes.url_helpers.forum_report_path(report)
+    end
 
     def create_report
       result = Community::CreateReport.call(

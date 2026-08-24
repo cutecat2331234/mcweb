@@ -84,6 +84,9 @@ test('downstream navigation visibility is a shared fail-closed server-prop contr
   for (const source of [schema, serverRegistry, clientRegistry, adapters]) {
     assert.match(source, /visibility_prop|visibilityProp/)
   }
+  assert.match(clientRegistry, /function localeKeyValue/)
+  assert.match(clientRegistry, /labelKey: localeKeyValue\(item\.label_key/)
+  assert.match(clientRegistry, /labelKey: localeKeyValue\(group\.label_key/)
   assert.match(shell, /resolveShellProp\(pageProps, item\.visibilityProp\) !== true/)
   for (const layout of ['PortalLayout.vue', 'StaffLayout.vue', 'ArcoAdminLayout.vue']) {
     const source = readFileSync(resolve(root, 'app/javascript/layouts', layout), 'utf8')

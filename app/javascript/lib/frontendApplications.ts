@@ -234,6 +234,14 @@ function adapterNameValue(value: unknown, source: string, field: string): string
   return candidate
 }
 
+function localeKeyValue(value: unknown, source: string, field: string): string {
+  const candidate = stringValue(value, source, field)
+  if (!/^[a-z][A-Za-z0-9_-]*(?:\.[a-z][A-Za-z0-9_-]*)*$/.test(candidate)) {
+    manifestError(source, `invalid ${field} ${JSON.stringify(candidate)}`)
+  }
+  return candidate
+}
+
 function entrypointValue(value: unknown, source: string, field = 'entrypoint'): string {
   const candidate = stringValue(value, source, field)
   if (!/^[a-z][a-z0-9-]*$/.test(candidate)) {
@@ -362,7 +370,7 @@ function buildNavigation(
       }
       return {
         href: pathValue(item.href, itemSource, 'href'),
-        labelKey: adapterNameValue(item.label_key, itemSource, 'label_key'),
+        labelKey: localeKeyValue(item.label_key, itemSource, 'label_key'),
         ...(item.badge_prop === undefined ? {} : {
           badgeProp: adapterNameValue(item.badge_prop, itemSource, 'badge_prop'),
         }),
@@ -381,7 +389,7 @@ function buildNavigation(
     if (items.length === 0) manifestError(groupSource, 'navigation group items must not be empty')
     return {
       id: adapterNameValue(group.id, groupSource, 'id'),
-      labelKey: adapterNameValue(group.label_key, groupSource, 'label_key'),
+      labelKey: localeKeyValue(group.label_key, groupSource, 'label_key'),
       items,
     }
   })

@@ -1596,6 +1596,20 @@ module Frontend
       ensure_unique!(strings, source, field)
     end
 
+    def validate_repository_path_list!(values, source, field:, allow_empty: true)
+      unless values.is_a?(Array)
+        raise InvalidManifest, "#{source}: #{field} must be an array"
+      end
+
+      paths = values.map do |value|
+        validate_repository_path!(value, source, field)
+      end
+      if paths.empty? && !allow_empty
+        raise InvalidManifest, "#{source}: #{field} must not be empty"
+      end
+      ensure_unique!(paths, source, field)
+    end
+
     def validate_budget!(raw, source)
       expected = %w[
         representative_paths representative_components representative_entries
@@ -1623,14 +1637,12 @@ module Frontend
         []
       end
       entries = if has_entries
-        validate_string_list!(
+        validate_repository_path_list!(
           raw.fetch("representative_entries"),
           "#{source}#budget",
           field: "representative_entries",
           allow_empty: false
-        ).map do |entry|
-          validate_repository_path!(entry, "#{source}#budget", "representative_entries")
-        end
+        )
       else
         []
       end

@@ -53,5 +53,33 @@ module Frontend
             .navigation.first.items.first.href
       end
     end
+
+    test "budget representative entries accept safe repository paths" do
+      registry = ApplicationRegistry.allocate
+
+      assert_equal [
+        "app/javascript/frontend-application-adapters/forum/ee-realtime.ts",
+        "src/pages/index.astro"
+      ], registry.send(
+        :validate_repository_path_list!,
+        [
+          "app/javascript/frontend-application-adapters/forum/ee-realtime.ts",
+          "src/pages/index.astro"
+        ],
+        "fixture#budget",
+        field: "representative_entries",
+        allow_empty: false
+      )
+
+      assert_raises(ApplicationRegistry::InvalidManifest) do
+        registry.send(
+          :validate_repository_path_list!,
+          [ "../outside.ts" ],
+          "fixture#budget",
+          field: "representative_entries",
+          allow_empty: false
+        )
+      end
+    end
   end
 end

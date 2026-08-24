@@ -27,7 +27,8 @@ function ruleBody(source: string, selector: RegExp) {
 }
 
 test('admin visual tokens live on the body so teleported Arco overlays inherit them', () => {
-  assert.match(layout, /<body class="mcweb-admin antialiased">/)
+  assert.match(layout, /<body\b[^>]*\bclass="mcweb-admin antialiased"[^>]*>/)
+  assert.match(layout, /<body\b[^>]*\bdata-mcweb-application=/)
   assert.match(css, /body\.mcweb-admin\s*\{[\s\S]*?--mc-admin-canvas:/)
   assert.match(css, /html\.dark body\.mcweb-admin\s*\{/)
   assert.match(css, /\.mcweb-admin \.arco-btn,/)

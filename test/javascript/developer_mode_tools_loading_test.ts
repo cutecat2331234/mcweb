@@ -17,7 +17,9 @@ for (const layout of [
     )
 
     assert.match(source, /defineAsyncComponent\(\s*\(\)\s*=>\s*import\(['"]@\/components\/portal\/DeveloperModeTools\.vue['"]\)/)
-    assert.match(source, /<DeveloperModeTools\s+v-if="developerMode\.enabled"\s*\/>/)
+    assert.match(source, /__MCWEB_DEVELOPER_BUILD__/)
+    assert.match(source, /:is="DeveloperModeTools"/)
+    assert.match(source, /v-if="DeveloperModeTools && developerMode\.enabled"/)
     assert.doesNotMatch(source, /import\s+DeveloperModeTools\s+from/)
   })
 }

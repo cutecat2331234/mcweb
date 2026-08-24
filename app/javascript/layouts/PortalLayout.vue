@@ -48,9 +48,9 @@ import { safeSignOut } from '@/lib/safeSignOut'
 import { useTheme } from '@/lib/useTheme'
 
 const page = usePage()
-const DeveloperModeTools = defineAsyncComponent(
-  () => import('@/components/portal/DeveloperModeTools.vue'),
-)
+const DeveloperModeTools = __MCWEB_DEVELOPER_BUILD__
+  ? defineAsyncComponent(() => import('@/components/portal/DeveloperModeTools.vue'))
+  : null
 const { t } = useI18n()
 const arcoLocale = useArcoLocale()
 const shell = useApplicationShell()
@@ -165,7 +165,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 <template>
   <ConfigProvider :locale="arcoLocale" global>
-    <DeveloperModeTools v-if="developerMode.enabled" />
+    <component
+      :is="DeveloperModeTools"
+      v-if="DeveloperModeTools && developerMode.enabled"
+    />
     <Layout class="mc-shell-layout" :style="{ minHeight: '100dvh' }">
       <LayoutSider
         v-if="!compact"

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import ReportAppealReviewShow from '@/components/community/ReportAppealReviewShow.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import type { ReportAppealReviewDetail } from '@/types/communityReportAppeals'
 
-defineOptions({ layout: ArcoAdminLayout })
+defineOptions({ layout: AdminLayout })
 const { t } = useI18n()
 defineProps<{ appeal: ReportAppealReviewDetail }>()
 </script>

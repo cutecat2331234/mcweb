@@ -14,6 +14,7 @@ const resolver = `
   process.stdout.write(JSON.stringify({
     minify: config.build.minify,
     sourcemap: config.build.sourcemap,
+    developerBuild: config.define.__MCWEB_DEVELOPER_BUILD__,
   }))
 `
 
@@ -52,6 +53,7 @@ test('Vite keeps public source maps disabled outside Developer Mode', () => {
   })
 
   assert.equal(baseline.sourcemap, false)
+  assert.equal(baseline.developerBuild, 'false')
   assert.deepEqual(ignoredOverrides, baseline)
 })
 
@@ -64,7 +66,7 @@ test('Vite applies both Developer Mode build enum branches', () => {
       MCWEB_DEVELOPER_VITE_MINIFICATION: 'disabled',
       MCWEB_DEVELOPER_VITE_SOURCE_MAPS: 'enabled',
     }),
-    { minify: false, sourcemap: true },
+    { minify: false, sourcemap: true, developerBuild: 'true' },
   )
   assert.deepEqual(
     resolveBuild({
@@ -72,6 +74,6 @@ test('Vite applies both Developer Mode build enum branches', () => {
       MCWEB_DEVELOPER_VITE_MINIFICATION: 'enabled',
       MCWEB_DEVELOPER_VITE_SOURCE_MAPS: 'disabled',
     }),
-    { minify: baseline.minify, sourcemap: false },
+    { minify: baseline.minify, sourcemap: false, developerBuild: 'true' },
   )
 })

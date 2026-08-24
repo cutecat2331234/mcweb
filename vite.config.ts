@@ -17,6 +17,7 @@ function developerBuildBoolean(name: string) {
 
 const developerMinification = developerBuildBoolean('MCWEB_DEVELOPER_VITE_MINIFICATION')
 const developerSourceMaps = developerBuildBoolean('MCWEB_DEVELOPER_VITE_SOURCE_MAPS')
+const developerBuild = process.env.MCWEB_DEVELOPER_VITE === '1'
 const runtimeProfile = process.env.MCWEB_RUNTIME_PROFILE
 
 const arcoRuntimeMarker = '/node_modules/@arco-design/web-vue/es/'
@@ -192,6 +193,9 @@ if (runtimeProfile === 'fast_preview') {
 }
 
 export default defineConfig({
+  define: {
+    __MCWEB_DEVELOPER_BUILD__: JSON.stringify(developerBuild),
+  },
   plugins: [
     RubyPlugin(),
     mcwebUiArcoStyleBridge(),

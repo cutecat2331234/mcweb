@@ -3,7 +3,7 @@
  * ArcoAdminLayout — Arco Design shell for McWeb admin (sidebar + navbar + content).
  * Inspired by Arco Pro default-layout; navigation uses Inertia router.visit(), not vue-router.
  */
-import { computed, nextTick, ref, watch, type Component } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch, type Component } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -22,7 +22,6 @@ import {
 } from '@arco-design/web-vue/es/icon'
 import AdminFlashMessages from '@/components/admin/AdminFlashMessages.vue'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
-import DeveloperModeTools from '@/components/admin/DeveloperModeTools.vue'
 import PluginUiSlots from '@/components/plugins/PluginUiSlots.vue'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import { adminRoutes } from '@/lib/adminRoutes'
@@ -51,6 +50,9 @@ interface NavGroup {
 
 const page = usePage()
 const { t } = useI18n()
+const DeveloperModeTools = __MCWEB_DEVELOPER_BUILD__
+  ? defineAsyncComponent(() => import('@/components/admin/DeveloperModeTools.vue'))
+  : null
 const arcoLocale = useArcoLocale()
 const applicationShell = useApplicationShell()
 const auth = computed(
@@ -935,7 +937,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
     </div>
   </a-drawer>
 
-  <DeveloperModeTools />
+  <component
+    :is="DeveloperModeTools"
+    v-if="DeveloperModeTools && developerMode.enabled"
+  />
   </a-config-provider>
 </template>
 

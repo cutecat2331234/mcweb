@@ -61,11 +61,15 @@ async function switchPersona(persona: Persona) {
       </a-button>
     </a-back-top>
 
-    <a-drawer
+    <a-modal
       v-model:visible="open"
       :title="t('common.developerPersonas')"
-      :width="'min(380px, 100vw)'"
+      width="min(420px, calc(100vw - 24px))"
       :footer="false"
+      :closable="true"
+      :esc-to-close="true"
+      :mask-closable="true"
+      :body-style="{ maxHeight: 'min(82vh, calc(100dvh - 80px))', overflowY: 'auto' }"
       unmount-on-close
     >
       <a-watermark
@@ -76,14 +80,6 @@ async function switchPersona(persona: Persona) {
         :repeat="true"
       >
         <a-space direction="vertical" :size="16" fill>
-          <a-alert
-            type="warning"
-            show-icon
-            :title="t('common.developerMode')"
-          >
-            {{ t('common.developerModeWarning') }}
-          </a-alert>
-
           <a-descriptions :column="1" bordered size="small">
             <a-descriptions-item :label="t('common.developerCurrentPersona')">
               <a-tag color="orangered">
@@ -113,6 +109,6 @@ async function switchPersona(persona: Persona) {
           />
         </a-space>
       </a-watermark>
-    </a-drawer>
+    </a-modal>
   </template>
 </template>

@@ -24,9 +24,9 @@ interface PreviewContext {
 
 const { t } = useI18n()
 const page = usePage()
-const DeveloperModeTools = defineAsyncComponent(
-  () => import('@/components/portal/DeveloperModeTools.vue'),
-)
+const DeveloperModeTools = __MCWEB_DEVELOPER_BUILD__
+  ? defineAsyncComponent(() => import('@/components/portal/DeveloperModeTools.vue'))
+  : null
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const developerMode = computed(
   () =>
@@ -88,7 +88,10 @@ function leavePreview(path: string) {
 </script>
 
 <template>
-  <DeveloperModeTools v-if="developerMode.enabled" />
+  <component
+    :is="DeveloperModeTools"
+    v-if="DeveloperModeTools && developerMode.enabled"
+  />
   <div
     v-if="websitePreview && previewContext"
     class="mc-preview-toolbar"

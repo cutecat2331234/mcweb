@@ -21,7 +21,7 @@ test('account center is a state dashboard built from the shared Arco UI library'
   assert.match(page, /props\.identity/)
   assert.match(page, /security\.email_verified/)
   assert.match(page, /props\.activity/)
-  assert.match(page, /props\.minecraft_enabled/)
+  assert.match(page, /minecraft_enabled: boolean/)
   assert.match(page, /routes\.identityProfile/)
   assert.match(page, /routes\.securityPassword/)
   assert.match(page, /routes\.security/)

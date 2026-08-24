@@ -102,11 +102,15 @@ async function switchPersona(persona: Persona) {
       </a-button>
     </a-back-top>
 
-    <a-drawer
+    <a-modal
       v-model:visible="visible"
       :title="t('common.developerTools')"
-      :width="'min(440px, 100vw)'"
+      width="min(440px, calc(100vw - 24px))"
       :footer="false"
+      :closable="true"
+      :esc-to-close="true"
+      :mask-closable="true"
+      :body-style="{ maxHeight: 'min(82vh, calc(100dvh - 80px))', overflowY: 'auto' }"
       unmount-on-close
     >
       <a-watermark
@@ -184,6 +188,6 @@ async function switchPersona(persona: Persona) {
           </a-space>
         </a-space>
       </a-watermark>
-    </a-drawer>
+    </a-modal>
   </template>
 </template>

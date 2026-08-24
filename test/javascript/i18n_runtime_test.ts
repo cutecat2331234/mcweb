@@ -122,10 +122,12 @@ test('locale preference transactions roll storage back unless the visit succeeds
 })
 
 test('language switchers commit shared locale state only after the cross-application action succeeds', () => {
-  for (const relativePath of [
+  const localeSwitcherSources = [
     'app/javascript/components/portal/LanguageSwitcher.vue',
     'app/javascript/components/admin/AdminLanguageSwitcher.vue',
-  ]) {
+  ]
+
+  for (const relativePath of localeSwitcherSources) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
     const preload = source.indexOf('await preloadAppLocale(locale)')
     const publishSelection = source.indexOf('beginAppLocalePreferenceTransaction(locale)')
@@ -144,6 +146,14 @@ test('language switchers commit shared locale state only after the cross-applica
     assert.match(source, /data: \{ locale \}/)
     assert.match(source, /catch \(error\) \{\s*transaction\.rollback\(\)/)
   }
+
+  const portalLayout = readFileSync(
+    resolve(process.cwd(), 'app/javascript/layouts/PortalLayout.vue'),
+    'utf8',
+  )
+  assert.match(portalLayout, /import LanguageSwitcher from '@\/components\/portal\/LanguageSwitcher\.vue'/)
+  assert.match(portalLayout, /<LanguageSwitcher \/>/)
+  assert.doesNotMatch(portalLayout, /beginAppLocalePreferenceTransaction|performSharedAction\(/)
 })
 
 test('community preference copy belongs to the forum domain in both locale bundles', () => {

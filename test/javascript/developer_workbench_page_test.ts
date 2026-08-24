@@ -19,7 +19,8 @@ test('Developer Workbench uses Arco for redacted diagnostics and audited tools',
   assert.match(source, /<a-table/)
   assert.match(source, /<a-statistic/)
   assert.match(source, /<a-empty/)
-  assert.match(source, /<a-drawer/)
+  assert.match(source, /<a-modal/)
+  assert.doesNotMatch(source, /<a-drawer/)
   assert.match(source, /<a-select/)
   assert.match(source, /<a-form/)
   assert.match(source, /router\.visit/)
@@ -57,7 +58,7 @@ test('Developer Workbench copy is available in English and Chinese', () => {
   }
 })
 
-test('Developer Mode global tools keep the persistent warning in each layout', () => {
+test('Developer Mode global tools keep details in focused modal surfaces', () => {
   const adminTools = projectSource(
     'app/javascript/components/admin/DeveloperModeTools.vue',
   )
@@ -74,7 +75,7 @@ test('Developer Mode global tools keep the persistent warning in each layout', (
     'app/javascript/layouts/WebsiteLayout.vue',
   )
 
-  assert.match(adminTools, /<a-drawer/)
+  assert.match(adminTools, /<a-modal/)
   assert.match(adminTools, /navigator\.clipboard\.writeText/)
   assert.match(adminTools, /persona_switch_url/)
   assert.match(adminTools, /performSharedAction/)
@@ -89,25 +90,30 @@ test('Developer Mode global tools keep the persistent warning in each layout', (
   assert.match(portalTools, /navigateFrontendDocument/)
   assert.match(portalTools, /<a-watermark/)
   assert.match(portalTools, /<a-back-top/)
-  assert.match(portalTools, /<a-drawer/)
+  assert.match(portalTools, /<a-modal/)
   assert.match(portalTools, /<a-button/)
   assert.match(portalTools, /common\.developerModeBadge/)
   assert.doesNotMatch(portalTools, /<button\b/)
   assert.doesNotMatch(portalTools, /<style\b/)
 
   for (const tools of [adminTools, portalTools]) {
-    const drawerStart = tools.indexOf('<a-drawer')
-    assert.ok(drawerStart > 0, 'developer tools must keep secondary details in a drawer')
+    const modalStart = tools.indexOf('<a-modal')
+    assert.ok(modalStart > 0, 'developer tools must keep secondary details in a modal')
     assert.doesNotMatch(
-      tools.slice(0, drawerStart),
+      tools.slice(0, modalStart),
       /<a-alert/,
-      'developer tools must not duplicate the layout warning while the drawer is closed',
+      'developer tools must not duplicate the layout warning while the modal is closed',
     )
-    assert.match(tools.slice(drawerStart), /<a-alert/)
+    assert.match(tools.slice(modalStart), /maxHeight:/)
+    assert.doesNotMatch(tools, /<a-drawer/)
   }
 
+  assert.match(adminTools.slice(adminTools.indexOf('<a-modal')), /<a-alert/)
+  assert.doesNotMatch(portalTools, /<a-alert/)
+
   for (const source of [adminLayout, portalLayout, websiteLayout]) {
-    assert.match(source, /<DeveloperModeTools/)
+    assert.match(source, /__MCWEB_DEVELOPER_BUILD__/)
+    assert.match(source, /:is="DeveloperModeTools"/)
     assert.equal(
       source.match(/data-testid="developer-mode-banner"/g)?.length,
       1,

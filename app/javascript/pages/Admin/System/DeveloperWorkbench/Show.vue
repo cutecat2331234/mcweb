@@ -728,11 +728,15 @@ async function copyDiagnostics() {
       </a-table>
     </a-card>
 
-    <a-drawer
+    <a-modal
       v-model:visible="captureDrawerVisible"
       :title="t('admin.developerWorkbench.captures.browserTitle')"
-      :width="'min(760px, 100vw)'"
+      width="min(760px, calc(100vw - 24px))"
       :footer="false"
+      :closable="true"
+      :esc-to-close="true"
+      :mask-closable="true"
+      :body-style="{ maxHeight: 'min(84vh, calc(100dvh - 72px))', overflowY: 'auto' }"
       unmount-on-close
     >
       <a-space direction="vertical" :size="12" fill>
@@ -802,6 +806,6 @@ async function copyDiagnostics() {
         </a-button>
       </a-space>
       </a-space>
-    </a-drawer>
+    </a-modal>
   </a-space>
 </template>

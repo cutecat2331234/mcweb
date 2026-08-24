@@ -94,10 +94,14 @@ module Identity
         Operations::DurableEnqueueCatalog.entry(intent.handler_key).enqueue_stale_seconds +
         1.second
       assert_enqueued_with(job: Operations::DispatchDurableIntentJob, queue: "default") do
-        recovery = Operations::RecoverDurableEnqueue.call(now: recovery_at)
+        recovery = Operations::RecoverDurableEnqueue.call(
+          now: recovery_at,
+          intent_public_ids: [ intent.public_id ]
+        )
 
         assert_predicate recovery, :success?
         assert_equal 1, recovery.value.fetch(:enqueued_count)
+        assert_equal [ intent.public_id ], recovery.value.fetch(:intent_public_ids)
       end
     end
 

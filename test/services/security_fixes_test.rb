@@ -752,47 +752,103 @@ end
 
 class SidekiqWebConstraintSecurityTest < ActiveSupport::TestCase
   FakeCookieJar = Struct.new(:signed)
-  FakeRequest = Struct.new(:request_method, :session, :cookie_jar)
+  FakeRequest = Struct.new(
+    :request_method,
+    :path,
+    :session,
+    :cookie_jar,
+    :base_url,
+    :origin,
+    :referer,
+    :fetch_site,
+    keyword_init: true
+  ) do
+    def get_header(name)
+      return origin if name == "HTTP_ORIGIN"
+      return fetch_site if name == "HTTP_SEC_FETCH_SITE"
+    end
+  end
 
   test "minecraft only staff cannot access sidekiq web" do
     user = create_user
     user.update!(account_type: :staff)
     grant_permission(user, "admin.access")
-    grant_permission(user, "system.jobs.read")
+    grant_permission(user, "system.sidekiq.read")
     grant_admin_module(user, "minecraft")
 
     assert_not user.admin_module_allowed?("system")
   end
 
-  test "jobs read permission allows get and head requests" do
-    user = sidekiq_user_with("system.jobs.read")
+  test "generic jobs permissions do not authorize Sidekiq requests" do
+    user = sidekiq_user_with("system.jobs.read", "system.jobs.manage")
+    token = session_token_for(user)
+
+    assert_not SidekiqWebConstraint.matches?(sidekiq_request("GET", token))
+    assert_not SidekiqWebConstraint.matches?(sidekiq_request("POST", token))
+  end
+
+  test "Sidekiq read permission allows get head and locale preference requests" do
+    user = sidekiq_user_with("system.sidekiq.read")
     token = session_token_for(user)
 
     assert SidekiqWebConstraint.matches?(sidekiq_request("GET", token))
     assert SidekiqWebConstraint.matches?(sidekiq_request("HEAD", token))
+    assert SidekiqWebConstraint.matches?(
+      sidekiq_request("POST", token, path: "/jobs/change_locale")
+    )
   end
 
-  test "jobs read permission does not allow post requests" do
-    user = sidekiq_user_with("system.jobs.read")
+  test "Sidekiq read permission does not allow mutation requests" do
+    user = sidekiq_user_with("system.sidekiq.read")
     token = session_token_for(user)
 
     assert_not SidekiqWebConstraint.matches?(sidekiq_request("POST", token))
   end
 
-  test "jobs manage permission allows post requests" do
-    user = sidekiq_user_with("system.jobs.manage")
+  test "Sidekiq mutation requests require read and manage permissions" do
+    manager = sidekiq_user_with("system.sidekiq.manage")
+    manager_token = session_token_for(manager)
+    assert_not SidekiqWebConstraint.matches?(
+      sidekiq_request("POST", manager_token)
+    )
+
+    user = sidekiq_user_with("system.sidekiq.read", "system.sidekiq.manage")
     token = session_token_for(user)
 
     assert SidekiqWebConstraint.matches?(sidekiq_request("POST", token))
   end
 
+  test "Sidekiq mutation requests reject a cross-site browser context" do
+    user = sidekiq_user_with("system.sidekiq.read", "system.sidekiq.manage")
+    token = session_token_for(user)
+
+    assert_not SidekiqWebConstraint.matches?(
+      sidekiq_request(
+        "POST",
+        token,
+        origin: "https://outside.example",
+        fetch_site: "cross-site"
+      )
+    )
+  end
+
+  test "mandatory TOTP setup blocks the mounted Sidekiq application" do
+    user = sidekiq_user_with("system.sidekiq.read")
+    token = session_token_for(user)
+    user.update!(require_totp: true)
+
+    Mcweb::DeveloperMode.stub(:allow?, false) do
+      assert_not SidekiqWebConstraint.matches?(sidekiq_request("GET", token))
+    end
+  end
+
   private
 
-  def sidekiq_user_with(permission)
+  def sidekiq_user_with(*permissions)
     user = create_user
     user.update!(account_type: :staff)
     grant_permission(user, "admin.access")
-    grant_permission(user, permission)
+    permissions.each { |permission| grant_permission(user, permission) }
     grant_admin_module(user, "system")
     user
   end
@@ -803,11 +859,22 @@ class SidekiqWebConstraintSecurityTest < ActiveSupport::TestCase
     result.value.fetch(:token)
   end
 
-  def sidekiq_request(method, token)
+  def sidekiq_request(
+    method,
+    token,
+    path: "/jobs/",
+    origin: "https://mcweb.test",
+    fetch_site: "same-origin"
+  )
     FakeRequest.new(
-      method,
-      { SidekiqWebConstraint::SESSION_COOKIE => token },
-      FakeCookieJar.new({})
+      request_method: method,
+      path: path,
+      session: { SidekiqWebConstraint::SESSION_COOKIE => token },
+      cookie_jar: FakeCookieJar.new({}),
+      base_url: "https://mcweb.test",
+      origin: origin,
+      referer: "https://mcweb.test/admin/system/sidekiq",
+      fetch_site: fetch_site
     )
   end
 end
@@ -1052,7 +1119,11 @@ class CheckoutStoreCreditPreviewSecurityTest < ActionDispatch::IntegrationTest
                provider: "fake",
                coupon_code: @valid_coupon.code
              }
-           }
+           },
+           headers: frontend_application_request_headers(
+             application_id: "store",
+             referer: store_checkout_url
+           )
     end
 
     order = Commerce::Order.order(:id).last

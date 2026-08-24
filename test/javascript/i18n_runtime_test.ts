@@ -62,6 +62,8 @@ test('locale synchronization keeps the document language aligned after SPA visit
   assert.match(source, /document\.documentElement\.lang = next/)
   assert.match(source, /writeSharedAppLocale\(next\)/)
   assert.match(source, /localeSyncGenerations/)
+  assert.match(source, /createI18n<false>/)
+  assert.match(source, /Partial<Record<AppLocale, AppMessages>>/)
 })
 
 test('locale preference supplies a stable shared key and partitions Inertia caches', () => {
@@ -169,10 +171,27 @@ test('Inertia resolves the target page locale before loading its component', () 
   ]) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
     assert.match(source, /resolve: async \(name, targetPage\?: InertiaPageLike\)/)
-    assert.match(source, /await syncLocaleFromPage\(targetPage\)[\s\S]*?return await loader\(\)/)
+    assert.match(source, /await syncLocaleFromPage\(targetPage\)[\s\S]*?return normalizeFrontendPageComponent\(await loader\(\)\)/)
     assert.match(source, /typeof locale !== 'string' \|\| locale\.trim\(\)\.length === 0/)
     assert.match(source, /inertia:success[\s\S]{0,500}void syncLocaleFromPage/)
   }
+})
+
+test('website block translations keep the nested selector shape in both locales', () => {
+  for (const [locale, messages] of [
+    ['en', englishMessages],
+    ['zh-CN', chineseMessages],
+  ] as const) {
+    assert.equal(typeof messageAt(messages, 'admin.website.blocks.types.hero'), 'string', locale)
+    assert.equal(typeof messageAt(messages, 'admin.website.blocks.types.richText'), 'string', locale)
+    assert.equal(messageAt(messages, 'admin.website.blocks.hero'), undefined, locale)
+    assert.equal(messageAt(messages, 'admin.website.blocks.richText'), undefined, locale)
+  }
+})
+
+test('staff workspace return action names the application center in both locales', () => {
+  assert.equal(messageAt(englishMessages, 'staffWorkspace.returnToApp'), 'Return to app center')
+  assert.equal(messageAt(chineseMessages, 'staffWorkspace.returnToApp'), '返回应用中心')
 })
 
 test('only the active locale is loaded during application bootstrap', () => {

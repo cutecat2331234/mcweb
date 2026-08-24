@@ -158,9 +158,12 @@ export async function createAppI18n(
   const initialLocale = normalizeAppLocale(locale)
   const domains = localeDomains(domainNames)
   const messages = await loadLocaleMessages(initialLocale, domains)
+  const initialMessages: Partial<Record<AppLocale, AppMessages>> = {
+    [initialLocale]: messages,
+  }
   writeSharedAppLocale(initialLocale)
 
-  const i18n = createI18n({
+  const i18n = createI18n<false>({
     legacy: false,
     globalInjection: true,
     locale: initialLocale,
@@ -176,9 +179,7 @@ export async function createAppI18n(
     missing: (missingLocale, key, _instance, type) => (
       missingTranslation(String(missingLocale), String(key), type)
     ),
-    messages: {
-      [initialLocale]: messages,
-    },
+    messages: initialMessages,
   })
   localeDomainsByI18n.set(i18n as object, domains)
   return i18n

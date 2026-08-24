@@ -53,6 +53,20 @@ type CreateInertiaApplicationOptions = {
   errorBoundaryId: string
 }
 
+type FrontendPageModule = { default: DefineComponent }
+
+function isFrontendPageModule(
+  value: DefineComponent | FrontendPageModule,
+): value is FrontendPageModule {
+  return Object.hasOwn(value, 'default')
+}
+
+function normalizeFrontendPageComponent(
+  value: Awaited<ReturnType<FrontendPageLoader>>,
+): DefineComponent {
+  return isFrontendPageModule(value) ? value.default : value
+}
+
 function syncCsrfFromPage(page?: InertiaPageLike) {
   const token = page?.props?.csrf_token
   syncCsrfMetaTag(typeof token === 'string' && token.length > 0 ? token : undefined)
@@ -263,6 +277,7 @@ export async function createMcWebInertiaApplication({
         return `${prefix}${title || titleFallback}`
       },
       setup({ el, App, props, plugin }) {
+        if (!el) throw new Error(`Application ${applicationId} has no mount element`)
         const initialPage = (props as { initialPage?: InertiaPageLike }).initialPage
         syncCsrfFromPage(initialPage)
         const applicationContent = adapters.errorBoundaries.reduceRight<() => ReturnType<typeof h>>(
@@ -291,7 +306,7 @@ export async function createMcWebInertiaApplication({
             throw new Error(`Application ${applicationId} has no positive resolver for ${name}`)
           }
           await syncLocaleFromPage(targetPage)
-          return await loader()
+          return normalizeFrontendPageComponent(await loader())
         } catch (error) {
           failApplication(error)
           throw error

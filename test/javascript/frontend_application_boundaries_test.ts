@@ -154,3 +154,20 @@ test('downstream page loaders are confined to declared repository page roots', (
   assert.match(adapters, /canonicalPagePath\(pagePath, contribution\.pageRoots\)/)
   assert.match(adapters, /app\/javascript\/pages/)
 })
+
+test('adapter error boundaries accept Vue components with declared props', () => {
+  const adapters = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplicationAdapters.ts'),
+    'utf8',
+  )
+  const bootstrap = readFileSync(
+    resolve(root, 'app/javascript/lib/createInertiaApplication.ts'),
+    'utf8',
+  )
+
+  assert.match(adapters, /import type \{ Component, DefineComponent \} from 'vue'/)
+  assert.match(adapters, /component: Component/)
+  assert.match(adapters, /errorBoundaries: readonly Component\[\]/)
+  assert.match(bootstrap, /normalizeFrontendPageComponent\(await loader\(\)\)/)
+  assert.match(bootstrap, /if \(!el\) throw new Error/)
+})

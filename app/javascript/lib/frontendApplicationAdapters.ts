@@ -1,4 +1,4 @@
-import type { DefineComponent } from 'vue'
+import type { Component, DefineComponent } from 'vue'
 
 import {
   assertFrontendComponent,
@@ -30,7 +30,7 @@ export type FrontendApplicationAdapter = Readonly<{
   styleModules?: Readonly<Record<string, () => Promise<unknown>>>
   errorBoundary?: Readonly<{
     name: string
-    component: DefineComponent
+    component: Component
   }>
   draftAdapter?: FrontendDraftAdapter
   navigation?: readonly ApplicationShellNavigationGroup[]
@@ -155,7 +155,7 @@ export function loadFrontendApplicationAdapters(
   modules: Record<string, unknown>,
 ): {
   pages: Record<string, FrontendPageLoader>
-  errorBoundaries: readonly DefineComponent[]
+  errorBoundaries: readonly Component[]
   prepare: () => Promise<void>
   install: () => VoidFunction
   dispose: VoidFunction
@@ -176,7 +176,7 @@ export function loadFrontendApplicationAdapters(
   const discoveredModules = new Set<string>()
   const discoveredErrorBoundaries = new Set<string>()
   const pages: Record<string, FrontendPageLoader> = {}
-  const errorBoundaries: DefineComponent[] = []
+  const errorBoundaries: Component[] = []
   const adapters: FrontendApplicationAdapter[] = []
   const navigation: ApplicationShellNavigationContribution[] = []
   const removeLocaleDomains: VoidFunction[] = []

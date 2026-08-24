@@ -5843,7 +5843,7 @@ export default {
   staffWorkspace: {
     brand: 'McWeb 工作人员',
     badge: '站务工作台',
-    returnToApp: '返回社区',
+    returnToApp: '返回应用中心',
     navigation: {
       overview: '概览',
       queue: '审核队列',

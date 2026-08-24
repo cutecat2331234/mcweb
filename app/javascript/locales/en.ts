@@ -5843,7 +5843,7 @@ export default {
   staffWorkspace: {
     brand: 'McWeb Staff',
     badge: 'Staff workspace',
-    returnToApp: 'Return to community',
+    returnToApp: 'Return to app center',
     navigation: {
       overview: 'Overview',
       queue: 'Moderation queue',

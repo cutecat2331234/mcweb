@@ -1696,7 +1696,7 @@ module Frontend
         begin
           decoded_segments = path.split("/").map { |segment| URI.decode_www_form_component(segment) }
           invalid = decoded_segments.any? do |segment|
-            segment.in?([".", ".."]) || segment.include?(/[\\\/\x00-\x1f\x7f]/)
+            segment.in?([".", ".."]) || segment.match?(/[\\\/\x00-\x1f\x7f]/)
           end
         rescue ArgumentError
           invalid = true

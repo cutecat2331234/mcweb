@@ -88,6 +88,15 @@ test('forum section lifecycle exposes only permission-gated Inertia actions', ()
   )
 })
 
+test('forum approval details preserve moderator text through the shared admin style', () => {
+  const source = pageSource('Forum/Approvals/Show.vue')
+  const sharedStyles = javascriptSource('styles/arco-admin.css')
+
+  assert.match(source, /class="mc-admin-preserve-lines"/)
+  assert.doesNotMatch(source, /!mb-0|whitespace-pre-wrap|<style\b/)
+  assert.match(sharedStyles, /\.arco-admin-main \.mc-admin-preserve-lines \{\s*white-space: pre-wrap;\s*overflow-wrap: anywhere;\s*\}/m)
+})
+
 test('store-credit adjustment uses two JSON phases without remounting the page', () => {
   const source = pageSource('Generic/Show.vue')
 

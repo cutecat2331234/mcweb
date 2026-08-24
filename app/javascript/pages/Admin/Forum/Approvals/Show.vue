@@ -105,7 +105,7 @@ function reject() {
           :key="field.label"
           :label="field.label"
         >
-          <a-typography-paragraph class="!mb-0 whitespace-pre-wrap">
+          <a-typography-paragraph class="mc-admin-preserve-lines">
             {{ field.value }}
           </a-typography-paragraph>
         </a-descriptions-item>

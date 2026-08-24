@@ -342,6 +342,12 @@ html.dark body.mcweb-admin {
   border-top: 3px solid rgb(var(--danger-6));
 }
 
+/* Preserve moderator-entered line breaks without page-local styling. */
+.arco-admin-main .mc-admin-preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 768px) {
   .arco-admin-main .arco-page-header {
     padding: var(--mc-page-header-padding, 14px) !important;

@@ -5,8 +5,7 @@ require "test_helper"
 class DeveloperModePersonaSwitchTest < ActionDispatch::IntegrationTest
   test "route is hidden before authentication when Developer Mode is disabled" do
     with_developer_mode(enabled: false) do
-      post developer_mode_switch_persona_path,
-        params: { persona: "member" }
+      switch_persona("member")
 
       assert_response :not_found
     end
@@ -23,21 +22,17 @@ class DeveloperModePersonaSwitchTest < ActionDispatch::IntegrationTest
       assert_predicate seed, :success?
       sign_in_as(operator)
 
-      post developer_mode_switch_persona_path,
-        params: { persona: "member" }
+      switch_persona("member")
       assert_redirected_to Mcweb::Paths::APP_PREFIX
 
       member = User.find_by!(developer_mode_persona: "member")
-      assert_equal member.id,
-        Session.active.order(:id).last.user_id
+      assert_equal member.id, authenticated_session.user_id
 
-      post developer_mode_switch_persona_path,
-        params: { persona: "owner" }
+      switch_persona("owner")
       assert_redirected_to Mcweb::Paths::APP_PREFIX
 
       owner = User.find_by!(developer_mode_persona: "owner")
-      assert_equal owner.id,
-        Session.active.order(:id).last.user_id
+      assert_equal owner.id, authenticated_session.user_id
       assert_equal 2,
         AuditLog.by_action(
           "developer_mode.persona_switched"
@@ -54,18 +49,30 @@ class DeveloperModePersonaSwitchTest < ActionDispatch::IntegrationTest
       )
       sign_in_as(user)
 
-      post developer_mode_switch_persona_path,
-        params: { persona: "owner" }
+      switch_persona("owner")
 
       assert_response :forbidden
-      assert_not_equal(
-        User.find_by!(developer_mode_persona: "owner").id,
-        Session.active.order(:id).last.user_id
-      )
+      assert_equal user.id, authenticated_session.user_id
     end
   end
 
   private
+
+  def switch_persona(persona)
+    post developer_mode_switch_persona_path,
+      params: { persona: persona },
+      headers: frontend_application_request_headers(
+        application_id: "account",
+        referer: account_url
+      )
+  end
+
+  def authenticated_session
+    token = session[Authentication::SESSION_COOKIE]
+    assert token.present?, "Expected the integration client to retain a session token"
+
+    Session.find_by_token(token) || flunk("Expected the session token to resolve")
+  end
 
   def with_developer_mode(enabled:)
     settings = Mcweb::DeveloperMode.parse(

@@ -22,6 +22,13 @@ RUN /opt/mcweb-jdks/jdk8/bin/java -version && \
       > /home/gradle/.gradle/gradle.properties && \
     chown -R gradle:gradle /home/gradle/.gradle
 
+# CNB's shared egress is frequently throttled by Maven Central. Warm the
+# Docker-backed cache through a nearby public mirror while retaining the
+# upstream repositories as fallbacks. The checked-out validation remains
+# offline and therefore cannot silently download a different dependency set.
+COPY --chown=gradle:gradle deploy/cnb/gradle-repositories.init.gradle.kts \
+    /home/gradle/.gradle/init.d/mcweb-repositories.init.gradle.kts
+
 USER gradle
 WORKDIR /opt/mcweb-dependency-cache
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -35,6 +42,9 @@ RUN --mount=type=cache,id=mcweb-gradle-dependency-downloads,target=/opt/mcweb-gr
     cd plugins/mcweb-connector; \
     chmod +x gradlew; \
     cp /home/gradle/.gradle/gradle.properties /opt/mcweb-gradle-download-cache/gradle.properties; \
+    mkdir -p /opt/mcweb-gradle-download-cache/init.d; \
+    cp /home/gradle/.gradle/init.d/mcweb-repositories.init.gradle.kts \
+      /opt/mcweb-gradle-download-cache/init.d/mcweb-repositories.init.gradle.kts; \
     attempt=1; \
     while :; do \
       if GRADLE_USER_HOME=/opt/mcweb-gradle-download-cache \

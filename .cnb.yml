@@ -426,10 +426,12 @@ main:
           dockerfile: deploy/cnb/gradle-dependencies.Dockerfile
           by:
             - deploy/cnb/gradle-dependencies.Dockerfile
+            - deploy/cnb/gradle-repositories.init.gradle.kts
             - plugins/mcweb-connector
             - deploy/cnb/gradle-cache.version
           versionBy:
             - deploy/cnb/gradle-dependencies.Dockerfile
+            - deploy/cnb/gradle-repositories.init.gradle.kts
             - deploy/cnb/gradle-cache.version
             - plugins/mcweb-connector/gradlew
             - plugins/mcweb-connector/gradlew.bat

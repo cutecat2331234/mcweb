@@ -22,9 +22,12 @@ or production-acceptance cache recipes.
 - `gradle-dependencies.Dockerfile` caches JDK 8, JDK 17, Gradle, and connector
   dependencies so checked-out connector builds can run offline. Its locked
   BuildKit download cache preserves completed downloads across transient
-  repository failures, while bounded backoff retries only recognized network
-  and HTTP throttling failures. A successful warm-up copies that cache into the
-  dependency image; checked-out builds still make no network requests.
+  repository failures. Cache warm-up prepends the Aliyun public and Gradle
+  Plugin mirrors to avoid repeatedly hitting shared Maven Central egress, keeps
+  the declared upstream repositories as fallbacks, and bounds retries to
+  recognized network and HTTP throttling failures. A successful warm-up copies
+  that cache and its repository definition into the dependency image;
+  checked-out builds still make no network requests.
   Increment `gradle-cache.version` to refresh mutable upstream artifacts
   deliberately.
 - The production Dockerfile's `dependencies` and `runtime-base` stages are

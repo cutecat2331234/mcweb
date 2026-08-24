@@ -751,6 +751,9 @@ class StaffModuleGrantSecurityTest < ActionDispatch::IntegrationTest
 end
 
 class SidekiqWebConstraintSecurityTest < ActiveSupport::TestCase
+  FakeCookieJar = Struct.new(:signed)
+  FakeRequest = Struct.new(:request_method, :session, :cookie_jar)
+
   test "minecraft only staff cannot access sidekiq web" do
     user = create_user
     user.update!(account_type: :staff)
@@ -759,6 +762,53 @@ class SidekiqWebConstraintSecurityTest < ActiveSupport::TestCase
     grant_admin_module(user, "minecraft")
 
     assert_not user.admin_module_allowed?("system")
+  end
+
+  test "jobs read permission allows get and head requests" do
+    user = sidekiq_user_with("system.jobs.read")
+    token = session_token_for(user)
+
+    assert SidekiqWebConstraint.matches?(sidekiq_request("GET", token))
+    assert SidekiqWebConstraint.matches?(sidekiq_request("HEAD", token))
+  end
+
+  test "jobs read permission does not allow post requests" do
+    user = sidekiq_user_with("system.jobs.read")
+    token = session_token_for(user)
+
+    assert_not SidekiqWebConstraint.matches?(sidekiq_request("POST", token))
+  end
+
+  test "jobs manage permission allows post requests" do
+    user = sidekiq_user_with("system.jobs.manage")
+    token = session_token_for(user)
+
+    assert SidekiqWebConstraint.matches?(sidekiq_request("POST", token))
+  end
+
+  private
+
+  def sidekiq_user_with(permission)
+    user = create_user
+    user.update!(account_type: :staff)
+    grant_permission(user, "admin.access")
+    grant_permission(user, permission)
+    grant_admin_module(user, "system")
+    user
+  end
+
+  def session_token_for(user)
+    result = create_test_session(user)
+    assert_predicate result, :success?
+    result.value.fetch(:token)
+  end
+
+  def sidekiq_request(method, token)
+    FakeRequest.new(
+      method,
+      { SidekiqWebConstraint::SESSION_COOKIE => token },
+      FakeCookieJar.new({})
+    )
   end
 end
 

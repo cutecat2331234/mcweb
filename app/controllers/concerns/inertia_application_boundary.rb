@@ -41,23 +41,26 @@ module InertiaApplicationBoundary
 
     merge_frontend_boundary_vary!
     unless @frontend_route_match
-      return reject_inertia_application_request!(document_location: request.get?)
+      return reject_inertia_application_request!(document_location: request.get? || request.head?)
     end
 
     case @frontend_route_match.kind
     when "inertia_page"
-      request.get? ? enforce_owned_inertia_request! :
+      if request.get? || request.head?
+        enforce_owned_inertia_request!
+      else
         reject_inertia_application_request!(document_location: false)
+      end
     when "application_action"
       enforce_owned_inertia_request!(document_location: false)
     when "document", "download", "api"
-      reject_inertia_application_request!(document_location: request.get?)
+      reject_inertia_application_request!(document_location: request.get? || request.head?)
     when "shared_action"
       # Shared actions deliberately use a CSRF-protected fetch or native form.
       # An Inertia mutation must not be replayed or converted into navigation.
       reject_inertia_application_request!(document_location: false)
     else
-      reject_inertia_application_request!(document_location: request.get?)
+      reject_inertia_application_request!(document_location: request.get? || request.head?)
     end
   end
 
@@ -109,7 +112,7 @@ module InertiaApplicationBoundary
     nil
   end
 
-  def enforce_owned_inertia_request!(document_location: request.get?)
+  def enforce_owned_inertia_request!(document_location: request.get? || request.head?)
     source_id = referer_application_id
     explicit_id = request.headers[APPLICATION_HEADER].to_s
     target_id = @frontend_application&.id

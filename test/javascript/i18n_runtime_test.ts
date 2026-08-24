@@ -63,6 +63,7 @@ test('locale synchronization keeps the document language aligned after SPA visit
   assert.match(source, /writeSharedAppLocale\(next\)/)
   assert.match(source, /localeSyncGenerations/)
   assert.match(source, /type AppLocaleMessageCatalog = Record<AppLocale, AppMessageSchema>/)
+  assert.match(source, /ComposerOptions<AppI18nSchema, AppLocale>/)
   assert.match(source, /export type AppI18n = I18n<AppLocaleMessageCatalog, \{\}, \{\}, AppLocale, false>/)
   assert.match(source, /createI18n<false, AppI18nOptions>\(options\)/)
   assert.match(source, /setLocaleMessage\(next, vueI18nMessageSchema\(messages\)\)/)

@@ -2,6 +2,7 @@ import { computed, watch } from 'vue'
 import {
   createI18n,
   useI18n,
+  type ComposerOptions,
   type DefineLocaleMessage,
   type I18n,
   type I18nOptions,
@@ -93,7 +94,12 @@ const localeDomainLoaders: Record<AppLocale, Record<string, LocaleDomainLoader>>
 type AppMessages = Record<string, unknown>
 type AppMessageSchema = DefineLocaleMessage
 type AppLocaleMessageCatalog = Record<AppLocale, AppMessageSchema>
-type AppI18nOptions = Omit<I18nOptions, 'legacy' | 'locale' | 'messages'> & {
+type AppI18nSchema = { message: AppMessageSchema }
+type AppI18nOptions = I18nOptions<
+  AppI18nSchema,
+  AppLocale,
+  ComposerOptions<AppI18nSchema, AppLocale>
+> & {
   legacy: false
   locale: AppLocale
   messages: AppLocaleMessageCatalog

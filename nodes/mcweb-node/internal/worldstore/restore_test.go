@@ -367,13 +367,15 @@ func TestArchiveScannerBoundsCompressedMetadataExpansion(t *testing.T) {
 	}
 	gzipWriter := gzip.NewWriter(file)
 	tarWriter := tar.NewWriter(gzipWriter)
+	// Keep each GNU metadata record below archive/tar's per-record limit while
+	// making their cumulative decompressed size exceed the scanner's allowance.
+	const metadataFieldBytes = 600 * 1024
 	header := &tar.Header{
-		Name:       "level.dat",
-		Typeflag:   tar.TypeReg,
-		Size:       0,
-		Mode:       0o600,
-		Format:     tar.FormatPAX,
-		PAXRecords: map[string]string{"comment": strings.Repeat("x", 4*1024*1024)},
+		Name:     strings.Repeat("n", metadataFieldBytes),
+		Linkname: strings.Repeat("l", metadataFieldBytes),
+		Typeflag: tar.TypeSymlink,
+		Mode:     0o600,
+		Format:   tar.FormatGNU,
 	}
 	if err = tarWriter.WriteHeader(header); err == nil {
 		err = tarWriter.Close()

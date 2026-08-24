@@ -96,9 +96,9 @@ class Administration::SensitiveActionRateLimitConcurrencyTest < ActiveSupport::T
     results = Queue.new
     threads = 10.times.map do |index|
       Thread.new do
+        ready << true
+        gate.pop
         ActiveRecord::Base.connection_pool.with_connection do
-          ready << true
-          gate.pop
           results << Administration::SensitiveActionRateLimit.call(
             scope: @scope,
             user: User.find(@user.id),

@@ -20,7 +20,7 @@ DataGovernance::PurgePolicy
 DataGovernance::PermanentlyPurgeContent
 DataGovernance::UpdateRetentionPolicy
 require "rails/test_help"
-require "minitest/reporters"
+require "minitest/reporters" unless ENV["CI"].present?
 require "active_job/test_helper"
 require "ostruct"
 require_relative "support/stripe_test_helpers"
@@ -29,7 +29,7 @@ unless ENV["LOCKBOX_MASTER_KEY"].to_s.match?(/\A\h{64}\z/i)
   ENV["LOCKBOX_MASTER_KEY"] = "a" * 64
 end
 Lockbox.master_key = ENV["LOCKBOX_MASTER_KEY"]
-Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new
+Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new unless ENV["CI"].present?
 
 module ActiveSupport
   class TestCase

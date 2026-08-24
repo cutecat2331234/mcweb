@@ -56,7 +56,7 @@ end
 group :test do
   gem "minitest", "~> 6.0"
   gem "minitest-mock", "~> 5.27"
-  gem "minitest-reporters"
+  gem "minitest-reporters", require: false
   gem "rails-dom-testing"
 end
 

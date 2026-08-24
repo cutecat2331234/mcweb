@@ -37,6 +37,7 @@ defineExpose({ open })
 <template>
   <div
     v-if="open"
+    data-portal-forum-shortcuts
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
     @click.self="open = false"
   >

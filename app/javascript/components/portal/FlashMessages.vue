@@ -40,7 +40,7 @@ watch(messages, (current) => {
 </script>
 
 <template>
-  <div v-if="visibleMessages.length" class="mb-6 space-y-3">
+  <div v-if="visibleMessages.length" class="mb-6 space-y-3" data-portal-flash-messages>
     <div
       v-for="(message, index) in messages"
       v-show="!dismissed.has(index) && !autoHidden"

@@ -24,14 +24,15 @@ RUN apt-get update -qq && \
     gpg --show-keys --with-colons \
       /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc | \
       grep -q '^fpr:::::::::B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8:' && \
-    echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt-archive.postgresql.org/pub/repos/apt bookworm-pgdg-archive main' \
-      > /etc/apt/sources.list.d/pgdg-archive.list && \
+    echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main' \
+      > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update -qq && \
-    postgresql_client_version="$(cat /tmp/postgresql-client-cache.version)" && \
+    postgresql_client_major="$(cat /tmp/postgresql-client-cache.version)" && \
+    test "${postgresql_client_major}" = "18" && \
     apt-get install -y --no-install-recommends \
-      "libpq5=${postgresql_client_version}" \
-      "libpq-dev=${postgresql_client_version}" \
-      "postgresql-client-18=${postgresql_client_version}" && \
+      libpq5 \
+      libpq-dev \
+      "postgresql-client-${postgresql_client_major}" && \
     rm -f /tmp/postgresql-client-cache.version && \
     rm -rf /var/lib/apt/lists/* && \
     docker --version && \

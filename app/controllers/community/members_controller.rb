@@ -22,7 +22,7 @@ module Community
       end
 
       @pagy, members = pagy(:offset, scope, limit: 30)
-      stats = member_stats(members, private_directory_visible: private_directory_visible)
+      stats = member_stats(members)
 
       render inertia: "Community/Members/Index", props: {
         members: members.map { |user| serialize_member(user, stats: stats) },
@@ -34,7 +34,7 @@ module Community
         groupOptions: Community::UserGroup.ordered.map { |g| { value: g.id.to_s, label: g.name } },
         availableSorts: available_member_sorts(private_directory_visible: private_directory_visible),
         onlineCount: private_directory_visible ? User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count : nil
-      }
+      }, encrypt_history: true
     end
 
     private
@@ -72,7 +72,7 @@ module Community
           Arel.sql(<<~SQL.squish),
             (SELECT COUNT(*) FROM store_orders
              WHERE store_orders.user_id = users.id
-             AND store_orders.status IN ('paid','processing','fulfilling','fulfilled','completed')) DESC
+             AND #{completed_order_statuses_sql}) DESC
           SQL
           created_at: :desc,
           id: :desc
@@ -102,15 +102,11 @@ module Community
       scope.where(forum_trust_level_override: level).or(auto_scope)
     end
 
-    def member_stats(members, private_directory_visible:)
+    def member_stats(members)
       ids = members.map(&:id)
       posts = listed_posts.where(user_id: ids)
-      purchase_ids = if private_directory_visible
-                       ids
-      elsif current_user && ids.include?(current_user.id)
-                       [ current_user.id ]
-      else
-                       []
+      purchase_ids = members.filter_map do |user|
+        user.id if user_profile_activity(user).visible?
       end
       {
         posts: posts.group(:user_id).count,
@@ -118,7 +114,12 @@ module Community
           .where(forum_post_id: posts.select(:id))
           .group("forum_posts.user_id").count,
         reviews: Commerce::Review.where(user_id: ids, status: :published).group(:user_id).count,
-        purchases: Commerce::Order.where(user_id: purchase_ids, status: %w[paid processing fulfilling fulfilled completed]).group(:user_id).count
+        purchases: Commerce::Order
+          .where(
+            user_id: purchase_ids,
+            status: Community::UserProfileActivitySerializer::COMPLETED_ORDER_STATUSES
+          )
+          .group(:user_id).count
       }
     end
 
@@ -147,6 +148,13 @@ module Community
       Arel::Nodes::Grouping.new(relation.reorder(nil).select(count).arel.ast)
     end
 
+    def completed_order_statuses_sql
+      ActiveRecord::Base.sanitize_sql_array([
+        "store_orders.status IN (?)",
+        Community::UserProfileActivitySerializer::COMPLETED_ORDER_STATUSES
+      ])
+    end
+
     def serialize_member(user, stats:)
       level = Community::TrustLevel.level_for(user)
       trust = Community::TrustLevel::LEVELS.find { |entry| entry[:level] == level } || Community::TrustLevel::LEVELS.first
@@ -163,15 +171,19 @@ module Community
         member_since: l(user.created_at, format: :short)
       }
 
-      visibility = Community::UserProfileVisibility.new(user: user, viewer: current_user)
-      if visibility.private_activity?
-        payload.merge!(
-          last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
-          online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
-          purchases_count: stats[:purchases][user.id].to_i
-        )
-      end
-      payload
+      payload.merge!(
+        user_profile_activity(user).member(purchases_count: stats[:purchases][user.id])
+      )
+    end
+
+    def user_profile_activity(user)
+      @user_profile_activity ||= {}
+      serializer = @user_profile_activity[user.id] ||= Community::UserProfileActivitySerializer.new(
+        user: user,
+        viewer: current_user
+      )
+      mark_viewer_scoped_no_store_response! if serializer.visible?
+      serializer
     end
   end
 end

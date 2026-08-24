@@ -1090,6 +1090,12 @@ export default {
       "followingOnly": "仅我关注的人",
       "staffOnly": "仅管理团队"
     },
+    "activityPrivacy": {
+      "edit": "活动隐私",
+      "collapse": "收起活动隐私",
+      "label": "公开显示我的活动摘要",
+      "description": "任何人都可看到我的最后活动时间、在线状态、购买计数、论坛积分与签到，以及当前或最近的 Minecraft 服务器在线信息；账户私密详情仍保持隐藏。"
+    },
     "bio": "个人简介",
     "bioPlaceholder": "介绍一下自己…",
     "signaturePrefix": "签名：",

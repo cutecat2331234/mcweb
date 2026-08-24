@@ -106,6 +106,7 @@ module Identity
       session_record = create_test_session(@user).value.fetch(:session)
       original_email = @user.email
       original_username = @user.username
+      @user.update!(forum_profile_activity_public: true)
 
       result = CloseAccount.call(
         user: @user,
@@ -123,6 +124,7 @@ module Identity
       refute_equal original_email, @user.email
       refute_equal original_username, @user.username
       assert_nil @user.display_name
+      refute @user.forum_profile_activity_public?
       assert session_record.reload.revoked?
 
       audit = AuditLog.find_by!(action: "identity.account_closed", resource_id: @user.id)

@@ -15,6 +15,7 @@ import Textarea from '@/components/ui/Textarea.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import FileInput from '@/components/ui/FileInput.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import UserLink from '@/components/portal/UserLink.vue'
@@ -40,6 +41,7 @@ const props = defineProps<{
     groups?: Array<{ name: string; color: string | null; banner: string | null }>
     forum_flair_color_hex?: string | null
     forum_pm_policy?: string
+    forum_profile_activity_public?: boolean
     avatar_url: string
     bio: string | null
     trust_level: number
@@ -207,7 +209,7 @@ const profileSections = computed(() => props.profile_sections?.length
   ? props.profile_sections
   : [ 'minecraft', 'trust', 'memberships', 'roles', 'game_groups' ])
 
-type ProfileEditPanel = 'title' | 'bio' | 'signature' | 'fields' | null
+type ProfileEditPanel = 'title' | 'bio' | 'signature' | 'privacy' | 'fields' | null
 const profileEditPanel = ref<ProfileEditPanel>(null)
 const bioForm = useForm({
   user: {
@@ -216,6 +218,11 @@ const bioForm = useForm({
     forum_flair_color_hex: props.profile.forum_flair_color_hex || '',
     forum_signature: props.profile.forum_signature || '',
     forum_pm_policy: props.profile.forum_pm_policy || 'everyone',
+  },
+})
+const activityPrivacyForm = useForm({
+  user: {
+    forum_profile_activity_public: props.profile.forum_profile_activity_public === true,
   },
 })
 
@@ -277,6 +284,15 @@ function toggleProfileEdit(panel: ProfileEditPanel) {
 
 function saveBio() {
   bioForm.patch(`/app/forum/users/${props.profile.username}`, {
+    preserveScroll: true,
+    onSuccess: () => {
+      profileEditPanel.value = null
+    },
+  })
+}
+
+function saveActivityPrivacy() {
+  activityPrivacyForm.patch(`/app/forum/users/${props.profile.username}`, {
     preserveScroll: true,
     onSuccess: () => {
       profileEditPanel.value = null
@@ -522,6 +538,9 @@ function saveWallEdit(
             <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('signature')">
               {{ profileEditPanel === 'signature' ? t('userProfile.collapseSignature') : t('userProfile.editSignature') }}
             </Button>
+            <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('privacy')">
+              {{ profileEditPanel === 'privacy' ? t('userProfile.activityPrivacy.collapse') : t('userProfile.activityPrivacy.edit') }}
+            </Button>
             <Button v-if="profile.can_edit && hasEditableCustomFields" type="button" size="sm" variant="outline" @click="toggleProfileEdit('fields')">
               {{ profileEditPanel === 'fields' ? t('userProfile.collapseCustomFields') : t('userProfile.editCustomFields') }}
             </Button>
@@ -751,6 +770,20 @@ function saveWallEdit(
     </select>
     <div class="flex flex-wrap justify-end gap-2 sm:justify-start">
       <Button type="submit" size="sm" :disabled="bioForm.processing">{{ t('common.save') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>
+    </div>
+  </form>
+
+  <form v-if="profileEditPanel === 'privacy'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveActivityPrivacy">
+    <label class="flex items-start gap-3 text-sm">
+      <Checkbox v-model="activityPrivacyForm.user.forum_profile_activity_public" class="mt-0.5" />
+      <span>
+        <span class="block font-medium">{{ t('userProfile.activityPrivacy.label') }}</span>
+        <span class="mt-1 block text-muted-foreground">{{ t('userProfile.activityPrivacy.description') }}</span>
+      </span>
+    </label>
+    <div class="flex gap-2">
+      <Button type="submit" size="sm" :disabled="activityPrivacyForm.processing">{{ t('common.save') }}</Button>
       <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>
     </div>
   </form>

@@ -179,6 +179,7 @@ module Identity
         username: anonymized_username,
         display_name: nil,
         bio: nil,
+        forum_profile_activity_public: false,
         email_verified: false,
         email_verified_at: nil,
         developer_mode_email_verified: false,

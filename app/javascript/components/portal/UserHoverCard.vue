@@ -41,7 +41,6 @@ export interface UserCardData {
   following?: boolean
   ingame_online?: boolean
   ingame_server?: string | null
-  last_seen_ingame_at?: string | null
 }
 
 const open = ref(false)

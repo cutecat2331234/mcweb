@@ -9,7 +9,7 @@ module Community
 
     def card
       user = User.active.find_by!(username: params[:id])
-      visibility = Community::UserProfileVisibility.new(user: user, viewer: current_user)
+      activity = user_profile_activity(user)
       trust = Community::TrustLevel.level_info(user)
       posts_count = listed_posts_by(user).count
       badges = user.user_badges.includes(:badge).order(granted_at: :desc).limit(3).map do |ub|
@@ -44,25 +44,15 @@ module Community
         following: following
       }
 
-      if visibility.private_activity?
-        ingame = Minecraft::IngameStatusForUser.call(user: user)
-        ingame_data = ingame.success? ? ingame.value : {}
-        payload.merge!(
-          last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
-          online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
-          ingame_online: ingame_data[:ingame_online] == true,
-          ingame_server: ingame_data[:ingame_server],
-          last_seen_ingame_at: ingame_data[:last_seen_ingame_at]
-        )
-      end
+      payload.merge!(activity.card)
 
       render json: payload
     end
 
     def show
       user = User.find_by!(username: params[:id])
-      visibility = Community::UserProfileVisibility.new(user: user, viewer: current_user)
-      private_activity_visible = visibility.private_activity?
+      activity = user_profile_activity(user)
+      visibility = activity.visibility
       User.where(id: user.id).update_all("forum_profile_views = forum_profile_views + 1") if logged_in? && current_user.id != user.id
       tab = params[:tab].to_s.in?(%w[topics posts store assigned minecraft]) ? params[:tab] : "topics"
       topics_scope = Community::ForumAccess.listed_topic_scope(
@@ -112,7 +102,10 @@ module Community
         }
       end
       store_orders = if logged_in? && current_user.id == user.id
-                       Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed])
+                       Commerce::Order.where(
+                         user: user,
+                         status: Community::UserProfileActivitySerializer::COMPLETED_ORDER_STATUSES
+                       )
                          .order(created_at: :desc).limit(10).map do |order|
                          {
                            order_number: order.order_number,
@@ -163,7 +156,10 @@ module Community
           warning_points: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? Community::UserWarning.total_points_for(user) : nil,
           store_credit_label: (logged_in? && current_user.id == user.id && user.store_credit_cents.to_i.positive?) ? format_money(user.store_credit_cents.to_i, "CNY") : nil,
           store_wallet_url: (logged_in? && current_user.id == user.id) ? store_wallet_path : nil
-        }.merge(private_profile_activity(user, visible: private_activity_visible)),
+        }
+          .merge(activity.profile)
+          .merge(private_profile_details(user, visibility: visibility))
+          .merge(profile_activity_preference(user, visibility: visibility)),
         warnings: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? user.forum_warnings.recent.limit(10).map do |warning|
           {
             reason: warning.reason,
@@ -209,13 +205,13 @@ module Community
         role_names: visibility.role_assignments? ? user.roles.order(:name).pluck(:name) : [],
         game_permission_groups: visibility.game_permission_groups? ? serialize_game_permission_groups(user) : [],
         memberships: serialized_memberships(user, visibility: visibility),
-        minecraft: serialize_minecraft_profile(user, private_activity_visible: private_activity_visible),
+        minecraft: serialize_minecraft_profile(user, activity: activity),
         skin_mode: SiteSetting.get("minecraft.profile.skin_mode", "2d"),
         profile_sections: SiteSetting.get("minecraft.profile.sections", "minecraft,trust,roles,game_groups").to_s.split(",").map(&:strip).reject(&:blank?),
         custom_fields: Community::SerializeUserFields.for(user: user, viewer: current_user),
         profile_wall: profile_wall_props(user),
         profile_posts: serialize_profile_posts(user)
-      }
+      }, encrypt_history: true
     end
 
     def update
@@ -247,12 +243,14 @@ module Community
         user_saved = user.update(user_params)
         raise ActiveRecord::Rollback unless user_saved
 
-        field_result = Community::SyncUserFieldValues.call(
-          user: user,
-          values: params[:user_fields].present? ? params[:user_fields].to_unsafe_h : {},
-          context: :profile
-        )
-        raise ActiveRecord::Rollback unless field_result.success?
+        if params.key?(:user_fields)
+          field_result = Community::SyncUserFieldValues.call(
+            user: user,
+            values: params[:user_fields].present? ? params[:user_fields].to_unsafe_h : {},
+            context: :profile
+          )
+          raise ActiveRecord::Rollback unless field_result.success?
+        end
       end
 
       if !user_saved
@@ -291,7 +289,14 @@ module Community
     end
 
     def user_params
-      permitted = params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex, :forum_pm_policy)
+      permitted = params.require(:user).permit(
+        :bio,
+        :forum_title,
+        :forum_signature,
+        :forum_flair_color_hex,
+        :forum_pm_policy,
+        :forum_profile_activity_public
+      )
       permitted.delete(:forum_pm_policy) unless Community::PmPolicy::POLICIES.include?(permitted[:forum_pm_policy])
       enforce_signature_rules!(permitted)
       permitted
@@ -355,34 +360,20 @@ module Community
       I18n.t("mcweb.labels.account_type.#{account_type}", default: account_type.to_s)
     end
 
-    def private_profile_activity(user, visible:)
-      return {} unless visible
+    def private_profile_details(user, visibility:)
+      return {} unless visibility.private_activity?
 
-      latest_check_in = Community::CheckIn.where(user: user).order(checked_on: :desc).first
-      data = {
-        forum_points: Community::PointAccount.find_by(user: user, currency: "points")&.balance.to_i,
-        recent_point_transactions: Community::PointTransaction
-          .where(user: user, currency: "points")
-          .order(created_at: :desc)
-          .limit(8)
-          .map do |transaction|
-            {
-              amount: transaction.amount,
-              reason: t("mcweb.forum.points.reasons.#{transaction.reason}", default: transaction.reason),
-              balance_after: transaction.balance_after,
-              created_at: l(transaction.created_at, format: :short)
-            }
-          end,
-        check_in_streak: (latest_check_in&.checked_on && latest_check_in.checked_on >= Date.current - 1 ? latest_check_in.streak : 0).to_i,
-        check_in_total: Community::CheckIn.where(user: user).count,
-        last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
-        online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
+      {
         profile_views: user.forum_profile_views,
-        orders_count: Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).count,
-        trust_progress: Community::TrustLevel.progress_for(user)
+        trust_progress: Community::TrustLevel.progress_for(user),
+        **(visibility.owner? ? { forum_pm_policy: user.forum_pm_policy } : {})
       }
-      data[:forum_pm_policy] = user.forum_pm_policy if logged_in? && current_user.id == user.id
-      data
+    end
+
+    def profile_activity_preference(user, visibility:)
+      return {} unless visibility.owner?
+
+      { forum_profile_activity_public: user.forum_profile_activity_public? }
     end
 
     def serialized_memberships(user, visibility:, limit: nil)
@@ -463,7 +454,7 @@ module Community
       end
     end
 
-    def serialize_minecraft_profile(user, private_activity_visible:)
+    def serialize_minecraft_profile(user, activity:)
       account = primary_minecraft_account(user)
       unless account
         return {
@@ -495,10 +486,15 @@ module Community
         skin_full_url: cached_skin_path(identity, :skin_full_file, "full"),
         skin_texture_url: cached_skin_path(identity, :skin_texture_file, "skin"),
         skin_model: identity.skin_model,
-        last_seen_ingame_at: private_activity_visible ? identity.last_seen_ingame_at&.then { |time| l(time, format: :short) } : nil,
         fields: fields,
         link_url: (logged_in? && current_user.id == user.id) ? minecraft_link_path : nil
-      }
+      }.merge(activity.minecraft(identity: identity))
+    end
+
+    def user_profile_activity(user)
+      serializer = Community::UserProfileActivitySerializer.new(user: user, viewer: current_user)
+      mark_viewer_scoped_no_store_response! if serializer.visible?
+      serializer
     end
 
     def minecraft_profile_field_visible?(definition, user:)

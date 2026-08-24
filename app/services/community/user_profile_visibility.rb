@@ -12,7 +12,7 @@ module Community
     PRIVATE_MEMBER_SORTS = %w[active online purchases].freeze
 
     def self.private_directory_visible?(viewer:)
-      viewer&.id.present? && viewer.permission?(PRIVATE_ACTIVITY_PERMISSION)
+      viewer&.persisted? && viewer.permission?(PRIVATE_ACTIVITY_PERMISSION)
     end
 
     def initialize(user:, viewer:)
@@ -24,6 +24,18 @@ module Community
       return false unless @viewer && @user
 
       same_account? || self.class.private_directory_visible?(viewer: @viewer)
+    end
+
+    # Public profile activity is deliberately narrower than private activity.
+    # A member can opt in to the summary fields serialized by
+    # UserProfileActivitySerializer without exposing private-only account
+    # details such as membership expiry, profile views, or internal roles.
+    def activity_summary?
+      private_activity? || public_activity_opt_in?
+    end
+
+    def owner?
+      same_account?
     end
 
     def account_type?
@@ -40,12 +52,20 @@ module Community
 
     private
 
+    def persisted_user?
+      @user&.persisted?
+    end
+
+    def public_activity_opt_in?
+      persisted_user? && @user.active? && @user.forum_profile_activity_public?
+    end
+
     def same_account?
-      @viewer&.id.present? && @user&.id.present? && @viewer.id == @user.id
+      @viewer&.persisted? && @user&.persisted? && @viewer.id == @user.id
     end
 
     def persisted_viewer_permission?(permission)
-      @viewer&.id.present? && @viewer.permission?(permission)
+      @viewer&.persisted? && @viewer.permission?(permission)
     end
   end
 end

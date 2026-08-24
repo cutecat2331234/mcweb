@@ -59,7 +59,9 @@ class Community::UserCardEnrichmentTest < ActionDispatch::IntegrationTest
     data = JSON.parse(response.body)
     assert_equal "Hello bio", data["bio"]
     assert data.key?("likes_received")
-    assert data.key?("online")
+    %w[last_seen_at online ingame_online ingame_server last_seen_ingame_at].each do |key|
+      refute data.key?(key), "ordinary viewer card leaked #{key}"
+    end
   end
 end
 

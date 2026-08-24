@@ -1090,6 +1090,12 @@ export default {
       "followingOnly": "Only people I follow",
       "staffOnly": "Staff only"
     },
+    "activityPrivacy": {
+      "edit": "Activity privacy",
+      "collapse": "Close activity privacy",
+      "label": "Show my activity summary publicly",
+      "description": "Anyone can see my last-seen and online status, purchase count, forum points and check-ins, and current or recent Minecraft server presence. Private account details stay hidden."
+    },
     "bio": "Bio",
     "bioPlaceholder": "Tell us about yourself…",
     "signaturePrefix": "Signature:",

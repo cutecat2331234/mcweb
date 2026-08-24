@@ -95,6 +95,11 @@ module Mcweb
       ].each do |trigger|
         assert_includes schema, "CREATE TRIGGER #{trigger}"
       end
+
+      outcome_contract = schema[/CREATE OR REPLACE FUNCTION public\.forum_report_outcome_deliveries_validate_insert\(\).*?\$function\$;/m]
+      assert_predicate outcome_contract, :present?
+      assert_includes outcome_contract, "'/app/forum/reports/' || report_reference"
+      refute_includes outcome_contract, "'/app/forum/reports/' || reports.public_id"
     end
 
     test "fresh database schema includes report appeal and secure evidence guards" do

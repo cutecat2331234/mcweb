@@ -784,7 +784,6 @@ class AddCommunityReportAppeals < ActiveRecord::Migration[8.1]
   def replace_report_outcome_delivery_contract(use_public_ids:)
     metadata_id_key = use_public_ids ? "report_public_id" : "report_id"
     metadata_id_value = use_public_ids ? "reports.public_id" : "reports.id::text"
-    path_value = use_public_ids ? "reports.public_id" : "reports.id::text"
     execute <<~SQL
       CREATE OR REPLACE FUNCTION forum_report_outcome_deliveries_validate_insert()
       RETURNS trigger
@@ -827,7 +826,7 @@ class AddCommunityReportAppeals < ActiveRecord::Migration[8.1]
            OR notification_kind IS DISTINCT FROM 'forum.report_outcome'
            OR notification_metadata ->> '#{metadata_id_key}' IS DISTINCT FROM report_reference
            OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM NEW.public_outcome_code
-           OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/reports/' || #{path_value} THEN
+           OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/reports/' || report_reference THEN
           RAISE EXCEPTION 'forum report outcome delivery contract is invalid';
         END IF;
 

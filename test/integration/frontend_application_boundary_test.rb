@@ -30,12 +30,39 @@ class FrontendApplicationBoundaryTest < ActionDispatch::IntegrationTest
   test "cross-application mutation is rejected without replay location" do
     post "/app/forum/drafts", params: { draft: {} }, headers: {
       "X-Inertia" => "true",
-      "X-McWeb-Application" => "account"
+      "X-McWeb-Application" => "account",
+      "HTTP_REFERER" => "http://www.example.com/app/account"
     }
 
     assert_response :conflict
     assert_nil response.headers["X-Inertia-Location"]
     assert_equal "/app/forum/latest", response.headers["X-McWeb-Safe-Location"]
+    assert_equal "account", request.headers["X-McWeb-Application"]
+    assert_equal "http://www.example.com/app/account", request.referer
+  end
+
+  test "raw non-Inertia mutation without a source remains a document recovery" do
+    post "/app/forum/drafts",
+      params: { draft: {} },
+      frontend_application_source: false
+
+    assert_response :see_other
+    assert_redirected_to "/app/forum/latest"
+    assert_nil request.headers["X-McWeb-Application"]
+    assert_nil request.referer
+  end
+
+  test "raw Inertia mutation without a source remains a conflict" do
+    post "/app/forum/drafts",
+      params: { draft: {} },
+      headers: { "X-Inertia" => "true" },
+      frontend_application_source: false
+
+    assert_response :conflict
+    assert_nil response.headers["X-Inertia-Location"]
+    assert_equal "/app/forum/latest", response.headers["X-McWeb-Safe-Location"]
+    assert_nil request.headers["X-McWeb-Application"]
+    assert_nil request.referer
   end
 
   test "download endpoint cannot be absorbed by an application visit" do
@@ -57,5 +84,7 @@ class FrontendApplicationBoundaryTest < ActionDispatch::IntegrationTest
 
     assert_response :conflict
     assert_nil response.headers["X-Inertia-Location"]
+    assert_equal "forged-application", request.headers["X-McWeb-Application"]
+    assert_nil request.referer
   end
 end

@@ -23,6 +23,7 @@ require "rails/test_help"
 require "minitest/reporters" unless ENV["CI"].present?
 require "active_job/test_helper"
 require "ostruct"
+require "uri"
 require_relative "support/stripe_test_helpers"
 
 unless ENV["LOCKBOX_MASTER_KEY"].to_s.match?(/\A\h{64}\z/i)
@@ -30,6 +31,102 @@ unless ENV["LOCKBOX_MASTER_KEY"].to_s.match?(/\A\h{64}\z/i)
 end
 Lockbox.master_key = ENV["LOCKBOX_MASTER_KEY"]
 Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new unless ENV["CI"].present?
+
+# Integration tests written before the frontend was split into independently
+# owned applications do not carry the document source that a real browser sends
+# with mutations. Keep production boundary enforcement strict while giving those
+# tests a registry-derived, same-application source by default.
+module Mcweb
+  module FrontendApplicationTestRequestDefaults
+    SOURCE_SIGNAL_KEYS = %w[X_MCWEB_APPLICATION REFERER].freeze
+    SOURCEABLE_ROUTE_KINDS = %w[application_action shared_action].freeze
+
+    def process(
+      method,
+      path,
+      params: nil,
+      headers: nil,
+      env: nil,
+      xhr: false,
+      as: nil,
+      frontend_application_source: true
+    )
+      request_headers = if frontend_application_source
+        frontend_application_test_headers(method:, path:, headers:, env:)
+      else
+        headers
+      end
+
+      super(method, path, params:, headers: request_headers, env:, xhr:, as:)
+    end
+
+    private
+
+    def frontend_application_test_headers(method:, path:, headers:, env:)
+      return headers unless Rails.env.test?
+      return headers if frontend_application_source_declared?(headers, env)
+
+      registry = Frontend::ApplicationRegistry.instance
+      route_match = registry.resolve(
+        path: frontend_application_test_route_path(path),
+        method: method.to_s.upcase
+      )
+      return headers unless route_match && SOURCEABLE_ROUTE_KINDS.include?(route_match.kind)
+
+      source = if route_match.kind == "application_action"
+        route_match.application
+      else
+        frontend_application_shared_action_source(registry, route_match)
+      end
+      return headers unless source
+
+      headers.to_h.merge(
+        "X-McWeb-Application" => source.id,
+        "HTTP_REFERER" => frontend_application_test_referer(source)
+      )
+    end
+
+    def frontend_application_source_declared?(headers, env)
+      [ headers, env ].compact.any? do |source|
+        source.to_h.each_key.any? do |key|
+          normalized = key.to_s.upcase.tr("-", "_").delete_prefix("HTTP_")
+          SOURCE_SIGNAL_KEYS.include?(normalized)
+        end
+      end
+    end
+
+    def frontend_application_shared_action_source(registry, route_match)
+      recovery_application = if route_match.safe_get_path.present?
+        registry.resolve(path: route_match.safe_get_path, method: "GET")&.application
+      end
+      if recovery_application && registry.source_allowed?(route_match, recovery_application.id)
+        return recovery_application
+      end
+
+      route_match.allowed_source_applications.each do |application_id|
+        application = registry.application(application_id)
+        return application if application
+      end
+
+      registry.applications.find do |application|
+        registry.source_allowed?(route_match, application.id)
+      end
+    end
+
+    def frontend_application_test_route_path(path)
+      URI.parse(path.to_s).path.presence || "/"
+    rescue URI::InvalidURIError
+      path.to_s
+    end
+
+    def frontend_application_test_referer(application)
+      protocol = https? ? "https" : "http"
+      "#{protocol}://#{host}#{application.landing_path}"
+    end
+  end
+end
+
+ActionDispatch::Integration::Session.prepend(Mcweb::FrontendApplicationTestRequestDefaults)
 
 module ActiveSupport
   class TestCase

@@ -243,6 +243,8 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert session[:session_token].present? || cookies[:session_token].present?
 
     delete identity_session_path
+    assert_equal "website", request.headers["X-McWeb-Application"]
+    assert_equal "http://www.example.com/", request.referer
     assert_response :see_other
     assert_redirected_to signed_out_landing_path
     assert_not session[:session_token].present?
@@ -256,6 +258,8 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
 
     delete identity_session_path, headers: { "X-Inertia" => "true" }
 
+    assert_equal "website", request.headers["X-McWeb-Application"]
+    assert_equal "http://www.example.com/", request.referer
     assert_response :conflict
     assert_equal signed_out_landing_path, response.headers["X-Inertia-Location"]
     assert_equal I18n.t("mcweb.flash.sign_out_success"), flash[:notice]

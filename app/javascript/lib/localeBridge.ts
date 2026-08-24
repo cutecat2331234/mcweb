@@ -1,11 +1,13 @@
-import type { AppLocale } from '@/lib/i18nRuntime'
+import {
+  canonicalAppLocale,
+  type AppLocale,
+} from '@/lib/i18nRuntime'
 
 export const LOCALE_COOKIE_NAME = 'mcweb_locale'
 const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 export function validatedLocale(value: unknown): AppLocale | null {
-  if (value === 'zh-CN' || value === 'en') return value
-  return null
+  return canonicalAppLocale(value)
 }
 
 export function readLocaleCookie(): AppLocale | null {
@@ -18,7 +20,10 @@ export function readLocaleCookie(): AppLocale | null {
     ?.slice(prefix.length)
   if (!value) return null
   try {
-    return validatedLocale(decodeURIComponent(value))
+    const decoded = decodeURIComponent(value)
+    const locale = validatedLocale(decoded)
+    if (locale && decoded !== locale) writeLocaleCookie(locale)
+    return locale
   } catch {
     return null
   }

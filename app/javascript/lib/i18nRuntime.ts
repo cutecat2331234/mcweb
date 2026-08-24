@@ -12,12 +12,36 @@ export interface MissingTranslationDetail {
   type: string
 }
 
-export function normalizeAppLocale(value: unknown): AppLocale {
-  const raw = String(value || '').trim().toLowerCase().replace('_', '-')
+export function canonicalAppLocale(value: unknown): AppLocale | null {
+  const raw = String(value || '').trim().toLowerCase().replaceAll('_', '-')
   if (raw === 'zh' || raw === 'zh-cn' || raw === 'zh-hans') return 'zh-CN'
   if (raw === 'en' || raw === 'en-us' || raw === 'en-gb') return 'en'
-  const match = SUPPORTED_LOCALES.find((locale) => locale.toLowerCase() === raw)
-  return match || 'zh-CN'
+  return SUPPORTED_LOCALES.find((locale) => locale.toLowerCase() === raw) ?? null
+}
+
+export function normalizeAppLocale(value: unknown): AppLocale {
+  return canonicalAppLocale(value) ?? 'zh-CN'
+}
+
+function isLocaleMessageRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function mergeLocaleMessages(
+  domains: readonly Record<string, unknown>[],
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = {}
+
+  for (const domain of domains) {
+    for (const [key, value] of Object.entries(domain)) {
+      const current = merged[key]
+      merged[key] = isLocaleMessageRecord(current) && isLocaleMessageRecord(value)
+        ? mergeLocaleMessages([current, value])
+        : value
+    }
+  }
+
+  return merged
 }
 
 export function captureMissingTranslation(locale: string, key: string, type = 'translate') {
@@ -41,8 +65,9 @@ export function missingTranslation(
   key: string,
   type = 'translate',
 ): string | undefined {
-  captureMissingTranslation(locale, key, type)
-  return locale.toLowerCase().startsWith('en')
+  const canonicalLocale = normalizeAppLocale(locale)
+  captureMissingTranslation(canonicalLocale, key, type)
+  return canonicalLocale === 'en'
     ? MISSING_TRANSLATION_PLACEHOLDER
     : undefined
 }

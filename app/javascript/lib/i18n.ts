@@ -8,6 +8,7 @@ import arcoEnUS from '@arco-design/web-vue/es/locale/lang/en-us.js'
 import arcoZhCN from '@arco-design/web-vue/es/locale/lang/zh-cn.js'
 import type { ArcoLang } from '@arco-design/web-vue/es/locale/interface.js'
 import {
+  mergeLocaleMessages,
   missingTranslation,
   normalizeAppLocale,
   type AppLocale,
@@ -138,9 +139,9 @@ async function loadLocaleMessages(
   locale: AppLocale,
   domains: readonly string[],
 ): Promise<AppMessages> {
-  return Object.assign({}, ...(await Promise.all(
+  return mergeLocaleMessages(await Promise.all(
     domains.map((domain) => loadLocaleDomain(locale, domain)),
-  )))
+  ))
 }
 
 export function preloadAppLocale(
@@ -163,9 +164,13 @@ export async function createAppI18n(
     legacy: false,
     globalInjection: true,
     locale: initialLocale,
-    // A fallback language would force every visitor to download a second,
-    // otherwise unused locale bundle. Missing-copy checks run in CI instead.
-    fallbackLocale: false,
+    // Keep each application on its canonical locale. In particular, Vue i18n
+    // must not turn a zh-CN miss into an implicit lookup against a non-existent
+    // "zh" locale, nor download another language domain as a fallback.
+    fallbackLocale: {
+      'zh-CN': [],
+      en: [],
+    },
     missingWarn: false,
     fallbackWarn: false,
     missing: (missingLocale, key, _instance, type) => (

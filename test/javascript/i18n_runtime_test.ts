@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import test from 'node:test'
 import {
+  canonicalAppLocale,
+  mergeLocaleMessages,
   missingTranslation,
   MISSING_TRANSLATION_EVENT,
   normalizeAppLocale,
@@ -24,6 +26,30 @@ test('application locale normalization stays explicit', () => {
   assert.equal(normalizeAppLocale('zh_Hans'), 'zh-CN')
   assert.equal(normalizeAppLocale('EN-gb'), 'en')
   assert.equal(normalizeAppLocale('unsupported'), 'zh-CN')
+  assert.equal(canonicalAppLocale('zh'), 'zh-CN')
+  assert.equal(canonicalAppLocale('unsupported'), null)
+})
+
+test('application locale domains extend shared roots without erasing base copy', () => {
+  const merged = mergeLocaleMessages([
+    {
+      admin: {
+        overview: 'Overview',
+        dashboard: { title: 'Dashboard' },
+      },
+    },
+    {
+      admin: {
+        chatManagement: { nav: 'Channel management' },
+      },
+      enterprise: { nav: { channels: 'Channels' } },
+    },
+  ])
+
+  assert.equal(messageAt(merged, 'admin.overview'), 'Overview')
+  assert.equal(messageAt(merged, 'admin.dashboard.title'), 'Dashboard')
+  assert.equal(messageAt(merged, 'admin.chatManagement.nav'), 'Channel management')
+  assert.equal(messageAt(merged, 'enterprise.nav.channels'), 'Channels')
 })
 
 test('locale synchronization keeps the document language aligned after SPA visits', () => {
@@ -159,7 +185,7 @@ test('only the active locale is loaded during application bootstrap', () => {
   assert.match(source, /en: \(\) => import\(['"]@\/locales\/en['"]\)/)
   assert.doesNotMatch(source, /import\s+zhCN\s+from/)
   assert.doesNotMatch(source, /import\s+en\s+from/)
-  assert.match(source, /fallbackLocale:\s*false/)
+  assert.match(source, /fallbackLocale:\s*\{[\s\S]*?'zh-CN': \[\][\s\S]*?en: \[\]/)
 })
 
 test('runtime translation misses are reported once and never render the raw key', () => {
@@ -177,6 +203,10 @@ test('runtime translation misses are reported once and never render the raw key'
     assert.equal(second, '…')
     assert.doesNotMatch(first, /runtime\.contract/)
     assert.equal(reports.length, 2)
+    assert.equal(
+      reports[0]?.[0],
+      `[McWeb I18N] Missing translation: locale=zh-CN type=translate key=${missingKey}`,
+    )
     assert.equal(
       reports[1]?.[0],
       `[McWeb I18N] Missing translation: locale=en type=translate key=${missingKey}`,

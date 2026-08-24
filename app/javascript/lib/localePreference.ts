@@ -1,4 +1,5 @@
 import {
+  canonicalAppLocale,
   normalizeAppLocale,
   type AppLocale,
 } from './i18nRuntime'
@@ -25,11 +26,23 @@ export function readSharedAppLocale(): AppLocale | null {
 
   try {
     const stored = window.localStorage.getItem(SHARED_LOCALE_STORAGE_KEY)
-    if (stored === 'zh-CN' || stored === 'en') return stored
+    const locale = canonicalAppLocale(stored)
+    if (locale) {
+      if (stored !== locale) window.localStorage.setItem(SHARED_LOCALE_STORAGE_KEY, locale)
+      if (readLocaleCookie() !== locale) writeLocaleCookie(locale)
+      return locale
+    }
   } catch {
     // Fall through to the same-origin locale cookie shared with document renderers.
   }
-  return readLocaleCookie()
+  const cookieLocale = readLocaleCookie()
+  if (!cookieLocale) return null
+  try {
+    window.localStorage.setItem(SHARED_LOCALE_STORAGE_KEY, cookieLocale)
+  } catch {
+    // The canonical cookie still keeps document navigations consistent.
+  }
+  return cookieLocale
 }
 
 export function writeSharedAppLocale(locale: unknown): AppLocale {

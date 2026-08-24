@@ -1157,6 +1157,8 @@ module Frontend
     end
 
     def route_patterns_overlap?(left, right)
+      return false if exact_parent_and_descendant_glob?(left.pattern, right.pattern)
+
       route_segment_patterns_overlap?(
         left.pattern.split("/", -1),
         right.pattern.split("/", -1),
@@ -1164,6 +1166,12 @@ module Frontend
         0,
         {}
       )
+    end
+
+    def exact_parent_and_descendant_glob?(left, right)
+      [[left, right], [right, left]].any? do |parent, descendant|
+        !parent.include?("*") && descendant == "#{parent}/**"
+      end
     end
 
     def route_segment_patterns_overlap?(left, right, left_index, right_index, memo)

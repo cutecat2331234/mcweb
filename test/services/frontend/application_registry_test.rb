@@ -38,6 +38,8 @@ module Frontend
 
         registry = ApplicationRegistry.new(root:)
         assert_equal "channel", registry.launcher_application("/app").id
+        assert_equal "inertia_page", registry.resolve(path: "/app/chat", method: "GET").kind
+        assert_equal "api", registry.resolve(path: "/app/chat/sanctions", method: "GET").kind
         assert_equal "channel", registry.component_owner("Ee/Channels/Show").runtime_application_id
         assert_equal "staff", registry.component_owner("Pvp/Staff/Queue/Index").runtime_application_id
         assert_equal "admin", registry.component_owner("Admin/Pvp/Settings/Show").runtime_application_id

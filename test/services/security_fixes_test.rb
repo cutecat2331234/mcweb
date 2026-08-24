@@ -765,7 +765,7 @@ class SidekiqWebConstraintSecurityTest < ActiveSupport::TestCase
   ) do
     def get_header(name)
       return origin if name == "HTTP_ORIGIN"
-      return fetch_site if name == "HTTP_SEC_FETCH_SITE"
+      fetch_site if name == "HTTP_SEC_FETCH_SITE"
     end
   end
 

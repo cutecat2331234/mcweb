@@ -2686,6 +2686,7 @@ en:
         blocks:
           resource: Block
         nav:
+          title: Navigation
           resource: Navigation item
           invalid_page: The selected page was not found.
         pages:

@@ -2686,6 +2686,7 @@
         blocks:
           resource: 区块
         nav:
+          title: 导航
           resource: 导航项
           invalid_page: 找不到所选页面。
         pages:

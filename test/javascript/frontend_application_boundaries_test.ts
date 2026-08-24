@@ -59,6 +59,15 @@ test('navigation and prefetch resolve route kind instead of treating all app pat
   assert.doesNotMatch(prefetch, /PREFETCHABLE_PREFIXES/)
 })
 
+test('the client registry matches the server exact-root and descendant API contract', () => {
+  const clientRegistry = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    'utf8',
+  )
+  assert.match(clientRegistry, /function exactParentAndDescendantGlob/)
+  assert.match(clientRegistry, /if \(exactParentAndDescendantGlob\(left\.pattern, right\.pattern\)\) return false/)
+})
+
 test('downstream navigation visibility is a shared fail-closed server-prop contract', () => {
   const schema = readFileSync(
     resolve(root, 'config/frontend_applications/schema.json'),

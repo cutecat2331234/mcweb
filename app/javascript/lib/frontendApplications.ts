@@ -1282,6 +1282,8 @@ function routeLiteralPrefix(pattern: string): string {
 }
 
 function routePatternsOverlap(left: FrontendRouteRule, right: FrontendRouteRule): boolean {
+  if (exactParentAndDescendantGlob(left.pattern, right.pattern)) return false
+
   const leftSegments = left.pattern.split('/')
   const rightSegments = right.pattern.split('/')
   const memo = new Map<string, boolean>()
@@ -1327,6 +1329,12 @@ function routePatternsOverlap(left: FrontendRouteRule, right: FrontendRouteRule)
     return result
   }
   return overlaps(0, 0)
+}
+
+function exactParentAndDescendantGlob(left: string, right: string): boolean {
+  return [[left, right], [right, left]].some(([parent, descendant]) => (
+    !parent.includes('*') && descendant === `${parent}/**`
+  ))
 }
 
 function strictDescendantRoute(childPattern: string, parentPattern: string): boolean {

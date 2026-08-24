@@ -10,6 +10,7 @@ unless Mcweb::DeveloperMode.allow?(:disable_csp)
     policy.base_uri :self
     policy.object_src :none
     policy.frame_ancestors :self
+    policy.frame_src :self
     policy.form_action :self
     policy.script_src :self, :https, :unsafe_inline
     policy.style_src :self, :https, :unsafe_inline

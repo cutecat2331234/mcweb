@@ -348,6 +348,34 @@ html.dark body.mcweb-admin {
   overflow-wrap: anywhere;
 }
 
+/* Shared host surface for same-origin operational consoles. */
+.arco-admin-main .mc-admin-embedded-tool > .arco-card-body {
+  padding: 0;
+}
+
+.arco-admin-main .mc-admin-embedded-tool__viewport {
+  position: relative;
+  min-height: 600px;
+  background: var(--mc-admin-surface-raised);
+}
+
+.arco-admin-main .mc-admin-embedded-tool__status {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--mc-admin-surface-raised);
+}
+
+.arco-admin-main .mc-admin-embedded-tool__frame {
+  display: block;
+  width: 100%;
+  height: clamp(600px, calc(100dvh - 236px), 1080px);
+  border: 0;
+  background: #fff;
+}
+
 @media (max-width: 768px) {
   .arco-admin-main .arco-page-header {
     padding: var(--mc-page-header-padding, 14px) !important;
@@ -356,6 +384,14 @@ html.dark body.mcweb-admin {
 
   .arco-admin-main .arco-card {
     border-radius: 9px;
+  }
+
+  .arco-admin-main .mc-admin-embedded-tool__viewport {
+    min-height: 560px;
+  }
+
+  .arco-admin-main .mc-admin-embedded-tool__frame {
+    height: max(560px, calc(100dvh - 210px));
   }
 }
 

@@ -1,8 +1,10 @@
+require_relative "../lib/mcweb/sidekiq_web_frame_policy"
+
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
   constraints SidekiqWebConstraint do
-    mount Sidekiq::Web => "/jobs"
+    mount Mcweb::SidekiqWebFramePolicy.new(Sidekiq::Web), at: "/jobs"
   end
 
   root "website/home#index"
@@ -530,6 +532,7 @@ Rails.application.routes.draw do
       resources :jobs, only: %i[index] do
         post :run, on: :collection
       end
+      get "sidekiq", to: "sidekiq#index", as: :sidekiq
       resources :ip_bans, only: %i[index create destroy]
       resources :email_bans, only: %i[index new create edit update destroy]
       resources :api_keys, only: %i[index new create], path: "api-keys" do

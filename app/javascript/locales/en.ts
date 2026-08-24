@@ -1343,6 +1343,17 @@ export default {
     },
     settings: 'Settings',
     jobs: 'Background jobs',
+    sidekiq: {
+      nav: 'Sidekiq console',
+      title: 'Sidekiq console',
+      subtitle: 'Inspect queues, retries, scheduled work, and worker activity.',
+      loading: 'Loading Sidekiq console…',
+      loadFailedTitle: 'The Sidekiq console did not load',
+      loadFailedDescription: 'Retry the embedded console or open it in a new window.',
+      retry: 'Retry',
+      openStandalone: 'Open in new window',
+      frameTitle: 'Sidekiq operations console',
+    },
     jobsPage: {
       title: 'Background jobs',
       subtitle: 'Inspect recurring scheduling and open the Sidekiq operations dashboard.',
@@ -1358,7 +1369,7 @@ export default {
       manualExecution: 'Manual execution',
       available: 'Available',
       dashboardTitle: 'Sidekiq dashboard',
-      dashboardDescription: 'The dashboard opens as a separate server-rendered page for queue inspection, retries, and manual operations.',
+      dashboardDescription: 'Open the embedded Sidekiq console to inspect queues, retries, scheduled work, and worker activity.',
       openDashboard: 'Open Sidekiq dashboard',
       manualTasks: {
         title: 'Approved manual tasks',

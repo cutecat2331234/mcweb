@@ -22,7 +22,6 @@ module Admin
           queue_snapshot: queue_result.value
         ).value
         render inertia: "Admin/System/Jobs/Index", props: {
-          dashboardUrl: "/jobs",
           metricsUrl: admin_system_jobs_path,
           developerMode: {
             enabled: developer_mode_enabled,

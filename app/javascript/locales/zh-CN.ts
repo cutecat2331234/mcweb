@@ -1343,6 +1343,17 @@ export default {
     },
     settings: '设置',
     jobs: '后台任务',
+    sidekiq: {
+      nav: 'Sidekiq 控制台',
+      title: 'Sidekiq 控制台',
+      subtitle: '查看队列、重试、计划任务和工作进程状态。',
+      loading: '正在加载 Sidekiq 控制台…',
+      loadFailedTitle: 'Sidekiq 控制台未能加载',
+      loadFailedDescription: '请重试嵌入式控制台，或在新窗口中打开。',
+      retry: '重试',
+      openStandalone: '在新窗口中打开',
+      frameTitle: 'Sidekiq 运维控制台',
+    },
     jobsPage: {
       title: '后台任务',
       subtitle: '查看周期调度状态，并进入 Sidekiq 运维控制台。',
@@ -1358,7 +1369,7 @@ export default {
       manualExecution: '手动执行',
       available: '可用',
       dashboardTitle: 'Sidekiq 控制台',
-      dashboardDescription: '控制台会作为独立的服务端页面打开，可用于查看队列、重试和执行手动运维操作。',
+      dashboardDescription: '打开嵌入式 Sidekiq 控制台，查看队列、重试、计划任务和工作进程状态。',
       openDashboard: '打开 Sidekiq 控制台',
       manualTasks: {
         title: '受控手动任务',

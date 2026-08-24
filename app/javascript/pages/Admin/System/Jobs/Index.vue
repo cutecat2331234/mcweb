@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { router } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
 
@@ -75,7 +76,6 @@ type OperationsMetrics = {
 }
 
 const props = defineProps<{
-  dashboardUrl: string
   metricsUrl: string
   developerMode: {
     enabled: boolean
@@ -431,7 +431,7 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
             <a-typography-paragraph>
               {{ t('admin.jobsPage.dashboardDescription') }}
             </a-typography-paragraph>
-            <a-button type="primary" :href="dashboardUrl" long data-admin-hard-navigation>
+            <a-button type="primary" :href="adminRoutes.sidekiq" long>
               {{ t('admin.jobsPage.openDashboard') }}
             </a-button>
           </a-space>

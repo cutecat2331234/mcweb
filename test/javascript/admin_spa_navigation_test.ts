@@ -163,6 +163,7 @@ test('admin entry installs delegated SPA navigation and preserves intentional ha
   assert.match(entry, /applicationId: 'admin'/)
   assert.match(bootstrap, /installApplicationNavigation\(applicationId\)/)
   assert.match(layout, /href: adminRoutes\.jobs/)
+  assert.match(layout, /href: adminRoutes\.sidekiq/)
   assert.doesNotMatch(layout, /window\.location\.assign\(key\)/)
   assert.doesNotMatch(layout, /<Link :href="adminRoutes\.site"/)
   assert.match(settings, /function visitEntry\(url: string\)/)
@@ -234,7 +235,7 @@ test('admin source keeps internal links on Inertia or delegated Arco navigation 
       'app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue|exportUrl',
       'app/javascript/pages/Admin/System/DeveloperWorkbench/Show.vue|diagnosticUrl',
       'app/javascript/pages/Admin/System/Applications/Index.vue|plugin.homepage',
-      'app/javascript/pages/Admin/System/Jobs/Index.vue|dashboardUrl',
+      'app/javascript/pages/Admin/System/Sidekiq/Index.vue|adminRoutes.sidekiqWeb',
     ].sort(),
   )
 })

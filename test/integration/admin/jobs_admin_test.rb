@@ -20,7 +20,6 @@ module Admin
         assert_response :success
         assert_equal "Admin/System/Jobs/Index", inertia.component
         props = inertia.props.deep_symbolize_keys
-        assert_equal "/jobs", props.fetch(:dashboardUrl)
         assert_equal admin_system_jobs_path, props.fetch(:metricsUrl)
         assert_equal false, props.dig(:developerMode, :enabled)
         assert_nil props.dig(:developerMode, :profile)
@@ -76,7 +75,6 @@ module Admin
           assert_response :success
           assert_equal "Admin/System/Jobs/Index", inertia.component
           props = inertia.props.deep_symbolize_keys
-          assert_equal "/jobs", props.fetch(:dashboardUrl)
           assert_equal true, props.dig(:developerMode, :enabled)
           assert_equal "unrestricted", props.dig(:developerMode, :profile)
           assert_equal false, props.fetch(:automaticRegistration)

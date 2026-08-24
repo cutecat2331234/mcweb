@@ -574,6 +574,11 @@ const nav = computed<NavGroup[]>(() => {
           href: adminRoutes.jobs,
           permissionKey: 'system.jobs.read',
         },
+        {
+          label: t('admin.sidekiq.nav'),
+          href: adminRoutes.sidekiq,
+          permissionKey: 'system.jobs.read',
+        },
       ],
     },
   ]

@@ -175,6 +175,8 @@ export const adminRoutes = {
   pluginSettings: '/admin/system/plugin-settings',
   applications: '/admin/system/applications',
   jobs: '/admin/system/jobs',
+  sidekiq: '/admin/system/sidekiq',
+  sidekiqWeb: '/jobs',
   arcoDemo: '/admin/arco-demo',
   site: '/',
 } as const

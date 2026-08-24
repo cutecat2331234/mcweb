@@ -132,6 +132,7 @@ export default {
   },
   accountCenter: {
     title: '个人中心',
+    overview: '概览',
     subtitle: '查看你的身份、安全状态和需要处理的事项。',
     open: '打开',
     openItem: '打开{item}',

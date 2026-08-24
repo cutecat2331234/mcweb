@@ -25,6 +25,7 @@ test('portal application chrome preserves owned counters and status surfaces', (
   assert.match(layout, /marginLeft: compact \? '0' : 'var\(--mc-shell-sidebar-width, 248px\)'/)
   assert.match(layout, /width: compact \? '100%' : 'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
   assert.match(accountShell, /badgeProp: 'notifications\.unread_count'/)
+  assert.match(accountShell, /labelKey: 'accountCenter\.overview', href: routes\.account/)
   assert.match(forumShell, /badgeProp: 'messages_unread\.count'/)
   assert.match(storeShell, /badgeProp: 'cart\.count'/)
   assert.match(announcements, /frontendApplicationRequestHeaders\('forum'\)/)

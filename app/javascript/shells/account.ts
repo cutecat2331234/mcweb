@@ -9,7 +9,7 @@ export const accountShell: ApplicationShellAdapter = {
       id: 'account',
       labelKey: 'accountCenter.title',
       items: [
-        { labelKey: 'accountCenter.actions.profile', href: routes.account },
+        { labelKey: 'accountCenter.overview', href: routes.account },
         {
           labelKey: 'common.notifications',
           href: routes.accountNotifications,

@@ -132,6 +132,7 @@ export default {
   },
   accountCenter: {
     title: 'Account center',
+    overview: 'Overview',
     subtitle: 'Review your identity, security, and items that need attention.',
     open: 'Open',
     openItem: 'Open {item}',

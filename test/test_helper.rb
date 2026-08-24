@@ -109,6 +109,38 @@ module ActiveSupport
       }
     end
 
+    def request_from(application_id:, method:, path:, referer:, params: nil, headers: {}, **options)
+      source_headers = frontend_application_request_headers(
+        application_id: application_id,
+        referer: referer
+      )
+      request_headers = headers.to_h.each_with_object({}) do |(key, value), merged|
+        normalized_key = key.to_s.upcase.tr("-", "_")
+        next if normalized_key.in?(%w[X_MCWEB_APPLICATION HTTP_X_MCWEB_APPLICATION REFERER HTTP_REFERER])
+
+        merged[key] = value
+      end
+
+      process(
+        method.to_sym,
+        path,
+        params: params,
+        headers: request_headers.merge(source_headers),
+        **options
+      )
+    end
+
+    def sign_out_from(application_id:, referer:, headers: {}, **options)
+      request_from(
+        application_id: application_id,
+        method: :delete,
+        path: identity_session_path,
+        referer: referer,
+        headers: headers,
+        **options
+      )
+    end
+
     def create_test_session(user, **attributes)
       Identity::SessionManager.call(
         user: user,

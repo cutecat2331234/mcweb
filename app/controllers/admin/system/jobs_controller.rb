@@ -259,7 +259,7 @@ module Admin
 
       def nonnegative_result_count(value)
         count = Integer(value, exception: false)
-        count&.nonnegative? ? count : 0
+        count && count >= 0 ? count : 0
       end
 
       def worker_heartbeat_snapshot

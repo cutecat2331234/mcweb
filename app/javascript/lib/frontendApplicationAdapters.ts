@@ -123,7 +123,7 @@ function navigationSignature(
           || (item.permissionKey !== undefined && typeof item.permissionKey !== 'string')
           || (item.permissionAny !== undefined
             && (!Array.isArray(item.permissionAny) || item.permissionAny.length === 0
-              || item.permissionAny.some((permission) => typeof permission !== 'string')
+              || item.permissionAny.some((permission: unknown) => typeof permission !== 'string')
               || new Set(item.permissionAny).size !== item.permissionAny.length))
           || (item.capabilityKey !== undefined && typeof item.capabilityKey !== 'string')
           || (item.requiresAuthentication !== undefined

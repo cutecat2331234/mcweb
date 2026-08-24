@@ -165,6 +165,9 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 <template>
   <ConfigProvider :locale="arcoLocale" global>
+    <a href="#application-content" class="mc-shell-skip-link">
+      {{ t('common.skipToContent') }}
+    </a>
     <component
       :is="DeveloperModeTools"
       v-if="DeveloperModeTools && developerMode.enabled"

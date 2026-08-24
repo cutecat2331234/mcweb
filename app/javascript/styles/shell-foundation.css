@@ -37,6 +37,27 @@
   --mc-control-primary-background-active: #0e42d2;
 }
 
+.mc-shell-skip-link {
+  position: fixed;
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  z-index: 1000;
+  padding: var(--mc-space-2) var(--mc-space-3);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--border-radius-medium);
+  color: var(--color-text-1);
+  background: var(--color-bg-2);
+  box-shadow: 0 2px 8px var(--color-fill-3);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mc-shell-skip-link:focus-visible {
+  clip-path: none;
+  outline: 2px solid rgb(var(--primary-6));
+  outline-offset: 2px;
+}
+
 /*
  * Arco's default primary hover is too light for its white 14px label. Keep
  * shared portal, Staff, and Admin entrypoints on one accessible filled-button

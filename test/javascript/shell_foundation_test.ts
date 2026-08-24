@@ -134,6 +134,14 @@ test('page gutters step down through the shared responsive scale', () => {
   assert.match(foundation, /@media \(max-width: 479px\)[\s\S]*?--mc-page-gutter:\s*12px/)
 })
 
+test('portal shell exposes a focus-only skip link without motion', () => {
+  assert.match(portalLayout, /href="#application-content" class="mc-shell-skip-link"/)
+  assert.match(portalLayout, /id="application-content"[\s\S]*?tabindex="-1"/)
+  assert.match(foundation, /\.mc-shell-skip-link\s*\{[\s\S]*?clip-path:\s*inset\(50%\)/)
+  assert.match(foundation, /\.mc-shell-skip-link:focus-visible\s*\{[\s\S]*?clip-path:\s*none/)
+  assert.doesNotMatch(foundation, /\.mc-shell-skip-link[\s\S]{0,500}transition:/)
+})
+
 test('compound Arco detail views retain one token-backed content surface', () => {
   assert.match(
     foundation,

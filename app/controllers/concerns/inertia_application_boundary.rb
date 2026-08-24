@@ -6,7 +6,7 @@ module InertiaApplicationBoundary
   extend ActiveSupport::Concern
 
   APPLICATION_HEADER = "X-McWeb-Application"
-  VARY_HEADERS = ["X-Inertia", APPLICATION_HEADER].freeze
+  VARY_HEADERS = [ "X-Inertia", APPLICATION_HEADER ].freeze
 
   included do
     prepend_before_action :resolve_and_enforce_inertia_application_boundary
@@ -152,7 +152,7 @@ module InertiaApplicationBoundary
     uri = URI.parse(value)
     decoded_segments = uri.path.split("/").map { |segment| URI.decode_www_form_component(segment) }
     canonical_segments = decoded_segments.none? do |segment|
-      segment.in?([".", ".."]) || segment.match?(/[\\\/\x00-\x1f\x7f]/)
+      segment.in?([ ".", ".." ]) || segment.match?(/[\\\/\x00-\x1f\x7f]/)
     end
     uri.scheme.nil? && uri.host.nil? && uri.path.start_with?("/") && canonical_segments
   rescue URI::InvalidURIError, ArgumentError

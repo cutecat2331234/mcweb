@@ -97,7 +97,7 @@ module Admin
       }
       created_theme = ::Website::Theme.find_by!(key: created_key)
       assert_not created_theme.active?
-      assert_equal [active_theme.id], ::Website::Theme.active_themes.pluck(:id)
+      assert_equal [ active_theme.id ], ::Website::Theme.active_themes.pluck(:id)
     end
 
     test "website editors can update navigation but cannot orphan immutable Theme history" do

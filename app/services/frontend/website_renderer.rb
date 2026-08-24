@@ -169,7 +169,7 @@ module Frontend
         manifest = Rails.root.join("public/vite/.vite/manifest.json")
         next Digest::SHA256.file(manifest).hexdigest if manifest.file?
 
-        Digest::SHA256.hexdigest([File.mtime(__FILE__).to_f, File.size(__FILE__)].join(":"))
+        Digest::SHA256.hexdigest([ File.mtime(__FILE__).to_f, File.size(__FILE__) ].join(":"))
       },
       render: ce_inertia_render,
       preview: ce_inertia_render

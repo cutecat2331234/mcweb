@@ -317,7 +317,7 @@ module Frontend
             "its application style root #{style_root.inspect}"
         end
         unless entry_source.include?("applicationId: '#{descriptor.id}'") ||
-            entry_source.include?(%[applicationId: "#{descriptor.id}"])
+            entry_source.include?(%(applicationId: "#{descriptor.id}"))
           raise InvalidManifest,
             "#{descriptor.source}: entrypoint #{descriptor.entrypoint.inspect} does not bind " \
             "application #{descriptor.id.inspect}"
@@ -400,7 +400,7 @@ module Frontend
 
     def load_contributions!
       paths = @manifest_root.join("contributions/*.json").then { |pattern| Dir.glob(pattern.to_s).sort }
-      contributions = paths.map { |path| [read_json(path), relative_source(path)] }
+      contributions = paths.map { |path| [ read_json(path), relative_source(path) ] }
 
       contributions.each do |data, source|
         validate_contribution_header!(data, source)
@@ -442,7 +442,7 @@ module Frontend
           runtime_owner: descriptor.runtime_owner,
           adapter_module: descriptor.adapter_modules.last,
           page_roots: validate_page_roots!(
-            data.fetch("page_roots", ["app/javascript/pages"]),
+            data.fetch("page_roots", [ "app/javascript/pages" ]),
             source
           ),
           styles: descriptor.styles.reject { |style| SHARED_ADAPTER_STYLES.include?(style) },
@@ -559,7 +559,7 @@ module Frontend
         ui_adapter: validate_adapter_name!(data.fetch("ui_adapter"), source),
         styles:,
         locales:,
-        error_boundaries: [validate_adapter_name!(data.fetch("error_boundary"), source)],
+        error_boundaries: [ validate_adapter_name!(data.fetch("error_boundary"), source) ],
         capabilities:,
         budget:,
         launcher:,
@@ -679,7 +679,7 @@ module Frontend
       contribution_adapter_module = data["adapter_module"].present? ?
         validate_adapter_module!(data["adapter_module"], source, target.id) : nil
       contribution_page_roots = validate_page_roots!(
-        data.fetch("page_roots", ["app/javascript/pages"]),
+        data.fetch("page_roots", [ "app/javascript/pages" ]),
         source
       )
       contribution_budget = data["budget"].present? ? validate_budget!(data["budget"], source) : nil
@@ -721,7 +721,7 @@ module Frontend
         raise InvalidManifest,
           "#{source}: renderer_adapter extensions are allowed only as an exclusive Website renderer"
       end
-      if target.renderer_adapters.any? && target.renderer_adapters != [Frontend::WebsiteRenderer::CE_ADAPTER]
+      if target.renderer_adapters.any? && target.renderer_adapters != [ Frontend::WebsiteRenderer::CE_ADAPTER ]
         raise InvalidManifest,
           "#{source}: Website already has an exclusive renderer adapter #{target.renderer_adapters.first.inspect}"
       end
@@ -782,10 +782,10 @@ module Frontend
       end
       target.styles.replace(contribution_styles)
       target.locales.replace(contribution_locales)
-      target.error_boundaries.replace([contribution_error_boundary])
+      target.error_boundaries.replace([ contribution_error_boundary ])
       target.budget.replace(validate_budget!(data.fetch("budget"), source))
 
-      target.renderer_adapters.replace([adapter])
+      target.renderer_adapters.replace([ adapter ])
       target.renderer = RendererContract.new(
         adapter:,
         contribution_id: data.fetch("contribution_id"),
@@ -873,7 +873,7 @@ module Frontend
             item_source
           )
           authentication = raw_item.fetch("requires_authentication", false)
-          unless authentication.in?([true, false])
+          unless authentication.in?([ true, false ])
             raise InvalidManifest,
               "#{item_source}: requires_authentication must be a boolean"
           end
@@ -1021,14 +1021,14 @@ module Frontend
           "#{child.prefix.inspect} (#{child.source}) is not an allowed descendant contribution"
       end
 
-      @component_claims.sort_by! { |claim| [-claim.prefix.length, claim.prefix] }
+      @component_claims.sort_by! { |claim| [ -claim.prefix.length, claim.prefix ] }
     end
 
     def validate_route_rules!
       claims = {}
       @route_rules.each do |rule|
         rule.methods.each do |method|
-          key = [method, rule.pattern]
+          key = [ method, rule.pattern ]
           previous = claims[key]
           if previous
             raise InvalidManifest,
@@ -1047,7 +1047,7 @@ module Frontend
       end
 
       @route_rules.sort_by! do |rule|
-        [-rule.priority, -rule.specificity, rule.pattern, rule.application_id.to_s, rule.source]
+        [ -rule.priority, -rule.specificity, rule.pattern, rule.application_id.to_s, rule.source ]
       end
     end
 
@@ -1113,7 +1113,7 @@ module Frontend
       end
 
       if left.application_id.nil? || right.application_id.nil?
-        shared, owned = left.application_id.nil? ? [left, right] : [right, left]
+        shared, owned = left.application_id.nil? ? [ left, right ] : [ right, left ]
         return if shared.priority > owned.priority
 
         raise InvalidManifest,
@@ -1121,7 +1121,7 @@ module Frontend
       end
 
       if website_fallback_route?(left) || website_fallback_route?(right)
-        fallback, owned = website_fallback_route?(left) ? [left, right] : [right, left]
+        fallback, owned = website_fallback_route?(left) ? [ left, right ] : [ right, left ]
         return if owned.priority > fallback.priority
 
         raise InvalidManifest,
@@ -1129,7 +1129,7 @@ module Frontend
       end
 
       if preview_admin_overlap?(left, right)
-        preview, admin = left.application_id == "website_preview" ? [left, right] : [right, left]
+        preview, admin = left.application_id == "website_preview" ? [ left, right ] : [ right, left ]
         return if preview.priority > admin.priority
 
         raise InvalidManifest,
@@ -1142,7 +1142,7 @@ module Frontend
             "distinct contributions may not overlap routes: #{left.source} and #{right.source}"
         end
 
-        child, parent = left.contribution && !right.contribution ? [left, right] : [right, left]
+        child, parent = left.contribution && !right.contribution ? [ left, right ] : [ right, left ]
         allowed = child.contribution && strict_descendant_route?(child.pattern, parent.pattern) &&
           child.priority > parent.priority
         return if allowed
@@ -1169,13 +1169,13 @@ module Frontend
     end
 
     def exact_parent_and_descendant_glob?(left, right)
-      [[left, right], [right, left]].any? do |parent, descendant|
+      [ [ left, right ], [ right, left ] ].any? do |parent, descendant|
         !parent.include?("*") && descendant == "#{parent}/**"
       end
     end
 
     def route_segment_patterns_overlap?(left, right, left_index, right_index, memo)
-      key = [left_index, right_index]
+      key = [ left_index, right_index ]
       return memo[key] if memo.key?(key)
       return memo[key] = true if left_index == left.length && right_index == right.length
       if left_index == left.length
@@ -1239,7 +1239,7 @@ module Frontend
     end
 
     def preview_admin_overlap?(left, right)
-      [left.application_id, right.application_id].sort == %w[admin website_preview]
+      [ left.application_id, right.application_id ].sort == %w[admin website_preview]
     end
 
     def validate_shared_action_sources!
@@ -1284,7 +1284,7 @@ module Frontend
             "launcher #{path.inspect} must have a canonical GET document route"
         end
       end
-      @launchers.sort_by! { |launcher| [launcher.path, -launcher.priority, launcher.application_id] }
+      @launchers.sort_by! { |launcher| [ launcher.path, -launcher.priority, launcher.application_id ] }
     end
 
     def validate_application_resources!
@@ -1376,7 +1376,7 @@ module Frontend
 
     def freeze_registry!
       seen = {}
-      [@applications_by_id, @applications, @route_rules, @component_claims, @launchers]
+      [ @applications_by_id, @applications, @route_rules, @component_claims, @launchers ]
         .each { |value| deep_freeze(value, seen) }
     end
 
@@ -1473,7 +1473,7 @@ module Frontend
       candidate = value.to_s.tr("\\", "/")
       segments = candidate.split("/")
       invalid = candidate.blank? || candidate.start_with?("/") || candidate.include?("//") ||
-        candidate.include?(":") || segments.any? { |segment| segment.in?(["", ".", ".."]) } ||
+        candidate.include?(":") || segments.any? { |segment| segment.in?([ "", ".", ".." ]) } ||
         candidate.match?(/[\x00-\x1f\x7f]/)
       raise InvalidManifest, "#{source}: invalid #{field} #{candidate.inspect}" if invalid
 
@@ -1711,7 +1711,7 @@ module Frontend
         begin
           decoded_segments = path.split("/").map { |segment| URI.decode_www_form_component(segment) }
           invalid = decoded_segments.any? do |segment|
-            segment.in?([".", ".."]) || segment.match?(/[\\\/\x00-\x1f\x7f]/)
+            segment.in?([ ".", ".." ]) || segment.match?(/[\\\/\x00-\x1f\x7f]/)
           end
         rescue ArgumentError
           invalid = true
@@ -1764,10 +1764,10 @@ module Frontend
     end
 
     def component_claim_parent_child(left, right)
-      return [right, left] if left.exact && !right.exact
-      return [left, right] if right.exact && !left.exact
+      return [ right, left ] if left.exact && !right.exact
+      return [ left, right ] if right.exact && !left.exact
 
-      left.prefix.length < right.prefix.length ? [left, right] : [right, left]
+      left.prefix.length < right.prefix.length ? [ left, right ] : [ right, left ]
     end
 
     def ensure_unique!(values, source, field)

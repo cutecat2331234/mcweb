@@ -386,7 +386,7 @@ module Commerce
         return "provider_bound" if @bound_customer_case == true
         return "provider_opened" if @created_dispute == true
         return "status_changed" if from_status != dispute.status
-        return "rights_changed" if from_rights_status != dispute.rights_status
+        "rights_changed" if from_rights_status != dispute.rights_status
       end
 
       def event_idempotency_key

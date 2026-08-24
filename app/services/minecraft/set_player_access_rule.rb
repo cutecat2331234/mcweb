@@ -65,7 +65,7 @@ module Minecraft
       return failure(:minecraft_access_rule_idempotency_invalid) unless @idempotency_key.match?(IDEMPOTENCY_KEY_PATTERN)
       return failure(:minecraft_access_rule_uuid_invalid) if @player_uuid_input.present? && normalized_uuid.nil?
       return failure(:minecraft_access_rule_expiry_invalid) if @desired_state && invalid_expiry?
-      return failure(:minecraft_access_rule_lock_version_required) if !@desired_state && @actor && @expected_lock_version.nil?
+      failure(:minecraft_access_rule_lock_version_required) if !@desired_state && @actor && @expected_lock_version.nil?
     end
 
     def valid_reason?

@@ -1,5 +1,11 @@
 import { computed, watch } from 'vue'
-import { createI18n, useI18n } from 'vue-i18n'
+import {
+  createI18n,
+  useI18n,
+  type DefineLocaleMessage,
+  type I18n,
+  type I18nOptions,
+} from 'vue-i18n'
 import {
   addI18nMessages,
   useLocale as setArcoLocale,
@@ -85,6 +91,21 @@ const localeDomainLoaders: Record<AppLocale, Record<string, LocaleDomainLoader>>
 }
 
 type AppMessages = Record<string, unknown>
+type AppMessageSchema = DefineLocaleMessage
+type AppLocaleMessageCatalog = Record<AppLocale, AppMessageSchema>
+type AppI18nOptions = Omit<I18nOptions, 'legacy' | 'locale' | 'messages'> & {
+  legacy: false
+  locale: AppLocale
+  messages: AppLocaleMessageCatalog
+}
+
+export type AppI18n = I18n<AppLocaleMessageCatalog, {}, {}, AppLocale, false>
+
+function vueI18nMessageSchema(messages: AppMessages): AppMessageSchema {
+  // Locale modules are application-owned static dictionaries. Their loader
+  // deliberately exposes unknown values until they cross this library boundary.
+  return messages as AppMessageSchema
+}
 
 const loadedDomainMessages = new Map<string, AppMessages>()
 const localeSyncGenerations = new WeakMap<object, number>()
@@ -154,16 +175,18 @@ export function preloadAppLocale(
 export async function createAppI18n(
   locale: AppLocale = 'zh-CN',
   domainNames: readonly string[] = ['core'],
-) {
+): Promise<AppI18n> {
   const initialLocale = normalizeAppLocale(locale)
   const domains = localeDomains(domainNames)
   const messages = await loadLocaleMessages(initialLocale, domains)
-  const initialMessages: Partial<Record<AppLocale, AppMessages>> = {
-    [initialLocale]: messages,
-  }
+  // The type describes every locale that can be installed into this instance;
+  // the runtime object intentionally contains only the active locale at boot.
+  const initialMessages = {
+    [initialLocale]: vueI18nMessageSchema(messages),
+  } as AppLocaleMessageCatalog
   writeSharedAppLocale(initialLocale)
 
-  const i18n = createI18n<false>({
+  const options: AppI18nOptions = {
     legacy: false,
     globalInjection: true,
     locale: initialLocale,
@@ -180,12 +203,11 @@ export async function createAppI18n(
       missingTranslation(String(missingLocale), String(key), type)
     ),
     messages: initialMessages,
-  })
+  }
+  const i18n = createI18n<false, AppI18nOptions>(options)
   localeDomainsByI18n.set(i18n as object, domains)
   return i18n
 }
-
-export type AppI18n = Awaited<ReturnType<typeof createAppI18n>>
 
 export async function syncI18nLocale(i18n: AppI18n, locale: unknown): Promise<boolean> {
   const next = normalizeAppLocale(locale)
@@ -202,7 +224,7 @@ export async function syncI18nLocale(i18n: AppI18n, locale: unknown): Promise<bo
   }
   if (localeSyncGenerations.get(syncTarget) !== generation) return false
 
-  if (messages) i18n.global.setLocaleMessage(next, messages)
+  if (messages) i18n.global.setLocaleMessage(next, vueI18nMessageSchema(messages))
   if (i18n.global.locale.value !== next) {
     i18n.global.locale.value = next
   }
@@ -218,5 +240,8 @@ export async function syncI18nLocale(i18n: AppI18n, locale: unknown): Promise<bo
 export function applyPhraseOverrides(i18n: AppI18n, locale: unknown, overrides: unknown) {
   if (!overrides || typeof overrides !== 'object') return
   const target = normalizeAppLocale(locale)
-  i18n.global.mergeLocaleMessage(target, overrides as Record<string, unknown>)
+  i18n.global.mergeLocaleMessage(
+    target,
+    vueI18nMessageSchema(overrides as Record<string, unknown>),
+  )
 }

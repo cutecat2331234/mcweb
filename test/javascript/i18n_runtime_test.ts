@@ -62,8 +62,11 @@ test('locale synchronization keeps the document language aligned after SPA visit
   assert.match(source, /document\.documentElement\.lang = next/)
   assert.match(source, /writeSharedAppLocale\(next\)/)
   assert.match(source, /localeSyncGenerations/)
-  assert.match(source, /createI18n<false>/)
-  assert.match(source, /Partial<Record<AppLocale, AppMessages>>/)
+  assert.match(source, /type AppLocaleMessageCatalog = Record<AppLocale, AppMessageSchema>/)
+  assert.match(source, /export type AppI18n = I18n<AppLocaleMessageCatalog, \{\}, \{\}, AppLocale, false>/)
+  assert.match(source, /createI18n<false, AppI18nOptions>\(options\)/)
+  assert.match(source, /setLocaleMessage\(next, vueI18nMessageSchema\(messages\)\)/)
+  assert.doesNotMatch(source, /Partial<Record<AppLocale, AppMessages>>/)
 })
 
 test('locale preference supplies a stable shared key and partitions Inertia caches', () => {

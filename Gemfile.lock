@@ -104,8 +104,8 @@ GEM
     bcrypt (3.1.22)
     bigdecimal (3.3.1)
     bindex (0.8.1)
-    bootsnap (1.24.6)
-      msgpack (~> 1.2)
+    bootsnap (1.25.0)
+      msgpack (~> 1.5)
     brakeman (8.0.5)
       racc
     builder (3.3.0)
@@ -194,7 +194,7 @@ GEM
       builder
       minitest (>= 5.0, < 7)
       ruby-progressbar
-    msgpack (1.8.3)
+    msgpack (1.8.4)
     mutex_m (0.3.0)
     net-imap (0.6.4.1)
       date

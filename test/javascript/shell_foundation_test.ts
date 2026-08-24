@@ -23,6 +23,10 @@ const staffLayout = readFileSync(
   resolve(process.cwd(), 'app/javascript/layouts/StaffLayout.vue'),
   'utf8',
 )
+const portalLayout = readFileSync(
+  resolve(process.cwd(), 'app/javascript/layouts/PortalLayout.vue'),
+  'utf8',
+)
 
 function relativeLuminance(hex: string) {
   const channels = hex.match(/[a-f\d]{2}/gi)?.map((value) => Number.parseInt(value, 16) / 255)
@@ -57,14 +61,23 @@ test('admin and application style roots load one shared shell geometry contract'
   }
 })
 
-test('admin and staff shells consume shared geometry instead of edition-local measurements', () => {
+test('application shells pass numeric sider widths while content consumes shared geometry', () => {
+  for (const layout of [adminLayout, staffLayout, portalLayout]) {
+    assert.match(layout, /:width="248"/)
+    assert.doesNotMatch(layout, /:width="'var\(--mc-shell-sidebar-width/)
+  }
+
   for (const layout of [adminLayout, staffLayout]) {
-    assert.match(layout, /var\(--mc-shell-sidebar-width, 248px\)/)
     assert.match(layout, /mc-shell-header/)
     assert.match(layout, /mc-page-content mc-page-surface/)
     assert.match(layout, /mc-page-container/)
     assert.match(layout, /var\(--mc-page-gutter, 24px\)/)
     assert.match(layout, /var\(--mc-page-max-width, 1440px\)/)
+  }
+
+  for (const layout of [staffLayout, portalLayout]) {
+    assert.match(layout, /marginLeft: .*?'var\(--mc-shell-sidebar-width, 248px\)'/)
+    assert.match(layout, /width: .*?'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
   }
 
   assert.doesNotMatch(staffLayout, /(?:236|1480)px/)

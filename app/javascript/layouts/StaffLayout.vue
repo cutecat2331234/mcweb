@@ -156,7 +156,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
         v-if="!isCompact"
         class="mc-shell-sidebar"
         breakpoint="lg"
-        :width="'var(--mc-shell-sidebar-width, 248px)'"
+        :width="248"
         :collapsed-width="0"
         :hide-trigger="true"
         :style="{

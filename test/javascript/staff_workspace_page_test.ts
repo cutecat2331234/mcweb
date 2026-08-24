@@ -16,6 +16,7 @@ test('staff workspace is independent from the administrator shell and responsive
   assert.match(layout, /from '@mcweb\/ui'/)
   assert.doesNotMatch(layout, /AdminLayout/)
   assert.match(layout, /window\.matchMedia\('\(max-width: 991px\)'\)/)
+  assert.match(layout, /<LayoutSider[\s\S]*?:width="248"/)
   assert.match(layout, /marginLeft: isCompact \? '0' : 'var\(--mc-shell-sidebar-width, 248px\)'/)
   assert.match(layout, /width: isCompact \? '100%' : 'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
   assert.match(layout, /class="mc-page-content mc-page-surface"/)

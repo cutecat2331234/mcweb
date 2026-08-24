@@ -161,7 +161,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <LayoutSider
         v-if="!compact"
         class="mc-shell-sidebar"
-        :width="'var(--mc-shell-sidebar-width, 248px)'"
+        :width="248"
         :style="{
           position: 'fixed',
           inset: '0 auto 0 0',

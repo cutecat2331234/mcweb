@@ -753,7 +753,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
     <a-layout-sider
       class="arco-admin-sider mc-shell-sidebar"
       :collapsed="collapsed"
-      :width="'var(--mc-shell-sidebar-width, 248px)'"
+      :width="248"
       :collapsed-width="48"
       collapsible
       :hide-trigger="true"

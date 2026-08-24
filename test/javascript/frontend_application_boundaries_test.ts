@@ -5,6 +5,10 @@ import test from 'node:test'
 
 const root = process.cwd()
 const entryRoot = resolve(root, 'app/javascript/entrypoints')
+const websitePreviewManifest = readFileSync(
+  resolve(root, 'config/frontend_applications/base/website_preview.json'),
+  'utf8',
+)
 const applications = [
   ['website-document.ts', ['Website/**/*.vue', 'Plugins/**/*.vue']],
   ['forum.ts', ['Community/**/*.vue']],
@@ -23,6 +27,11 @@ test('the umbrella entry is removed and every runtime has a positive resolver', 
     assert.doesNotMatch(source, /\.\.\/pages\/\*\*\/\*\.vue/)
     for (const glob of positiveGlobs) assert.match(source, new RegExp(glob.replaceAll('*', '\\*')))
   }
+})
+
+test('website preview owns its shell frame exactly instead of claiming an unresolved directory', () => {
+  assert.match(websitePreviewManifest, /"component_prefixes": \[\]/)
+  assert.match(websitePreviewManifest, /"component_names": \["WebsitePreview\/DocumentFrame"\]/)
 })
 
 test('each entry discovers executable contributions only for its own runtime', () => {

@@ -6,8 +6,8 @@
   "runtime_kind": "inertia",
   "entrypoint": "website-preview",
   "landing_path": "/admin/website/pages",
-  "component_prefixes": ["WebsitePreview/"],
-  "component_names": [],
+  "component_prefixes": [],
+  "component_names": ["WebsitePreview/DocumentFrame"],
   "allow_descendant_contributions": false,
   "projections": [
     { "prefix": "Website/Pages/", "owner_application": "website" },

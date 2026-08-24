@@ -57,7 +57,7 @@ The existing CNB build and its rebuild both ran against remote `main` commit
 - The Go image caches both module graphs while checked-out source remains the build input. Runtime Go work stays offline with a local toolchain.
 - The Gradle image caches the wrapper, dependency graph, and JDK 8/17 toolchains; checked-out connector work stays offline. `gradle-cache.version` remains the explicit refresh input for mutable upstream artifacts.
 - The production image imports dependency and runtime cache images. CNB `docker:cache` receives the nonnumeric Docker boolean string `"T"` for `BUILDKIT_INLINE_CACHE`; the final Docker build retains explicit BuildKit cache imports.
-- The acceptance runner pins PostgreSQL client compatibility at 18 and verifies `pg_dump`/`pg_restore` at image-build time. Exact package revisions come from PGDG's signed archive rather than the rolling repository that removes superseded revisions. An explicit cache-version file controls intentional runner refreshes.
+- The acceptance runner pins PostgreSQL client compatibility at major 18 and verifies `pg_dump`/`pg_restore` at image-build time. Packages come from PGDG's signed supported repository, while the CNB Docker image cache prevents repeated downloads. An explicit cache-version file controls intentional major-version refreshes.
 - PostgreSQL, Redis, and MinIO service images remain digest-pinned Docker cache images and are required inputs to CNB production acceptance.
 - No dependency directory, package-manager cache, browser download, JDK, database image, or generated build output may be stored in Git or Git LFS.
 

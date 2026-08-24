@@ -14,9 +14,9 @@ or production-acceptance cache recipes.
 - `postgres-test.Dockerfile` and `redis-test.Dockerfile` pin disposable service
   images. The acceptance MinIO image remains CE-owned under `deploy/acceptance`.
 - `production-acceptance-dependencies.Dockerfile` pins Ruby, Docker CLI,
-  Compose v2, the PostgreSQL 18 client, and the production bundle. The exact
-  PostgreSQL revision is read from `postgresql-client-cache.version` and
-  installed from PGDG's signed archive so a rolling repository cannot remove it.
+  Compose v2, the PostgreSQL 18 client major, and the production bundle. The
+  client major is read from `postgresql-client-cache.version`; CNB retains the
+  resulting image so normal validation does not reinstall repository packages.
 - `go-dependencies.Dockerfile` caches both Go module graphs while source is
   always tested and built from the checked-out commit.
 - `gradle-dependencies.Dockerfile` caches JDK 8, JDK 17, Gradle, and connector

@@ -9,6 +9,10 @@ const websitePreviewManifest = readFileSync(
   resolve(root, 'config/frontend_applications/base/website_preview.json'),
   'utf8',
 )
+const boundaryChecker = readFileSync(
+  resolve(root, 'scripts/check-frontend-application-boundaries.mjs'),
+  'utf8',
+)
 const applications = [
   ['website-document.ts', ['Website/**/*.vue', 'Plugins/**/*.vue']],
   ['forum.ts', ['Community/**/*.vue']],
@@ -32,6 +36,20 @@ test('the umbrella entry is removed and every runtime has a positive resolver', 
 test('website preview owns its shell frame exactly instead of claiming an unresolved directory', () => {
   assert.match(websitePreviewManifest, /"component_prefixes": \[\]/)
   assert.match(websitePreviewManifest, /"component_names": \["WebsitePreview\/DocumentFrame"\]/)
+})
+
+test('created application adapters resolve their nested prefix and exact-name claims', () => {
+  assert.match(
+    boundaryChecker,
+    /const declaration = contribution\.creates_application \?\? contribution/,
+  )
+  assert.match(
+    boundaryChecker,
+    /if \(!contribution\.creates_application \|\| !contribution\.adapter_module\) continue/,
+  )
+  assert.match(boundaryChecker, /for \(const prefix of prefixes\)/)
+  assert.match(boundaryChecker, /for \(const name of names\)/)
+  assert.match(boundaryChecker, /requirePositiveResolver\(adapterSource, name, true\)/)
 })
 
 test('each entry discovers executable contributions only for its own runtime', () => {

@@ -113,6 +113,14 @@ function requirePositiveResolver(source, prefix, exact = false) {
   }
 }
 
+function adapterPageClaims(contribution) {
+  const declaration = contribution.creates_application ?? contribution
+  return {
+    prefixes: declaration.component_prefixes ?? [],
+    names: declaration.component_names ?? [],
+  }
+}
+
 for (const descriptor of applications.values()) {
   if (descriptor.runtime_kind === 'astro_document') {
     const manifest = resolve(root, descriptor.renderer_manifest_path)
@@ -148,6 +156,12 @@ for (const descriptor of applications.values()) {
   const baseContributionNames = new Set(descriptor.contributions
     .filter((contribution) => contribution.extends_application)
     .flatMap((contribution) => contribution.component_names ?? []))
+  for (const contribution of descriptor.contributions) {
+    if (!contribution.creates_application || !contribution.adapter_module) continue
+    const { prefixes, names } = adapterPageClaims(contribution)
+    for (const prefix of prefixes) baseContributionPrefixes.add(prefix)
+    for (const name of names) baseContributionNames.add(name)
+  }
   for (const prefix of descriptor.component_prefixes) {
     if (!baseContributionPrefixes.has(prefix)) requirePositiveResolver(source, prefix)
   }
@@ -164,10 +178,11 @@ for (const descriptor of applications.values()) {
       || !adapterSource.includes(`contributionId: '${contribution.contribution_id}'`)) {
       throw new Error(`${contribution.source}: adapter identity is not literal and exact`)
     }
-    for (const prefix of contribution.component_prefixes ?? []) {
+    const { prefixes, names } = adapterPageClaims(contribution)
+    for (const prefix of prefixes) {
       requirePositiveResolver(adapterSource, prefix)
     }
-    for (const name of contribution.component_names ?? []) {
+    for (const name of names) {
       requirePositiveResolver(adapterSource, name, true)
     }
   }

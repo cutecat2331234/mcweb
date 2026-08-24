@@ -4830,7 +4830,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
         OR OLD.user_counter_key IS DISTINCT FROM NEW.user_counter_key
         OR OLD.ip_counter_key IS DISTINCT FROM NEW.ip_counter_key
         OR OLD.context_digest IS DISTINCT FROM NEW.context_digest
-        OR OLD.limit IS DISTINCT FROM NEW.limit
+        OR OLD."limit" IS DISTINCT FROM NEW."limit"
         OR OLD.window_seconds IS DISTINCT FROM NEW.window_seconds
         OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
         OR (OLD.settled_at IS NOT NULL AND OLD.settled_at IS DISTINCT FROM NEW.settled_at)

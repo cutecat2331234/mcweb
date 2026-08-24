@@ -92,7 +92,7 @@ class HardenWorldRestoreReservationAndResolutionLifecycle < ActiveRecord::Migrat
       "context_digest ~ '^[0-9a-f]{64}$'",
       name: "chk_sensitive_action_reservations_context"
     add_check_constraint :sensitive_action_rate_limit_reservations,
-      "limit > 0 AND window_seconds > 0",
+      '"limit" > 0 AND window_seconds > 0',
       name: "chk_sensitive_action_reservations_limits"
     add_check_constraint :sensitive_action_rate_limit_reservations,
       "(status = 'pending' AND settled_at IS NULL) OR (status IN ('succeeded', 'failed') AND settled_at IS NOT NULL)",
@@ -108,7 +108,7 @@ class HardenWorldRestoreReservationAndResolutionLifecycle < ActiveRecord::Migrat
           OR OLD.user_counter_key IS DISTINCT FROM NEW.user_counter_key
           OR OLD.ip_counter_key IS DISTINCT FROM NEW.ip_counter_key
           OR OLD.context_digest IS DISTINCT FROM NEW.context_digest
-          OR OLD.limit IS DISTINCT FROM NEW.limit
+          OR OLD."limit" IS DISTINCT FROM NEW."limit"
           OR OLD.window_seconds IS DISTINCT FROM NEW.window_seconds
           OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
           OR (OLD.settled_at IS NOT NULL AND OLD.settled_at IS DISTINCT FROM NEW.settled_at)

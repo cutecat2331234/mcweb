@@ -165,7 +165,7 @@ module Admin
         blocks_result = ::Website::SerializePageBlocks.call(page: @page)
         seo_result = ::Website::ResolveSeo.call(record: @page)
 
-        Frontend::WebsiteRenderer.preview(
+        ::Frontend::WebsiteRenderer.preview(
           controller: self,
           component: "Website/Pages/Show",
           props: {

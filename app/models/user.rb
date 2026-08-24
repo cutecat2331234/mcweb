@@ -6,7 +6,7 @@ class User < ApplicationRecord
   include HasPublicId
   include HasAvatar
 
-  has_secure_password
+  has_secure_password reset_token: false
 
   has_encrypted :email_verification_token
   has_encrypted :password_reset_token

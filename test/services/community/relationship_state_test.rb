@@ -171,8 +171,8 @@ module Community
 
     setup do
       suffix = SecureRandom.hex(6)
-      @actor = create_user(username: "relationship_race_actor_#{suffix}")
-      @target = create_user(username: "relationship_race_target_#{suffix}")
+      @actor = create_user(username: "rel_race_actor_#{suffix}")
+      @target = create_user(username: "rel_race_target_#{suffix}")
     end
 
     teardown do

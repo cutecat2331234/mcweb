@@ -172,7 +172,7 @@ module Admin
         body_result = ::Website::RenderArticleBody.call(body: @article.body)
         seo_result = ::Website::ResolveSeo.call(record: @article)
 
-        Frontend::WebsiteRenderer.preview(
+        ::Frontend::WebsiteRenderer.preview(
           controller: self,
           component: "Website/Articles/Show",
           props: {

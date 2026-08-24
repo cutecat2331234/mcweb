@@ -18,7 +18,11 @@ module Website
     def call
       raise LifecycleError, "website_theme_operation_invalid" unless OPERATIONS.include?(@operation)
 
-      public_send("#{@operation}_theme")
+      case @operation
+      when "create" then create_theme
+      when "update" then update_theme
+      when "activate" then activate_theme
+      end
     rescue LifecycleError => error
       theme_failure(error)
     rescue ActiveRecord::RecordInvalid => error

@@ -18,7 +18,7 @@ module Commerce
         protection = protect_dispute_rights(existing)
         return protection if protection.failure?
 
-        return ServiceResult.success(existing)
+        return ServiceResult.success(protection.value.fetch(:subject, existing))
       end
 
       membership = nil
@@ -41,6 +41,7 @@ module Commerce
 
         protection_result = protect_dispute_rights(membership)
         raise ActiveRecord::Rollback if protection_result.failure?
+        membership = protection_result.value.fetch(:subject, membership)
 
         if @source_order_item
           Commerce::OrderEvent.create!(
@@ -82,7 +83,7 @@ module Commerce
           protection = protect_dispute_rights(existing)
           return protection if protection.failure?
 
-          return ServiceResult.success(existing)
+          return ServiceResult.success(protection.value.fetch(:subject, existing))
         end
       end
 

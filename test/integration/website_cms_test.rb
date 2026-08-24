@@ -6,7 +6,7 @@ class WebsiteCmsIntegrationTest < ActionDispatch::IntegrationTest
   setup do
     @theme = Website::Theme.find_or_create_by!(key: "cms-test") do |t|
       t.name = "CMS Test"
-      t.active = true
+      t.active = false
     end
     @page = Website::Page.create!(
       public_id: "page_cms_#{SecureRandom.hex(4)}",

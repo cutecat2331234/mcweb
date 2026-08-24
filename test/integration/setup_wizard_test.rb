@@ -3,6 +3,8 @@
 require "test_helper"
 
 class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
+  SITE_SETTING_KEYS = %w[site.name site.url].freeze
+
   parallelize(workers: 1)
 
   self.use_transactional_tests = false
@@ -14,18 +16,21 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     ENV["MCWEB_LOCAL_CONFIG_PATH"] = @local_config_path.to_s
     Mcweb::LocalConfig.reload!
     @test_database_name = ActiveRecord::Base.connection_db_config.database
+    @installation_lock_snapshot = InstallationLock.order(:id).map(&:attributes)
+    @site_setting_snapshot = SiteSetting.where(key: SITE_SETTING_KEYS).order(:id).map(&:attributes)
+    @owner_ids = User.where(account_type: "owner").pluck(:id)
+    @existing_user_ids = User.pluck(:id)
 
     InstallationLock.unlock!
     User.where(account_type: "owner").update_all(account_type: "member")
-    SiteSetting.where(key: %w[site.name site.url]).delete_all
+    SiteSetting.where(key: SITE_SETTING_KEYS).delete_all
     @owner_email = "owner-#{SecureRandom.hex(4)}@example.com"
   end
 
   teardown do
     # database step 会经 Mcweb::PrepareApplicationDatabase 重连全局连接池，先恢复测试库连接再清理
     ActiveRecord::Base.establish_connection(:test)
-    User.where(account_type: "owner").update_all(account_type: "member")
-    ensure_installation_locked!
+    restore_persisted_setup_state!
     FileUtils.rm_f(@local_config_path)
     restore_environment("DATABASE_URL", @original_database_url)
     restore_environment("MCWEB_LOCAL_CONFIG_PATH", @original_local_config_path)
@@ -67,7 +72,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
       Mcweb::PrepareApplicationDatabase.stub(:call, ServiceResult.success) do
         patch setup_step_path("database"), params: {
           setup: {
-            host: "127.0.0.1",
+            host: db_host,
             port: 5432,
             username: "postgres",
             password: "",
@@ -122,7 +127,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     Mcweb::TestDatabaseConnection.stub(:call, ->(**) { flunk("connection must not be tested") }) do
       patch setup_step_path("database"), params: {
         setup: {
-          host: "127.0.0.1",
+          host: db_host,
           port: 5432,
           username: "postgres",
           development_database: "mcweb_missing_password_field"
@@ -138,7 +143,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     unlock_for_setup!
     patch setup_step_path("database"), params: {
       setup: {
-        host: "127.0.0.1",
+        host: db_host,
         port: db_port,
         username: db_username,
         password: db_password,
@@ -178,7 +183,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     unlock_for_setup!
     patch setup_step_path("database"), params: {
       setup: {
-        host: "127.0.0.1",
+        host: db_host,
         port: db_port,
         username: db_username,
         password: db_password,
@@ -225,7 +230,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     unlock_for_setup!
     patch setup_step_path("database"), params: {
       setup: {
-        host: "127.0.0.1",
+        host: db_host,
         port: db_port,
         username: db_username,
         password: db_password,
@@ -258,6 +263,10 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     ActiveRecord::Base.connection_db_config.configuration_hash[:username] || "postgres"
   end
 
+  def db_host
+    ActiveRecord::Base.connection_db_config.configuration_hash[:host].presence || "127.0.0.1"
+  end
+
   def db_password
     ActiveRecord::Base.connection_db_config.configuration_hash[:password].to_s
   end
@@ -268,5 +277,29 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
 
   def restore_environment(name, value)
     value.nil? ? ENV.delete(name) : ENV[name] = value
+  end
+
+  def restore_persisted_setup_state!
+    InstallationLock.delete_all
+    remove_setup_users!
+    User.where(id: @owner_ids).update_all(account_type: "owner")
+    InstallationLock.insert_all!(@installation_lock_snapshot) if @installation_lock_snapshot.any?
+
+    SiteSetting.where(key: SITE_SETTING_KEYS).delete_all
+    SiteSetting.insert_all!(@site_setting_snapshot) if @site_setting_snapshot.any?
+    SITE_SETTING_KEYS.each { |key| Rails.cache.delete(SiteSetting.cache_key(key)) }
+  end
+
+  def remove_setup_users!
+    users = User.where.not(id: @existing_user_ids)
+    user_ids = users.pluck(:id)
+    return if user_ids.empty?
+
+    intents = Operations::DurableEnqueueIntent.where(source_kind: "user", source_id: user_ids)
+    Operations::DurableEnqueueEvent.where(intent_id: intents.select(:id)).delete_all
+    Operations::DurableEnqueueAttempt.where(intent_id: intents.select(:id)).delete_all
+    intents.delete_all
+    AuditLog.where(actor_id: user_ids).delete_all
+    users.find_each(&:destroy!)
   end
 end

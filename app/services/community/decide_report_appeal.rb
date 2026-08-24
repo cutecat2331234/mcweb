@@ -136,7 +136,7 @@ module Community
       return failure("report_appeal_decision_invalid") unless DECISIONS.include?(@decision)
       return failure("report_appeal_internal_note_too_long") if @internal_note&.length.to_i > ReportAppeal::MAX_INTERNAL_NOTE_LENGTH
       return failure("report_appeal_idempotency_key_invalid") unless @idempotency_key
-      return failure("report_appeal_version_required") unless @expected_version&.nonnegative?
+      return failure("report_appeal_version_required") unless @expected_version && @expected_version >= 0
 
       nil
     end

@@ -13,7 +13,7 @@ module Community
     def call
       return failure("report_appeal_unavailable") unless @appeal&.persisted? && @appellant&.persisted?
       return failure("report_appeal_idempotency_key_invalid") unless @idempotency_key
-      return failure("report_appeal_version_required") unless @expected_version&.nonnegative?
+      return failure("report_appeal_version_required") unless @expected_version && @expected_version >= 0
 
       digest = ReportMutationKey.digest(@idempotency_key)
       fingerprint = ReportAppealMutation.fingerprint(

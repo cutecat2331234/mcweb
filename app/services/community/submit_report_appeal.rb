@@ -122,7 +122,7 @@ module Community
       return failure("report_appeal_reason_required") if @reason.blank?
       return failure("report_appeal_reason_too_long") if @reason.length > ReportAppeal::MAX_REASON_LENGTH
       return failure("report_appeal_idempotency_key_invalid") unless @idempotency_key
-      return failure("report_appeal_version_required") unless @expected_version&.nonnegative?
+      return failure("report_appeal_version_required") unless @expected_version && @expected_version >= 0
       if @attachment_public_ids.map(&:to_s).reject(&:blank?).uniq.size > ReportEvidenceBinder::MAX_ATTACHMENTS
         return failure("report_evidence_limit_exceeded")
       end

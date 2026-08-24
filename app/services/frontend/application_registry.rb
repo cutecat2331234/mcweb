@@ -879,7 +879,7 @@ module Frontend
           end
           NavigationItem.new(
             href: validate_literal_path!(raw_item.fetch("href"), item_source, field: "href"),
-            label_key: validate_adapter_name!(raw_item.fetch("label_key"), item_source),
+            label_key: validate_locale_key!(raw_item.fetch("label_key"), item_source),
             badge_prop: raw_item["badge_prop"].presence &&
               validate_adapter_name!(raw_item["badge_prop"], item_source),
             visibility_prop: raw_item["visibility_prop"].presence &&
@@ -892,7 +892,7 @@ module Frontend
         end
         NavigationGroup.new(
           id: validate_adapter_name!(raw_group.fetch("id"), group_source),
-          label_key: validate_adapter_name!(raw_group.fetch("label_key"), group_source),
+          label_key: validate_locale_key!(raw_group.fetch("label_key"), group_source),
           items:
         )
       end
@@ -1440,6 +1440,13 @@ module Frontend
       return candidate if candidate.match?(/\A[a-z][a-z0-9_.-]*\z/)
 
       raise InvalidManifest, "#{source}: invalid adapter name #{candidate.inspect}"
+    end
+
+    def validate_locale_key!(value, source)
+      candidate = value.to_s
+      return candidate if candidate.match?(/\A[a-z][A-Za-z0-9_-]*(?:\.[a-z][A-Za-z0-9_-]*)*\z/)
+
+      raise InvalidManifest, "#{source}: invalid locale key #{candidate.inspect}"
     end
 
     def validate_adapter_module!(value, source, application_id)

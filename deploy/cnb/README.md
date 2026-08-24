@@ -20,8 +20,13 @@ or production-acceptance cache recipes.
 - `go-dependencies.Dockerfile` caches both Go module graphs while source is
   always tested and built from the checked-out commit.
 - `gradle-dependencies.Dockerfile` caches JDK 8, JDK 17, Gradle, and connector
-  dependencies so checked-out connector builds can run offline. Increment
-  `gradle-cache.version` to refresh mutable upstream artifacts deliberately.
+  dependencies so checked-out connector builds can run offline. Its locked
+  BuildKit download cache preserves completed downloads across transient
+  repository failures, while bounded backoff retries only recognized network
+  and HTTP throttling failures. A successful warm-up copies that cache into the
+  dependency image; checked-out builds still make no network requests.
+  Increment `gradle-cache.version` to refresh mutable upstream artifacts
+  deliberately.
 - The production Dockerfile's `dependencies` and `runtime-base` stages are
   consumed by CNB `docker:cache`. Use the nonnumeric Docker boolean string `T`
   for `BUILDKIT_INLINE_CACHE`: CNB normalizes quoted numeric strings in plugin

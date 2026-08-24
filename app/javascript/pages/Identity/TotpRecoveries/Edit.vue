@@ -2,7 +2,7 @@
 import { computed, watch } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import AuthLayout from '@/layouts/AuthLayout.vue'
+import IdentityDocumentLayout from '@/layouts/account/IdentityDocumentLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Alert from '@/components/ui/Alert.vue'
 import Button from '@/components/ui/Button.vue'
@@ -10,7 +10,7 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import { routes } from '@/lib/routes'
 
-defineOptions({ layout: AuthLayout })
+defineOptions({ layout: IdentityDocumentLayout })
 
 const props = defineProps<{
   token: string

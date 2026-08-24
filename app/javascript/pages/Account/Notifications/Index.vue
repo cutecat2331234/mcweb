@@ -249,12 +249,18 @@ function dismissAlerts() {
   router.patch(`${routes.accountNotifications}/dismiss_alerts`)
 }
 
+const filterNavigationOptions = {
+  preserveState: true,
+  preserveScroll: true,
+  replace: true,
+}
+
 function switchCategory(value: unknown) {
   const category = String(value)
   router.get(
     routes.accountNotifications,
     filterParams({ category: category === 'all' ? undefined : category, type: undefined }),
-    { preserveState: true },
+    filterNavigationOptions,
   )
 }
 
@@ -263,7 +269,7 @@ function switchRead(value: string | number | boolean) {
   router.get(
     routes.accountNotifications,
     filterParams({ read: read === 'unread' ? 'unread' : undefined }),
-    { preserveState: true },
+    filterNavigationOptions,
   )
 }
 
@@ -271,7 +277,7 @@ function switchPeriod(value: unknown) {
   router.get(
     routes.accountNotifications,
     filterParams({ period: typeof value === 'string' && value ? value : undefined }),
-    { preserveState: true },
+    filterNavigationOptions,
   )
 }
 
@@ -279,7 +285,7 @@ function switchType(value: unknown) {
   router.get(
     routes.accountNotifications,
     filterParams({ type: typeof value === 'string' && value ? value : undefined }),
-    { preserveState: true },
+    filterNavigationOptions,
   )
 }
 
@@ -306,11 +312,11 @@ function removeFilter(filter: { param: string }) {
   if (filter.param === 'read') overrides.read = undefined
   if (filter.param === 'period') overrides.period = undefined
   if (filter.param === 'type') overrides.type = undefined
-  router.get(routes.accountNotifications, filterParams(overrides), { preserveState: true })
+  router.get(routes.accountNotifications, filterParams(overrides), filterNavigationOptions)
 }
 
 function clearAllFilters() {
-  router.get(routes.accountNotifications, {}, { preserveState: true })
+  router.get(routes.accountNotifications, {}, filterNavigationOptions)
 }
 
 function changePage(page: number) {

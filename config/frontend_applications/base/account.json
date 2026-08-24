@@ -18,8 +18,8 @@
   "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona"],
   "launcher": { "path": "/app", "priority": 0 },
   "budget": {
-    "representative_paths": ["/app/account", "/app/identity/security", "/app/minecraft/link"],
-    "representative_components": ["Account/Show", "Identity/Security/Show", "Minecraft/Link/Show"],
+    "representative_paths": ["/app/account", "/app/identity/sign-in", "/app/identity/security", "/app/minecraft/link"],
+    "representative_components": ["Account/Show", "Identity/Sessions/New", "Identity/Security/Show", "Minecraft/Link/Show"],
     "max_initial_javascript_bytes": 620000,
     "max_initial_stylesheet_bytes": 250000
   },

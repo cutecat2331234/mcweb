@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import AuthLayout from '@/layouts/AuthLayout.vue'
+import IdentityDocumentLayout from '@/layouts/account/IdentityDocumentLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Alert from '@/components/ui/Alert.vue'
 import Button from '@/components/ui/Button.vue'
@@ -11,7 +11,7 @@ import Label from '@/components/ui/Label.vue'
 import { routes } from '@/lib/routes'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 
-defineOptions({ layout: AuthLayout })
+defineOptions({ layout: IdentityDocumentLayout })
 
 const props = defineProps<{
   verification_error?: string

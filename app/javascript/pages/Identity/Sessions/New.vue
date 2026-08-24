@@ -14,11 +14,11 @@ import {
   PageHeader,
   Space,
 } from '@mcweb/ui'
-import AuthLayout from '@/layouts/AuthLayout.vue'
+import IdentityDocumentLayout from '@/layouts/account/IdentityDocumentLayout.vue'
 import { routes } from '@/lib/routes'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 
-defineOptions({ layout: AuthLayout })
+defineOptions({ layout: IdentityDocumentLayout })
 
 const props = defineProps<{
   login_error?: string

@@ -8,11 +8,11 @@ function source(path: string) {
 }
 
 test('portal navigation uses stable library colors without decorative selection bars or press movement', () => {
-  const link = source('app/javascript/components/portal/PortalNavLink.vue')
-  const group = source('app/javascript/components/portal/PortalNavGroupSection.vue')
+  const portal = source('app/javascript/layouts/PortalLayout.vue')
 
-  assert.match(link, /bg-sidebar-accent text-sidebar-accent-foreground/)
-  assert.match(group, /bg-sidebar-accent\/60 text-sidebar-foreground/)
-  assert.doesNotMatch(link, /before:|active:scale|transition-all/)
-  assert.doesNotMatch(group, /active:scale/)
+  assert.match(portal, /import \{[\s\S]*\bMenu,[\s\S]*\bMenuItem,[\s\S]*\} from '@mcweb\/ui'/m)
+  assert.match(portal, /<Menu[\s\S]*?:selected-keys="selectedKey \? \[selectedKey\] : \[\]"/m)
+  assert.match(portal, /<MenuItem v-for="item in group\.items" :key="item\.href">/)
+  assert.doesNotMatch(portal, /PortalNavLink|PortalNavGroupSection/)
+  assert.doesNotMatch(portal, /::before|before:|translate[XY]?\(|\bscale\(|active:scale|transition-all/)
 })

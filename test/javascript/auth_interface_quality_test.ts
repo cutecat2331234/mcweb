@@ -7,7 +7,10 @@ function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), 'utf8')
 }
 
-const authLayout = source('app/javascript/layouts/AuthLayout.vue')
+const identityDocumentLayout = source(
+  'app/javascript/layouts/account/IdentityDocumentLayout.vue',
+)
+const accountManifest = source('config/frontend_applications/base/account.json')
 const pageHeader = source('app/javascript/components/portal/PageHeader.vue')
 const label = source('app/javascript/components/ui/Label.vue')
 const input = source('app/javascript/components/ui/Input.vue')
@@ -26,13 +29,42 @@ const publicAuthPages = [
 ]
 
 test('public authentication layout uses a centered bounded surface', () => {
-  assert.match(authLayout, /justify-center/)
-  assert.match(authLayout, /max-w-lg/)
-  assert.match(authLayout, /data-testid="auth-surface"/)
-  assert.match(authLayout, /import \{ Button, Card \} from '@mcweb\/ui'/)
-  assert.match(authLayout, /<Card/)
-  assert.match(authLayout, /padding: 'clamp\(20px, 4vw, 32px\)'/)
-  assert.doesNotMatch(authLayout, /components\/ui\/Button/)
+  assert.match(identityDocumentLayout, /justify-center/)
+  assert.match(identityDocumentLayout, /max-w-lg/)
+  assert.match(identityDocumentLayout, /data-testid="auth-surface"/)
+  assert.match(identityDocumentLayout, /from '@mcweb\/ui'/)
+  assert.match(identityDocumentLayout, /<Layout/)
+  assert.match(identityDocumentLayout, /<LayoutHeader/)
+  assert.match(identityDocumentLayout, /<LayoutContent/)
+  assert.match(identityDocumentLayout, /<Card/)
+  assert.match(identityDocumentLayout, /padding: '24px'/)
+  assert.match(identityDocumentLayout, /<FlashMessages/)
+  assert.match(identityDocumentLayout, /<LanguageSwitcher/)
+  assert.match(identityDocumentLayout, /toggleTheme/)
+  assert.match(identityDocumentLayout, /@arco-design\/web-vue\/es\/icon/)
+  assert.doesNotMatch(identityDocumentLayout, /@lucide\/vue/)
+  assert.doesNotMatch(identityDocumentLayout, /WebsiteLayout/)
+  assert.match(identityDocumentLayout, /<a :href="routes\.home"/)
+  assert.match(identityDocumentLayout, /<Button[^>]+:href="routes\.forum"/)
+  assert.match(identityDocumentLayout, /<Button[^>]+:href="routes\.store"/)
+  assert.match(identityDocumentLayout, /t\('nav\.forum'\)/)
+  assert.match(identityDocumentLayout, /t\('nav\.store'\)/)
+  assert.doesNotMatch(identityDocumentLayout, /t\('website\./)
+  assert.doesNotMatch(identityDocumentLayout, /\bLink\b|router\.visit/)
+  assert.doesNotMatch(identityDocumentLayout, /components\/ui\/Button/)
+})
+
+test('public identity documents belong to the account application shell', () => {
+  assert.match(accountManifest, /"component_prefixes": \["Account\/", "Identity\/", "Minecraft\/"\]/)
+  assert.match(accountManifest, /"\/app\/identity\/sign-in"/)
+  assert.match(accountManifest, /"Identity\/Sessions\/New"/)
+
+  for (const path of publicAuthPages) {
+    const page = source(path)
+    assert.match(page, /@\/layouts\/account\/IdentityDocumentLayout\.vue/, path)
+    assert.match(page, /defineOptions\(\{ layout: IdentityDocumentLayout \}\)/, path)
+    assert.doesNotMatch(page, /WebsiteLayout|@\/layouts\/Website/, path)
+  }
 })
 
 test('shared form primitives expose stable label rhythm and comfortable controls', () => {

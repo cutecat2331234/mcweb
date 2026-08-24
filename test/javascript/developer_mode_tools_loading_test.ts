@@ -5,7 +5,11 @@ import test from 'node:test'
 
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url))
 
-for (const layout of ['AuthLayout.vue', 'PortalLayout.vue', 'WebsiteLayout.vue']) {
+for (const layout of [
+  'account/IdentityDocumentLayout.vue',
+  'PortalLayout.vue',
+  'WebsiteLayout.vue',
+]) {
   test(`${layout} keeps developer-only UI out of the normal route graph`, () => {
     const source = readFileSync(
       `${projectRoot}/app/javascript/layouts/${layout}`,

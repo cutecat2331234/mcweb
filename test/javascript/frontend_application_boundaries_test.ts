@@ -9,6 +9,10 @@ const websitePreviewManifest = readFileSync(
   resolve(root, 'config/frontend_applications/base/website_preview.json'),
   'utf8',
 )
+const accountManifest = readFileSync(
+  resolve(root, 'config/frontend_applications/base/account.json'),
+  'utf8',
+)
 const boundaryChecker = readFileSync(
   resolve(root, 'scripts/check-frontend-application-boundaries.mjs'),
   'utf8',
@@ -36,6 +40,21 @@ test('the umbrella entry is removed and every runtime has a positive resolver', 
 test('website preview owns its shell frame exactly instead of claiming an unresolved directory', () => {
   assert.match(websitePreviewManifest, /"component_prefixes": \[\]/)
   assert.match(websitePreviewManifest, /"component_names": \["WebsitePreview\/DocumentFrame"\]/)
+})
+
+test('account owns public identity documents without depending on the website shell', () => {
+  assert.match(accountManifest, /"\/app\/identity\/sign-in"/)
+  assert.match(accountManifest, /"Identity\/Sessions\/New"/)
+
+  const identityLayout = readFileSync(
+    resolve(root, 'app/javascript/layouts/account/IdentityDocumentLayout.vue'),
+    'utf8',
+  )
+  assert.match(identityLayout, /from '@mcweb\/ui'/)
+  assert.match(identityLayout, /<a :href="routes\.home"/)
+  assert.doesNotMatch(identityLayout, /\bLink\b|router\.visit/)
+  assert.doesNotMatch(identityLayout, /WebsiteLayout|styles\/applications\/website/)
+  assert.equal(existsSync(resolve(root, 'app/javascript/layouts/AuthLayout.vue')), false)
 })
 
 test('created application adapters resolve their nested prefix and exact-name claims', () => {

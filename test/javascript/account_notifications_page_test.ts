@@ -39,6 +39,24 @@ test('notification center belongs to the account route and keeps the existing in
   assert.match(page, /<List/)
   assert.match(page, /<Empty/)
   assert.match(page, /<Pagination/)
+  assert.match(
+    page,
+    /const filterNavigationOptions = \{\s*preserveState: true,\s*preserveScroll: true,\s*replace: true,\s*\}/m,
+  )
+  for (const filterHandler of [
+    'switchCategory',
+    'switchRead',
+    'switchPeriod',
+    'switchType',
+    'removeFilter',
+    'clearAllFilters',
+  ]) {
+    assert.match(
+      page,
+      new RegExp(`function ${filterHandler}\\([\\s\\S]*?router\\.get\\([\\s\\S]*?filterNavigationOptions[\\s\\S]*?\\n}`),
+      filterHandler,
+    )
+  }
   assert.doesNotMatch(page, /routes\.forumNotifications|\/forum\/notifications/)
   assert.doesNotMatch(controller, /^\s+notifications: grouped/m)
   assert.doesNotMatch(controller, /flat_notifications/)

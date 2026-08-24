@@ -15,7 +15,7 @@ class FrontendApplicationBoundaryTest < ActionDispatch::IntegrationTest
   test "cross-application Inertia GET becomes a no-store document recovery" do
     get "/app/forum/latest", headers: {
       "X-Inertia" => "true",
-      "X-Inertia-Version" => "boundary-test",
+      "X-Inertia-Version" => InertiaRails.configuration.version,
       "X-McWeb-Application" => "store"
     }
 
@@ -68,6 +68,7 @@ class FrontendApplicationBoundaryTest < ActionDispatch::IntegrationTest
   test "download endpoint cannot be absorbed by an application visit" do
     get "/app/store/orders/example/receipt_pdf", headers: {
       "X-Inertia" => "true",
+      "X-Inertia-Version" => InertiaRails.configuration.version,
       "X-McWeb-Application" => "store"
     }
 

@@ -8,6 +8,7 @@ require "uri"
 module Frontend
   class ApplicationRegistry
     class InvalidManifest < StandardError; end
+    class InvalidRequestPath < StandardError; end
     class UnknownApplication < StandardError; end
     class ComponentBoundaryViolation < StandardError; end
 
@@ -1812,6 +1813,8 @@ module Frontend
       path = value.to_s
       validate_path_safety!(path, "request", field: "path")
       path
+    rescue InvalidManifest => error
+      raise InvalidRequestPath, error.message
     end
 
     def normalize_component_name(value)

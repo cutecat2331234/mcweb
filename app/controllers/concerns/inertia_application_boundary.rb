@@ -62,6 +62,9 @@ module InertiaApplicationBoundary
     else
       reject_inertia_application_request!(document_location: request.get? || request.head?)
     end
+  rescue Frontend::ApplicationRegistry::InvalidRequestPath
+    response.cache_control[:no_store] = true
+    head :not_found
   end
 
   def enforce_non_inertia_source_contract!

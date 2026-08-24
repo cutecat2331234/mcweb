@@ -19,6 +19,9 @@ module Frontend
       assert_equal "download", registry.resolve(path: "/app/forum/topics/abc.rss", method: "GET").kind
       assert_equal "api", registry.resolve(path: "/app/forum/preview", method: "POST").kind
       assert_equal "document", registry.resolve(path: "/app/forum/moderation/approvals", method: "GET").kind
+      assert_raises(ApplicationRegistry::InvalidRequestPath) do
+        registry.resolve(path: "/app/store/image-packs/demo/item/..%2F..%2Fetc/passwd", method: "GET")
+      end
       assert_equal "staff", registry.component_owner("Staff/Forum/Approvals/Index").runtime_application_id
       assert_raises(ApplicationRegistry::ComponentBoundaryViolation) do
         registry.assert_component!(application_id: "forum", component: "Commerce/Products/Index")

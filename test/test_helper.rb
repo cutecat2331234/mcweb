@@ -71,9 +71,13 @@ module Mcweb
         path: frontend_application_test_route_path(path),
         method: method.to_s.upcase
       )
-      return headers unless route_match && SOURCEABLE_ROUTE_KINDS.include?(route_match.kind)
+      return headers unless route_match
 
-      source = if route_match.kind == "application_action"
+      sourceable = SOURCEABLE_ROUTE_KINDS.include?(route_match.kind) ||
+        (route_match.kind == "inertia_page" && frontend_application_test_inertia_request?(headers, env))
+      return headers unless sourceable
+
+      source = if route_match.kind.in?(%w[application_action inertia_page])
         route_match.application
       else
         frontend_application_shared_action_source(registry, route_match)
@@ -91,6 +95,15 @@ module Mcweb
         source.to_h.each_key.any? do |key|
           normalized = key.to_s.upcase.tr("-", "_").delete_prefix("HTTP_")
           SOURCE_SIGNAL_KEYS.include?(normalized)
+        end
+      end
+    end
+
+    def frontend_application_test_inertia_request?(headers, env)
+      [ headers, env ].compact.any? do |source|
+        source.to_h.any? do |key, value|
+          normalized = key.to_s.upcase.tr("-", "_").delete_prefix("HTTP_")
+          normalized == "X_INERTIA" && value.to_s == "true"
         end
       end
     end

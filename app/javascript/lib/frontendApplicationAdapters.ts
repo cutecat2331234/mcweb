@@ -19,6 +19,11 @@ import type {
 
 export type FrontendPageLoader = () => Promise<DefineComponent | { default: DefineComponent }>
 
+export type FrontendRuntimeAccessory = Readonly<{
+  name: string
+  component: Component
+}>
+
 export type FrontendApplicationAdapter = Readonly<{
   applicationId: string
   contributionId: string
@@ -34,6 +39,7 @@ export type FrontendApplicationAdapter = Readonly<{
   }>
   draftAdapter?: FrontendDraftAdapter
   navigation?: readonly ApplicationShellNavigationGroup[]
+  accessories?: Readonly<Record<string, Component>>
   install?: () => void | VoidFunction
 }>
 
@@ -113,6 +119,13 @@ function navigationSignature(
           || typeof item.labelKey !== 'string'
           || (item.badgeProp !== undefined && typeof item.badgeProp !== 'string')
           || (item.visibilityProp !== undefined && typeof item.visibilityProp !== 'string')
+          || (item.moduleKey !== undefined && typeof item.moduleKey !== 'string')
+          || (item.permissionKey !== undefined && typeof item.permissionKey !== 'string')
+          || (item.permissionAny !== undefined
+            && (!Array.isArray(item.permissionAny) || item.permissionAny.length === 0
+              || item.permissionAny.some((permission) => typeof permission !== 'string')
+              || new Set(item.permissionAny).size !== item.permissionAny.length))
+          || (item.capabilityKey !== undefined && typeof item.capabilityKey !== 'string')
           || (item.requiresAuthentication !== undefined
             && typeof item.requiresAuthentication !== 'boolean')) {
           throw new Error(`Frontend adapter ${contributionId} has invalid navigation items`)
@@ -122,6 +135,10 @@ function navigationSignature(
           labelKey: item.labelKey,
           badgeProp: item.badgeProp ?? null,
           visibilityProp: item.visibilityProp ?? null,
+          moduleKey: item.moduleKey ?? null,
+          permissionKey: item.permissionKey ?? null,
+          permissionAny: item.permissionAny ?? null,
+          capabilityKey: item.capabilityKey ?? null,
           requiresAuthentication: item.requiresAuthentication ?? null,
         }
       }),
@@ -150,6 +167,10 @@ function canonicalPagePath(pagePath: string, pageRoots: readonly string[]): stri
   return `../pages/${relative}`
 }
 
+function isVueComponent(value: unknown): value is Component {
+  return typeof value === 'function' || (typeof value === 'object' && value !== null)
+}
+
 export function loadFrontendApplicationAdapters(
   applicationId: string,
   modules: Record<string, unknown>,
@@ -160,6 +181,7 @@ export function loadFrontendApplicationAdapters(
   install: () => VoidFunction
   dispose: VoidFunction
   navigation: readonly ApplicationShellNavigationContribution[]
+  accessories: readonly FrontendRuntimeAccessory[]
 } {
   const descriptor = requireFrontendApplication(applicationId)
   const expectedModules = new Set(descriptor.adapterModules)
@@ -175,10 +197,12 @@ export function loadFrontendApplicationAdapters(
   )
   const discoveredModules = new Set<string>()
   const discoveredErrorBoundaries = new Set<string>()
+  const discoveredAccessories = new Set<string>()
   const pages: Record<string, FrontendPageLoader> = {}
   const errorBoundaries: Component[] = []
   const adapters: FrontendApplicationAdapter[] = []
   const navigation: ApplicationShellNavigationContribution[] = []
+  const accessories: FrontendRuntimeAccessory[] = []
   const removeLocaleDomains: VoidFunction[] = []
   let disposed = false
   const dispose = () => {
@@ -258,6 +282,26 @@ export function loadFrontendApplicationAdapters(
         })
       }
 
+      const actualAccessoryNames = Object.keys(adapter.accessories ?? {}).sort()
+      const expectedAccessoryNames = [...contribution.accessories].sort()
+      if (actualAccessoryNames.join('\0') !== expectedAccessoryNames.join('\0')) {
+        throw new Error(
+          `Frontend adapter ${adapter.contributionId} accessories do not match its manifest: `
+            + `expected=${expectedAccessoryNames.join(', ')} actual=${actualAccessoryNames.join(', ')}`,
+        )
+      }
+      for (const name of actualAccessoryNames) {
+        const component = adapter.accessories?.[name]
+        if (!isVueComponent(component)) {
+          throw new Error(`Frontend adapter ${adapter.contributionId} has an invalid accessory: ${name}`)
+        }
+        if (discoveredAccessories.has(name)) {
+          throw new Error(`Frontend runtime accessory is provided twice: ${name}`)
+        }
+        discoveredAccessories.add(name)
+        accessories.push({ name, component })
+      }
+
       for (const [pagePath, loader] of Object.entries(adapter.pages ?? {})) {
         if (typeof loader !== 'function') {
           throw new Error(`Frontend adapter ${adapter.contributionId} has a non-executable page loader`)
@@ -335,6 +379,7 @@ export function loadFrontendApplicationAdapters(
   return {
     pages,
     errorBoundaries,
+    accessories: Object.freeze(accessories.map((accessory) => Object.freeze({ ...accessory }))),
     navigation: Object.freeze(navigation.map((item) => Object.freeze({
       contributionId: item.contributionId,
       groups: Object.freeze(item.groups.map((group) => Object.freeze({

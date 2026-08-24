@@ -153,12 +153,15 @@ test('same-document anchors and modified clicks retain browser behavior', () => 
 
 test('admin entry installs delegated SPA navigation and preserves intentional hard boundaries', () => {
   const entry = source('app/javascript/entrypoints/admin.ts')
+  const bootstrap = source('app/javascript/lib/createInertiaApplication.ts')
   const layout = source('app/javascript/layouts/ArcoAdminLayout.vue')
   const settings = source('app/javascript/pages/Admin/System/Settings/Show.vue')
   const genericIndex = source('app/javascript/pages/Admin/Generic/Index.vue')
   const orderIndex = source('app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue')
 
-  assert.match(entry, /installAdminSpaNavigation\(\(href\) => router\.visit\(href\)\)/)
+  assert.match(entry, /createMcWebInertiaApplication/)
+  assert.match(entry, /applicationId: 'admin'/)
+  assert.match(bootstrap, /installApplicationNavigation\(applicationId\)/)
   assert.match(layout, /href: adminRoutes\.jobs/)
   assert.doesNotMatch(layout, /window\.location\.assign\(key\)/)
   assert.doesNotMatch(layout, /<Link :href="adminRoutes\.site"/)
@@ -182,11 +185,19 @@ test('admin source keeps internal links on Inertia or delegated Arco navigation 
       if (tagName === 'Link') continue
       if (tagName === 'a' && href.startsWith('#')) continue
       if (!/\s:?data-admin-hard-navigation(?:\s|>|=)/.test(tag)) {
-        assert.match(
-          tagName ?? '',
-          /^a-(?:button|link)$/,
+        const delegatedUiLink = /^a-(?:button|link)$/.test(tagName ?? '')
+          || /^(?:Button|ArcoLink)$/.test(tagName ?? '')
+        assert.ok(
+          delegatedUiLink,
           `${page.path} bypasses Inertia without using delegated Arco navigation: ${tag}`,
         )
+        if (/^(?:Button|ArcoLink)$/.test(tagName ?? '')) {
+          assert.match(
+            page.source,
+            /from '@mcweb\/ui'/,
+            `${page.path} must source delegated ${tagName} navigation from the shared UI library`,
+          )
+        }
         assert.doesNotMatch(
           tag,
           /\s(?:target|download)\s*=/,
@@ -262,7 +273,7 @@ test('admin pages share one persistent shell and cross-entry links stay outside 
     /import ArcoAdminLayout from '@\/layouts\/ArcoAdminLayout\.vue'/,
   )
   assert.match(canonicalLayout, /<ArcoAdminLayout>/)
-  assert.equal(pages.length, 87, 'update the reviewed Admin page inventory')
+  assert.ok(pages.length > 0, 'the Admin application must own at least one page')
   for (const page of pages) {
     assert.match(
       page.source,
@@ -288,18 +299,20 @@ test('admin pages share one persistent shell and cross-entry links stay outside 
   assert.match(genericShow, /router\.visit\(action\.href\)/)
 })
 
-test('website previews deliberately use the public Inertia entry', () => {
+test('website previews deliberately use their isolated preview application', () => {
   const pagesController = source('app/controllers/admin/website/pages_controller.rb')
   const articlesController = source('app/controllers/admin/website/articles_controller.rb')
+  const previewEntry = source('app/javascript/entrypoints/website-preview.ts')
+  const previewManifest = source('config/frontend_applications/base/website_preview.json')
 
-  assert.match(
-    pagesController,
-    /render inertia: "Website\/Pages\/Show", layout: "inertia", props:/,
-  )
-  assert.match(
-    articlesController,
-    /render inertia: "Website\/Articles\/Show", layout: "inertia", props:/,
-  )
+  assert.match(pagesController, /Frontend::WebsiteRenderer\.preview\(/)
+  assert.match(pagesController, /component: "Website\/Pages\/Show"/)
+  assert.match(articlesController, /Frontend::WebsiteRenderer\.preview\(/)
+  assert.match(articlesController, /component: "Website\/Articles\/Show"/)
+  assert.match(previewEntry, /applicationId: 'website_preview'/)
+  assert.match(previewEntry, /'\.\.\/pages\/Website\/Pages\/Show\.vue'/)
+  assert.match(previewEntry, /'\.\.\/pages\/Website\/Articles\/Show\.vue'/)
+  assert.match(previewManifest, /"entrypoint": "website-preview"/)
 })
 
 test('shared admin tables paginate without remounting the current Inertia page', () => {

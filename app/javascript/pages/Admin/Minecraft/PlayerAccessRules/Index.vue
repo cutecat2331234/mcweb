@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
@@ -76,6 +77,7 @@ const props = defineProps<{
   rules: Rule[]
   paths: { create: string; players: string; next: string | null }
 }>()
+const { locale } = useI18n()
 
 const form = useForm({
   access_rule: {
@@ -144,7 +146,7 @@ function confirmRevoke() {
 function formatDate(value: string | null) {
   if (!value) return '—'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString(locale.value)
 }
 
 function statusColor(status: Rule['status']) {

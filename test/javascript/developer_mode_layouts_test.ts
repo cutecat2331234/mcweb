@@ -36,8 +36,8 @@ test('each CE shell keeps its existing visual component system', () => {
   const website = source(layoutPaths[2])
   const websiteCss = source('app/javascript/styles/website.css')
 
-  assert.match(portal, /<TriangleAlert/)
-  assert.match(portal, /bg-amber-500\/10/)
+  assert.match(portal, /<Alert/)
+  assert.match(portal, /from '@mcweb\/ui'/)
   assert.match(admin, /<a-alert/)
   assert.match(admin, /class="arco-admin-developer-alert"/)
   assert.match(website, /class="website-developer-mode"/)
@@ -49,7 +49,7 @@ test('PortalLayout does not key its page content by the URL', () => {
 
   assert.doesNotMatch(portal, /:key=["']page\.url["']/)
   assert.doesNotMatch(portal, /key\s*=\s*["'][^"']*page\.url/)
-  assert.match(portal, /<div class="min-h-\[1px\]">\s*<slot\s*\/>/)
+  assert.match(portal, /class="mc-page-container"[\s\S]*?<slot\s*\/>/)
 })
 
 test('developer mode warnings are translated in English and Chinese', () => {

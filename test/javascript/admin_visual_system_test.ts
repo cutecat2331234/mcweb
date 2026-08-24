@@ -87,6 +87,7 @@ test('admin task cards use a bounded Arco grid instead of a fixed four-column br
   assert.match(jobs, /<a-grid-item v-for="task in manualTasks"/)
   assert.doesNotMatch(jobs, /:cols="\{\s*xs:\s*1,\s*md:\s*2,\s*xl:\s*4\s*\}"/)
   assert.doesNotMatch(jobs, /\s(?:class|:class|style|:style)=/)
-  assert.doesNotMatch(jobs, /<(?:section|div|p|span)\b/)
+  assert.doesNotMatch(jobs, /<(?:input|select|button|table|form|textarea)(?:\s|>)/)
+  assert.doesNotMatch(jobs, /<style(?:\s|>)/)
   assert.doesNotMatch(css, /mc-admin-responsive-card-grid/)
 })

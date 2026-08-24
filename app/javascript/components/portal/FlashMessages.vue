@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { usePage } from '@inertiajs/vue3'
-import { AlertCircle, CheckCircle2, X } from '@lucide/vue'
-import { cn } from '@/lib/utils'
-
-const { t } = useI18n()
+import { Alert, Space } from '@mcweb/ui'
 
 const page = usePage()
 const dismissed = ref<Set<number>>(new Set())
@@ -22,7 +18,9 @@ const messages = computed(() => {
 
 const visibleMessages = computed(() => {
   if (autoHidden.value) return []
-  return messages.value.filter((_, index) => !dismissed.value.has(index))
+  return messages.value
+    .map((message, index) => ({ ...message, index }))
+    .filter(({ index }) => !dismissed.value.has(index))
 })
 
 function dismiss(index: number) {
@@ -40,36 +38,23 @@ watch(messages, (current) => {
 </script>
 
 <template>
-  <div v-if="visibleMessages.length" class="mb-6 space-y-3" data-portal-flash-messages>
-    <div
-      v-for="(message, index) in messages"
-      v-show="!dismissed.has(index) && !autoHidden"
-      :key="index"
+  <Space
+    v-if="visibleMessages.length"
+    direction="vertical"
+    fill
+    size="medium"
+    data-portal-flash-messages
+  >
+    <Alert
+      v-for="message in visibleMessages"
+      :key="message.index"
       role="alert"
-      :class="cn(
-        'relative flex gap-3 rounded-lg border px-4 py-3 pr-10 text-sm shadow-sm',
-        message.type === 'notice'
-          ? 'border-emerald-200/80 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100'
-          : 'border-red-200/80 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/50 dark:text-red-100',
-      )"
+      :type="message.type === 'notice' ? 'success' : 'error'"
+      show-icon
+      closable
+      @close="dismiss(message.index)"
     >
-      <CheckCircle2
-        v-if="message.type === 'notice'"
-        class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-      />
-      <AlertCircle
-        v-else
-        class="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400"
-      />
-      <p class="min-w-0 flex-1 leading-relaxed">{{ message.text }}</p>
-      <button
-        type="button"
-        class="absolute right-2 top-2 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100"
-        :aria-label="t('common.close')"
-        @click="dismiss(index)"
-      >
-        <X class="h-4 w-4" />
-      </button>
-    </div>
-  </div>
+      {{ message.text }}
+    </Alert>
+  </Space>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Message } from '@arco-design/web-vue'
+import { Message } from '@mcweb/ui'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { IconBug, IconCopy, IconLaunch } from '@arco-design/web-vue/es/icon'

@@ -95,7 +95,7 @@ test('the client registry matches the server exact-root and descendant API contr
   assert.match(clientRegistry, /if \(exactParentAndDescendantGlob\(left\.pattern, right\.pattern\)\) return false/)
 })
 
-test('downstream navigation visibility is a shared fail-closed server-prop contract', () => {
+test('downstream navigation visibility is a shared fail-closed authorization contract', () => {
   const schema = readFileSync(
     resolve(root, 'config/frontend_applications/schema.json'),
     'utf8',
@@ -119,11 +119,20 @@ test('downstream navigation visibility is a shared fail-closed server-prop contr
 
   for (const source of [schema, serverRegistry, clientRegistry, adapters]) {
     assert.match(source, /visibility_prop|visibilityProp/)
+    assert.match(source, /module_key|moduleKey/)
+    assert.match(source, /permission_key|permissionKey/)
+    assert.match(source, /permission_any|permissionAny/)
+    assert.match(source, /capability_key|capabilityKey/)
   }
   assert.match(clientRegistry, /function localeKeyValue/)
   assert.match(clientRegistry, /labelKey: localeKeyValue\(item\.label_key/)
   assert.match(clientRegistry, /labelKey: localeKeyValue\(group\.label_key/)
   assert.match(shell, /resolveShellProp\(pageProps, item\.visibilityProp\) !== true/)
+  assert.match(shell, /auth\.user\.admin_modules/)
+  assert.match(shell, /auth\.user\.admin_permissions/)
+  assert.match(shell, /auth\.user\.admin_capabilities/)
+  assert.match(shell, /capabilities as Record<string, unknown>\)\[capability\] === true/)
+  assert.match(shell, /item\.permissionAny\.some/)
   for (const layout of ['PortalLayout.vue', 'StaffLayout.vue', 'ArcoAdminLayout.vue']) {
     const source = readFileSync(resolve(root, 'app/javascript/layouts', layout), 'utf8')
     assert.match(source, /isApplicationShellNavigationItemVisible/)
@@ -170,4 +179,41 @@ test('adapter error boundaries accept Vue components with declared props', () =>
   assert.match(adapters, /errorBoundaries: readonly Component\[\]/)
   assert.match(bootstrap, /normalizeFrontendPageComponent\(await loader\(\)\)/)
   assert.match(bootstrap, /if \(!el\) throw new Error/)
+})
+
+test('runtime accessories are manifest-owned siblings in the shared Inertia root', () => {
+  const schema = readFileSync(
+    resolve(root, 'config/frontend_applications/schema.json'),
+    'utf8',
+  )
+  const serverRegistry = readFileSync(
+    resolve(root, 'app/services/frontend/application_registry.rb'),
+    'utf8',
+  )
+  const clientRegistry = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    'utf8',
+  )
+  const adapters = readFileSync(
+    resolve(root, 'app/javascript/lib/frontendApplicationAdapters.ts'),
+    'utf8',
+  )
+  const bootstrap = readFileSync(
+    resolve(root, 'app/javascript/lib/createInertiaApplication.ts'),
+    'utf8',
+  )
+
+  assert.match(schema, /"accessories": \{ "\$ref": "#\/\$defs\/namedResources" \}/)
+  assert.match(serverRegistry, /contribution_accessories/)
+  assert.match(serverRegistry, /application_surface_budget = contribution\.accessories\.any\?/)
+  assert.match(clientRegistry, /contributionAccessories/)
+  assert.match(clientRegistry, /applicationSurfaceBudget = contribution\.accessories\.length > 0/)
+  assert.match(adapters, /accessories\?: Readonly<Record<string, Component>>/)
+  assert.match(adapters, /accessories do not match its manifest/)
+  assert.match(adapters, /Frontend runtime accessory is provided twice/)
+  assert.match(adapters, /Object\.freeze\(accessories\.map/)
+  assert.match(bootstrap, /createApp, Fragment, h/)
+  assert.match(bootstrap, /adapters\.accessories\.map/)
+  assert.match(bootstrap, /runtime-accessory:/)
+  assert.equal(bootstrap.match(/createApp\(/g)?.length, 1)
 })

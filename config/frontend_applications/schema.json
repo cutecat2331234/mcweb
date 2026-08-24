@@ -167,6 +167,15 @@
         "label_key": { "$ref": "#/$defs/localeKey" },
         "badge_prop": { "$ref": "#/$defs/adapterName" },
         "visibility_prop": { "$ref": "#/$defs/adapterName" },
+        "module_key": { "$ref": "#/$defs/adapterName" },
+        "permission_key": { "$ref": "#/$defs/adapterName" },
+        "permission_any": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/adapterName" }
+        },
+        "capability_key": { "$ref": "#/$defs/adapterName" },
         "requires_authentication": { "type": "boolean" }
       },
       "additionalProperties": false
@@ -306,6 +315,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/navigationGroup" }
         },
+        "accessories": { "$ref": "#/$defs/namedResources" },
         "budget": { "$ref": "#/$defs/budget" },
         "renderer_adapter": { "$ref": "#/$defs/adapterName" },
         "exclusive_renderer": { "const": true },

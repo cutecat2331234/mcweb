@@ -100,6 +100,10 @@ module Frontend
       :label_key,
       :badge_prop,
       :visibility_prop,
+      :module_key,
+      :permission_key,
+      :permission_any,
+      :capability_key,
       :requires_authentication,
       keyword_init: true
     )
@@ -115,6 +119,7 @@ module Frontend
       :error_boundary,
       :draft_contract,
       :navigation,
+      :accessories,
       :budget,
       :source,
       keyword_init: true
@@ -410,7 +415,7 @@ module Frontend
           data,
           %w[
             schema_version contribution_id product_owner runtime_owner
-            creates_application adapter_module page_roots draft_contract
+            creates_application adapter_module page_roots draft_contract accessories
           ],
           source
         )
@@ -430,8 +435,17 @@ module Frontend
         end
 
         adapter_module = data["adapter_module"]
-        if descriptor.runtime_kind == "inertia" && adapter_module.blank?
-          raise InvalidManifest, "#{source}: created Inertia applications require adapter_module"
+        accessories = validate_string_list!(
+          data.fetch("accessories", []),
+          source,
+          field: "accessories"
+        ).map { |name| validate_adapter_name!(name, source) }
+        if accessories.any? && !descriptor.runtime_kind.in?(%w[inertia inertia_document])
+          raise InvalidManifest, "#{source}: runtime accessories require an Inertia application"
+        end
+        if (descriptor.runtime_kind == "inertia" || accessories.any?) && adapter_module.blank?
+          raise InvalidManifest,
+            "#{source}: created Inertia applications and runtime accessories require adapter_module"
         end
         if adapter_module.present?
           descriptor.adapter_modules << validate_adapter_module!(adapter_module, source, descriptor.id)
@@ -451,6 +465,7 @@ module Frontend
           draft_contract: data["draft_contract"].present? ?
             build_draft_contract(data["draft_contract"], source) : nil,
           navigation: [],
+          accessories:,
           budget: descriptor.budget,
           source:
         )
@@ -608,7 +623,7 @@ module Frontend
       allowed = %w[
         schema_version contribution_id product_owner runtime_owner extends_application
         component_prefixes component_names routes styles locales capabilities error_boundary
-        adapter_module page_roots draft_contract navigation budget renderer_adapter exclusive_renderer
+        adapter_module page_roots draft_contract navigation accessories budget renderer_adapter exclusive_renderer
         renderer_runtime_kind renderer_entrypoint renderer_shell_adapter renderer_ui_adapter
         renderer_preview_kind renderer_manifest_path
       ]
@@ -661,12 +676,19 @@ module Frontend
         validate_adapter_name!(data["error_boundary"], source) : nil
       target.error_boundaries << contribution_error_boundary if contribution_error_boundary
       contribution_navigation = build_navigation(data.fetch("navigation", []), source)
-
+      contribution_accessories = validate_string_list!(
+        data.fetch("accessories", []),
+        source,
+        field: "accessories"
+      ).map { |name| validate_adapter_name!(name, source) }
+      if contribution_accessories.any? && !target.runtime_kind.in?(%w[inertia inertia_document])
+        raise InvalidManifest, "#{source}: runtime accessories require an Inertia application"
+      end
 
       adapter_required = !renderer_replacement && (prefixes.any? || names.any? ||
         data.fetch("styles", []).any? || data.fetch("locales", []).any? ||
         data["error_boundary"].present? || data["draft_contract"].present? ||
-        contribution_navigation.any?)
+        contribution_navigation.any? || contribution_accessories.any?)
       if adapter_required && data["budget"].blank?
         raise InvalidManifest, "#{source}: frontend resource/page extensions require budget"
       end
@@ -695,6 +717,7 @@ module Frontend
         draft_contract: data["draft_contract"].present? ?
           build_draft_contract(data["draft_contract"], source) : nil,
         navigation: contribution_navigation,
+        accessories: contribution_accessories,
         budget: contribution_budget,
         source:
       )
@@ -730,10 +753,12 @@ module Frontend
       end
       if data["adapter_module"].present? || data["draft_contract"].present? ||
           prefixes.any? || names.any? || contribution_navigation.any? ||
+          contribution_accessories.any? ||
           Array(data.fetch("capabilities", [])).any? ||
           target.adapter_modules.any? || previous_renderer_contributions.any?
         raise InvalidManifest,
-          "#{source}: exclusive Website renderer cannot share Inertia adapters, pages, navigation, or draft resources"
+          "#{source}: exclusive Website renderer cannot share Inertia adapters, pages, navigation, " \
+          "accessories, or draft resources"
       end
       invalid_renderer_route = target.route_rules.find do |rule|
         rule.contribution_id == data.fetch("contribution_id") &&
@@ -869,13 +894,26 @@ module Frontend
           assert_required_keys!(raw_item, %w[href label_key], item_source)
           assert_exact_keys!(
             raw_item,
-            %w[href label_key badge_prop visibility_prop requires_authentication],
+            %w[
+              href label_key badge_prop visibility_prop module_key permission_key
+              permission_any capability_key requires_authentication
+            ],
             item_source
           )
           authentication = raw_item.fetch("requires_authentication", false)
           unless authentication.in?([ true, false ])
             raise InvalidManifest,
               "#{item_source}: requires_authentication must be a boolean"
+          end
+          permission_any = if raw_item.key?("permission_any")
+            validate_string_list!(
+              raw_item["permission_any"],
+              item_source,
+              field: "permission_any",
+              allow_empty: false
+            ).map { |permission| validate_adapter_name!(permission, item_source) }
+          else
+            []
           end
           NavigationItem.new(
             href: validate_literal_path!(raw_item.fetch("href"), item_source, field: "href"),
@@ -884,6 +922,13 @@ module Frontend
               validate_adapter_name!(raw_item["badge_prop"], item_source),
             visibility_prop: raw_item["visibility_prop"].presence &&
               validate_adapter_name!(raw_item["visibility_prop"], item_source),
+            module_key: raw_item["module_key"].presence &&
+              validate_adapter_name!(raw_item["module_key"], item_source),
+            permission_key: raw_item["permission_key"].presence &&
+              validate_adapter_name!(raw_item["permission_key"], item_source),
+            permission_any:,
+            capability_key: raw_item["capability_key"].presence &&
+              validate_adapter_name!(raw_item["capability_key"], item_source),
             requires_authentication: authentication
           )
         end
@@ -1070,11 +1115,13 @@ module Frontend
           next unless contribution.budget
 
           renderer_budget = descriptor.renderer&.contribution_id == contribution.id
+          application_surface_budget = contribution.accessories.any?
           contribution.budget.fetch("representative_paths").each do |path|
             route = resolve(path:, method: "GET")
             valid = route&.application_id == descriptor.id &&
               route.kind.in?(%w[inertia_page document]) &&
-              (renderer_budget || route.rule.contribution_id == contribution.id)
+              (renderer_budget || application_surface_budget ||
+                route.rule.contribution_id == contribution.id)
             next if valid
 
             raise InvalidManifest,
@@ -1327,6 +1374,7 @@ module Frontend
           end
         end
 
+        accessory_claims = {}
         descriptor.contributions.each do |contribution|
           if contribution.draft_contract &&
               !descriptor.capabilities.include?(contribution.draft_contract.capability)
@@ -1347,6 +1395,16 @@ module Frontend
                 "#{contribution.source}: navigation href #{item.href.inspect} " \
                 "is not an owned contribution page"
             end
+          end
+
+          contribution.accessories.each do |accessory|
+            previous = accessory_claims[accessory]
+            if previous
+              raise InvalidManifest,
+                "#{contribution.source}: runtime accessory #{accessory.inspect} " \
+                "is already owned by #{previous.source}"
+            end
+            accessory_claims[accessory] = contribution
           end
 
           next unless contribution.adapter_module

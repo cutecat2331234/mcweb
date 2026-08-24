@@ -623,15 +623,16 @@ test('admin-only shared components use Arco instead of legacy and native control
     assert.doesNotMatch(source, /@\/components\/ui\//)
     assertNoNativeAdminControls(source)
     assert.doesNotMatch(source, /<el-/)
-    assert.match(source, /<a-/)
+    assert.match(source, /<a-|from '@mcweb\/ui'/)
   }
 })
 
 test('admin language switcher keeps the locale menu clear of overlapping tooltips', () => {
   const source = adminComponentSource('AdminLanguageSwitcher.vue')
 
-  assert.match(source, /<a-dropdown trigger="click" @select="switchLocale">/)
-  assert.match(source, /<a-button type="text" shape="circle" :aria-label="t\('locale\.label'\)">/)
+  assert.match(source, /import \{ Button, Doption, Dropdown \} from '@mcweb\/ui'/)
+  assert.match(source, /<Dropdown trigger="click" @select="switchLocale">/)
+  assert.match(source, /<Button type="text" shape="circle" :aria-label="t\('locale\.label'\)">/)
   assert.doesNotMatch(source, /<a-tooltip/)
 })
 
@@ -740,8 +741,10 @@ test('website CMS routes, sidebar targets, components, and preview boundary stay
   const pagesController = projectSource('app/controllers/admin/website/pages_controller.rb')
   const articlesController = projectSource('app/controllers/admin/website/articles_controller.rb')
 
-  assert.match(entry, /import\.meta\.glob<DefineComponent>\('\.\.\/pages\/Admin\/\*\*\/\*\.vue'\)/)
-  assert.match(entry, /if \(!name\.startsWith\('Admin\/'\)\)/)
+  assert.match(entry, /'\.\.\/pages\/Admin\/Website\/\*\*\/\*\.vue'/)
+  assert.match(entry, /createMcWebInertiaApplication/)
+  assert.match(entry, /applicationId: 'admin'/)
+  assert.doesNotMatch(entry, /'\.\.\/pages\/Admin\/\*\*\/\*\.vue'/)
   assert.match(adminRoutes, /websitePages: '\/admin\/website\/pages'/)
   assert.match(adminRoutes, /websiteArticles: '\/admin\/website\/articles'/)
   assert.match(adminRoutes, /websiteNavItems: '\/admin\/website\/nav_items'/)
@@ -753,8 +756,8 @@ test('website CMS routes, sidebar targets, components, and preview boundary stay
   assert.match(routes, /resources :revisions, controller: "article_revisions"/)
   assert.match(pagesController, /render inertia: "Admin\/Website\/ContentDiscard"/)
   assert.match(articlesController, /render inertia: "Admin\/Website\/ContentDiscard"/)
-  assert.match(pagesController, /render inertia: "Website\/Pages\/Show", layout: "inertia"/)
-  assert.match(articlesController, /render inertia: "Website\/Articles\/Show", layout: "inertia"/)
+  assert.match(pagesController, /Frontend::WebsiteRenderer\.preview\(/)
+  assert.match(articlesController, /Frontend::WebsiteRenderer\.preview\(/)
   assert.match(pagesController, /preview_url, hardNavigation: true/)
   assert.match(articlesController, /preview_admin_website_article_path\(@article\), hardNavigation: true/)
   const genericShow = pageSource('Generic/Show.vue')

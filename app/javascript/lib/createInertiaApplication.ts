@@ -1,6 +1,6 @@
 import { getInitialPageFromDOM } from '@inertiajs/core'
 import { createInertiaApp, router } from '@inertiajs/vue3'
-import { createApp, h, type DefineComponent } from 'vue'
+import { createApp, Fragment, h, type DefineComponent } from 'vue'
 
 import AppProvider from '@/components/AppProvider.vue'
 import ApplicationErrorBoundary from '@/components/ApplicationErrorBoundary.vue'
@@ -284,9 +284,19 @@ export async function createMcWebInertiaApplication({
           (child, Boundary) => () => h(Boundary, { applicationId }, { default: child }),
           () => h(App, props),
         )
-        const content = () => h(ApplicationErrorBoundary, { applicationId }, {
-          default: applicationContent,
-        })
+        const content = () => h(Fragment, null, [
+          h(ApplicationErrorBoundary, { applicationId }, {
+            default: applicationContent,
+          }),
+          ...adapters.accessories.map(({ name, component }) => (
+            h(ApplicationErrorBoundary, {
+              applicationId,
+              key: `runtime-accessory:${name}`,
+            }, {
+              default: () => h(component),
+            })
+          )),
+        ])
         const root = provider
           ? { render: () => h(AppProvider, null, { default: content }) }
           : { render: content }

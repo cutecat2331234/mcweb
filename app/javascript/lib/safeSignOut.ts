@@ -25,7 +25,11 @@ export async function safeSignOut(hooks: SafeSignOutHooks = {}) {
 
     fallbackStarted = true
     finish()
-    navigateFrontendDocument(routes.signedOut)
+    try {
+      navigateFrontendDocument(routes.signedOut)
+    } catch {
+      window.location.assign(routes.signedOut)
+    }
   }
 
   hooks.onStart?.()
@@ -37,6 +41,7 @@ export async function safeSignOut(hooks: SafeSignOutHooks = {}) {
     visitSafePublicPage()
   } catch (error) {
     if (error instanceof SharedActionError && error.recoveryStarted) return
+    if (fallbackStarted) throw error
     visitSafePublicPage()
   } finally {
     finish()

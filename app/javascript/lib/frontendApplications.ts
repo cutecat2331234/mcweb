@@ -76,6 +76,7 @@ export type FrontendApplicationContribution = Readonly<{
   errorBoundary: string | null
   draftContract: FrontendDraftContract | null
   navigation: readonly ApplicationShellNavigationGroup[]
+  accessories: readonly string[]
   budget: FrontendApplicationBudget | null
 }>
 
@@ -360,7 +361,17 @@ function buildNavigation(
       const item = objectValue(rawItem, itemSource)
       assertExactKeys(
         item,
-        ['href', 'label_key', 'badge_prop', 'visibility_prop', 'requires_authentication'],
+        [
+          'href',
+          'label_key',
+          'badge_prop',
+          'visibility_prop',
+          'module_key',
+          'permission_key',
+          'permission_any',
+          'capability_key',
+          'requires_authentication',
+        ],
         itemSource,
         ['href', 'label_key'],
       )
@@ -379,6 +390,31 @@ function buildNavigation(
             item.visibility_prop,
             itemSource,
             'visibility_prop',
+          ),
+        }),
+        ...(item.module_key === undefined ? {} : {
+          moduleKey: adapterNameValue(item.module_key, itemSource, 'module_key'),
+        }),
+        ...(item.permission_key === undefined ? {} : {
+          permissionKey: adapterNameValue(
+            item.permission_key,
+            itemSource,
+            'permission_key',
+          ),
+        }),
+        ...(item.permission_any === undefined ? {} : {
+          permissionAny: uniqueStrings(
+            item.permission_any,
+            itemSource,
+            'permission_any',
+            { allowEmpty: false, pattern: /^[a-z][a-z0-9_.-]*$/ },
+          ),
+        }),
+        ...(item.capability_key === undefined ? {} : {
+          capabilityKey: adapterNameValue(
+            item.capability_key,
+            itemSource,
+            'capability_key',
           ),
         }),
         ...(item.requires_authentication === undefined ? {} : {
@@ -856,6 +892,7 @@ for (const { source, raw } of contributionEntries) {
       'adapter_module',
       'page_roots',
       'draft_contract',
+      'accessories',
     ],
     source,
     [
@@ -874,8 +911,20 @@ for (const { source, raw } of contributionEntries) {
   }
   const application = buildApplication(created, source, true, contributionId)
   if (applications.has(application.id)) manifestError(source, `duplicate application id ${application.id}`)
-  if (application.runtimeKind === 'inertia' && raw.adapter_module === undefined) {
-    manifestError(source, 'created Inertia applications require adapter_module')
+  const accessories = uniqueStrings(raw.accessories ?? [], source, 'accessories', {
+    pattern: /^[a-z][a-z0-9_.-]*$/,
+  })
+  if (accessories.length > 0
+    && application.runtimeKind !== 'inertia'
+    && application.runtimeKind !== 'inertia_document') {
+    manifestError(source, 'runtime accessories require an Inertia application')
+  }
+  if ((application.runtimeKind === 'inertia' || accessories.length > 0)
+    && raw.adapter_module === undefined) {
+    manifestError(
+      source,
+      'created Inertia applications and runtime accessories require adapter_module',
+    )
   }
   const adapterModule = raw.adapter_module === undefined
     ? null
@@ -897,6 +946,7 @@ for (const { source, raw } of contributionEntries) {
       ? null
       : buildDraftContract(raw.draft_contract, source),
     navigation: [],
+    accessories,
     budget: application.budget,
   })
   applications.set(application.id, application)
@@ -942,6 +992,7 @@ for (const { source, raw } of contributionEntries) {
       'page_roots',
       'draft_contract',
       'navigation',
+      'accessories',
       'budget',
       'renderer_adapter',
       'exclusive_renderer',
@@ -1016,13 +1067,22 @@ for (const { source, raw } of contributionEntries) {
     : stringValue(raw.error_boundary, source, 'error_boundary')
   if (contributionErrorBoundary) target.errorBoundaries.push(contributionErrorBoundary)
   const contributionNavigation = buildNavigation(raw.navigation ?? [], source)
+  const contributionAccessories = uniqueStrings(raw.accessories ?? [], source, 'accessories', {
+    pattern: /^[a-z][a-z0-9_.-]*$/,
+  })
+  if (contributionAccessories.length > 0
+    && target.runtimeKind !== 'inertia'
+    && target.runtimeKind !== 'inertia_document') {
+    manifestError(source, 'runtime accessories require an Inertia application')
+  }
   const adapterRequired = !rendererReplacement && (prefixes.length > 0
     || componentNames.length > 0
     || arrayValue(raw.styles ?? [], source, 'styles').length > 0
     || arrayValue(raw.locales ?? [], source, 'locales').length > 0
     || raw.error_boundary !== undefined
     || raw.draft_contract !== undefined
-    || contributionNavigation.length > 0)
+    || contributionNavigation.length > 0
+    || contributionAccessories.length > 0)
   if (adapterRequired && raw.adapter_module === undefined) {
     manifestError(source, 'frontend resource/page extensions require adapter_module')
   }
@@ -1050,6 +1110,7 @@ for (const { source, raw } of contributionEntries) {
       ? null
       : buildDraftContract(raw.draft_contract, source),
     navigation: contributionNavigation,
+    accessories: contributionAccessories,
     budget: contributionBudget,
   })
   if (contributionBudget && !rendererReplacement) {
@@ -1085,11 +1146,13 @@ for (const { source, raw } of contributionEntries) {
       || componentNames.length > 0
       || arrayValue(raw.capabilities ?? [], source, 'capabilities').length > 0
       || contributionNavigation.length > 0
+      || contributionAccessories.length > 0
       || target.adapterModules.length > 0
       || target.contributions.some((contribution) => contribution.id !== contributionId)) {
       manifestError(
         source,
-        'exclusive Website renderer cannot share Inertia adapters, pages, navigation, or draft resources',
+        'exclusive Website renderer cannot share Inertia adapters, pages, navigation, '
+          + 'accessories, or draft resources',
       )
     }
     if (contributionRoutes.some((route) => (
@@ -1198,6 +1261,7 @@ for (const application of applications.values()) {
   if (application.id !== 'website' && application.uiAdapter !== 'mcweb_ui') {
     manifestError(application.source, `${application.id} must use the mcweb_ui adapter`)
   }
+  const accessoryClaims = new Map<string, FrontendApplicationContribution>()
   for (const contribution of application.contributions) {
     if (contribution.draftContract
       && !application.capabilities.includes(contribution.draftContract.capability)) {
@@ -1215,6 +1279,16 @@ for (const application of applications.values()) {
         )
       }
       adapterModuleClaims.set(contribution.adapterModule, contribution)
+    }
+    for (const accessory of contribution.accessories) {
+      const previous = accessoryClaims.get(accessory)
+      if (previous) {
+        manifestError(
+          application.source,
+          `runtime accessory ${accessory} is shared by ${previous.id} and ${contribution.id}`,
+        )
+      }
+      accessoryClaims.set(accessory, contribution)
     }
   }
   const ownedAdapterModules = application.contributions
@@ -1548,6 +1622,7 @@ function freezeApplication(application: MutableApplication): FrontendApplication
       draftContract: contribution.draftContract
         ? Object.freeze({ ...contribution.draftContract })
         : null,
+      accessories: Object.freeze([...contribution.accessories]),
       navigation: Object.freeze(contribution.navigation.map((group) => Object.freeze({
         ...group,
         items: Object.freeze(group.items.map((item) => Object.freeze({ ...item }))),
@@ -1667,9 +1742,12 @@ for (const application of frontendApplications) {
     for (const path of contribution.budget.representativePaths) {
       const route = resolveFrontendRoute(path, 'GET')
       const rendererBudget = application.renderer?.contributionId === contribution.id
+      const applicationSurfaceBudget = contribution.accessories.length > 0
       if (route?.application?.id !== application.id
         || (route.rule.kind !== 'inertia_page' && route.rule.kind !== 'document')
-        || (!rendererBudget && route.rule.contributionId !== contribution.id)) {
+        || (!rendererBudget
+          && !applicationSurfaceBudget
+          && route.rule.contributionId !== contribution.id)) {
         manifestError(
           contribution.id,
           `contribution budget path ${path} is not owned by ${contribution.id}`,

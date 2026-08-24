@@ -143,7 +143,9 @@ function leavePreview(path: string) {
             class="h-8 w-auto"
           >
           <span v-else class="website-brand-mark bg-gradient-to-br from-green-500/25 to-emerald-600/20 border-green-500/40">⛏</span>
-          <span class="text-lg font-semibold tracking-tight text-white">McWeb</span>
+          <span class="text-lg font-semibold tracking-tight text-white">
+            {{ t('website.layout.brand') }}
+          </span>
         </Link>
 
         <nav class="hidden items-center gap-6 text-sm md:flex">
@@ -186,7 +188,7 @@ function leavePreview(path: string) {
         <div class="grid gap-8 md:grid-cols-3">
           <div>
             <p class="font-semibold text-white">
-              <span class="text-green-500">█</span> McWeb
+              <span class="text-green-500">█</span> {{ t('website.layout.brand') }}
             </p>
             <p class="mt-2 text-sm text-slate-400">{{ t('website.layout.tagline') }}</p>
           </div>

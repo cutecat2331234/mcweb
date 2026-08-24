@@ -18,7 +18,8 @@ const reviewComponents = [
   source('app/javascript/components/community/ReportAppealReviewIndex.vue'),
   source('app/javascript/components/community/ReportAppealReviewShow.vue'),
 ]
-const upload = source('app/javascript/components/community/SecureEvidenceUpload.vue')
+const uploadAdapter = source('app/javascript/components/community/SecureEvidenceUpload.vue')
+const upload = source('app/javascript/components/secure-evidence/SecureEvidenceUpload.vue')
 
 test('appeal surfaces use the shared Arco library without divergent motion or visual overrides', () => {
   for (const page of [...userPages, ...reviewComponents, upload]) {
@@ -29,6 +30,8 @@ test('appeal surfaces use the shared Arco library without divergent motion or vi
   assert.match(upload, /type="file"/)
   assert.match(upload, /hidden/)
   assert.match(upload, /<Button/)
+  assert.match(uploadAdapter, /SharedSecureEvidenceUpload/)
+  assert.doesNotMatch(uploadAdapter, /<style\b|(?:class|:class|style|:style)=/)
 })
 
 test('private draft submission exposes explicit upload cancel and versioned submit actions', () => {

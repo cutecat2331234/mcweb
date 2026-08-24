@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
   Avatar,
+  Alert,
   Badge,
   Button,
   ConfigProvider,
@@ -33,7 +34,6 @@ import {
   IconUser,
 } from '@arco-design/web-vue/es/icon'
 
-import DeveloperModeTools from '@/components/portal/DeveloperModeTools.vue'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import PortalAnnouncements from '@/components/portal/PortalAnnouncements.vue'
@@ -48,6 +48,9 @@ import { safeSignOut } from '@/lib/safeSignOut'
 import { useTheme } from '@/lib/useTheme'
 
 const page = usePage()
+const DeveloperModeTools = defineAsyncComponent(
+  () => import('@/components/portal/DeveloperModeTools.vue'),
+)
 const { t } = useI18n()
 const arcoLocale = useArcoLocale()
 const shell = useApplicationShell()
@@ -90,7 +93,13 @@ const forumNotices = computed(() => page.props.forum_notices as Array<{
 }> | undefined)
 const developerMode = computed(() => (
   page.props.developer_mode ?? { enabled: false }
-) as { enabled: boolean })
+) as { enabled: boolean; production_environment?: boolean })
+const developerModeMessage = computed(() => [
+  t('common.developerModeWarning'),
+  developerMode.value.production_environment
+    ? t('common.developerModeProductionWarning')
+    : null,
+].filter(Boolean).join(' '))
 const currentPath = computed(() => page.url.split('?')[0])
 const visibleGroups = computed(() => shell.navigation
   .map((group) => ({
@@ -306,6 +315,18 @@ watch(isDark, syncArcoTheme, { immediate: true })
             </Button>
           </Space>
         </LayoutHeader>
+
+        <Alert
+          v-if="developerMode.enabled"
+          type="warning"
+          :title="t('common.developerMode')"
+          data-testid="developer-mode-banner"
+          role="alert"
+          show-icon
+          banner
+        >
+          {{ developerModeMessage }}
+        </Alert>
 
         <PortalAnnouncements
           v-if="shell.applicationId === 'forum'"

@@ -5781,6 +5781,7 @@ export default {
   },
   website: {
     layout: {
+      brand: 'McWeb',
       home: 'Home',
       about: 'About',
       blog: 'Blog',

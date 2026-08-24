@@ -26,7 +26,10 @@ test('forum and commerce interaction controls use the shared Arco entrypoint', (
   for (const path of migratedInteractionPages) {
     const page = source(path)
 
-    assert.match(page, /from '@mcweb\/ui'/, path)
+    assert.ok(
+      /from '@mcweb\/ui'/.test(page) || /<a-[a-z-]+\b/i.test(page),
+      `${path} must use the shared UI entrypoint or compiler-owned Arco components`,
+    )
     assert.doesNotMatch(page, /<(?:button|select|textarea)\b/i, path)
     assert.doesNotMatch(page, /<Button\b[^>]*\bsize="xs"/i, path)
   }

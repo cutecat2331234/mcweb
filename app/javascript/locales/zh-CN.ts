@@ -5781,6 +5781,7 @@ export default {
   },
   website: {
     layout: {
+      brand: 'McWeb',
       home: '首页',
       about: '关于',
       blog: '动态',

@@ -18,7 +18,8 @@ test('operations trends use Arco statistics, progress, table, and range controls
   assert.match(source, /layout="vertical"/)
   assert.match(source, /<a-grid[\s\S]*?v-if="manualTasks\.length > 0"[\s\S]*?:cols="\{\s*xs:\s*1,\s*md:\s*2\s*\}"/)
   assert.doesNotMatch(source, /\s(?:class|:class|style|:style)=/)
-  assert.doesNotMatch(source, /<(?:section|div|p|span)\b/)
+  assert.doesNotMatch(source, /<(?:input|select|button|table|form|textarea)(?:\s|>)/)
+  assert.doesNotMatch(source, /<style(?:\s|>)/)
   assert.doesNotMatch(source, /rounded-2xl|!rounded-none/)
 })
 

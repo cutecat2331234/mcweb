@@ -13,7 +13,7 @@ gem "tailwindcss-rails"
 gem "jbuilder"
 
 gem "bcrypt", "~> 3.1.7"
-gem "view_component", "~> 4.12"
+gem "view_component", "~> 4.15"
 gem "pagy", "~> 43.6"
 gem "rotp", "~> 6.3"
 gem "rqrcode", "~> 3.2"

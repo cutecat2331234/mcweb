@@ -15,7 +15,9 @@ class NotificationPeriodCountsTest < ActiveSupport::TestCase
   end
 
   test "computes every notification period in one aggregate query" do
-    travel_to Time.zone.local(2026, 7, 26, 12, 0, 0) do
+    now = Time.zone.local(2026, 7, 26, 12, 0, 0)
+
+    travel_to now do
       create_notification_at(Time.zone.local(2026, 7, 26, 8, 0, 0))
       create_notification_at(Time.zone.local(2026, 7, 21, 8, 0, 0))
       create_notification_at(Time.zone.local(2026, 6, 15, 8, 0, 0))
@@ -39,9 +41,10 @@ class NotificationPeriodCountsTest < ActiveSupport::TestCase
       assert_equal 1, selects.size
       assert_includes selects.first, "FILTER"
       assert_includes selects.first, "$1"
+      quoted_today_boundary = Notification.connection.quote(now.beginning_of_day)
       assert_includes(
         selects.first,
-        %("notifications"."created_at" >= '2026-07-26 00:00:00')
+        %("notifications"."created_at" >= #{quoted_today_boundary})
       )
     end
   end

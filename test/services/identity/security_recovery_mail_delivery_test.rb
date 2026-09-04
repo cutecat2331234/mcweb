@@ -102,9 +102,11 @@ module Identity
       refute_equal first.value.fetch(:reset_token), second.value.fetch(:reset_token)
       assert_equal 2, callbacks.size
       assert_equal 2, delivery_intents.count
-      stale = SecurityRecoveryMailDelivery.deliver(first.value.fetch(:delivery_intent))
-      assert_equal "skipped", stale.status
-      assert_equal "recovery_token_superseded", stale.error_code
+      travel_to Time.zone.parse("2026-08-24 12:02:01") do
+        stale = SecurityRecoveryMailDelivery.deliver(first.value.fetch(:delivery_intent))
+        assert_equal "skipped", stale.status
+        assert_equal "recovery_token_superseded", stale.error_code
+      end
     end
 
     test "mail construction and transport errors escape to the durable retry lifecycle" do

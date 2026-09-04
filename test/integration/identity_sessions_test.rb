@@ -251,20 +251,24 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_not cookies[:session_token].present?
   end
 
-  test "inertia destroy uses a full-document safe public location" do
+  test "inertia destroy is rejected before the shared sign-out action" do
     post identity_session_path, params: {
       session: { email: @user.email, password: "password123", remember_me: "0" }
     }
 
-    delete identity_session_path, headers: { "X-Inertia" => "true" }
+    delete identity_session_path, headers: {
+      "X-Inertia" => "true",
+      "X-Inertia-Version" => InertiaRails.configuration.version,
+      "X-McWeb-Application" => "account",
+      "HTTP_REFERER" => "http://www.example.com/app/account"
+    }
 
-    assert_equal "website", request.headers["X-McWeb-Application"]
-    assert_equal "http://www.example.com/", request.referer
+    assert_equal "account", request.headers["X-McWeb-Application"]
+    assert_equal "http://www.example.com/app/account", request.referer
     assert_response :conflict
-    assert_equal signed_out_landing_path, response.headers["X-Inertia-Location"]
-    assert_equal I18n.t("mcweb.flash.sign_out_success"), flash[:notice]
-    assert_not session[:session_token].present?
-    assert_not cookies[:session_token].present?
+    assert_nil response.headers["X-Inertia-Location"]
+    assert_equal signed_out_landing_path, response.headers["X-McWeb-Safe-Location"]
+    assert session[:session_token].present? || cookies[:session_token].present?
   end
 
   test "signed-out landing remains public even while another session is active" do

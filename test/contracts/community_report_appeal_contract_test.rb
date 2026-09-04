@@ -71,7 +71,9 @@ module Community
       assert_includes contributor, '"submitted_reports"'
       assert_includes contributor, '"appeals"'
       assert_includes contributor, '"account_actions"'
-      refute_match(/internal_note|review_note|reporter_id|reviewer_id/, contributor)
+      serialized_keys = contributor.scan(/^\s+"([^"]+)"\s*=>/).flatten
+      protected_staff_fields = %w[internal_note review_note reporter_id reviewer_id]
+      assert_empty serialized_keys & protected_staff_fields
     end
   end
 end

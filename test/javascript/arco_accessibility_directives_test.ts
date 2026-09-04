@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   nameArcoDialog,
   nameArcoFormControls,
+  nameArcoInputNumberStepButtons,
   repairArcoSpinbuttonAria,
 } from '../../app/javascript/directives/arcoAccessibility.ts'
 
@@ -57,6 +58,45 @@ test('Arco form control naming preserves an explicit application-provided name',
 
   assert.equal(attributes.value('aria-label'), 'Search linked player')
   assert.equal(attributes.value('data-mcweb-form-control-name'), undefined)
+})
+
+test('Arco input number step buttons receive distinct names from the visible field label', () => {
+  const increaseAttributes = attributeStore()
+  const decreaseAttributes = attributeStore()
+  const formItem = {
+    querySelectorAll: () => [increaseButton, decreaseButton],
+  }
+  const increaseButton = {
+    ...increaseAttributes,
+    closest: (selector: string) => selector === '.arco-form-item' ? formItem : null,
+  }
+  const decreaseButton = {
+    ...decreaseAttributes,
+    closest: (selector: string) => selector === '.arco-form-item' ? formItem : null,
+  }
+
+  nameArcoInputNumberStepButtons(formItem as unknown as HTMLElement, 'Identity ID')
+
+  assert.equal(increaseAttributes.value('aria-label'), 'Identity ID (+)')
+  assert.equal(decreaseAttributes.value('aria-label'), 'Identity ID (−)')
+  assert.equal(increaseAttributes.value('data-mcweb-step-button-name'), 'true')
+  assert.equal(decreaseAttributes.value('data-mcweb-step-button-name'), 'true')
+})
+
+test('Arco input number step button naming preserves an explicit application-provided name', () => {
+  const attributes = attributeStore({ 'aria-label': 'Add one retry' })
+  const formItem = {
+    querySelectorAll: () => [button],
+  }
+  const button = {
+    ...attributes,
+    closest: (selector: string) => selector === '.arco-form-item' ? formItem : null,
+  }
+
+  nameArcoInputNumberStepButtons(formItem as unknown as HTMLElement, 'Retries')
+
+  assert.equal(attributes.value('aria-label'), 'Add one retry')
+  assert.equal(attributes.value('data-mcweb-step-button-name'), undefined)
 })
 
 test('Arco spinbuttons omit non-finite ARIA range bounds', () => {

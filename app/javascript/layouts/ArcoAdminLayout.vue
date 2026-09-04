@@ -773,7 +773,13 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </span>
         </Link>
       </div>
-      <div ref="desktopMenuScroll" class="arco-admin-sider__menu">
+      <div
+        ref="desktopMenuScroll"
+        class="arco-admin-sider__menu"
+        role="navigation"
+        :aria-label="t('common.navigation')"
+        tabindex="0"
+      >
         <a-menu
           :selected-keys="activeItemHref ? [activeItemHref] : []"
           :open-keys="openKeys"
@@ -1043,6 +1049,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--mc-space-2, 8px);
+}
+.arco-admin-sider__menu:focus-visible {
+  outline: 2px solid rgb(var(--primary-6));
+  outline-offset: -2px;
 }
 .arco-admin-sider__menu :deep(.arco-menu-inner) {
   overflow: visible;

@@ -79,8 +79,18 @@ test('admin shell owns one viewport and gives main content the only page scroll 
   assert.match(rule('.arco-admin-drawer__menu'), /overflow-y:\s*auto/)
 })
 
-test('mobile admin navigation exposes its scroll container to keyboard users', () => {
+test('admin navigation exposes both scroll containers to keyboard users', () => {
+  const desktopMenu = source.match(
+    /<div\s+(?=[^>]*class="arco-admin-sider__menu")[^>]*>/,
+  )?.[0]
   const drawerMenu = source.match(/<div\s+class="arco-admin-drawer__menu"[\s\S]*?>/)?.[0]
+
+  assert.ok(desktopMenu)
+  assert.match(desktopMenu, /role="navigation"/)
+  assert.match(desktopMenu, /:aria-label="t\('common\.navigation'\)"/)
+  assert.match(desktopMenu, /tabindex="0"/)
+  assert.match(rule('.arco-admin-sider__menu:focus-visible'), /outline:\s*2px solid rgb\(var\(--primary-6\)\)/)
+  assert.match(rule('.arco-admin-sider__menu:focus-visible'), /outline-offset:\s*-2px/)
 
   assert.ok(drawerMenu)
   assert.match(drawerMenu, /role="navigation"/)

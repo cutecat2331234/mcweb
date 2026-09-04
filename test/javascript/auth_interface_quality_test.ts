@@ -10,6 +10,7 @@ function source(path: string) {
 const identityDocumentLayout = source(
   'app/javascript/layouts/account/IdentityDocumentLayout.vue',
 )
+const accountApplicationCss = source('app/javascript/styles/applications/account.css')
 const accountManifest = source('config/frontend_applications/base/account.json')
 const pageHeader = source('app/javascript/components/portal/PageHeader.vue')
 const label = source('app/javascript/components/ui/Label.vue')
@@ -52,6 +53,10 @@ test('public authentication layout uses a centered bounded surface', () => {
   assert.doesNotMatch(identityDocumentLayout, /t\('website\./)
   assert.doesNotMatch(identityDocumentLayout, /\bLink\b|router\.visit/)
   assert.doesNotMatch(identityDocumentLayout, /components\/ui\/Button/)
+  assert.match(
+    accountApplicationCss,
+    /html\[data-mcweb-application="account"\]\s*\{[\s\S]*?scrollbar-gutter:\s*stable both-edges/,
+  )
 })
 
 test('public identity documents belong to the account application shell', () => {

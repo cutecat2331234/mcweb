@@ -1,6 +1,7 @@
 import type { ObjectDirective } from 'vue'
 
 const managedControlNameAttribute = 'data-mcweb-form-control-name'
+const managedStepButtonNameAttribute = 'data-mcweb-step-button-name'
 
 const formControlSelector = [
   'input.arco-input',
@@ -15,6 +16,28 @@ const spinbuttonAriaValueAttributes = [
   'aria-valuemax',
   'aria-valuenow',
 ] as const
+
+function inputNumberStepDirection(button: HTMLElement, index: number) {
+  if (button.closest('.arco-input-prepend')) return '−'
+  if (button.closest('.arco-input-append')) return '+'
+  return index === 0 ? '+' : '−'
+}
+
+export function nameArcoInputNumberStepButtons(formItem: HTMLElement, label: string) {
+  formItem
+    .querySelectorAll<HTMLElement>('button.arco-input-number-step-button')
+    .forEach((button, index) => {
+      if (button.closest('.arco-form-item') !== formItem) return
+
+      const managed = button.getAttribute(managedStepButtonNameAttribute) === 'true'
+      const hasExplicitName = button.hasAttribute('aria-label') || button.hasAttribute('aria-labelledby')
+      if (!managed && hasExplicitName) return
+
+      const direction = inputNumberStepDirection(button, index)
+      button.setAttribute('aria-label', `${label} (${direction})`)
+      button.setAttribute(managedStepButtonNameAttribute, 'true')
+    })
+}
 
 export function repairArcoSpinbuttonAria(element: HTMLElement) {
   element.querySelectorAll<HTMLElement>('[role="spinbutton"]').forEach((spinbutton) => {
@@ -34,6 +57,8 @@ export function nameArcoFormControls(element: HTMLElement) {
   element.querySelectorAll<HTMLElement>('.arco-form-item').forEach((formItem) => {
     const label = formItem.querySelector<HTMLElement>('.arco-form-item-label')?.textContent?.trim()
     if (!label) return
+
+    nameArcoInputNumberStepButtons(formItem, label)
 
     formItem.querySelectorAll<HTMLElement>(formControlSelector).forEach((control) => {
       if (control.closest('.arco-form-item') !== formItem) return

@@ -1,6 +1,10 @@
 @import "../shell-foundation.css";
 @import "../app-shell.css";
 
+html[data-mcweb-application="account"] {
+  scrollbar-gutter: stable both-edges;
+}
+
 html[data-mcweb-application="account"] body {
   --mc-application-accent: #7c3aed;
 }

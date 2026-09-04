@@ -567,33 +567,38 @@ resolved_compose_image() {
 prepare_acceptance_runner_image() {
   local cached_inputs="${MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS:-0}"
   local runner_base_image
-  local runner_image
 
   if [[ "${cached_inputs}" == "1" ]]; then
-    [[ -n "${MCWEB_ACCEPTANCE_RUNNER_IMAGE:-}" ]] ||
-      die "MCWEB_ACCEPTANCE_RUNNER_IMAGE is required when cached inputs are enforced"
-    runner_image="$(resolved_compose_image acceptance-runner)"
-    pull_dependency_image "acceptance-runner" "${runner_image}"
-    return 0
+    [[ -n "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE:-}" ]] ||
+      die "MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE is required when cached inputs are enforced"
+    [[ "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE}" != \
+      "mcweb-production-acceptance-base:required" ]] ||
+      die "the acceptance runner base image must be supplied explicitly"
+    runner_base_image="${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE}"
+    pull_dependency_image "acceptance-runner-base" "${runner_base_image}"
+  else
+    runner_base_image="${PROJECT_NAME}-runner-base:acceptance"
+
+    phase "acceptance-runner-base-build"
+    if ! run_with_timeout "${COMPOSE_BUILD_TIMEOUT_SECONDS}" \
+      docker build \
+        --file deploy/cnb/production-acceptance-dependencies.Dockerfile \
+        --tag "${runner_base_image}" \
+        .
+    then
+      die "local acceptance runner base build failed or timed out"
+    fi
   fi
 
-  runner_base_image="${PROJECT_NAME}-runner-base:acceptance"
   MCWEB_ACCEPTANCE_RUNNER_IMAGE="${PROJECT_NAME}-runner:acceptance"
   export MCWEB_ACCEPTANCE_RUNNER_IMAGE
 
-  phase "acceptance-runner-base-build"
-  if ! run_with_timeout "${COMPOSE_BUILD_TIMEOUT_SECONDS}" \
-    docker build \
-      --file deploy/cnb/production-acceptance-dependencies.Dockerfile \
-      --tag "${runner_base_image}" \
-      .
-  then
-    die "local acceptance runner base build failed or timed out"
-  fi
-
   phase "acceptance-runner-source-build"
+  printf '[acceptance] acceptance-runner-build=context-full-workspace network=none\n'
   if ! run_with_timeout "${COMPOSE_BUILD_TIMEOUT_SECONDS}" \
     docker build \
+      --pull=false \
+      --network none \
       --build-arg "MCWEB_ACCEPTANCE_RUNNER_BASE=${runner_base_image}" \
       --file deploy/acceptance/runner.Dockerfile \
       --tag "${MCWEB_ACCEPTANCE_RUNNER_IMAGE}" \

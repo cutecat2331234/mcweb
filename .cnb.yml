@@ -374,21 +374,8 @@ main:
         CI: "1"
         MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS: "1"
         MCWEB_ACCEPTANCE_SKIP_APP_IMAGE_BUILD: "1"
+        MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE: ${CNB_PIPELINE_DOCKER_IMAGE}
       stages:
-        - name: cache-production-acceptance-runner
-          type: docker:cache
-          options:
-            dockerfile: deploy/acceptance/runner.Dockerfile
-            buildArgs:
-              MCWEB_ACCEPTANCE_RUNNER_BASE: ${CNB_PIPELINE_DOCKER_IMAGE}
-            by:
-              - .
-            versionBy:
-              - .
-            sync: true
-          exports:
-            name: MCWEB_ACCEPTANCE_RUNNER_IMAGE
-
         - name: cache-acceptance-postgresql
           type: docker:cache
           options:
@@ -425,10 +412,11 @@ main:
           exports:
             name: MCWEB_ACCEPTANCE_MINIO_IMAGE
 
-        - name: verify-cached-production-acceptance-runner
+        - name: verify-production-acceptance-inputs
           script: |
             set -eu
-            test -n "${MCWEB_ACCEPTANCE_RUNNER_IMAGE:-}"
+            test -n "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE:-}"
+            test "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE}" = "${CNB_PIPELINE_DOCKER_IMAGE}"
             test -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}"
             test -n "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-}"
             test -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}"

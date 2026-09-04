@@ -25,6 +25,7 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     refute_includes compose, "env_file:"
     refute_includes compose, "/var/run/docker.sock"
     refute_includes compose, "CNB_TOKEN"
+    refute_includes compose, "MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE"
     refute_match(/^\s+CNB_[A-Z0-9_]+:/, compose)
   end
 
@@ -55,18 +56,19 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, "subjectAltName=DNS:minio,DNS:localhost,IP:127.0.0.1"
     assert_includes script, 'chmod 0755 "${WORKSPACE}/certs"'
     assert_includes script, "transport=compose-named-volume"
-    assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_RUNNER_IMAGE:-}" ]]'
+    assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}" ]]'
-    assert_includes script, 'pull_dependency_image "acceptance-runner" "${runner_image}"'
+    assert_includes script,
+      'pull_dependency_image "acceptance-runner-base" "${runner_base_image}"'
     assert_includes script, 'pull_dependency_image "postgres" "${postgres_image}"'
     assert_includes script, 'pull_dependency_image "redis" "${redis_image}"'
     assert_includes script, 'pull_dependency_image "minio" "${minio_image}"'
     assert_includes script, "up --detach --no-build --pull never --wait"
     assert_includes script, '--wait-timeout "${COMPOSE_WAIT_TIMEOUT_SECONDS}"'
     assert_includes script, "postgres redis minio"
-    assert_includes script, '--env MCWEB_ACCEPTANCE_EXECUTION_MODE=compose-init'
+    assert_includes script, "--env MCWEB_ACCEPTANCE_EXECUTION_MODE=compose-init"
     assert_includes script, "--user 0:0 --cap-add CHOWN"
     assert_includes script, 'compose_with_timeout "${ACCEPTANCE_RUNNER_TIMEOUT_SECONDS}"'
     assert_includes script, '--name "${PROJECT_NAME}-runner"'
@@ -107,7 +109,9 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, 'postgres_image="$(resolved_compose_image postgres)"'
     assert_includes script, 'redis_image="$(resolved_compose_image redis)"'
     assert_includes script, 'minio_image="$(resolved_compose_image minio)"'
-    assert_includes script, 'runner_image="$(resolved_compose_image acceptance-runner)"'
+    assert_includes script,
+      'runner_base_image="${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE}"'
+    refute_includes script, "resolved_compose_image acceptance-runner"
     assert_includes script, 'docker pull "${image}" >/dev/null 2>&1'
     assert_includes script, "dependency image could not be resolved from Docker Compose configuration"
     refute_includes script, "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}"
@@ -159,26 +163,48 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_match lifecycle_stage, config
   end
 
-  test "CNB exports an immutable source-baked acceptance runner" do
+  test "CNB builds a source-baked runner from its explicit pipeline base" do
     config = File.read(Rails.root.join(".cnb.yml"))
+    script = File.read(
+      Rails.root.join("scripts/run-production-acceptance.sh")
+    )
     dockerfile = File.read(
       Rails.root.join("deploy/acceptance/runner.Dockerfile")
     )
     production = File.read(
       Rails.root.join("config/environments/production.rb")
     )
+    source_build = script.match(
+      /phase "acceptance-runner-source-build"\n(?<body>.*?)\n  then/m
+    )
 
-    assert_includes config, "name: cache-production-acceptance-runner"
-    assert_includes config, "dockerfile: deploy/acceptance/runner.Dockerfile"
+    refute_includes config, "name: cache-production-acceptance-runner"
+    refute_includes config, "dockerfile: deploy/acceptance/runner.Dockerfile"
+    refute_includes config, "name: MCWEB_ACCEPTANCE_RUNNER_IMAGE"
+    assert_includes config, "name: verify-production-acceptance-inputs"
     assert_includes config,
-      "MCWEB_ACCEPTANCE_RUNNER_BASE: ${CNB_PIPELINE_DOCKER_IMAGE}"
-    assert_includes config, "name: MCWEB_ACCEPTANCE_RUNNER_IMAGE"
-    assert_includes config, 'test -n "${MCWEB_ACCEPTANCE_RUNNER_IMAGE:-}"'
-    assert_includes dockerfile, "ARG MCWEB_ACCEPTANCE_RUNNER_BASE"
+      "MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE: ${CNB_PIPELINE_DOCKER_IMAGE}"
+    assert_includes config,
+      'test -n "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE:-}"'
+    assert_includes config,
+      'test "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE}" = "${CNB_PIPELINE_DOCKER_IMAGE}"'
+    assert_includes script,
+      'die "the acceptance runner base image must be supplied explicitly"'
+    assert_includes script,
+      '--build-arg "MCWEB_ACCEPTANCE_RUNNER_BASE=${runner_base_image}"'
+    assert_includes script,
+      "acceptance-runner-build=context-full-workspace network=none"
+    assert_not_nil source_build
+    assert_includes source_build[:body], "--pull=false"
+    assert_includes source_build[:body], "--network none"
+    assert_match(/^\s+\.$/, source_build[:body])
+    assert_includes dockerfile,
+      "ARG MCWEB_ACCEPTANCE_RUNNER_BASE=mcweb-production-acceptance-base:required"
     assert_includes dockerfile, "FROM ${MCWEB_ACCEPTANCE_RUNNER_BASE}"
     assert_includes dockerfile, "COPY --chown=10002:10002 . ."
     assert_includes dockerfile, "USER 10002:10002"
     refute_includes dockerfile, "apt-get"
+    refute_includes dockerfile, "bundle install"
     assert_includes production,
       "config.active_record.dump_schema_after_migration = false"
     assert_includes production,

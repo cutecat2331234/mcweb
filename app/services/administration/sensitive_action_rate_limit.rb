@@ -12,6 +12,8 @@ module Administration
     DEFAULT_LIMIT = 5
     DEFAULT_WINDOW = 15.minutes
     DEFAULT_RESERVATION_TTL = 2.minutes
+    CounterSetChanged = Class.new(StandardError)
+    private_constant :CounterSetChanged
 
     def initialize(
       scope:,
@@ -57,7 +59,7 @@ module Administration
     end
 
     def reserve!
-      retry_record_not_unique do
+      retry_counter_contention do
         RateLimitCounter.transaction do
           now = Time.current
           counters = locked_counters(counter_keys.values, window: @window, now: now)
@@ -107,7 +109,7 @@ module Administration
         reservation.scope == @scope && reservation.user_id == @user.id
 
       desired_status = @action == :failure ? "failed" : "succeeded"
-      retry_record_not_unique do
+      retry_counter_contention do
         RateLimitCounter.transaction do
           now = Time.current
           keys = [ reservation.user_counter_key, reservation.ip_counter_key ].sort
@@ -145,15 +147,26 @@ module Administration
     end
 
     def locked_counters(keys, window:, now:)
-      keys.sort.each do |key|
-        RateLimitCounter.find_or_create_by!(key: key) do |counter|
-          counter.count = 0
-          counter.blocked_count = 0
-          counter.window_start = now
-          counter.expires_at = now + window
-        end
-      end
-      RateLimitCounter.where(key: keys).order(:key).lock.to_a.tap do |counters|
+      sorted_keys = keys.sort.uniq
+      RateLimitCounter.insert_all(
+        sorted_keys.map do |key|
+          {
+            key: key,
+            count: 0,
+            blocked_count: 0,
+            window_start: now,
+            expires_at: now + window,
+            created_at: now,
+            updated_at: now
+          }
+        end,
+        unique_by: :index_rate_limit_counters_on_key
+      )
+      RateLimitCounter.where(key: sorted_keys).order(:key).lock.to_a.tap do |counters|
+        # Cleanup can remove an expired conflicting row between INSERT and lock.
+        # Abort the transaction and retry instead of reserving against fewer dimensions.
+        raise CounterSetChanged unless counters.size == sorted_keys.size
+
         counters.each { |counter| reset_if_expired!(counter, window, now) }
       end
     end
@@ -201,11 +214,11 @@ module Administration
       }.freeze
     end
 
-    def retry_record_not_unique
+    def retry_counter_contention
       attempts = 0
       begin
         yield
-      rescue ActiveRecord::RecordNotUnique
+      rescue ActiveRecord::RecordNotUnique, CounterSetChanged
         attempts += 1
         retry if attempts < 3
         raise

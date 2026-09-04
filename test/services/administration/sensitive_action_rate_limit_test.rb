@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "timeout"
 
 class Administration::SensitiveActionRateLimitTest < ActiveSupport::TestCase
   setup do
@@ -93,13 +94,13 @@ class Administration::SensitiveActionRateLimitConcurrencyTest < ActiveSupport::T
   test "concurrent attempts for different plans cannot exceed atomic user and IP capacity" do
     ready = Queue.new
     gate = Queue.new
-    results = Queue.new
+    outcomes = Queue.new
     threads = 10.times.map do |index|
       Thread.new do
         ready << true
         gate.pop
         ActiveRecord::Base.connection_pool.with_connection do
-          results << Administration::SensitiveActionRateLimit.call(
+          outcomes << Administration::SensitiveActionRateLimit.call(
             scope: @scope,
             user: User.find(@user.id),
             ip_address: @ip,
@@ -107,17 +108,34 @@ class Administration::SensitiveActionRateLimitConcurrencyTest < ActiveSupport::T
             action: :reserve
           )
         end
+      rescue StandardError => error
+        outcomes << error
       end
     end
 
-    10.times { ready.pop }
+    Timeout.timeout(10) { 10.times { ready.pop } }
     10.times { gate << true }
-    responses = 10.times.map { results.pop }
-    threads.each(&:join)
+    responses = Timeout.timeout(20) do
+      10.times.map do
+        outcome = outcomes.pop
+        raise outcome if outcome.is_a?(Exception)
+
+        outcome
+      end
+    end
+    Timeout.timeout(10) { threads.each(&:join) }
 
     assert_equal 5, responses.count(&:success?)
     assert_equal 5, responses.count(&:rate_limited?)
     assert_equal 5, Administration::SensitiveActionRateLimitReservation
       .where(user_id: @user.id, scope: @scope, status: "pending").count
+  ensure
+    10.times { gate << true } if gate
+    threads&.each { |thread| thread.kill if thread.alive? }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+    threads&.each do |thread|
+      remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      thread.join([ remaining, 0 ].max)
+    end
   end
 end

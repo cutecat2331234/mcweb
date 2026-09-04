@@ -2,7 +2,7 @@
 
 require "aws-sdk-s3"
 require "json"
-require "redis"
+require "redis-client"
 require "stringio"
 
 module ProductionAcceptanceProbe
@@ -117,11 +117,17 @@ module ProductionAcceptanceProbe
 
   def redis_round_trip!
     key = "mcweb:acceptance:#{Process.pid}"
-    connection = Redis.new(url: ENV.fetch("REDIS_URL"), connect_timeout: 2, read_timeout: 2)
-    connection.set(key, "ok", ex: 30)
-    abort("Redis round trip failed") unless connection.get(key) == "ok"
+    connection = RedisClient.config(
+      url: ENV.fetch("REDIS_URL"),
+      connect_timeout: 2,
+      read_timeout: 2,
+      write_timeout: 2,
+      reconnect_attempts: false
+    ).new_client
+    connection.call("SET", key, "ok", "EX", 30)
+    abort("Redis round trip failed") unless connection.call("GET", key) == "ok"
   ensure
-    connection&.del(key)
+    connection&.call("DEL", key)
     connection&.close
   end
 

@@ -276,7 +276,11 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes probe, "ActiveStorage::Blob.create_and_upload!"
     assert_includes probe, "blob.service.exist?"
     assert_includes probe, "blob.download == OBJECT_CONTENT"
-    assert_includes probe, "Redis.new"
+    assert_includes probe, 'require "redis-client"'
+    assert_includes probe, "RedisClient.config("
+    assert_includes probe, ').new_client'
+    assert_includes probe, 'connection.call("SET", key, "ok", "EX", 30)'
+    assert_includes probe, 'connection.call("GET", key) == "ok"'
     assert_includes probe, "verify_current_schema!"
   end
 end

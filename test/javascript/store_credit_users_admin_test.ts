@@ -39,22 +39,52 @@ test('store-credit navigation copy is available in English and Chinese', () => {
 
 test('store-credit detail renders the complete ledger with Arco components and cursor navigation', () => {
   const show = source('app/javascript/pages/Admin/Generic/Show.vue')
+  const ledgerStart = show.indexOf('v-if="props.storeCreditLedger"')
+  const ledgerEnd = show.indexOf('v-if="props.accountForm && canEditAccountAccess"', ledgerStart)
+
+  assert.ok(ledgerStart >= 0, 'store-credit ledger section must remain present')
+  assert.ok(ledgerEnd > ledgerStart, 'store-credit ledger section must remain independently bounded')
+  const ledger = show.slice(ledgerStart, ledgerEnd)
 
   assert.match(show, /storeCreditLedger\?: StoreCreditLedger/)
-  assert.match(show, /<a-table[\s\S]*props\.storeCreditLedger\.transactions/)
-  assert.match(show, /row-key="ledger_id"/)
-  assert.match(show, /balance_before_label && record\.balance_after_label/)
-  assert.match(show, /storeCreditOlderTransactions/)
-  assert.match(show, /router\.visit\(props\.storeCreditLedger\.pagination\.next_url/)
-  assert.doesNotMatch(show, /window\.location\.(?:assign|replace|reload)/)
+  assert.match(ledger, /<a-table[\s\S]*props\.storeCreditLedger\.transactions/)
+  assert.match(ledger, /row-key="ledger_id"/)
+  assert.match(ledger, /balance_before_label && record\.balance_after_label/)
+  assert.match(ledger, /storeCreditOlderTransactions/)
+  assert.match(ledger, /router\.visit\(props\.storeCreditLedger\.pagination\.next_url/)
+  assert.doesNotMatch(ledger, /window\.location\.(?:assign|replace|reload)/)
 })
 
-test('member wallet uses the shared UI table and exposes older ledger pages', () => {
+test('member wallet uses one approved UI-library table with order and cursor navigation', () => {
   const wallet = source('app/javascript/pages/Commerce/Wallet/Show.vue')
+  const usesSharedTable = /components\/ui\/Table\.vue/.test(wallet)
+  const usesArcoTable = /<a-table\b/.test(wallet)
 
-  assert.match(wallet, /components\/ui\/Table\.vue/)
-  assert.match(wallet, /components\/ui\/Button\.vue/)
-  assert.match(wallet, /v-for="tx in transactions" :key="tx\.ledger_id"/)
+  assert.equal(
+    Number(usesSharedTable) + Number(usesArcoTable),
+    1,
+    'wallet must use exactly one approved table implementation',
+  )
+  assert.doesNotMatch(wallet, /<(?:table|thead|tbody|tr|th|td)\b/)
   assert.match(wallet, /balance_before_label && tx\.balance_after_label/)
   assert.match(wallet, /pagination\.has_more && pagination\.next_url/)
+
+  if (usesSharedTable) {
+    assert.match(wallet, /components\/ui\/Button\.vue/)
+    assert.match(wallet, /v-for="tx in transactions" :key="tx\.ledger_id"/)
+    assert.match(wallet, /<Link :href="routes\.storeOrders"/)
+    assert.match(wallet, /<Link v-if="tx\.order_url" :href="tx\.order_url"/)
+    assert.match(wallet, /<Link :href="pagination\.next_url" preserve-scroll>/)
+    assert.doesNotMatch(wallet, /<a-table\b/)
+  } else {
+    assert.doesNotMatch(wallet, /@\/components\/ui\//)
+    assert.match(wallet, /<a-table[\s\S]*:data="transactions"/)
+    assert.match(wallet, /row-key="ledger_id"/)
+    assert.match(wallet, /:href="routes\.storeOrders"[\s\S]*visitCommerceLink\(\$event, routes\.storeOrders\)/)
+    assert.match(wallet, /<a-link[\s\S]*v-if="tx\.order_url"[\s\S]*:href="tx\.order_url"/)
+    assert.match(wallet, /visitCommerceLink\(\$event, tx\.order_url\)/)
+    assert.match(wallet, /function visitCommerceLink[\s\S]*event\.preventDefault\(\)[\s\S]*router\.visit\(href\)/)
+    assert.match(wallet, /router\.visit\(pagination\.next_url, \{ preserveScroll: true \}\)/)
+    assert.doesNotMatch(wallet, /<Table\b/)
+  }
 })

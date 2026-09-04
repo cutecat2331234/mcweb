@@ -19,6 +19,7 @@ export default {
     delete: '删除',
     actions: '操作',
     mine: '我的',
+    personal: '我的',
     announcement: '公告',
     closeAnnouncement: '关闭公告',
     openMenu: '打开菜单',

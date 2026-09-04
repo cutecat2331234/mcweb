@@ -165,6 +165,10 @@ test('language switchers commit shared locale state only after the cross-applica
   )
   assert.match(portalLayout, /import LanguageSwitcher from '@\/components\/portal\/LanguageSwitcher\.vue'/)
   assert.match(portalLayout, /<LanguageSwitcher \/>/)
+  assert.match(portalLayout, /t\('common\.personal'\)/)
+  assert.doesNotMatch(portalLayout, /t\('nav\.personal'\)/)
+  assert.equal(messageAt(englishMessages, 'common.personal'), 'My')
+  assert.equal(messageAt(chineseMessages, 'common.personal'), '我的')
   assert.doesNotMatch(portalLayout, /beginAppLocalePreferenceTransaction|performSharedAction\(/)
 })
 

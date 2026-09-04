@@ -20,6 +20,7 @@ export default {
     "delete": "Delete",
     "actions": "Actions",
     "mine": "Mine",
+    "personal": "My",
     "announcement": "Announcement",
     "closeAnnouncement": "Dismiss announcements",
     "openMenu": "Open menu",

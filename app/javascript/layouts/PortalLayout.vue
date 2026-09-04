@@ -306,7 +306,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               </Button>
               <template #content>
                 <Doption disabled><IconUser /> {{ auth.user.username }}</Doption>
-                <Doption @click="visit(routes.account)"><IconApps /> {{ t('nav.personal') }}</Doption>
+                <Doption @click="visit(routes.account)"><IconApps /> {{ t('common.personal') }}</Doption>
                 <Doption :disabled="signingOut" @click="signOut">
                   <IconPoweroff /> {{ t('common.signOut') }}
                 </Doption>

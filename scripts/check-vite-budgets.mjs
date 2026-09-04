@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { basename, resolve } from 'node:path'
+import { basename, relative, resolve } from 'node:path'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
 
 const argv = process.argv.slice(2)
@@ -8,6 +8,7 @@ const manifestArgument = argv.find((argument) => argument.startsWith('--manifest
 const manifestPath = resolve(
   manifestArgument?.slice('--manifest='.length) ?? 'public/vite/.vite/manifest.json',
 )
+const viteSourceRoot = resolve('app/javascript')
 const registryRoot = resolve('config/frontend_applications')
 const contributionRoot = resolve(registryRoot, 'contributions')
 
@@ -24,6 +25,7 @@ const baseDescriptors = readdirSync(resolve(registryRoot, 'base'))
   .map((name) => ({
     source: `base/${name}`,
     descriptor: JSON.parse(readFileSync(resolve(registryRoot, 'base', name), 'utf8')),
+    pageRoots: ['app/javascript/pages'],
   }))
 const contributionManifests = (existsSync(contributionRoot) ? readdirSync(contributionRoot) : [])
   .filter((name) => name.endsWith('.json'))
@@ -42,6 +44,8 @@ const contributedDescriptors = contributionManifests
             product_owner: contribution.product_owner,
             runtime_owner: contribution.runtime_owner,
           },
+          pageRoots: contribution.page_roots ?? ['app/javascript/pages'],
+          contribution,
         }]
       : []
   })
@@ -57,9 +61,22 @@ const extensionDescriptors = contributionManifests.flatMap(({ name, contribution
       ...target.descriptor,
       budget: contribution.budget,
     },
+    pageRoots: contribution.page_roots ?? ['app/javascript/pages'],
+    contribution,
   }]
 })
 const descriptors = [...baseDescriptors, ...contributedDescriptors, ...extensionDescriptors]
+const componentRouteWitnesses = descriptors.flatMap(({ descriptor, pageRoots }) => {
+  const paths = descriptor.budget?.representative_paths ?? []
+  const components = descriptor.budget?.representative_components ?? []
+  if (paths.length !== components.length) return []
+  return paths.map((path, index) => ({
+    application: descriptor.id,
+    path,
+    component: components[index],
+    pageRoots,
+  }))
+})
 
 function collectEntry(key, collectedKeys, files, entries = manifest) {
   if (!key || collectedKeys.has(key)) return
@@ -70,8 +87,24 @@ function collectEntry(key, collectedKeys, files, entries = manifest) {
   if (entry.file) files.add(entry.file)
   for (const file of entry.css ?? []) files.add(file)
   for (const file of entry.assets ?? []) files.add(file)
+  // Route components are explicit roots below. Following every lazy edge here
+  // would turn an initial-route budget into the size of the entire application.
   for (const importedKey of entry.imports ?? []) collectEntry(importedKey, collectedKeys, files, entries)
-  for (const importedKey of entry.dynamicImports ?? []) collectEntry(importedKey, collectedKeys, files, entries)
+}
+
+function repositoryManifestKey(repositoryPath, entries = manifest, sourceRoot = viteSourceRoot) {
+  const expected = relative(sourceRoot, resolve(repositoryPath)).replaceAll('\\', '/')
+  const matches = Object.entries(entries)
+    .filter(([key, entry]) => key === expected || entry.src === expected)
+    .map(([key]) => key)
+  return matches.length === 1 ? matches[0] : null
+}
+
+function componentManifestKey(component, pageRoots) {
+  const matches = pageRoots
+    .map((pageRoot) => repositoryManifestKey(`${pageRoot}/${component}.vue`))
+    .filter(Boolean)
+  return matches.length === 1 ? matches[0] : null
 }
 
 function byteMetrics(files, assetRoot = outputRoot) {
@@ -91,6 +124,14 @@ function byteMetrics(files, assetRoot = outputRoot) {
 
 function kb(bytes) {
   return Number((bytes / 1024).toFixed(1))
+}
+
+function javascriptFiles(files) {
+  return new Set([...files].filter((file) => /\.(?:c|m)?js$/.test(file)))
+}
+
+function stylesheetFiles(files) {
+  return new Set([...files].filter((file) => file.endsWith('.css')))
 }
 
 function findImportCycles(entries) {
@@ -134,12 +175,15 @@ if (importCycles.length > 0) {
 }
 
 const results = []
-for (const { source, descriptor } of descriptors) {
+for (const { source, descriptor, pageRoots, contribution } of descriptors) {
   const paths = descriptor.budget?.representative_paths ?? []
   const components = descriptor.budget?.representative_components ?? []
-  if (paths.length === 0 || paths.length !== components.length) {
+  const entries = descriptor.budget?.representative_entries ?? []
+  const resources = components.length > 0 ? components : entries
+  if (paths.length === 0 || paths.length !== resources.length
+    || (components.length > 0) === (entries.length > 0)) {
     failed = true
-    console.error(`${source}: representative paths/components are missing or misaligned`)
+    console.error(`${source}: representative paths/resources are missing or misaligned`)
     continue
   }
 
@@ -151,25 +195,68 @@ for (const { source, descriptor } of descriptors) {
   }
 
   for (let index = 0; index < paths.length; index += 1) {
-    const page = `pages/${components[index]}.vue`
-    if (!manifest[page]) {
-      failed = true
-      console.error(`${source}: representative component is absent from Vite manifest: ${page}`)
-      continue
+    let resourceKey = null
+    let routePageKey = null
+    if (components.length > 0) {
+      resourceKey = componentManifestKey(components[index], pageRoots)
+      if (!resourceKey) {
+        failed = true
+        console.error(
+          `${source}: representative component is absent or ambiguous across Vite page roots: ${components[index]}`,
+        )
+        continue
+      }
+    } else {
+      const repositoryEntry = entries[index]
+      if (!existsSync(resolve(repositoryEntry))) {
+        failed = true
+        console.error(`${source}: representative entry source is missing: ${repositoryEntry}`)
+        continue
+      }
+      resourceKey = repositoryManifestKey(repositoryEntry)
+      // Eager adapter modules are folded into the owning entry and therefore
+      // do not necessarily receive their own manifest record.
+      const staticallyInlinedAdapter = contribution?.adapter_module === repositoryEntry
+        && ['inertia', 'inertia_document'].includes(descriptor.runtime_kind)
+      if (!resourceKey && !staticallyInlinedAdapter) {
+        failed = true
+        console.error(`${source}: representative entry is absent from Vite manifest: ${repositoryEntry}`)
+        continue
+      }
+      const routeWitnesses = componentRouteWitnesses.filter((witness) => (
+        witness.application === descriptor.id && witness.path === paths[index]
+      ))
+      if (routeWitnesses.length !== 1) {
+        failed = true
+        console.error(
+          `${source}: representative entry route needs exactly one component budget witness: ${paths[index]}`,
+        )
+        continue
+      }
+      routePageKey = componentManifestKey(
+        routeWitnesses[0].component,
+        routeWitnesses[0].pageRoots,
+      )
+      if (!routePageKey) {
+        failed = true
+        console.error(
+          `${source}: representative entry route component is absent from Vite manifest: ${routeWitnesses[0].component}`,
+        )
+        continue
+      }
     }
 
     const keys = new Set()
     const files = new Set()
     collectEntry(entrypoint, keys, files)
-    collectEntry(page, keys, files)
-    const javascriptFiles = new Set([...files].filter((file) => !file.endsWith('.css')))
-    const stylesheetFiles = new Set([...files].filter((file) => file.endsWith('.css')))
-    const javascript = byteMetrics(javascriptFiles)
-    const stylesheets = byteMetrics(stylesheetFiles)
+    collectEntry(resourceKey, keys, files)
+    collectEntry(routePageKey, keys, files)
+    const javascript = byteMetrics(javascriptFiles(files))
+    const stylesheets = byteMetrics(stylesheetFiles(files))
     const result = {
       application: descriptor.id,
       route: paths[index],
-      component: components[index],
+      representative: resources[index],
       requests: files.size,
       javascriptKb: kb(javascript.raw),
       stylesheetKb: kb(stylesheets.raw),
@@ -219,17 +306,17 @@ for (const { name, contribution } of contributionManifests) {
     const files = new Set()
     collectEntry(entryKey, keys, files, astroManifest)
     const javascript = byteMetrics(
-      new Set([...files].filter((file) => !file.endsWith('.css'))),
+      javascriptFiles(files),
       astroOutputRoot,
     )
     const stylesheets = byteMetrics(
-      new Set([...files].filter((file) => file.endsWith('.css'))),
+      stylesheetFiles(files),
       astroOutputRoot,
     )
     results.push({
       application: contribution.extends_application,
       route: paths[index],
-      component: entries[index],
+      representative: entries[index],
       requests: files.size,
       javascriptKb: kb(javascript.raw),
       stylesheetKb: kb(stylesheets.raw),

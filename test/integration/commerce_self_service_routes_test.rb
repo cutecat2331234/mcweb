@@ -222,6 +222,7 @@ class CommerceSelfServiceRoutesTest < ActionDispatch::IntegrationTest
   test "staff question moderation flashes resolve in English" do
     staff = create_user(account_type: "owner", locale: "en")
     sign_in_as(staff)
+    switch_locale("en")
 
     patch hide_admin_store_product_question_path(@question)
     assert_redirected_to admin_store_product_questions_path
@@ -268,7 +269,7 @@ class CommerceSelfServiceRoutesTest < ActionDispatch::IntegrationTest
     end
     assert_equal "客户申请", localized_refund.fetch(:reason)
 
-    @owner.update!(locale: "en")
+    switch_locale("en")
     get store_order_path(order)
     assert_response :success
     localized_refund = inertia.props.deep_symbolize_keys.fetch(:order).fetch(:refunds).find do |entry|
@@ -348,6 +349,13 @@ class CommerceSelfServiceRoutesTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def switch_locale(locale)
+    patch locale_path,
+      params: { locale: },
+      headers: { "Accept" => "application/json" }
+    assert_response :no_content
+  end
 
   def create_pending_refund(owner:)
     order = Commerce::Order.create!(

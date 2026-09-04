@@ -88,7 +88,7 @@ module Admin
       end
 
       test "requires access to the system admin module" do
-        reader = create_user
+        reader = create_user(account_type: "staff")
         grant_permission(reader, "admin.access")
         grant_permission(reader, "system.sidekiq.read")
         grant_admin_module(reader, "forum")

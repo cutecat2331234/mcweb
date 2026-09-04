@@ -382,6 +382,7 @@ run_acceptance_lifecycle() {
   phase "guarded-restore"
   create_database_pair "${restore_database}"
   use_database "${restore_database}"
+  export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${restore_database}?application_name=mcweb%20production%20acceptance&sslmode=disable"
   if bash bin/restore \
     --backup "${backup_path}" \
     --apply \
@@ -395,6 +396,7 @@ run_acceptance_lifecycle() {
     --apply \
     --target-database "${restore_database}" \
     --confirm "RESTORE:${MCWEB_BACKUP_ID}"
+  use_database "${restore_database}"
   export MCWEB_S3_BUCKET="${MCWEB_RESTORE_S3_BUCKET}"
   bundle exec rails db:prepare
   run_probe verify-restored

@@ -347,7 +347,8 @@ write_recovery_report() {
 }
 
 finalize_restore() {
-  local status=$?
+  local original_status=$?
+  local status="${original_status}"
   local cleanup_status=0
   local report_status=0
 
@@ -365,6 +366,13 @@ finalize_restore() {
   fi
   if [[ "${report_status}" != "0" ]]; then
     echo "Recovery evidence persistence also failed" >&2
+  fi
+  if [[ "${cleanup_status}" != "0" ]]; then
+    if [[ "${original_status}" == "0" ]]; then
+      echo "Restore failed: database credential cleanup failed" >&2
+    else
+      echo "Database credential cleanup also failed" >&2
+    fi
   fi
   exit "${status}"
 }
@@ -439,28 +447,14 @@ database_name() {
 }
 
 run_psql() {
-  if [[ -n "${DATABASE_URL:-}" ]]; then
-    PGDATABASE="${DATABASE_URL}" DATABASE_URL="" psql "$@"
-  else
-    PGHOST="${MCWEB_DATABASE_HOST:-${PGHOST:-}}" \
-    PGPORT="${MCWEB_DATABASE_PORT:-${PGPORT:-}}" \
-    PGUSER="${MCWEB_DATABASE_USERNAME:-${PGUSER:-}}" \
-    PGPASSWORD="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}" \
-    PGDATABASE="${MCWEB_DATABASE_NAME:-${PGDATABASE:-mcweb_production}}" \
-      psql "$@"
-  fi
+  mcweb_run_database_command psql "$@"
 }
 
 run_pg_restore() {
-  if [[ -n "${DATABASE_URL:-}" ]]; then
-    PGDATABASE="${DATABASE_URL}" DATABASE_URL="" pg_restore "$@"
+  if mcweb_database_uses_service; then
+    mcweb_run_database_command pg_restore "$@"
   else
-    PGHOST="${MCWEB_DATABASE_HOST:-${PGHOST:-}}" \
-    PGPORT="${MCWEB_DATABASE_PORT:-${PGPORT:-}}" \
-    PGUSER="${MCWEB_DATABASE_USERNAME:-${PGUSER:-}}" \
-    PGPASSWORD="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}" \
-    PGDATABASE="${MCWEB_DATABASE_NAME:-${PGDATABASE:-mcweb_production}}" \
-      pg_restore "$@"
+    mcweb_run_database_command pg_restore --dbname="${EXPECTED_DATABASE}" "$@"
   fi
 }
 
@@ -667,12 +661,16 @@ stage_secret_configuration() {
 }
 
 cleanup_sensitive_stage() {
+  local cleanup_status=0
+
+  mcweb_cleanup_database_connection || cleanup_status=$?
   if [[ -n "${CONFIG_STAGE}" && -f "${CONFIG_STAGE}" ]]; then
-    rm --force -- "${CONFIG_STAGE}"
+    rm --force -- "${CONFIG_STAGE}" || cleanup_status=$?
   fi
   if [[ -n "${STORAGE_STAGE:-}" && -d "${STORAGE_STAGE}" ]]; then
     echo "Local storage staging directory retained for inspection: ${STORAGE_STAGE}" >&2
   fi
+  return "${cleanup_status}"
 }
 
 apply_restore() {
@@ -791,6 +789,14 @@ main() {
   load_runtime_environment
   [[ -n "${BACKUP_PATH}" ]] || resolve_default_backup
   cd "${APP_ROOT}"
+  [[ -r "${APP_ROOT}/bin/lib/postgres-connection" ]] ||
+    die "shared PostgreSQL connection helper is not readable"
+  # shellcheck source=bin/lib/postgres-connection
+  source "${APP_ROOT}/bin/lib/postgres-connection"
+  trap cleanup_sensitive_stage EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
 
   require_command sha256sum
   require_command pg_restore
@@ -814,6 +820,8 @@ main() {
   fi
 
   require_command psql
+  mcweb_prepare_database_connection ||
+    die "could not prepare private PostgreSQL connection settings"
   apply_restore
 }
 

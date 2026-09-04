@@ -1,0 +1,142 @@
+# Shared PostgreSQL client connection handling for production maintenance scripts.
+# This file is sourced after the root-controlled runtime environment is loaded.
+
+MCWEB_DATABASE_CONNECTION_MODE="split"
+MCWEB_DATABASE_SERVICE_FILE=""
+MCWEB_DATABASE_PASSFILE=""
+MCWEB_DATABASE_SERVICE_NAME="mcweb-maintenance"
+
+mcweb_prepare_database_connection() {
+  local service_file passfile
+
+  MCWEB_DATABASE_CONNECTION_MODE="split"
+  MCWEB_DATABASE_SERVICE_FILE=""
+  MCWEB_DATABASE_PASSFILE=""
+
+  [[ -n "${DATABASE_URL:-}" ]] || return 0
+
+  service_file="$(mktemp "${TMPDIR:-/tmp}/.mcweb-pg-service.XXXXXX")" || {
+    unset DATABASE_URL
+    return 1
+  }
+  MCWEB_DATABASE_SERVICE_FILE="${service_file}"
+  passfile="$(mktemp "${TMPDIR:-/tmp}/.mcweb-pg-pass.XXXXXX")" || {
+    unset DATABASE_URL
+    if ! mcweb_cleanup_database_connection >/dev/null 2>&1; then
+      return 1
+    fi
+    return 1
+  }
+  MCWEB_DATABASE_PASSFILE="${passfile}"
+  chmod 600 "${MCWEB_DATABASE_SERVICE_FILE}" "${MCWEB_DATABASE_PASSFILE}" || {
+    unset DATABASE_URL
+    if ! mcweb_cleanup_database_connection >/dev/null 2>&1; then
+      return 1
+    fi
+    return 1
+  }
+
+  if ! bundle exec ruby -rpg -e '
+    begin
+      service_path, passfile_path, service_name = ARGV
+      parsed = PG::Connection.conninfo_parse(ENV.fetch("DATABASE_URL"))
+      values = parsed.each_with_object({}) do |option, result|
+        result[option.fetch(:keyword)] = option[:val] unless option[:val].nil?
+      end
+
+      raise "nested service" if values.key?("service") || values.key?("servicefile")
+
+      lines = ["[#{service_name}]"]
+      values.each do |keyword, value|
+        raise "unsafe service value" if value.include?("\0") || value.include?("\r") || value.include?("\n")
+        raise "lossy service value" if value.match?(/\A[[:space:]]|[[:space:]]\z/)
+
+        line = "#{keyword}=#{value}"
+        raise "service line too long" if (line.bytesize + 1) >= 1023
+        lines << line
+      end
+
+      [service_path, passfile_path].each do |path|
+        stat = File.lstat(path)
+        raise "unsafe temporary file" unless stat.file? && !stat.symlink?
+      end
+      File.binwrite(service_path, lines.join("\n") << "\n")
+      File.binwrite(passfile_path, "")
+      File.chmod(0o600, service_path, passfile_path)
+      [service_path, passfile_path].each do |path|
+        raise "unsafe temporary permissions" unless (File.stat(path).mode & 0o777) == 0o600
+      end
+    rescue StandardError
+      warn "DATABASE_URL is not safely representable as private libpq connection settings"
+      exit 1
+    end
+  ' "${MCWEB_DATABASE_SERVICE_FILE}" "${MCWEB_DATABASE_PASSFILE}" \
+    "${MCWEB_DATABASE_SERVICE_NAME}"
+  then
+    unset DATABASE_URL
+    if ! mcweb_cleanup_database_connection >/dev/null 2>&1; then
+      return 1
+    fi
+    return 1
+  fi
+
+  MCWEB_DATABASE_CONNECTION_MODE="service"
+  unset DATABASE_URL
+}
+
+mcweb_database_uses_service() {
+  [[ "${MCWEB_DATABASE_CONNECTION_MODE}" == "service" ]]
+}
+
+mcweb_run_database_command() {
+  local client="$1"
+  local pg_database pg_host pg_password pg_port pg_user
+  shift
+
+  if mcweb_database_uses_service; then
+    (
+      unset DATABASE_URL PGDATABASE PGHOST PGHOSTADDR PGPORT PGUSER PGPASSWORD
+      unset PGPASSFILE PGSERVICE PGSERVICEFILE PGSYSCONFDIR
+      PGSERVICEFILE="${MCWEB_DATABASE_SERVICE_FILE}" \
+      PGSYSCONFDIR="${MCWEB_DATABASE_SERVICE_FILE%/*}" \
+      PGPASSFILE="${MCWEB_DATABASE_PASSFILE}" \
+        "${client}" --dbname="service=${MCWEB_DATABASE_SERVICE_NAME}" "$@"
+    )
+  else
+    pg_host="${MCWEB_DATABASE_HOST:-${PGHOST:-}}"
+    pg_port="${MCWEB_DATABASE_PORT:-${PGPORT:-}}"
+    pg_user="${MCWEB_DATABASE_USERNAME:-${PGUSER:-}}"
+    pg_password="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}"
+    pg_database="${MCWEB_DATABASE_NAME:-${PGDATABASE:-mcweb_production}}"
+    (
+      unset DATABASE_URL PGDATABASE PGHOST PGHOSTADDR PGPORT PGUSER PGPASSWORD
+      unset PGPASSFILE PGSERVICE PGSERVICEFILE PGSYSCONFDIR
+      PGHOST="${pg_host}" \
+      PGPORT="${pg_port}" \
+      PGUSER="${pg_user}" \
+      PGPASSWORD="${pg_password}" \
+      PGDATABASE="${pg_database}" \
+        "${client}" "$@"
+    )
+  fi
+}
+
+mcweb_cleanup_database_connection() {
+  local path status=0 variable
+
+  for variable in MCWEB_DATABASE_SERVICE_FILE MCWEB_DATABASE_PASSFILE; do
+    path="${!variable:-}"
+    if [[ -z "${path}" ]]; then
+      printf -v "${variable}" '%s' ""
+      continue
+    fi
+    if [[ -e "${path}" || -L "${path}" ]]; then
+      if ! rm --force -- "${path}"; then
+        status=1
+        continue
+      fi
+    fi
+    printf -v "${variable}" '%s' ""
+  done
+  return "${status}"
+}

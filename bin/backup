@@ -124,10 +124,18 @@ write_backup_report() {
 }
 
 finalize_backup() {
-  local status=$?
+  local original_status=$?
+  local status="${original_status}"
+  local cleanup_status=0
   local report_status=0
 
   trap - EXIT
+  mcweb_cleanup_database_connection || cleanup_status=$?
+  if [[ "${status}" == "0" && "${cleanup_status}" != "0" ]]; then
+    status="${cleanup_status}"
+    BACKUP_STAGE="cleanup"
+    BACKUP_ERROR_CODE="cleanup_failed"
+  fi
   report_failed_backup || report_status=$?
   write_backup_report "${status}" || report_status=$?
   if [[ "${status}" == "0" && "${report_status}" != "0" ]]; then
@@ -136,6 +144,13 @@ finalize_backup() {
   fi
   if [[ "${report_status}" != "0" ]]; then
     echo "Backup evidence persistence also failed" >&2
+  fi
+  if [[ "${cleanup_status}" != "0" ]]; then
+    if [[ "${original_status}" == "0" ]]; then
+      echo "Backup failed: database credential cleanup failed" >&2
+    else
+      echo "Database credential cleanup also failed" >&2
+    fi
   fi
   exit "${status}"
 }
@@ -455,16 +470,7 @@ write_checksums() {
 }
 
 run_pg_dump() {
-  if [[ -n "${DATABASE_URL:-}" ]]; then
-    PGDATABASE="${DATABASE_URL}" DATABASE_URL="" pg_dump "$@"
-  else
-    PGHOST="${MCWEB_DATABASE_HOST:-${PGHOST:-}}" \
-    PGPORT="${MCWEB_DATABASE_PORT:-${PGPORT:-}}" \
-    PGUSER="${MCWEB_DATABASE_USERNAME:-${PGUSER:-}}" \
-    PGPASSWORD="${MCWEB_DATABASE_PASSWORD:-${PGPASSWORD:-}}" \
-    PGDATABASE="${MCWEB_DATABASE_NAME:-${PGDATABASE:-mcweb_production}}" \
-      pg_dump "$@"
-  fi
+  mcweb_run_database_command pg_dump "$@"
 }
 
 main() {
@@ -485,6 +491,11 @@ main() {
 
   load_runtime_environment
   cd "${APP_ROOT}"
+  [[ -r "${APP_ROOT}/bin/lib/postgres-connection" ]] ||
+    die "shared PostgreSQL connection helper is not readable"
+  # shellcheck source=bin/lib/postgres-connection
+  source "${APP_ROOT}/bin/lib/postgres-connection"
+  trap mcweb_cleanup_database_connection EXIT
 
   local backup_dir="${MCWEB_BACKUP_DIR:-/var/backups/mcweb}"
   local backup_id="${MCWEB_BACKUP_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
@@ -563,6 +574,8 @@ main() {
   trap 'exit 130' INT
   trap 'exit 143' TERM
   trap 'exit 129' HUP
+  mcweb_prepare_database_connection ||
+    die "could not prepare private PostgreSQL connection settings"
 
   BACKUP_STAGE="database_dump"
   run_pg_dump --format=custom --no-owner --no-privileges \

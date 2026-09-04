@@ -3,14 +3,18 @@
 module Identity
   class DataExportsController < ApplicationController
     include PrivateNoStoreResponse
+    include ActiveStorage::SetCurrent
 
     PAGE_SIZE = 25
+    DOWNLOAD_URL_TTL = 5.minutes
 
     before_action :require_login
     before_action :set_data_export, only: %i[download retry revoke]
 
     def index
-      current_user_exports.find_each(&:mark_expired_if_needed!)
+      current_user_exports.completed
+        .where("expires_at <= ?", Time.current)
+        .find_each(&:mark_expired_if_needed!)
       exports, pagination = paginated_exports
       render inertia: "Identity/DataExports/Index", props: {
         exports: exports.map { |data_export| export_payload(data_export) },
@@ -71,6 +75,11 @@ module Identity
         return redirect_to identity_data_exports_path, alert: t("mcweb.flash.data_export_unavailable")
       end
 
+      download_url = @data_export.archive.blob.url(
+        expires_in: DOWNLOAD_URL_TTL,
+        disposition: :attachment,
+        filename: @data_export.archive.filename
+      )
       Administration::AuditLogger.call(
         actor: current_user,
         action: "identity.data_export_downloaded",
@@ -79,12 +88,7 @@ module Identity
         ip_address: request.remote_ip,
         user_agent: request.user_agent
       )
-      send_data(
-        @data_export.archive.download,
-        filename: @data_export.archive.filename.to_s,
-        type: "application/zip",
-        disposition: "attachment"
-      )
+      redirect_to download_url, allow_other_host: true
     end
 
     private
@@ -126,6 +130,7 @@ module Identity
     end
 
     def export_payload(data_export)
+      recovery_state = Identity::DataExportGeneration.retryable_state(data_export)
       {
         id: data_export.public_id,
         status: data_export.status,
@@ -135,6 +140,8 @@ module Identity
         expires_at: data_export.expires_at&.iso8601,
         attempts: data_export.attempts,
         error_code: data_export.error_code,
+        retryable: recovery_state.present?,
+        recovery_state:,
         downloadable: data_export.downloadable?,
         manifest: data_export.manifest,
         paths: {

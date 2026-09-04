@@ -42,47 +42,47 @@ module Identity
 
         Contribution.new(
           documents: {
-            "commerce/wishlist/items.json" => RecordSerializer.records(
+            "commerce/wishlist/items.json" => RecordSerializer.stream_records(
               Commerce::WishlistItem.where(user:).order(:id),
               WISHLIST_FIELDS
             ),
-            "commerce/wishlist/presets.json" => RecordSerializer.records(
+            "commerce/wishlist/presets.json" => RecordSerializer.stream_records(
               Commerce::WishlistFilterPreset.where(user:).order(:id),
               WISHLIST_PRESET_FIELDS
             ),
-            "commerce/availability-alerts.json" => RecordSerializer.records(
+            "commerce/availability-alerts.json" => RecordSerializer.stream_records(
               Commerce::ProductAvailabilityAlert.where(user:).order(:id),
               ALERT_FIELDS
             ),
-            "commerce/reviews.json" => RecordSerializer.records(
+            "commerce/reviews.json" => RecordSerializer.stream_records(
               Commerce::Review.where(user:).order(:id),
               REVIEW_FIELDS
             ),
-            "commerce/review-helpful-votes.json" => RecordSerializer.records(
+            "commerce/review-helpful-votes.json" => RecordSerializer.stream_records(
               Commerce::ReviewHelpfulVote.where(user:).order(:id),
               HELPFUL_VOTE_FIELDS
             ),
-            "commerce/product-questions.json" => RecordSerializer.records(
+            "commerce/product-questions.json" => RecordSerializer.stream_records(
               Commerce::ProductQuestion.where(user:).order(:id),
               QUESTION_FIELDS
             ),
-            "commerce/payments.json" => RecordSerializer.records(
+            "commerce/payments.json" => RecordSerializer.stream_records(
               payments.order(:id),
               PAYMENT_FIELDS
             ),
-            "commerce/payment-attempts.json" => RecordSerializer.records(
+            "commerce/payment-attempts.json" => RecordSerializer.stream_records(
               Payments::Attempt.where(payment_record_id: payments.select(:id)).order(:id),
               PAYMENT_ATTEMPT_FIELDS
             ),
-            "commerce/refunds.json" => RecordSerializer.records(
+            "commerce/refunds.json" => RecordSerializer.stream_records(
               Commerce::Refund.where(store_order_id: order_ids).order(:id),
               REFUND_FIELDS
             ),
-            "commerce/disputes.json" => RecordSerializer.records(
+            "commerce/disputes.json" => RecordSerializer.stream_records(
               disputes.order(:id),
               DISPUTE_FIELDS
             ),
-            "commerce/dispute-events.json" => RecordSerializer.records(
+            "commerce/dispute-events.json" => RecordSerializer.stream_records(
               Commerce::DisputeEvent.where(store_dispute_id: disputes.select(:id)).order(:id),
               DISPUTE_EVENT_FIELDS
             )

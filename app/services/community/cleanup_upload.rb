@@ -10,15 +10,16 @@ module Community
     end
 
     def call
+      snapshot = nil
       claim = claim_cleanup
       return claim if claim.failure? || claim.value[:skipped]
 
       snapshot = claim.value
       remove_attachment(snapshot[:post_attachment_id])
       purge_blob(snapshot[:blob_id])
-      finish_cleanup(snapshot[:secure_evidence_attachment_id])
+      finish_cleanup(snapshot)
     rescue StandardError => error
-      record_failure(error)
+      record_failure(error, snapshot:)
       ServiceResult.failure(
         error: "upload_cleanup_failed",
         code: "upload_cleanup_failed",
@@ -35,6 +36,7 @@ module Community
       Community::Upload.transaction do
         attachment = lock_attachment
         @upload.lock!
+        secure_evidence_attachment = lock_secure_evidence_attachment
 
         if @upload.status_cleaned?
           skipped = "already_cleaned"
@@ -57,10 +59,12 @@ module Community
           next
         end
 
-        unless cleanup_allowed?
+        unless cleanup_allowed?(secure_evidence_attachment:)
           skipped = "not_due"
           next
         end
+
+        mark_expired_upload_failed!(secure_evidence_attachment)
 
         @upload.update!(
           status: "cleanup_pending",
@@ -71,8 +75,9 @@ module Community
         )
         snapshot = {
           post_attachment_id: attachment&.id,
-          secure_evidence_attachment_id: @upload.secure_evidence_attachment_id,
-          blob_id: @upload.active_storage_blob_id
+          secure_evidence_attachment_id: secure_evidence_attachment&.id,
+          blob_id: @upload.active_storage_blob_id,
+          cleanup_attempt: @upload.cleanup_attempts
         }
       end
 
@@ -89,17 +94,30 @@ module Community
         .find_by(id: @upload.forum_post_attachment_id)
     end
 
-    def cleanup_allowed?
-      if @upload.kind_secure_evidence_attachment? && @upload.secure_evidence_attachment_id
-        attachment = SecureEvidence::Attachment.lock.find_by(
-          id: @upload.secure_evidence_attachment_id
-        )
+    def lock_secure_evidence_attachment
+      return unless @upload.kind_secure_evidence_attachment? &&
+        @upload.secure_evidence_attachment_id
+
+      SecureEvidence::Attachment.lock.find_by(
+        id: @upload.secure_evidence_attachment_id
+      )
+    end
+
+    def cleanup_allowed?(secure_evidence_attachment:)
+      if @upload.kind_secure_evidence_attachment? &&
+          @upload.secure_evidence_attachment_id
+        return false unless secure_evidence_attachment
         return false if @upload.status_cleanup_pending? &&
           @upload.cleanup_started_at&.>(@now - 30.minutes)
 
-        return attachment&.state_purge_pending? == true &&
-          (@upload.status_cleanup_pending? || @upload.status_cleanup_failed?) &&
-          @upload.expires_at&.<=(@now)
+        return false unless @upload.expires_at&.<=(@now)
+        if secure_evidence_attachment.state_uploading?
+          return @upload.status_reserved? || @upload.status_cleanup_failed?
+        end
+        return false unless secure_evidence_attachment.state_purge_pending? ||
+          secure_evidence_attachment.state_upload_failed?
+
+        return @upload.status_cleanup_pending? || @upload.status_cleanup_failed?
       end
       return true if @orphan_only
       return true if @force
@@ -109,6 +127,17 @@ module Community
         @upload.cleanup_started_at&.<=(30.minutes.ago)
 
       @upload.expires_at&.<=(@now)
+    end
+
+    def mark_expired_upload_failed!(attachment)
+      return unless attachment&.state_uploading?
+
+      SecureEvidence::SyncUploadResult.failed!(
+        attachment:,
+        upload: @upload,
+        failure_code: "secure_evidence_upload_timeout",
+        at: @now
+      )
     end
 
     def remove_attachment(attachment_id)
@@ -124,15 +153,44 @@ module Community
     def purge_blob(blob_id)
       return unless blob_id
 
-      blob = ActiveStorage::Blob.find_by(id: blob_id)
+      blob = ApplicationRecord.with_connection do
+        ActiveStorage::Blob.find_by(id: blob_id)
+      end
       return unless blob
+      return if blob.attachments.exists?
 
-      blob.purge
+      # Keep the blob row and its durable object key until the guarded cleanup
+      # transaction commits. A crash after remote deletion can then retry the
+      # same key instead of leaving an unaddressable object behind.
+      blob.delete
     end
 
-    def finish_cleanup(secure_evidence_attachment_id)
+    def finish_cleanup(snapshot)
+      blob = nil
+      result = nil
       Community::Upload.transaction do
         @upload.lock!
+        unless current_cleanup_claim?(snapshot)
+          result = ServiceResult.success(
+            upload_id: @upload.id,
+            cleaned: false,
+            skipped: "cleanup_superseded"
+          )
+          next
+        end
+
+        blob = ActiveStorage::Blob.lock.find_by(id: snapshot.fetch(:blob_id)) if
+          snapshot[:blob_id]
+        secure_evidence_attachment_id = snapshot[:secure_evidence_attachment_id]
+        if secure_evidence_attachment_id
+          SecureEvidence::SyncCleanupResult.completed!(
+            attachment_id: secure_evidence_attachment_id,
+            upload: @upload,
+            expected_cleanup_attempt: snapshot.fetch(:cleanup_attempt),
+            expected_blob_id: snapshot[:blob_id],
+            at: @now
+          )
+        end
         @upload.update!(
           status: "cleaned",
           blob: nil,
@@ -144,21 +202,39 @@ module Community
           cleanup_error_code: nil,
           cleanup_error_message: nil
         )
-        if secure_evidence_attachment_id
-          SecureEvidence::SyncCleanupResult.purged!(
-            attachment_id: secure_evidence_attachment_id,
+        result = ServiceResult.success(upload_id: @upload.id, cleaned: true)
+      end
+      return result if result.value[:skipped]
+
+      destroy_blob_metadata(blob)
+      instrument("community.upload.cleaned")
+      result
+    end
+
+    def record_failure(error, snapshot:)
+      unless snapshot
+        Rails.logger.error(
+          "[Community::CleanupUpload] cleanup claim failed " \
+          "upload_id=#{@upload.id} error=#{error.class}"
+        )
+        return
+      end
+
+      recorded = false
+      Community::Upload.transaction do
+        @upload.lock!
+        next unless current_cleanup_claim?(snapshot)
+
+        if @upload.secure_evidence_attachment_id
+          SecureEvidence::SyncCleanupResult.failed!(
+            attachment_id: @upload.secure_evidence_attachment_id,
             upload: @upload,
+            expected_cleanup_attempt: snapshot.fetch(:cleanup_attempt),
+            expected_blob_id: snapshot[:blob_id],
+            error:,
             at: @now
           )
         end
-      end
-      instrument("community.upload.cleaned")
-      ServiceResult.success(upload_id: @upload.id, cleaned: true)
-    end
-
-    def record_failure(error)
-      Community::Upload.transaction do
-        @upload.lock!
         @upload.update!(
           status: "cleanup_failed",
           expires_at: @now,
@@ -166,15 +242,10 @@ module Community
           cleanup_error_code: error.class.name.to_s.first(120),
           cleanup_error_message: error.message.to_s.first(500)
         )
-        if @upload.secure_evidence_attachment_id
-          SecureEvidence::SyncCleanupResult.failed!(
-            attachment_id: @upload.secure_evidence_attachment_id,
-            upload: @upload,
-            error:,
-            at: @now
-          )
-        end
+        recorded = true
       end
+      return unless recorded
+
       instrument(
         "community.upload.cleanup_failed",
         error_class: error.class.name,
@@ -188,6 +259,26 @@ module Community
       Rails.logger.error(
         "[Community::CleanupUpload] failed to record cleanup error " \
         "upload_id=#{@upload.id} error=#{record_error.class}"
+      )
+    end
+
+    def current_cleanup_claim?(snapshot)
+      @upload.status_cleanup_pending? &&
+        @upload.cleanup_attempts == snapshot.fetch(:cleanup_attempt) &&
+        @upload.active_storage_blob_id == snapshot[:blob_id] &&
+        @upload.secure_evidence_attachment_id == snapshot[:secure_evidence_attachment_id]
+    end
+
+    def destroy_blob_metadata(blob)
+      return unless blob
+      return if blob.attachments.exists?
+      return if Community::Upload.where(active_storage_blob_id: blob.id).exists?
+
+      blob.destroy!
+    rescue StandardError => error
+      Rails.logger.warn(
+        "[Community::CleanupUpload] blob metadata cleanup deferred " \
+        "upload_id=#{@upload.id} blob_id=#{blob&.id} error=#{error.class}"
       )
     end
 

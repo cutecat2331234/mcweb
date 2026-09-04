@@ -894,6 +894,8 @@ export default {
         "scanFailed": "此附件未通过必要的安全扫描。",
         "scanTimeout": "扫描时间超出预期，请刷新页面查看状态。",
         "state": {
+          "uploading": "正在上传",
+          "upload_failed": "上传失败",
           "pending": "扫描中",
           "available": "可用",
           "quarantined": "已隔离",

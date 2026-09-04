@@ -76,6 +76,12 @@ function refreshCases() {
   router.reload({ only: ['paymentDisputes'], preserveScroll: true, preserveState: true })
 }
 
+function activeEvidenceCount(item: CustomerPaymentDisputes['cases'][number]) {
+  return item.attachments.filter((attachment) =>
+    ['uploading', 'pending', 'available', 'quarantined'].includes(attachment.state),
+  ).length
+}
+
 async function withdrawCase(item: CustomerPaymentDisputes['cases'][number]) {
   if (!item.can_withdraw || !item.withdraw_url) return
   const approved = await arcoConfirm({
@@ -220,7 +226,7 @@ function statusColor(status: string) {
                 :subject-key="item.evidence_subject.key"
                 :subject-public-id="item.evidence_subject.public_id"
                 :copy="uploadCopy"
-                :disabled="item.attachments.length >= paymentDisputes.evidence_limits.max_files"
+                :disabled="activeEvidenceCount(item) >= paymentDisputes.evidence_limits.max_files"
                 @uploaded="refreshCases"
               />
             </Card>

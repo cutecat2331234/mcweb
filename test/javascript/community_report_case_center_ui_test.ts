@@ -40,6 +40,7 @@ test('pending mutations carry explicit desired state version and bounded idempot
   assert.match(showPage, /responseHasFormErrors\(page\)/)
   assert.match(showPage, /submittedSupplement/)
   assert.match(showPage, /:disabled="supplementForm\.processing"/)
+  assert.match(showPage, /\['uploading', 'pending', 'available', 'quarantined'\]/)
   assert.doesNotMatch(showPage, /toggle/i)
 })
 

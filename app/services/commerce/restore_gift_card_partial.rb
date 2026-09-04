@@ -13,6 +13,7 @@ module Commerce
       return ServiceResult.success(restored_cents: 0) unless @payment_amount_cents.positive?
 
       restored_cents = 0
+      ledger_failure = nil
       Commerce::GiftCard.transaction do
         @order.lock!
         @order.reload
@@ -36,17 +37,23 @@ module Commerce
 
         card.lock!
         card.update!(balance_cents: card.balance_cents + restored_cents, active: true)
-        Commerce::RecordGiftCardTransaction.call(
+        ledger_result = Commerce::RecordGiftCardTransaction.call(
           gift_card: card,
           amount_cents: restored_cents,
           transaction_type: :credit,
           order: @order
         )
+        unless ledger_result.success?
+          ledger_failure = ledger_result
+          raise ActiveRecord::Rollback
+        end
         new_restored = already_restored + restored_cents
         updates = { gift_card_restored_cents: new_restored }
         updates[:gift_card_amount_cents] = 0 if new_restored >= original
         @order.update!(updates)
       end
+
+      return ledger_failure if ledger_failure
 
       ServiceResult.success(restored_cents: restored_cents)
     rescue ActiveRecord::RecordInvalid => e

@@ -39,7 +39,30 @@ module Community
       tag_result = nil
       poll_result = nil
       field_result = nil
+      state_result = nil
+      actor_id = @user.id
+      topic_owner_id = @topic.user_id
       Community::Topic.transaction do
+        locked_users = nil
+        Identity::UserMutationLock.with_users(
+          users: [ actor_id, topic_owner_id ]
+        ) { |users| locked_users = users }
+        @user = locked_users.fetch(actor_id)
+        topic_owner = locked_users.fetch(topic_owner_id)
+        if @user.deleted? || @user.banned?
+          state_result = ServiceResult.failure(
+            error: @user.deleted? ? :account_deleted : :account_banned
+          )
+          raise ActiveRecord::Rollback
+        end
+
+        @topic = Community::Topic.with_discarded.lock.find_by(id: @topic.id)
+        unless @topic && @topic.user_id == topic_owner.id && !topic_owner.deleted? &&
+            @topic.archived_at.nil? && can_edit?
+          state_result = ServiceResult.failure(error: :topic_not_available)
+          raise ActiveRecord::Rollback
+        end
+
         attrs = {}
         attrs[:title] = @title if @title.present?
         attrs[:prefix] = valid_prefix if @prefix != nil
@@ -67,6 +90,7 @@ module Community
         end
       end
 
+      return state_result if state_result&.failure?
       return tag_result if tag_result&.failure?
       return poll_result if poll_result&.failure?
       return field_result if field_result&.failure?

@@ -6,8 +6,10 @@ module SecureEvidence
 
     include HasPublicId
 
-    STATES = %w[pending available quarantined purge_pending purged].freeze
-    ACTIVE_STATES = %w[pending available quarantined].freeze
+    STATES = %w[
+      uploading upload_failed pending available quarantined purge_pending purged
+    ].freeze
+    ACTIVE_STATES = %w[uploading pending available quarantined].freeze
     IMMUTABLE_FIELDS = %w[
       public_id uploader_id uploader_public_id_snapshot subject_key subject_id
       subject_public_id idempotency_key request_fingerprint filename content_type
@@ -52,7 +54,7 @@ module SecureEvidence
     before_destroy :prevent_destroy
 
     scope :retention_due, ->(at = Time.current) {
-      where(state: %w[pending available quarantined])
+      where(state: %w[upload_failed pending available quarantined])
         .where(retention_until: ..at)
     }
 

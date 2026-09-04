@@ -199,6 +199,7 @@ module DataGovernance
     end
 
     test "topic cleanup permanently removes its dependent content as one aggregate" do
+      attachment, attachment_upload, inline_upload = managed_uploads_for(@post)
       DataGovernance::RetentionPolicy.find_by!(resource_type: "Community::Topic").update!(retention_days: 0)
       deleted = DataGovernance::SoftDeleteContent.call(
         target: @topic,
@@ -208,15 +209,127 @@ module DataGovernance
       )
 
       assert_predicate deleted, :success?, deleted.error
-      purged = DataGovernance::PermanentlyPurgeContent.call(
-        record: deleted.value.fetch(:record),
-        actor: @actor,
-        reason: "The topic retention period elapsed without blockers."
-      )
+      purged = nil
+      assert_enqueued_jobs 2, only: Maintenance::CleanupForumUploadsJob do
+        purged = DataGovernance::PermanentlyPurgeContent.call(
+          record: deleted.value.fetch(:record),
+          actor: @actor,
+          reason: "The topic retention period elapsed without blockers."
+        )
+      end
 
       assert_predicate purged, :success?, purged.error
       refute Community::Topic.with_discarded.exists?(@topic.id)
       refute Community::Post.with_discarded.exists?(@post.id)
+      refute Community::PostAttachment.with_discarded.exists?(attachment.id)
+      assert_equal "cleanup_pending", attachment_upload.reload.status
+      assert_nil attachment_upload.forum_post_id
+      assert_equal "cleanup_pending", inline_upload.reload.status
+      assert_nil inline_upload.forum_post_id
+    end
+
+    test "post cleanup schedules attachment and inline upload ledgers before destroy" do
+      attachment, attachment_upload, inline_upload = managed_uploads_for(@post)
+      record = soft_delete_post
+      purged = nil
+
+      assert_enqueued_jobs 2, only: Maintenance::CleanupForumUploadsJob do
+        purged = DataGovernance::PermanentlyPurgeContent.call(
+          record:,
+          actor: @actor,
+          reason: "The post retention period elapsed without blockers."
+        )
+      end
+
+      assert_predicate purged, :success?, purged.error
+      refute Community::Post.with_discarded.exists?(@post.id)
+      refute Community::PostAttachment.with_discarded.exists?(attachment.id)
+      assert_equal "cleanup_pending", attachment_upload.reload.status
+      assert_nil attachment_upload.forum_post_id
+      assert_equal "cleanup_pending", inline_upload.reload.status
+      assert_nil inline_upload.forum_post_id
+    end
+
+    test "account closure can never permanently purge a shared topic container" do
+      other_post = Community::Post.create!(
+        topic: @topic,
+        user: create_user,
+        floor_number: 2,
+        body: "Another author's reply must survive",
+        status: "published"
+      )
+      record = create_legacy_structural_lifecycle(@topic)
+
+      purged = DataGovernance::PermanentlyPurgeContent.call(
+        record:,
+        actor: @actor,
+        reason: "Scheduled account closure cleanup"
+      )
+
+      assert_predicate purged, :failure?
+      assert_includes purged.value.fetch(:blockers), "account_closure_shared_container"
+      assert Community::Topic.with_discarded.exists?(@topic.id)
+      assert Community::Post.with_discarded.exists?(other_post.id)
+    end
+
+    test "account closure cannot purge opening posts or profile wall containers" do
+      wall_owner = create_user
+      wall_post = Community::ProfilePost.create!(
+        profile_user: wall_owner,
+        author: @author,
+        body: "Shared wall container",
+        status: "published"
+      )
+      retained_comment = Community::ProfilePostComment.create!(
+        profile_post: wall_post,
+        author: create_user,
+        body: "Another member's comment",
+        status: "published"
+      )
+      records = [
+        create_legacy_structural_lifecycle(@post),
+        create_legacy_structural_lifecycle(wall_post)
+      ]
+
+      records.each do |record|
+        purged = DataGovernance::PermanentlyPurgeContent.call(
+          record:,
+          actor: @actor,
+          reason: "Attempt to bypass structural account-closure preservation."
+        )
+        assert_predicate purged, :failure?
+        assert_includes purged.value.fetch(:blockers), "account_closure_shared_container"
+      end
+
+      assert Community::Post.with_discarded.exists?(@post.id)
+      assert Community::ProfilePost.with_discarded.exists?(wall_post.id)
+      assert Community::ProfilePostComment.with_discarded.exists?(retained_comment.id)
+    end
+
+    test "soft deletion rejects new account closure lifecycles for structural containers" do
+      wall_post = Community::ProfilePost.create!(
+        profile_user: create_user,
+        author: @author,
+        body: "Shared wall container",
+        status: "published"
+      )
+
+      [ @topic, @post, wall_post ].each do |target|
+        result = DataGovernance::SoftDeleteContent.call(
+          target:,
+          actor: @author,
+          reason: "account_closure_delete_content"
+        )
+
+        assert_predicate result, :failure?
+        assert_equal "account_closure_structural_container_requires_tombstone",
+                     result.code
+        refute_predicate target.reload, :soft_deleted?
+        refute DataGovernance::ContentLifecycleRecord.exists?(
+          target_type: target.class.base_class.name,
+          target_id: target.id
+        )
+      end
     end
 
     test "a hold on any reply author blocks permanent cleanup of the whole topic" do
@@ -253,6 +366,70 @@ module DataGovernance
       assert_includes blocked.value.fetch(:blockers), "legal_hold"
       assert Community::Topic.with_discarded.exists?(@topic.id)
       assert Community::Post.with_discarded.exists?(reply.id)
+    end
+
+    test "topic deletion policy evaluates descendant evidence through bounded SQL references" do
+      reply_author = create_user
+      attachment_author = create_user
+      reply = Community::Post.create!(
+        topic: @topic,
+        user: reply_author,
+        floor_number: 2,
+        body: "Reply with governed attachment evidence.",
+        status: "published"
+      )
+      attachment = Community::PostAttachment.create!(
+        post: reply,
+        user: attachment_author,
+        filename: "evidence.txt",
+        byte_size: 128
+      )
+      hold = DataGovernance::PlaceRetentionHold.call(
+        target: attachment_author,
+        actor: @actor,
+        reason: "Preserve evidence owned by this account."
+      )
+      report = Community::Report.create!(
+        reporter: create_user,
+        reportable: attachment,
+        reason_code: "offensive",
+        reason: "Attachment requires review."
+      )
+      Community::ModerationCase.create!(
+        source: report,
+        source_kind: "report",
+        status: "open",
+        priority: "high",
+        risk_level: "high",
+        title: "Attachment report review",
+        summary: "Keep the aggregate until review completes.",
+        source_updated_at: Time.current,
+        section: @section,
+        target_user: attachment_author
+      )
+
+      evidence_references = DataGovernance::ContentRegistry.evidence_reference_sets(@topic)
+      post_ids = evidence_references.find { |reference| reference.target_type == "Community::Post" }
+      attachment_ids = evidence_references.find do |reference|
+        reference.target_type == "Community::PostAttachment"
+      end
+      assert_instance_of ActiveRecord::Relation, post_ids.target_ids
+      assert_instance_of ActiveRecord::Relation, attachment_ids.target_ids
+      refute_predicate post_ids.target_ids, :loaded?
+      refute_predicate attachment_ids.target_ids, :loaded?
+      assert_predicate hold, :success?, hold.error
+
+      reject_materialization = ->(*) { flunk("deletion policy loaded aggregate records") }
+      result = DataGovernance::ContentRegistry.stub(:evidence_targets, reject_materialization) do
+        DataGovernance::ContentRegistry.stub(:hold_targets, reject_materialization) do
+          DataGovernance::DeletionPolicy.call(target: @topic)
+        end
+      end
+
+      assert_predicate result, :success?, result.error
+      assert_includes result.value.fetch(:blockers), "legal_hold"
+      assert_includes result.value.fetch(:blockers), "unresolved_report"
+      assert_includes result.value.fetch(:blockers), "unresolved_moderation_case"
     end
 
     test "an open payment dispute blocks deletion policy for the affected account" do
@@ -345,6 +522,52 @@ module DataGovernance
     end
 
     private
+
+    def managed_uploads_for(post)
+      attachment = Community::PostAttachment.create!(
+        post:,
+        user: @author,
+        filename: "governed.txt",
+        content_type: "text/plain",
+        byte_size: 16
+      )
+      attachment_upload = Community::Upload.create!(
+        user: @author,
+        public_id: Community::Upload.generate_public_id,
+        kind: "post_attachment",
+        status: "linked",
+        scan_status: "clean",
+        byte_size: 16,
+        post:,
+        post_attachment: attachment
+      )
+      inline_upload = Community::Upload.create!(
+        user: @author,
+        public_id: Community::Upload.generate_public_id,
+        kind: "inline_image",
+        status: "linked",
+        scan_status: "clean",
+        byte_size: 16,
+        post:
+      )
+      [ attachment, attachment_upload, inline_upload ]
+    end
+
+    def create_legacy_structural_lifecycle(target)
+      at = 1.minute.ago
+      snapshot = DataGovernance::ContentRegistry.snapshot(target)
+      target.soft_delete!(at:)
+      DataGovernance::ContentLifecycleRecord.create!(
+        target_type: target.class.base_class.name,
+        target_id: target.id,
+        status: "soft_deleted",
+        deleted_by: @author,
+        soft_deleted_at: at,
+        purge_after: at,
+        deletion_reason: "account_closure_delete_content",
+        target_snapshot: snapshot
+      )
+    end
 
     def soft_delete_post
       result = DataGovernance::SoftDeleteContent.call(

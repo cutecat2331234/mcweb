@@ -23,18 +23,21 @@ module DataGovernance
     private
 
     def active_hold?
-      hold_target_references.any? do |type, ids|
-        RetentionHold.effective.where(target_type: type, target_id: ids).exists?
+      hold_target_references.any? do |reference|
+        RetentionHold.effective.where(
+          target_type: reference.target_type,
+          target_id: reference.target_ids
+        ).exists?
       end
     end
 
     def unresolved_report?
       return false unless defined?(Community::Report)
 
-      evidence_target_references.any? do |type, ids|
+      evidence_target_references.any? do |reference|
         Community::Report.where(
-          reportable_type: type,
-          reportable_id: ids,
+          reportable_type: reference.target_type,
+          reportable_id: reference.target_ids,
           status: "pending"
         ).exists?
       end
@@ -43,18 +46,24 @@ module DataGovernance
     def unresolved_moderation_case?
       return false unless defined?(Community::ModerationCase)
 
-      direct = evidence_target_references.any? do |type, ids|
-        Community::ModerationCase.active_queue.where(source_type: type, source_id: ids).exists?
+      direct = evidence_target_references.any? do |reference|
+        Community::ModerationCase.active_queue.where(
+          source_type: reference.target_type,
+          source_id: reference.target_ids
+        ).exists?
       end
       return true if direct
 
-      report_ids = evidence_target_references.flat_map do |type, ids|
-        Community::Report.where(reportable_type: type, reportable_id: ids).pluck(:id)
-      end
-      return true if report_ids.any? &&
+      report_case = defined?(Community::Report) && evidence_target_references.any? do |reference|
+        report_ids = Community::Report.where(
+          reportable_type: reference.target_type,
+          reportable_id: reference.target_ids
+        ).select(:id)
         Community::ModerationCase.active_queue
           .where(source_type: "Community::Report", source_id: report_ids)
           .exists?
+      end
+      return true if report_case
 
       @target.is_a?(User) &&
         Community::ModerationCase.active_queue.where(target_user_id: @target.id).exists?
@@ -80,25 +89,11 @@ module DataGovernance
     end
 
     def evidence_target_references
-      targets =
-        if ContentRegistry.supported?(@target)
-          ContentRegistry.evidence_targets(@target)
-        else
-          [ @target ]
-        end
-      targets.group_by { |target| target.class.base_class.name }
-        .transform_values { |items| items.map(&:id).compact.uniq }
+      @evidence_target_references ||= ContentRegistry.evidence_reference_sets(@target)
     end
 
     def hold_target_references
-      targets =
-        if ContentRegistry.supported?(@target)
-          ContentRegistry.hold_targets(@target)
-        else
-          [ @target, (@target.user if @target.respond_to?(:user)) ].compact
-        end
-      targets.group_by { |target| target.class.base_class.name }
-        .transform_values { |items| items.map(&:id).compact.uniq }
+      @hold_target_references ||= ContentRegistry.hold_reference_sets(@target)
     end
 
     def policy_payload

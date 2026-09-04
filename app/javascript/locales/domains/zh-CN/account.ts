@@ -381,13 +381,21 @@ export default {
       "revoke": "撤销",
       "revokeConfirm": "确定撤销此导出并移除下载文件吗？",
       "failedDescription": "生成失败，内部错误细节不会暴露；可以安全重试。",
+      "tooLargeDescription": "该账户归档超过了导出大小限制，请联系支持人员申请按范围导出。",
+      "resourceExhaustedDescription": "导出服务在生成归档时资源不足，请稍后重试；你的原始数据没有发生变化。",
+      "recoveryDescription": "后台处理在归档就绪前已经停止，请重启这次导出以安全地继续。",
       "backToSecurity": "返回账户安全",
       "modules": {
         "identityProfile": "账户资料",
         "identityNotifications": "通知",
         "communityContent": "社区内容",
+        "communityActivity": "社区活动",
         "communityUploads": "上传文件",
-        "commerceAccount": "商城账户数据"
+        "communityReportCases": "举报与申诉",
+        "commerceAccount": "商城账户数据",
+        "commerceActivity": "商城活动",
+        "minecraftAccounts": "Minecraft 账户",
+        "secureEvidenceAttachments": "证据附件"
       },
       "status": {
         "queued": "等待中",

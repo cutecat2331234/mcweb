@@ -8,7 +8,7 @@ module Identity
       def self.call(context:)
         Contribution.new(
           documents: {
-            "notifications.json" => RecordSerializer.records(
+            "notifications.json" => RecordSerializer.stream_records(
               Notification.where(user: context.user).order(:id),
               FIELDS
             )

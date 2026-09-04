@@ -55,21 +55,45 @@ module Community
       post_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :post)
       return post_restriction if post_restriction.failure?
 
-      needs_approval = Community::RequiresPostApproval.required_for?(user: @user)
-      topic_status = needs_approval ? "hidden" : "published"
-      post_status = needs_approval ? "pending_approval" : "published"
+      needs_approval = nil
+      link_result = nil
+      state_result = nil
 
       Community::Topic.transaction do
+        @user = User.lock.find(@user.id)
+        if @user.deleted? || @user.banned?
+          state_result = ServiceResult.failure(
+            error: @user.deleted? ? :account_deleted : :account_banned
+          )
+          raise ActiveRecord::Rollback
+        end
+
+        @topic = Community::Topic.with_discarded.lock.find(@topic.id)
+        post = Community::Post.with_discarded.lock.find_by(id: post.id)
+        unless @topic.user_id == @user.id && @topic.status == "draft" && post&.body.present?
+          state_result = ServiceResult.failure(error: :topic_is_not_a_draft)
+          raise ActiveRecord::Rollback
+        end
+
+        needs_approval = Community::RequiresPostApproval.required_for?(user: @user)
+        topic_status = needs_approval ? "hidden" : "published"
+        post_status = needs_approval ? "pending_approval" : "published"
         @topic.update!(status: topic_status, last_posted_at: Time.current, last_post_user: @user)
         post.update!(status: post_status) unless post.status == post_status
         Community::Subscription.subscribe!(@user, @topic)
         Community::ReadState.mark_read!(@user, @topic, floor: post.floor_number)
-      end
 
-      if @attachment_ids.present?
-        link_result = Community::LinkPostAttachments.call(user: @user, post: post.reload, attachment_ids: @attachment_ids)
-        return link_result if link_result.failure?
+        if @attachment_ids.present?
+          link_result = Community::LinkPostAttachments.call(
+            user: @user,
+            post:,
+            attachment_ids: @attachment_ids
+          )
+          raise ActiveRecord::Rollback if link_result.failure?
+        end
       end
+      return state_result if state_result&.failure?
+      return link_result if link_result&.failure?
 
       if needs_approval
         Community::NotifyPendingPost.call(post: post.reload)

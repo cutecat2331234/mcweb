@@ -17,7 +17,31 @@ module Community
       prepared = Community::PrepareProfileWallBody.call(author: @author, body: @body, max_length: 3_000)
       return prepared if prepared.failure?
 
-      comment = @profile_post.comments.create!(author: @author, body: prepared.value, status: :published)
+      comment = nil
+      state_result = nil
+      Community::ProfilePostComment.transaction do
+        @author = User.lock.find(@author.id)
+        state_result = account_write_access_result
+        raise ActiveRecord::Rollback if state_result.failure?
+
+        @profile_post = Community::ProfilePost.lock.find_by(id: @profile_post.id)
+        unless @profile_post&.published? &&
+            Community::ProfileWallPolicy.can_comment?(
+              author: @author,
+              profile_post: @profile_post
+            )
+          state_result = ServiceResult.failure(error: "profile_post_not_allowed")
+          raise ActiveRecord::Rollback
+        end
+
+        comment = @profile_post.comments.create!(
+          author: @author,
+          body: prepared.value,
+          status: :published
+        )
+      end
+      return state_result if state_result&.failure?
+
       notify_recipients!(comment, prepared.value)
       ServiceResult.success(comment)
     rescue ActiveRecord::RecordInvalid => e
@@ -25,6 +49,13 @@ module Community
     end
 
     private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @author.deleted?
+      return ServiceResult.failure(error: :account_banned) if @author.banned?
+
+      ServiceResult.success
+    end
 
     def notify_recipients!(comment, body)
       [ @profile_post.author, @profile_post.profile_user ].compact.uniq.each do |user|

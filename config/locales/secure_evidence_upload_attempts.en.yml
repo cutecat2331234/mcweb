@@ -1,0 +1,12 @@
+en:
+  mcweb:
+    services:
+      errors:
+        secure_evidence_upload_failed: "The evidence file could not be stored. Its partial upload will be cleaned up before a safe retry."
+        secure_evidence_upload_retry_pending: "The previous evidence upload is still being cleaned up. Please retry shortly."
+    commerce:
+      payment_disputes:
+        evidence:
+          statuses:
+            uploading: "Uploading"
+            upload_failed: "Upload failed"

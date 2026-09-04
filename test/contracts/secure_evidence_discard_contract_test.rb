@@ -31,13 +31,15 @@ module SecureEvidence
       assert_includes sync_source, "attachment.state_purged?"
     end
 
-    test "quota and public API use active states and an explicit destroy contract" do
+    test "quota includes active and not-yet-cleaned failed uploads" do
       creation_source = Rails.root.join(
         "app/services/secure_evidence/create_attachment.rb"
       ).read
       routes_source = Rails.root.join("config/routes.rb").read
 
-      assert_includes creation_source, "state: Attachment::ACTIVE_STATES"
+      assert_includes creation_source, "Attachment.left_joins(:upload_record)"
+      assert_includes creation_source, "Attachment::ACTIVE_STATES"
+      assert_includes creation_source, "forum_uploads.status <> 'cleaned'"
       assert_includes routes_source, "only: %i[create show destroy]"
     end
   end

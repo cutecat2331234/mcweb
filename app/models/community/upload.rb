@@ -133,10 +133,10 @@ module Community
       scan_status_infected? || (scan_status_error? && quarantined_at.present?)
     end
 
-    def request_cleanup!(error: nil)
+    def request_cleanup!(error: nil, at: Time.current)
       attributes = {
         status: "cleanup_failed",
-        expires_at: Time.current,
+        expires_at: at,
         cleanup_started_at: nil
       }
       if error

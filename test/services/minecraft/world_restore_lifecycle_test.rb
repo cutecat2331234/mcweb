@@ -125,6 +125,94 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     assert_equal event_count, plan.events.reload.count
   end
 
+  test "an owner can idempotently cancel an unqueued plan while retaining its audit record" do
+    plan = plan_restore
+    request_id = SecureRandom.uuid
+    expected_lock_version = plan.lock_version
+    cancelled = Minecraft::CancelWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      reason: "Incident closed before restore execution",
+      request_id: request_id,
+      expected_lock_version: expected_lock_version
+    )
+
+    assert_predicate cancelled, :success?
+    assert_not cancelled.value.fetch(:idempotent)
+    assert plan.reload.status_cancelled?
+    assert_equal request_id, plan.result_summary.dig("cancellation", "request_id")
+    assert_equal @actor.public_id, plan.result_summary.dig("cancellation", "actor_id")
+    assert_nil plan.node_operation
+    assert_equal 1, plan.events.where(event_type: "minecraft.world_restore.cancelled").count
+    assert_equal 1, AuditLog.for_resource(plan).by_action("minecraft.world_restore.cancelled").count
+
+    replay = Minecraft::CancelWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      reason: "Incident closed before restore execution",
+      request_id: request_id,
+      expected_lock_version: expected_lock_version
+    )
+    assert_predicate replay, :success?
+    assert replay.value.fetch(:idempotent)
+    assert_equal 1, plan.events.reload.where(event_type: "minecraft.world_restore.cancelled").count
+
+    conflict = Minecraft::CancelWorldRestore.call(
+      plan: plan,
+      actor: @actor,
+      reason: "Different cancellation input",
+      request_id: request_id,
+      expected_lock_version: expected_lock_version
+    )
+    assert_predicate conflict, :failure?
+    assert_equal :world_restore_idempotency_conflict, conflict.code
+  end
+
+  test "plan cancellation is owner-only, server-expired, and closed after queueing begins" do
+    plan = plan_restore
+    other_actor = create_user
+    grant_permission(other_actor, "minecraft.world_restores.execute")
+    unauthorized = Minecraft::CancelWorldRestore.call(
+      plan: plan,
+      actor: other_actor,
+      reason: "Attempt to cancel another operator's plan",
+      request_id: SecureRandom.uuid,
+      expected_lock_version: plan.lock_version
+    )
+    assert_predicate unauthorized, :failure?
+    assert_equal :world_restore_unauthorized, unauthorized.code
+    assert plan.reload.status_planned?
+
+    expired = nil
+    travel Minecraft::PlanWorldRestore::EXPIRES_IN + 1.second do
+      expired = Minecraft::CancelWorldRestore.call(
+        plan: plan,
+        actor: @actor,
+        reason: "Abandon an expired plan",
+        request_id: SecureRandom.uuid,
+        expected_lock_version: plan.lock_version
+      )
+    end
+    assert_predicate expired, :failure?
+    assert_equal :world_restore_plan_expired, expired.code
+    assert plan.reload.status_expired?
+    assert_equal 1, plan.events.where(event_type: "minecraft.world_restore.expired").count
+
+    queued_plan = plan_restore
+    queued_plan.update!(status: "authorized")
+    queued_plan.update!(status: "queued")
+    not_cancellable = Minecraft::CancelWorldRestore.call(
+      plan: queued_plan,
+      actor: @actor,
+      reason: "Too late to cancel",
+      request_id: SecureRandom.uuid,
+      expected_lock_version: queued_plan.lock_version
+    )
+    assert_predicate not_cancellable, :failure?
+    assert_equal :world_restore_plan_not_cancellable, not_cancellable.code
+    assert queued_plan.reload.status_queued?
+  end
+
   test "capability, path, immutable contract, and start gates fail closed" do
     assert @node.supports_managed_world_backups_v2?
     assert @node.supports_world_restore_v2?

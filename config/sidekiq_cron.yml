@@ -172,9 +172,27 @@ cleanup_expired_sessions:
   queue: maintenance
   active_job: true
 
+reconcile_account_closure_content:
+  cron: "*/15 * * * *"
+  class: "Maintenance::ReconcileAccountClosureContentJob"
+  queue: maintenance
+  active_job: true
+
 expire_data_exports:
   cron: "15 * * * *"
   class: "Maintenance::ExpireDataExportsJob"
+  queue: maintenance
+  active_job: true
+
+cleanup_data_export_tempfiles:
+  cron: "35 * * * *"
+  class: "Maintenance::CleanupDataExportTempfilesJob"
+  queue: maintenance
+  active_job: true
+
+cleanup_data_export_staged_blobs:
+  cron: "50 * * * *"
+  class: "Maintenance::CleanupDataExportStagedBlobsJob"
   queue: maintenance
   active_job: true
 

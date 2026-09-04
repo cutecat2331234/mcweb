@@ -12,6 +12,7 @@ module Commerce
       cancelled = false
       previous_status = nil
       inventory_error = nil
+      balance_restore_failure = nil
 
       Commerce::Order.transaction do
         @order.lock!
@@ -39,13 +40,22 @@ module Commerce
           raise ActiveRecord::Rollback
         end
         restore_coupon_usage!
-        restore_gift_card_balance_if_debited!
-        restore_store_credit_if_debited!
+        gift_card_result = restore_gift_card_balance_if_debited!
+        unless gift_card_result.success?
+          balance_restore_failure = gift_card_result
+          raise ActiveRecord::Rollback
+        end
+        store_credit_result = restore_store_credit_if_debited!
+        unless store_credit_result.success?
+          balance_restore_failure = store_credit_result
+          raise ActiveRecord::Rollback
+        end
         cancel_pending_payments!(active_payments)
         cancelled = true
       end
 
       return ServiceResult.failure(error: inventory_error) if inventory_error
+      return balance_restore_failure if balance_restore_failure
       return ServiceResult.failure(error: "order_cannot_cancel") unless cancelled
 
       if @reason.present?
@@ -114,15 +124,18 @@ module Commerce
     end
 
     def restore_gift_card_balance_if_debited!
-      card = @order.gift_card
-      return unless card
-      return unless card.transactions.exists?(order: @order, transaction_type: :debit)
+      return ServiceResult.success unless Commerce::GiftCardTransaction
+        .where(order: @order, transaction_type: :debit)
+        .exists?
 
       Commerce::RestoreGiftCardBalance.call(order: @order)
     end
 
     def restore_store_credit_if_debited!
-      return unless Commerce::StoreCreditTransaction.where(order: @order).where("amount_cents < 0").exists?
+      return ServiceResult.success unless Commerce::StoreCreditTransaction
+        .where(order: @order)
+        .where("amount_cents < 0")
+        .exists?
 
       Commerce::RestoreStoreCredit.call(order: @order)
     end

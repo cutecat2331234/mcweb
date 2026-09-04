@@ -5,8 +5,9 @@ module SecureEvidence
     self.table_name = "secure_evidence_attachment_events"
 
     EVENT_TYPES = %w[
-      created scan_clean scan_infected scan_error downloaded retention_extended
-      discarded cleanup_scheduled cleanup_failed purged
+      created upload_stored upload_failed upload_retried scan_clean scan_infected
+      scan_error downloaded retention_extended discarded cleanup_scheduled
+      cleanup_failed purged
     ].freeze
 
     belongs_to :attachment,

@@ -33,6 +33,8 @@ class Round59FeaturesTest < ActiveSupport::TestCase
       user: @user,
       order: order,
       amount_cents: -300,
+      balance_before_cents: 300,
+      balance_after_cents: 0,
       note: "抵扣"
     )
 
@@ -69,6 +71,9 @@ class Round59FeaturesTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal 250, result.value[:restored_cents]
     assert_equal 250, @user.reload.store_credit_cents
+    transaction = @user.store_credit_transactions.where(order: order).sole
+    assert_equal 0, transaction.balance_before_cents
+    assert_equal 250, transaction.balance_after_cents
   end
 
   test "restore store credit partial fails when user association is missing" do

@@ -44,8 +44,22 @@ module Community
       poll_result = nil
       field_result = nil
       inline_upload_result = nil
+      link_result = nil
+      state_result = nil
 
       Community::Topic.transaction do
+        @user = User.lock.find(@user.id)
+        state_result = account_write_access_result
+        raise ActiveRecord::Rollback if state_result.failure?
+
+        if draft.persisted?
+          draft.lock!
+          unless draft.user_id == @user.id && draft.status == "draft"
+            state_result = ServiceResult.failure(error: :topic_is_not_a_draft)
+            raise ActiveRecord::Rollback
+          end
+        end
+        draft.user = @user
         draft.assign_attributes(
           title: @title,
           prefix: valid_prefix,
@@ -94,18 +108,24 @@ module Community
           )
           raise ActiveRecord::Rollback unless field_result.success?
         end
+
+        opening_post = draft.posts.first
+        if opening_post
+          link_result = Community::LinkPostAttachments.call(
+            user: @user,
+            post: opening_post,
+            attachment_ids: @attachment_ids
+          )
+          raise ActiveRecord::Rollback if link_result.failure?
+        end
       end
 
+      return state_result if state_result&.failure?
       return tag_result if tag_result&.failure?
       return poll_result if poll_result&.failure?
       return field_result if field_result&.failure?
       return inline_upload_result if inline_upload_result&.failure?
-
-      opening_post = draft.posts.first
-      if opening_post
-        link_result = Community::LinkPostAttachments.call(user: @user, post: opening_post, attachment_ids: @attachment_ids)
-        return link_result if link_result.failure?
-      end
+      return link_result if link_result&.failure?
 
       ServiceResult.success(draft)
     rescue ActiveRecord::RecordInvalid => e
@@ -113,6 +133,13 @@ module Community
     end
 
     private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @user.deleted?
+      return ServiceResult.failure(error: :account_banned) if @user.banned?
+
+      ServiceResult.success
+    end
 
     def valid_prefix
       return nil if @prefix.blank?

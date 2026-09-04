@@ -128,7 +128,7 @@ const activeEvidenceCount = computed(() => reportActiveEvidence(props.report.evi
 
 function reportActiveEvidence(attachments: SecureEvidenceAttachment[]) {
   return attachments.filter((attachment) =>
-    ['pending', 'available', 'quarantined'].includes(attachment.state),
+    ['uploading', 'pending', 'available', 'quarantined'].includes(attachment.state),
   ).length
 }
 

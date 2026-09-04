@@ -172,7 +172,9 @@ class Commerce::DebitStoreCreditTest < ActiveSupport::TestCase
   test "debits store credit for order" do
     Commerce::DebitStoreCredit.call(order: @order)
     assert_equal 200, @user.reload.store_credit_cents
-    assert_equal 1, @user.store_credit_transactions.where(order: @order).count
+    transaction = @user.store_credit_transactions.where(order: @order).sole
+    assert_equal 500, transaction.balance_before_cents
+    assert_equal 200, transaction.balance_after_cents
   end
 
   test "debit store credit is idempotent" do
@@ -221,6 +223,8 @@ class Commerce::RestoreStoreCreditTest < ActiveSupport::TestCase
       user: @user,
       order: @order,
       amount_cents: -300,
+      balance_before_cents: 300,
+      balance_after_cents: 0,
       note: "deduct"
     )
   end
@@ -230,6 +234,9 @@ class Commerce::RestoreStoreCreditTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal 300, @user.reload.store_credit_cents
     assert_equal 0, @order.reload.store_credit_amount_cents
+    transaction = @user.store_credit_transactions.where(order: @order).order(:id).last
+    assert_equal 0, transaction.balance_before_cents
+    assert_equal 300, transaction.balance_after_cents
   end
 
   test "fails when user association is missing" do
@@ -291,6 +298,78 @@ class Commerce::CancelOrderCouponTest < ActiveSupport::TestCase
 
     assert result.success?
     assert_equal "failed", payment.reload.status
+  end
+
+  test "rolls back cancellation when store credit restoration fails" do
+    card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.hex(5).upcase}",
+      balance_cents: 0,
+      currency: "CNY",
+      active: true
+    )
+    @order.update!(
+      gift_card: card,
+      gift_card_amount_cents: 200,
+      store_credit_amount_cents: 300
+    )
+    Commerce::RecordGiftCardTransaction.call(
+      gift_card: card,
+      amount_cents: -200,
+      transaction_type: :debit,
+      order: @order
+    )
+    @user.update!(store_credit_cents: 0)
+    transaction = Commerce::StoreCreditTransaction.create!(
+      user: @user,
+      order: @order,
+      amount_cents: -300,
+      balance_before_cents: 300,
+      balance_after_cents: 0,
+      note: "deduct"
+    )
+    failure = ServiceResult.failure(error: "store_credit_restore_failed")
+
+    result = Commerce::RestoreStoreCredit.stub(:call, failure) do
+      Commerce::CancelOrder.call(order: @order, actor: @user)
+    end
+
+    assert_predicate result, :failure?
+    assert_equal "pending", @order.reload.status
+    assert_equal 1, @coupon.reload.used_count
+    assert_equal 0, @user.reload.store_credit_cents
+    assert_equal 0, card.reload.balance_cents
+    assert_equal 200, @order.gift_card_amount_cents
+    assert_equal 0, @order.gift_card_restored_cents
+    assert_equal 300, @order.store_credit_amount_cents
+    assert_equal 0, @order.store_credit_restored_cents
+    refute card.transactions.exists?(order: @order, transaction_type: :credit)
+    assert Commerce::StoreCreditTransaction.exists?(transaction.id)
+  end
+
+  test "rolls back cancellation when gift card restoration fails" do
+    card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.hex(5).upcase}",
+      balance_cents: 0,
+      currency: "CNY",
+      active: true
+    )
+    @order.update!(gift_card: card, gift_card_amount_cents: 300)
+    Commerce::RecordGiftCardTransaction.call(
+      gift_card: card,
+      amount_cents: -300,
+      transaction_type: :debit,
+      order: @order
+    )
+    failure = ServiceResult.failure(error: "gift_card_invalid")
+
+    result = Commerce::RestoreGiftCardBalance.stub(:call, failure) do
+      Commerce::CancelOrder.call(order: @order, actor: @user)
+    end
+
+    assert_predicate result, :failure?
+    assert_equal "pending", @order.reload.status
+    assert_equal 1, @coupon.reload.used_count
+    assert_equal 0, card.reload.balance_cents
   end
 end
 

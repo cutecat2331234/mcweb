@@ -27,7 +27,7 @@ module Identity
         user = context.user
         Contribution.new(
           documents: {
-            "forum/bookmarks.json" => RecordSerializer.records(
+            "forum/bookmarks.json" => RecordSerializer.stream_records(
               Community::Bookmark.where(user:).order(:id),
               BOOKMARK_FIELDS
             ),
@@ -43,27 +43,27 @@ module Identity
               Community::UserIgnore.where(ignorer: user).includes(:ignored).order(:id),
               :ignored
             ),
-            "forum/reactions.json" => RecordSerializer.records(
+            "forum/reactions.json" => RecordSerializer.stream_records(
               Community::Reaction.where(user:).order(:id),
               REACTION_FIELDS
             ),
-            "forum/saved-searches.json" => RecordSerializer.records(
+            "forum/saved-searches.json" => RecordSerializer.stream_records(
               Community::SavedSearch.where(user:).order(:id),
               SAVED_SEARCH_FIELDS
             ),
-            "forum/profile-posts.json" => RecordSerializer.records(
+            "forum/profile-posts.json" => RecordSerializer.stream_records(
               Community::ProfilePost.with_discarded.where(user_id: user.id).order(:id),
               PROFILE_POST_FIELDS
             ),
-            "forum/profile-post-comments.json" => RecordSerializer.records(
+            "forum/profile-post-comments.json" => RecordSerializer.stream_records(
               Community::ProfilePostComment.with_discarded.where(user_id: user.id).order(:id),
               PROFILE_COMMENT_FIELDS
             ),
-            "forum/points/accounts.json" => RecordSerializer.records(
+            "forum/points/accounts.json" => RecordSerializer.stream_records(
               Community::PointAccount.where(user:).order(:id),
               POINT_ACCOUNT_FIELDS
             ),
-            "forum/points/transactions.json" => RecordSerializer.records(
+            "forum/points/transactions.json" => RecordSerializer.stream_records(
               Community::PointTransaction.where(user:).order(:id),
               POINT_TRANSACTION_FIELDS
             )
@@ -72,7 +72,7 @@ module Identity
       end
 
       def self.relationships(scope, association)
-        scope.map do |relationship|
+        RecordSerializer.stream_relation(scope) do |relationship|
           target = relationship.public_send(association)
           {
             "id" => relationship.id,

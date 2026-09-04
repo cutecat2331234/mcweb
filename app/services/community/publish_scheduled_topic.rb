@@ -36,12 +36,34 @@ module Community
       field_result = Community::ValidateTopicFieldValues.call(topic: @topic, user: user)
       return field_result if field_result.failure?
 
-      needs_approval = Community::RequiresPostApproval.required_for?(user: user)
-      topic_status = needs_approval ? "hidden" : "published"
-      post_status = needs_approval ? "pending_approval" : "published"
-      opening_post = @topic.posts.first
+      needs_approval = nil
+      opening_post = nil
+      state_result = nil
+      owner_id = user.id
 
       Community::Topic.transaction do
+        user = User.lock.find_by(id: owner_id)
+        if !user || user.deleted? || user.banned?
+          state_result = ServiceResult.failure(
+            error: user&.banned? ? :account_banned : :account_deleted
+          )
+          raise ActiveRecord::Rollback
+        end
+
+        @topic = Community::Topic.with_discarded.lock.find_by(id: @topic.id)
+        unless @topic && @topic.user_id == user.id && @topic.scheduled_at.present? &&
+            @topic.scheduled_at <= Time.current && @topic.draft?
+          state_result = ServiceResult.failure(error: :topic_is_not_scheduled)
+          raise ActiveRecord::Rollback
+        end
+
+        needs_approval = Community::RequiresPostApproval.required_for?(user: user)
+        topic_status = needs_approval ? "hidden" : "published"
+        post_status = needs_approval ? "pending_approval" : "published"
+        opening_post = Community::Post.with_discarded.lock.find_by(
+          forum_topic_id: @topic.id,
+          floor_number: 1
+        )
         @topic.update!(
           status: topic_status,
           scheduled_at: nil,
@@ -51,6 +73,7 @@ module Community
         Community::Subscription.subscribe!(user, @topic)
         Community::ReadState.mark_read!(user, @topic, floor: 1)
       end
+      return state_result if state_result&.failure?
 
       if needs_approval
         Community::NotifyPendingPost.call(post: opening_post.reload) if opening_post

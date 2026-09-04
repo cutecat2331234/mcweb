@@ -10,12 +10,15 @@ module Identity
     end
 
     def call
-      attachment = nil
+      blob_to_purge = nil
       DataExport.transaction do
         @data_export.lock!
         return ServiceResult.success(data_export: @data_export, replayed: true) if @data_export.revoked?
 
-        attachment = @data_export.archive if @data_export.archive.attached?
+        if @data_export.archive.attached?
+          blob_to_purge = @data_export.archive.blob
+          @data_export.archive.detach
+        end
         @data_export.update!(
           status: :revoked,
           revoked_at: Time.current,
@@ -31,7 +34,7 @@ module Identity
         )
       end
 
-      attachment&.purge_later
+      Identity::DataExportBlobCleanup.purge_later(blob_to_purge)
       ServiceResult.success(data_export: @data_export, replayed: false)
     end
   end

@@ -20,11 +20,14 @@ module Commerce
         balance = user.store_credit_cents.to_i
         return ServiceResult.failure(error: "store_credit_insufficient") if balance < amount
 
-        user.update!(store_credit_cents: balance - amount)
+        new_balance = balance - amount
+        user.update!(store_credit_cents: new_balance)
         Commerce::StoreCreditTransaction.create!(
           user: user,
           order: @order,
           amount_cents: -amount,
+          balance_before_cents: balance,
+          balance_after_cents: new_balance,
           note: I18n.t("mcweb.commerce.notes.store_credit_order_debit", number: @order.order_number),
         )
       end

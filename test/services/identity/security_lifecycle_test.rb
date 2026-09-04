@@ -198,7 +198,7 @@ module Identity
       assert successor.account_owner?
     end
 
-    test "account closure can delete eligible authored content with a stable result" do
+    test "account closure durably schedules eligible authored content for governed deletion" do
       category = Community::Category.create!(
         name: "Closure category #{SecureRandom.hex(4)}",
         slug: "closure-category-#{SecureRandom.hex(4)}"
@@ -234,6 +234,17 @@ module Identity
       )
 
       assert result.success?
+      assert_equal "authored_content_deletion_queued", @user.reload.account_closure_outcome
+      refute Community::Topic.with_discarded.find(topic.id).soft_deleted?
+      refute Community::Post.with_discarded.find(post.id).soft_deleted?
+
+      intent = Operations::DurableEnqueueIntent.find_by!(
+        handler_key: AccountClosure::AuthoredContentDeletion::HANDLER_KEY,
+        source_id: @user.id
+      )
+      processed = AccountClosure::AuthoredContentDeletion.execute(intent)
+
+      assert_equal "succeeded", processed.status
       assert_equal "authored_content_deleted", @user.reload.account_closure_outcome
       assert_equal 1,
                    @user.account_closure_results
@@ -241,10 +252,26 @@ module Identity
       assert_equal 1,
                    @user.account_closure_results
                      .dig("identity.authored_content", "details", "deleted_records", "posts")
-      assert_equal I18n.t("mcweb.identity.deleted_content_title"),
-                   Community::Topic.with_discarded.find(topic.id).title
-      assert_equal I18n.t("mcweb.identity.deleted_content_body"),
-                   Community::Post.with_discarded.find(post.id).body
+      deleted_topic = Community::Topic.with_discarded.find(topic.id)
+      deleted_post = Community::Post.with_discarded.find(post.id)
+      refute deleted_topic.soft_deleted?
+      refute deleted_post.soft_deleted?
+      assert_equal I18n.t("mcweb.identity.deleted_content_title", locale: @user.locale),
+                   deleted_topic.title
+      assert_equal I18n.t("mcweb.identity.deleted_content_body", locale: @user.locale),
+                   deleted_post.body
+      refute DataGovernance::ContentLifecycleRecord.exists?(
+        target_type: "Community::Topic",
+        target_id: topic.id
+      )
+      refute DataGovernance::ContentLifecycleRecord.exists?(
+        target_type: "Community::Post",
+        target_id: post.id
+      )
+      assert AuditLog.exists?(
+        action: "identity.account_closure_content_completed",
+        resource_id: @user.id
+      )
     end
 
     test "active legal hold overrides requested content deletion" do
@@ -263,9 +290,25 @@ module Identity
       )
 
       assert result.success?
-      assert_equal "legally_retained", @user.reload.account_closure_outcome
+      assert_equal "authored_content_deletion_queued", @user.reload.account_closure_outcome
       audit = AuditLog.find_by!(action: "identity.account_closed", resource_id: @user.id)
-      assert_equal "legally_retained", audit.metadata.fetch("closure_outcome")
+      assert_equal "authored_content_deletion_queued", audit.metadata.fetch("closure_outcome")
+
+      intent = Operations::DurableEnqueueIntent.find_by!(
+        handler_key: AccountClosure::AuthoredContentDeletion::HANDLER_KEY,
+        source_id: @user.id
+      )
+      processed = AccountClosure::AuthoredContentDeletion.execute(intent)
+
+      assert_equal "succeeded", processed.status
+      assert_equal "legally_retained", @user.reload.account_closure_outcome
+      assert_equal AccountClosure::AuthoredContentDeletion::WAITING_STATUS,
+                   @user.account_closure_results
+                     .dig("identity.authored_content", "details", "processing", "status")
+      assert AuditLog.exists?(
+        action: "identity.account_closure_content_deferred",
+        resource_id: @user.id
+      )
     end
 
     test "verified email and password can reset lost totp and revoke every session" do

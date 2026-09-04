@@ -113,6 +113,27 @@ export interface StoreCreditForm {
   balance_label: string
 }
 
+export interface StoreCreditLedger {
+  transactions: Array<{
+    ledger_id: string
+    amount_cents: number
+    amount_label: string
+    credit: boolean
+    source_label: string
+    note: string | null
+    balance_before_label: string | null
+    balance_after_label: string | null
+    order_number: string | null
+    order_url: string | null
+    actor_name: string | null
+    created_at: string
+  }>
+  pagination: {
+    has_more: boolean
+    next_url: string | null
+  }
+}
+
 interface StoreCreditAuthorization {
   token: string
   confirmation: string
@@ -157,6 +178,7 @@ const props = defineProps<{
   silenceForm?: SilenceForm | null
   trustLevelForm?: TrustLevelForm | null
   storeCreditForm?: StoreCreditForm | null
+  storeCreditLedger?: StoreCreditLedger | null
   accountForm?: AccountForm | null
   backUrl: string
 }>()
@@ -754,6 +776,78 @@ function submitAccountAccess() {
           <a-result v-else status="info" :title="t('admin.ui.noResults')" />
         </a-tab-pane>
       </a-tabs>
+    </a-card>
+
+    <a-card
+      v-if="props.storeCreditLedger"
+      :title="t('admin.genericShow.storeCreditLedger')"
+      :bordered="true"
+    >
+      <a-table
+        :data="props.storeCreditLedger.transactions"
+        :pagination="false"
+        :scroll="{ minWidth: 1280 }"
+        row-key="ledger_id"
+        stripe
+      >
+        <template #columns>
+          <a-table-column :title="t('admin.genericShow.storeCreditLedgerId')" data-index="ledger_id" :width="120" />
+          <a-table-column :title="t('admin.genericShow.storeCreditChange')" :width="150">
+            <template #cell="{ record }">
+              <a-tag :color="record.credit ? 'green' : 'orangered'">
+                {{ record.credit ? '+' : '−' }}{{ record.amount_label }}
+              </a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.genericShow.storeCreditSource')" :width="180">
+            <template #cell="{ record }">
+              <a-space direction="vertical" size="mini">
+                <a-typography-text>{{ record.source_label }}</a-typography-text>
+                <a-link v-if="record.order_url" @click="router.visit(record.order_url)">
+                  {{ record.order_number }}
+                </a-link>
+                <a-typography-text v-else-if="record.order_number" type="secondary">
+                  {{ record.order_number }}
+                </a-typography-text>
+              </a-space>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.genericShow.storeCreditBalanceMovement')" :width="220">
+            <template #cell="{ record }">
+              <a-typography-text v-if="record.balance_before_label && record.balance_after_label">
+                {{ record.balance_before_label }} → {{ record.balance_after_label }}
+              </a-typography-text>
+              <a-typography-text v-else type="secondary">
+                {{ t('admin.genericShow.storeCreditLegacyBalanceUnavailable') }}
+              </a-typography-text>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.genericShow.storeCreditActor')" :width="150">
+            <template #cell="{ record }">
+              {{ record.actor_name || t('admin.genericShow.storeCreditSystemActor') }}
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.genericShow.note')" :width="260">
+            <template #cell="{ record }">
+              <a-typography-text :ellipsis="{ rows: 2, showTooltip: true }">
+                {{ record.note || '—' }}
+              </a-typography-text>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.genericShow.storeCreditRecordedAt')" data-index="created_at" :width="180" />
+        </template>
+        <template #empty>
+          <a-empty :description="t('admin.genericShow.storeCreditLedgerEmpty')" />
+        </template>
+      </a-table>
+
+      <a-button
+        v-if="props.storeCreditLedger.pagination.has_more && props.storeCreditLedger.pagination.next_url"
+        class="mt-4"
+        @click="router.visit(props.storeCreditLedger.pagination.next_url, { preserveScroll: true })"
+      >
+        {{ t('admin.genericShow.storeCreditOlderTransactions') }}
+      </a-button>
     </a-card>
 
     <a-card

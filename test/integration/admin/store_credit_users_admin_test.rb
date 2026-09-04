@@ -110,6 +110,8 @@ module Admin
         store_credit_form.fetch(:action_url)
       )
       assert_equal 12_345, store_credit_form.fetch(:balance_cents)
+      assert_equal [], props.dig(:storeCreditLedger, :transactions)
+      assert_equal false, props.dig(:storeCreditLedger, :pagination, :has_more)
 
       %i[
         accountForm
@@ -126,6 +128,41 @@ module Admin
         refute props.key?(sensitive_prop), "#{sensitive_prop} must not be exposed"
       end
       assert_sensitive_target_values_absent(props)
+    end
+
+    test "credit detail exposes a complete cursor ledger without widening the user projection" do
+      53.times do |index|
+        Commerce::StoreCreditTransaction.create!(
+          user: @target,
+          actor: @actor,
+          amount_cents: 100,
+          balance_before_cents: index * 100,
+          balance_after_cents: (index + 1) * 100,
+          note: "approved ledger reason #{index}"
+        )
+      end
+
+      get admin_store_credit_user_path(@target)
+
+      assert_response :success
+      first_props = inertia.props.deep_symbolize_keys
+      first_rows = first_props.dig(:storeCreditLedger, :transactions)
+      assert_equal Commerce::StoreCreditLedgerPage::PAGE_SIZE, first_rows.length
+      assert_equal first_rows.length, first_rows.pluck(:ledger_id).uniq.length
+      assert first_rows.all? { |row| row.fetch(:actor_name) == @actor.username }
+      next_url = first_props.dig(:storeCreditLedger, :pagination, :next_url)
+      assert next_url.present?
+      assert_sensitive_target_values_absent(first_props)
+
+      get next_url
+
+      assert_response :success
+      second_props = inertia.props.deep_symbolize_keys
+      second_rows = second_props.dig(:storeCreditLedger, :transactions)
+      assert_equal 3, second_rows.length
+      assert_equal false, second_props.dig(:storeCreditLedger, :pagination, :has_more)
+      assert_empty(first_rows.pluck(:ledger_id) & second_rows.pluck(:ledger_id))
+      assert_sensitive_target_values_absent(second_props)
     end
 
     test "credit directory hides self and protected owner targets" do

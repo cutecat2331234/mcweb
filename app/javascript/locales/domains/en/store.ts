@@ -570,6 +570,14 @@ export default {
       "noMemberships": "No memberships yet.",
       "transactions": "Transaction history",
       "viewOrder": "View order",
+      "viewOrderNumber": "Order {number}",
+      "ledgerId": "Transaction ID",
+      "change": "Change",
+      "source": "Source",
+      "balance": "Balance before → after",
+      "recordedAt": "Recorded at",
+      "legacyBalanceUnavailable": "Balance snapshot unavailable for this legacy entry",
+      "olderTransactions": "View older transactions",
       "empty": "No transactions yet."
     },
     "stockAlerts": {

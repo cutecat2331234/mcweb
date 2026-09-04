@@ -117,6 +117,25 @@ class Mcweb::ProductionEnvironmentTest < ActiveSupport::TestCase
     assert_equal :private_s3, settings.storage_service
   end
 
+  test "private object storage attempts stay inside the upload writer lease" do
+    storage = YAML.safe_load(
+      ERB.new(Rails.root.join("config/storage.yml").read).result,
+      aliases: true
+    ).fetch("private_s3")
+
+    assert_equal "standard", storage.fetch("retry_mode")
+    assert_operator storage.fetch("max_attempts"), :<=, 3
+    maximum_wait = storage.fetch("max_attempts") *
+      (storage.fetch("http_open_timeout") + storage.fetch("http_read_timeout"))
+    assert_operator maximum_wait, :<=, 10.minutes
+    assert_operator SecureEvidence::StoreAttachmentUpload::REMOTE_UPLOAD_TIMEOUT,
+      :<=,
+      10.minutes
+    assert_operator SecureEvidence::StoreAttachmentUpload::WRITER_LEASE,
+      :>=,
+      SecureEvidence::StoreAttachmentUpload::REMOTE_UPLOAD_TIMEOUT * 3
+  end
+
   test "requires an HTTPS S3-compatible endpoint when one is configured" do
     error = assert_raises(Mcweb::ProductionEnvironment::InvalidConfiguration) do
       Mcweb::ProductionEnvironment.load!(

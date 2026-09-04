@@ -30,10 +30,11 @@ module Community
       }
     }.freeze
 
-    def initialize(user:, kind:, byte_size:)
+    def initialize(user:, kind:, byte_size:, reuse_upload: nil)
       @user = user
       @kind = kind.to_s
       @byte_size = Integer(byte_size, exception: false)
+      @reuse_upload = reuse_upload
     end
 
     def self.site_usage(at: Time.current)
@@ -55,6 +56,17 @@ module Community
       }
     end
 
+    def self.acquire_admission_lock!
+      connection = ApplicationRecord.connection
+      unless connection.transaction_open?
+        raise ActiveRecord::ActiveRecordError, "upload_quota_transaction_required"
+      end
+
+      connection.select_value(
+        "SELECT pg_advisory_xact_lock(#{ADVISORY_LOCK_ID})::text"
+      )
+    end
+
     def self.configured_site_limit(metric)
       default = DEFAULTS.fetch(:site).fetch(metric)
       maximum = metric == :bytes ? MAX_BYTES : MAX_COUNT
@@ -71,9 +83,16 @@ module Community
 
       upload = nil
       rejection = nil
+      invalid_reuse = false
       Community::Upload.transaction(requires_new: true) do
         acquire_quota_lock!
-
+        if @reuse_upload
+          @reuse_upload.lock!
+          unless reusable_upload?
+            invalid_reuse = true
+            raise ActiveRecord::Rollback
+          end
+        end
         unless Mcweb::DeveloperMode.allow?(:skip_attachment_quota)
           quota_scopes.each do |scope|
             rejection = exceeded_limit(scope)
@@ -85,16 +104,10 @@ module Community
           raise ActiveRecord::Rollback
         end
 
-        upload = Community::Upload.create!(
-          user: @user,
-          public_id: Community::Upload.generate_public_id,
-          kind: @kind,
-          status: "reserved",
-          byte_size: @byte_size,
-          expires_at: 1.hour.from_now
-        )
+        upload = reserve_upload!
       end
 
+      return ServiceResult.failure(error: "upload_quota_invalid") if invalid_reuse
       if rejection
         instrument_rejection(rejection)
         return ServiceResult.failure(
@@ -104,7 +117,12 @@ module Community
         )
       end
 
-      instrument("community.upload.reserved", upload_id: upload.id, byte_size: @byte_size)
+      instrument(
+        "community.upload.reserved",
+        upload_id: upload.id,
+        byte_size: @byte_size,
+        reused: @reuse_upload.present?
+      )
       ServiceResult.success(upload)
     rescue ActiveRecord::RecordInvalid => error
       ServiceResult.failure(errors: error.record.errors.to_hash)
@@ -115,13 +133,47 @@ module Community
     def valid_input?
       @user&.persisted? &&
         Community::Upload::KINDS.include?(@kind) &&
-        @byte_size&.positive?
+        @byte_size&.positive? &&
+        (!@reuse_upload || @reuse_upload.persisted?)
+    end
+
+    def reusable_upload?
+      @reuse_upload.user_id == @user.id &&
+        @reuse_upload.kind == @kind &&
+        @reuse_upload.byte_size == @byte_size &&
+        @reuse_upload.status_cleaned? &&
+        @reuse_upload.active_storage_blob_id.nil? &&
+        @reuse_upload.scan_status_pending? &&
+        @reuse_upload.scan_attempts.zero? &&
+        @reuse_upload.scanned_at.nil? &&
+        @reuse_upload.quarantined_at.nil?
+    end
+
+    def reserve_upload!
+      if @reuse_upload
+        @reuse_upload.update!(
+          status: "reserved",
+          expires_at: 1.hour.from_now,
+          cleanup_started_at: nil,
+          cleaned_at: nil,
+          cleanup_error_code: nil,
+          cleanup_error_message: nil
+        )
+        return @reuse_upload
+      end
+
+      Community::Upload.create!(
+        user: @user,
+        public_id: Community::Upload.generate_public_id,
+        kind: @kind,
+        status: "reserved",
+        byte_size: @byte_size,
+        expires_at: 1.hour.from_now
+      )
     end
 
     def acquire_quota_lock!
-      ApplicationRecord.connection.select_value(
-        "SELECT pg_advisory_xact_lock(#{ADVISORY_LOCK_ID})::text"
-      )
+      self.class.acquire_admission_lock!
     end
 
     def quota_scopes
@@ -162,7 +214,10 @@ module Community
           when :count
             [ retained.count, 1 ]
           when :hourly_count
-            [ scope.fetch(:relation).where("created_at >= ?", ONE_HOUR.ago).count, 1 ]
+            # A cleaned idempotent attempt keeps its original row and accepted-upload
+            # timestamp, so reactivating it must not consume the frequency quota twice.
+            requested = @reuse_upload ? 0 : 1
+            [ scope.fetch(:relation).where("created_at >= ?", ONE_HOUR.ago).count, requested ]
           end
         next if used + requested <= limit
 

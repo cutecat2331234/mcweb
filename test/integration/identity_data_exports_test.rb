@@ -46,8 +46,18 @@ class IdentityDataExportsTest < ActionDispatch::IntegrationTest
 
     get download_identity_data_export_path(data_export)
 
-    assert_response :success
+    assert_response :redirect
     assert_equal "private, no-store", response.headers["Cache-Control"]
+    signed_download_url = response.location
+    assert_match %r{/rails/active_storage/disk/}, signed_download_url
+    assert AuditLog.exists?(
+      action: "identity.data_export_downloaded",
+      resource_id: data_export.id,
+      actor_id: @user.id
+    )
+
+    follow_redirect!
+    assert_response :success
     assert_includes response.headers["Content-Disposition"], "mcweb-export.zip"
     assert_equal "private export", response.body
 

@@ -20,6 +20,8 @@ type DataExport = {
   expires_at?: string | null
   attempts: number
   error_code?: string | null
+  retryable: boolean
+  recovery_state?: 'failed' | 'expired' | 'stale_running' | 'missing_intent' | 'terminal_intent' | null
   downloadable: boolean
   manifest: {
     schema_version?: number
@@ -80,12 +82,27 @@ function badgeVariant(status: DataExport['status']): 'success' | 'danger' | 'def
   return 'secondary'
 }
 
+function errorDescription(item: DataExport) {
+  if (item.error_code === 'data_export_size_exceeded') {
+    return t('identity.dataExports.tooLargeDescription')
+  }
+  if (item.error_code === 'data_export_resource_exhausted') {
+    return t('identity.dataExports.resourceExhaustedDescription')
+  }
+  return t('identity.dataExports.failedDescription')
+}
+
 const moduleTranslationKeys: Record<string, string> = {
   'identity.profile': 'identity.dataExports.modules.identityProfile',
   'identity.notifications': 'identity.dataExports.modules.identityNotifications',
   'community.content': 'identity.dataExports.modules.communityContent',
+  'community.activity': 'identity.dataExports.modules.communityActivity',
   'community.uploads': 'identity.dataExports.modules.communityUploads',
+  'community.report_cases': 'identity.dataExports.modules.communityReportCases',
   'commerce.account': 'identity.dataExports.modules.commerceAccount',
+  'commerce.activity': 'identity.dataExports.modules.commerceActivity',
+  'minecraft.accounts': 'identity.dataExports.modules.minecraftAccounts',
+  'security.evidence_attachments': 'identity.dataExports.modules.secureEvidenceAttachments',
 }
 
 function manifestModules(item: DataExport) {
@@ -161,7 +178,14 @@ function historyPageUrl(cursor: string) {
               </div>
             </dl>
             <p v-if="item.error_code" role="alert" class="text-sm text-destructive">
-              {{ t('identity.dataExports.failedDescription') }}
+              {{ errorDescription(item) }}
+            </p>
+            <p
+              v-else-if="item.retryable && item.recovery_state"
+              role="status"
+              class="text-sm text-muted-foreground"
+            >
+              {{ t('identity.dataExports.recoveryDescription') }}
             </p>
             <div v-if="manifestModules(item).length" class="space-y-1 text-sm">
               <p class="font-medium text-foreground">
@@ -181,7 +205,7 @@ function historyPageUrl(cursor: string) {
               <a :href="item.paths.download">{{ t('identity.dataExports.download') }}</a>
             </Button>
             <Button
-              v-if="item.status === 'failed' || item.status === 'expired'"
+              v-if="item.retryable"
               type="button"
               variant="outline"
               @click="retryExport(item)"

@@ -915,6 +915,11 @@
         world_restore_idempotency_conflict: 此恢复请求 ID 已被用于不同输入。
         world_restore_event_ledger_failed: 持久事件记录失败，本次恢复变更已回滚。
         world_restore_plan_not_authorizable: 此恢复计划已无法授权。
+        world_restore_plan_not_cancellable: 仅可在执行开始前取消由你创建、尚未过期且处于已规划或已授权状态的恢复计划。
+        world_restore_cancel_request_id_invalid: 恢复计划取消请求 ID 无效。
+        world_restore_cancel_reason_required: 请填写取消此恢复计划的原因。
+        world_restore_cancel_reason_too_long: 恢复计划取消原因不能超过 1,000 个字符。
+        world_restore_cancel_lock_version_required: 请刷新恢复计划并提交其精确锁版本。
         world_restore_stale: 恢复计划刚刚发生变化，请刷新后重试。
         world_restore_authorization_invalid: 恢复授权无效，或已不再匹配当前计划。
         world_restore_authorization_failed: 无法完成此次恢复授权。
@@ -1034,6 +1039,8 @@
         data_export_conflict: 更新期间导出状态已变化，请刷新后重试。
         data_export_generation_failed: 无法生成导出文件，可以安全重试。
         data_export_contributor_failed: 有一个数据模块无法导出，可以安全重试。
+        data_export_size_exceeded: 导出内容超过本站的安全生成上限，请联系管理员。
+        data_export_resource_exhausted: 导出已在本站安全资源边界处停止，可以安全重试。
         reason_required: 请输入此操作的业务理由。
         unsupported_resource_type: 此资源类型不受数据治理管理。
         retention_policy_missing: 此资源类型没有保留策略。
@@ -1275,6 +1282,8 @@
         post_body_too_short: 帖子内容过短。
         muted_in_section: 你在此分区已被禁言。
         account_banned: 账户已被封禁。
+        account_deleted: 该账户已关闭，无法创建新内容。
+        account_closure_structural_container_requires_tombstone: 账户关闭时必须保留共享内容容器并移除其中的个人文本。
         silenced_cannot_post: 你已被禁言，无法发帖。
         topic_reply_banned: 你已被封禁，无法在此主题回复。
         wait_before_new_topic: 请稍后再创建新主题。
@@ -1345,6 +1354,7 @@
         store_credit_adjustment_zero: 调整金额不能为零。
         store_credit_negative_balance: 余额不能为负数。
         store_credit_below_reserved: 余额不能低于待付款订单已预留的金额。
+        store_credit_cursor_invalid: 请求的商店余额历史页无效或已不可用。
         high_risk_action_invalid: 不支持此高风险动作。
         high_risk_target_invalid: 所选目标无效或已不可用。
         high_risk_request_id_invalid: 请求 ID 无效，请关闭弹窗后重试。
@@ -1951,6 +1961,13 @@
         store_credit_order_refund: "订单 %{number} 退款退还余额"
         gift_card_order_purchase: "订单 %{number} 购买"
         gift_card_order_revoke: "订单 %{number} 退款撤销"
+      store_credit_ledger:
+        sources:
+          order_debit: 订单支付
+          order_refund: 订单退款
+          admin_adjustment: 工作人员调整
+          credit: 入账
+          debit: 扣减
       customer_orders:
         status_all: 全部
         skipped_item: "%{name}（%{reason}）"
@@ -2456,6 +2473,7 @@
         minecraft_world_backup_quarantined: "Minecraft 世界备份已隔离"
         minecraft_world_restore_planned: "已创建 Minecraft 世界恢复计划"
         minecraft_world_restore_authorized: "Minecraft 世界恢复已授权"
+        minecraft_world_restore_cancelled: "Minecraft 世界恢复计划已取消"
         minecraft_world_restore_queued: "Minecraft 世界恢复已排队"
         minecraft_world_restore_started: "Minecraft 世界恢复已开始"
         minecraft_world_restore_pre_snapshot_available: "Minecraft 恢复前快照已验证"
@@ -3354,6 +3372,7 @@
         secret_not_generated: 未生成
         world_backup_queued: 托管世界备份已排队。
         world_restore_queued: 世界恢复及其恢复前快照已排队。
+        world_restore_cancelled: 恢复计划已取消并保留审计记录。
         world_restore_recovery_queued: 恢复处理已排队；在节点证明被确认前，服务器启动仍保持阻断。
         world_restore_recovery_lifecycle_cancel: 恢复处理已取消；节点证明完成前，服务器启动仍保持阻断。
         world_restore_recovery_lifecycle_takeover: 恢复处理已由当前操作者接管并重新规划。

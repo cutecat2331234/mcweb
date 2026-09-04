@@ -214,13 +214,44 @@ module Community
       assert_equal "cleaned", upload.reload.status
     end
 
+    test "cleanup preserves a blob still attached to another record" do
+      upload, blob = stored_upload(kind: :post_attachment)
+      expiring = Community::PostAttachment.create!(
+        user: @user,
+        filename: "expiring.txt",
+        content_type: "text/plain",
+        byte_size: blob.byte_size
+      )
+      retained = Community::PostAttachment.create!(
+        user: @user,
+        filename: "retained.txt",
+        content_type: "text/plain",
+        byte_size: blob.byte_size
+      )
+      expiring.file.attach(blob)
+      retained.file.attach(blob)
+      upload.update!(post_attachment: expiring, expires_at: 1.minute.ago)
+
+      result = Community::CleanupUpload.call(upload: upload)
+
+      assert_predicate result, :success?
+      refute Community::PostAttachment.exists?(expiring.id)
+      assert Community::PostAttachment.exists?(retained.id)
+      assert retained.reload.file.attached?
+      assert ActiveStorage::Blob.exists?(blob.id)
+      assert_equal "cleaned", upload.reload.status
+    ensure
+      retained&.file&.purge if retained&.persisted? && retained.file.attached?
+      retained&.destroy! if retained&.persisted?
+    end
+
     test "records a purge failure and safely retries from the cleanup outbox" do
       upload, blob = stored_upload(kind: :inline_image)
       upload.update!(expires_at: 1.minute.ago)
-      original = ActiveStorage::Blob.instance_method(:purge)
+      original = ActiveStorage::Blob.instance_method(:delete)
       failed_once = false
       target_id = blob.id
-      ActiveStorage::Blob.define_method(:purge) do
+      ActiveStorage::Blob.define_method(:delete) do
         if id == target_id && !failed_once
           failed_once = true
           raise IOError, "simulated storage outage"
@@ -238,7 +269,7 @@ module Community
       assert_equal 2, upload.cleanup_attempts
       assert_not ActiveStorage::Blob.exists?(blob.id)
     ensure
-      ActiveStorage::Blob.define_method(:purge, original) if original
+      ActiveStorage::Blob.define_method(:delete, original) if original
     end
 
     test "adopts and cleans a legacy orphaned post attachment" do

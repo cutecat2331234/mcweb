@@ -20,11 +20,15 @@ module Commerce
         next if amount <= 0
 
         user.lock!
-        user.update!(store_credit_cents: user.store_credit_cents.to_i + amount)
+        balance = user.store_credit_cents.to_i
+        new_balance = balance + amount
+        user.update!(store_credit_cents: new_balance)
         Commerce::StoreCreditTransaction.create!(
           user: user,
           order: @order,
           amount_cents: amount,
+          balance_before_cents: balance,
+          balance_after_cents: new_balance,
           note: I18n.t("mcweb.commerce.notes.store_credit_order_refund", number: @order.order_number),
         )
         @order.update!(store_credit_amount_cents: 0, store_credit_restored_cents: original)

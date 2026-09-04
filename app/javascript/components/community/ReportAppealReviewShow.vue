@@ -44,7 +44,7 @@ const form = useForm({
   },
 })
 const activeEvidenceCount = computed(() => props.appeal.attachments.filter((attachment) =>
-  ['pending', 'available', 'quarantined'].includes(attachment.state),
+  ['uploading', 'pending', 'available', 'quarantined'].includes(attachment.state),
 ).length)
 
 function decide() {
@@ -144,6 +144,7 @@ function retrySeal(attachment: SecureEvidenceAttachment) {
               :href="attachment.download_url"
             >{{ attachment.filename }}</a>
             <TypographyText v-else>{{ attachment.filename }}</TypographyText>
+            <Tag>{{ t(`forum.reportAppeals.evidence.state.${attachment.state}`) }}</Tag>
             <Tag v-if="attachment.audience">
               {{ t(`forum.reportAppeals.evidence.audience.${attachment.audience}`) }}
             </Tag>

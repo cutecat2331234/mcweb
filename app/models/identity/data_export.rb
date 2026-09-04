@@ -27,12 +27,23 @@ module Identity
       completed? && revoked_at.nil? && expires_at.present? && expires_at.future? && archive.attached?
     end
 
-    def mark_expired_if_needed!
-      return false unless completed? && expires_at.present? && expires_at <= Time.current
+    def mark_expired_if_needed!(at: Time.current)
+      blob_to_purge = nil
+      expired = false
+      self.class.transaction(requires_new: true) do
+        lock!
+        next unless completed? && expires_at.present? && expires_at <= at
 
-      update!(status: :expired)
-      archive.purge_later if archive.attached?
-      true
+        if archive.attached?
+          blob_to_purge = archive.blob
+          archive.detach
+        end
+        update!(status: :expired)
+        expired = true
+      end
+
+      Identity::DataExportBlobCleanup.purge_later(blob_to_purge) if expired
+      expired
     end
   end
 end

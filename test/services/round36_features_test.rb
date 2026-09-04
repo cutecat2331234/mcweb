@@ -141,6 +141,20 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     assert_equal 1, @gift_card.transactions.where(order: order, transaction_type: :debit).count
   end
 
+
+  test "debit gift card rolls back balance when its ledger entry fails" do
+    order = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code).value
+    failure = ServiceResult.failure(error: "gift_card_transaction_invalid")
+
+    result = Commerce::RecordGiftCardTransaction.stub(:call, failure) do
+      Commerce::DebitGiftCard.call(order: order)
+    end
+
+    assert_predicate result, :failure?
+    assert_equal 300, @gift_card.reload.balance_cents
+    refute @gift_card.transactions.exists?(order: order, transaction_type: :debit)
+  end
+
   test "debit gift card fails when balance is insufficient" do
     order = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code).value
     @gift_card.update!(balance_cents: 0, active: false)

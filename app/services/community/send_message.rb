@@ -43,7 +43,12 @@ module Community
 
       message = nil
       attachment_result = nil
+      state_result = nil
       Community::Conversation.transaction do
+        @user = User.lock.find(@user.id)
+        state_result = account_write_access_result
+        raise ActiveRecord::Rollback if state_result.failure?
+
         message = @conversation.messages.create!(user: @user, body: @body)
         attachment_result = Community::LinkMessageAttachments.call(
           user: @user,
@@ -57,6 +62,7 @@ module Community
         @conversation.unarchive_all_participants!
         Community::MessageDraft.where(user: @user, conversation: @conversation).delete_all
       end
+      return state_result if state_result&.failure?
       return attachment_result if attachment_result&.failure?
       return ServiceResult.failure(error: "message_create_failed") unless message&.persisted?
 
@@ -68,6 +74,13 @@ module Community
     end
 
     private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @user.deleted?
+      return ServiceResult.failure(error: :account_banned) if @user.banned?
+
+      ServiceResult.success
+    end
 
     def participant?
       @conversation.participants.exists?(user: @user)

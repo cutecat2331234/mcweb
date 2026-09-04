@@ -13,6 +13,7 @@ module Commerce
       card = @order.gift_card
       return ServiceResult.failure(error: "gift_card_invalid") unless card
 
+      ledger_failure = nil
       Commerce::GiftCard.transaction do
         card.lock!
         return ServiceResult.success if card.transactions.exists?(order: @order, transaction_type: :debit)
@@ -27,13 +28,19 @@ module Commerce
           balance_cents: card.balance_cents - amount,
           active: (card.balance_cents - amount).positive?
         )
-        Commerce::RecordGiftCardTransaction.call(
+        ledger_result = Commerce::RecordGiftCardTransaction.call(
           gift_card: card,
           amount_cents: -amount,
           transaction_type: :debit,
           order: @order
         )
+        unless ledger_result.success?
+          ledger_failure = ledger_result
+          raise ActiveRecord::Rollback
+        end
       end
+
+      return ledger_failure if ledger_failure
 
       ServiceResult.success
     rescue ActiveRecord::RecordInvalid => e

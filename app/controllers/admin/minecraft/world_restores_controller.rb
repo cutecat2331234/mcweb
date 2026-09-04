@@ -6,14 +6,14 @@ module Admin
       include ServiceResponder
 
       before_action -> { require_permission("minecraft.world_restores.execute") },
-        only: %i[create authorize execute]
+        only: %i[create authorize execute cancel]
       before_action -> { require_permission("minecraft.world_restores.resolve_recovery") },
         only: %i[
           plan_recovery authorize_recovery execute_recovery cancel_recovery takeover_recovery
         ]
       before_action :set_server
       before_action :set_plan, only: %i[
-        authorize execute plan_recovery authorize_recovery execute_recovery
+        authorize execute cancel plan_recovery authorize_recovery execute_recovery
         cancel_recovery takeover_recovery
       ]
       before_action :set_resolution, only: %i[
@@ -69,6 +69,24 @@ module Admin
           idempotent: value.fetch(:idempotent),
           message: t("mcweb.admin.minecraft.world_restore_queued")
         }, status: value.fetch(:idempotent) ? :ok : :accepted
+      end
+
+      def cancel
+        result = ::Minecraft::CancelWorldRestore.call(
+          plan: @plan,
+          actor: current_user,
+          reason: params[:reason],
+          request_id: params[:request_id],
+          expected_lock_version: params[:expected_lock_version]
+        )
+        return render_service_error(result) if result.failure?
+
+        value = result.value
+        render json: {
+          plan: serialize_plan(value.fetch(:plan).reload),
+          idempotent: value.fetch(:idempotent),
+          message: t("mcweb.admin.minecraft.world_restore_cancelled")
+        }, status: :ok
       end
 
       def plan_recovery
@@ -152,6 +170,11 @@ module Admin
       end
 
       def serialize_plan(plan)
+        expired = restore_plan_expired?(plan)
+        can_execute = current_user.permission?("minecraft.world_restores.execute")
+        own_action = can_execute && plan.actor_id == current_user.id
+        resumable = own_action && plan.status.in?(%w[planned authorized]) && !expired
+        can_resolve = current_user.permission?("minecraft.world_restores.resolve_recovery")
         {
           id: plan.public_id,
           backup_id: plan.world_backup.public_id,
@@ -165,9 +188,16 @@ module Admin
           rolled_back: plan.result_summary.to_h["rolled_back"],
           recovery_required: plan.result_summary.to_h["recovery_required"],
           error_code: plan.error_code,
-          authorize_url: authorize_admin_minecraft_server_world_restore_path(@server, plan),
-          execute_url: execute_admin_minecraft_server_world_restore_path(@server, plan),
-          plan_recovery_url: plan_recovery_admin_minecraft_server_world_restore_path(@server, plan),
+          resumable: resumable,
+          is_expired: expired,
+          authorize_url: resumable ?
+            authorize_admin_minecraft_server_world_restore_path(@server, plan) : nil,
+          execute_url: resumable && plan.status_authorized? ?
+            execute_admin_minecraft_server_world_restore_path(@server, plan) : nil,
+          cancel_url: resumable ?
+            cancel_admin_minecraft_server_world_restore_path(@server, plan) : nil,
+          plan_recovery_url: can_resolve && plan.status_recovery_required? ?
+            plan_recovery_admin_minecraft_server_world_restore_path(@server, plan) : nil,
           recovery_resolution: serialize_resolution(plan.recovery_resolutions.recent.first)
         }.compact
       end
@@ -175,6 +205,10 @@ module Admin
       def serialize_resolution(resolution)
         return unless resolution
 
+        expired = restore_resolution_expired?(resolution)
+        can_resolve = current_user.permission?("minecraft.world_restores.resolve_recovery")
+        own_action = resolution.actor_id == current_user.id
+        resumable = can_resolve && own_action && resolution.status.in?(%w[planned authorized]) && !expired
         {
           id: resolution.public_id,
           status: resolution.status,
@@ -192,11 +226,27 @@ module Admin
           error_code: resolution.error_code,
           recovery_resolution_proof: resolution.result_summary.to_h["recovery_resolution_proof"],
           verified_world_state: resolution.result_summary.to_h["verified_world_state"],
-          authorize_url: authorize_recovery_admin_minecraft_server_world_restore_path(@server, @plan),
-          execute_url: execute_recovery_admin_minecraft_server_world_restore_path(@server, @plan),
-          cancel_url: cancel_recovery_admin_minecraft_server_world_restore_path(@server, @plan),
-          takeover_url: takeover_recovery_admin_minecraft_server_world_restore_path(@server, @plan)
+          resumable: resumable,
+          is_expired: expired,
+          authorize_url: resumable ?
+            authorize_recovery_admin_minecraft_server_world_restore_path(@server, @plan) : nil,
+          execute_url: resumable && resolution.status_authorized? ?
+            execute_recovery_admin_minecraft_server_world_restore_path(@server, @plan) : nil,
+          cancel_url: can_resolve && resolution.status.in?(%w[planned authorized]) && !expired ?
+            cancel_recovery_admin_minecraft_server_world_restore_path(@server, @plan) : nil,
+          takeover_url: can_resolve && resolution.status.in?(%w[planned authorized]) && !expired ?
+            takeover_recovery_admin_minecraft_server_world_restore_path(@server, @plan) : nil
         }.compact
+      end
+
+      def restore_plan_expired?(plan, now = Time.current)
+        plan.status_expired? || (
+          plan.status.in?(%w[planned authorized]) && plan.expires_at <= now
+        )
+      end
+
+      def restore_resolution_expired?(resolution, now = Time.current)
+        resolution.status_expired? || resolution.expired_by_time?(now)
       end
 
       def render_recovery_lifecycle(action)
@@ -239,7 +289,8 @@ module Admin
         return :too_many_requests if value == "rate_limited"
         return :forbidden if value.end_with?("unauthorized")
         return :conflict if value.include?("stale") || value.include?("changed") ||
-          value.include?("active") || value.include?("idempotency_conflict")
+          value.include?("active") || value.include?("idempotency_conflict") ||
+          value.include?("not_cancellable")
 
         :unprocessable_entity
       end

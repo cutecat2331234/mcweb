@@ -63,7 +63,8 @@ module SecureEvidence
         "retention_until",
         "previous_retention_until",
         "download_request_id",
-        "failure_code"
+        "failure_code",
+        "upload_attempt"
       ).compact
     end
     private_class_method :sanitize_metadata

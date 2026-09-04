@@ -570,6 +570,14 @@ export default {
       "noMemberships": "暂无会员。",
       "transactions": "余额变动记录",
       "viewOrder": "查看订单",
+      "viewOrderNumber": "订单 {number}",
+      "ledgerId": "流水编号",
+      "change": "变动金额",
+      "source": "来源",
+      "balance": "变动前 → 变动后",
+      "recordedAt": "记录时间",
+      "legacyBalanceUnavailable": "旧记录没有保存余额快照",
+      "olderTransactions": "查看更早记录",
       "empty": "暂无余额变动记录。"
     },
     "stockAlerts": {

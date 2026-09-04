@@ -36,3 +36,25 @@ test('store-credit navigation copy is available in English and Chinese', () => {
   assert.match(english, /storeCreditUsers: 'Store credit accounts'/)
   assert.match(chinese, /storeCreditUsers: '余额用户'/)
 })
+
+test('store-credit detail renders the complete ledger with Arco components and cursor navigation', () => {
+  const show = source('app/javascript/pages/Admin/Generic/Show.vue')
+
+  assert.match(show, /storeCreditLedger\?: StoreCreditLedger/)
+  assert.match(show, /<a-table[\s\S]*props\.storeCreditLedger\.transactions/)
+  assert.match(show, /row-key="ledger_id"/)
+  assert.match(show, /balance_before_label && record\.balance_after_label/)
+  assert.match(show, /storeCreditOlderTransactions/)
+  assert.match(show, /router\.visit\(props\.storeCreditLedger\.pagination\.next_url/)
+  assert.doesNotMatch(show, /window\.location\.(?:assign|replace|reload)/)
+})
+
+test('member wallet uses the shared UI table and exposes older ledger pages', () => {
+  const wallet = source('app/javascript/pages/Commerce/Wallet/Show.vue')
+
+  assert.match(wallet, /components\/ui\/Table\.vue/)
+  assert.match(wallet, /components\/ui\/Button\.vue/)
+  assert.match(wallet, /v-for="tx in transactions" :key="tx\.ledger_id"/)
+  assert.match(wallet, /balance_before_label && tx\.balance_after_label/)
+  assert.match(wallet, /pagination\.has_more && pagination\.next_url/)
+})

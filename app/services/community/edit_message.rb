@@ -27,7 +27,27 @@ module Community
 
       result = nil
       Community::Message.transaction do
-        @message.lock!
+        @user = User.lock.find_by(id: @user.id)
+        unless @user
+          result = ServiceResult.failure(error: "message_edit_unauthorized")
+          raise ActiveRecord::Rollback
+        end
+        if @user.deleted? || @user.banned?
+          result = ServiceResult.failure(
+            error: @user.deleted? ? :account_deleted : :account_banned
+          )
+          raise ActiveRecord::Rollback
+        end
+
+        @message = Community::Message.with_discarded.lock.find_by(id: @message.id)
+        unless authorized?
+          result = ServiceResult.failure(error: "message_edit_unauthorized")
+          raise ActiveRecord::Rollback
+        end
+        if @message.deleted?
+          result = ServiceResult.failure(error: "message_deleted")
+          raise ActiveRecord::Rollback
+        end
         if @message.revision != @expected_revision
           result = ServiceResult.failure(error: "message_revision_conflict", code: "message_revision_conflict")
           raise ActiveRecord::Rollback

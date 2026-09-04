@@ -43,7 +43,9 @@ class User < ApplicationRecord
     has_many :forum_search_histories, class_name: "Community::SearchHistory", dependent: :destroy
     has_many :store_wishlist_filter_presets, class_name: "Commerce::WishlistFilterPreset", dependent: :destroy
     has_many :shipping_addresses, class_name: "Commerce::ShippingAddress", dependent: :destroy
-    has_many :store_credit_transactions, class_name: "Commerce::StoreCreditTransaction", dependent: :destroy
+    has_many :store_credit_transactions,
+      class_name: "Commerce::StoreCreditTransaction",
+      dependent: :restrict_with_error
     has_many :forum_point_accounts, class_name: "Community::PointAccount", dependent: :destroy
     has_many :forum_point_transactions, class_name: "Community::PointTransaction", dependent: :destroy
     has_many :memberships, class_name: "Commerce::UserMembership", dependent: :destroy

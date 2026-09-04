@@ -11,16 +11,16 @@ module Identity
         user = context.user
         Contribution.new(
           documents: {
-            "forum/topics.json" => RecordSerializer.records(
-              Community::Topic.where(user:).order(:id),
+            "forum/topics.json" => RecordSerializer.stream_records(
+              Community::Topic.with_discarded.where(user:).order(:id),
               TOPIC_FIELDS
             ),
-            "forum/posts.json" => RecordSerializer.records(
-              Community::Post.where(user:).order(:id),
+            "forum/posts.json" => RecordSerializer.stream_records(
+              Community::Post.with_discarded.where(user:).order(:id),
               POST_FIELDS
             ),
-            "forum/messages.json" => RecordSerializer.records(
-              Community::Message.where(user:).order(:id),
+            "forum/messages.json" => RecordSerializer.stream_records(
+              Community::Message.with_discarded.where(user:).order(:id),
               MESSAGE_FIELDS
             )
           }

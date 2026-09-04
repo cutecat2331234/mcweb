@@ -3,6 +3,7 @@
 module DataGovernance
   class ContentRegistry
     Entry = Data.define(:type, :model_name, :label_attribute)
+    ReferenceSet = Data.define(:target_type, :target_ids)
 
     ENTRIES = [
       Entry.new(type: "Community::Topic", model_name: "Community::Topic", label_attribute: :title),
@@ -125,6 +126,51 @@ module DataGovernance
         targets.compact.uniq { |item| [ item.class.base_class.name, item.id ] }
       end
 
+      # Returns a bounded set of SQL-compatible ID selectors instead of loading
+      # an aggregate's descendants into memory. Consumers can pass target_ids
+      # directly to an Active Record where clause; relations remain subqueries.
+      def evidence_reference_sets(target)
+        references = [ direct_reference_set(target) ]
+
+        case target
+        when Community::Topic
+          posts = Community::Post.with_discarded.where(forum_topic_id: target.id)
+          references << reference_set("Community::Post", posts.reselect(:id))
+          references << reference_set(
+            "Community::PostAttachment",
+            Community::PostAttachment.with_discarded
+              .where(forum_post_id: posts.reselect(:id))
+              .reselect(:id)
+          )
+        when Community::Post
+          references << reference_set(
+            "Community::PostAttachment",
+            Community::PostAttachment.with_discarded
+              .where(forum_post_id: target.id)
+              .reselect(:id)
+          )
+        when Community::Message
+          references << reference_set(
+            "Community::PostAttachment",
+            Community::PostAttachment.with_discarded
+              .where(forum_message_id: target.id)
+              .reselect(:id)
+          )
+        when Community::PostAttachment
+          references << direct_reference_set(Community::Post, target.forum_post_id)
+          references << direct_reference_set(Community::Message, target.forum_message_id)
+        when Community::ProfilePost
+          references << reference_set(
+            "Community::ProfilePostComment",
+            Community::ProfilePostComment.with_discarded
+              .where(profile_post_id: target.id)
+              .reselect(:id)
+          )
+        end
+
+        references.compact
+      end
+
       def hold_targets(target)
         targets = evidence_targets(target)
         targets.concat(targets.filter_map { |item| content_owner(item) })
@@ -136,6 +182,32 @@ module DataGovernance
           targets << target.profile_post
         end
         targets.compact.uniq { |item| [ item.class.base_class.name, item.id ] }
+      end
+
+      # The lazy counterpart to hold_targets. Keep this path free of to_a,
+      # pluck, and association collection loads: a topic can contain millions
+      # of posts while the policy still performs a bounded number of EXISTS
+      # queries.
+      def hold_reference_sets(target)
+        references = evidence_reference_sets(target)
+        references.concat(content_owner_reference_sets(target))
+
+        case target
+        when Community::Post
+          references << direct_reference_set(Community::Topic, target.forum_topic_id)
+        when Community::PostAttachment
+          topic_ids = Community::Post.with_discarded
+            .where(id: target.forum_post_id)
+            .where.not(forum_topic_id: nil)
+            .reselect(:forum_topic_id)
+          references << reference_set("Community::Topic", topic_ids)
+        when Community::Message
+          references << direct_reference_set(Community::Conversation, target.forum_conversation_id)
+        when Community::ProfilePostComment
+          references << direct_reference_set(Community::ProfilePost, target.profile_post_id)
+        end
+
+        references.compact
       end
 
       def content_owner(target)
@@ -150,26 +222,62 @@ module DataGovernance
         case target
         when Community::Topic
           post_ids = Community::Post.with_discarded.where(forum_topic_id: target.id).pluck(:id)
+          cleanup_upload_ids = schedule_post_upload_cleanup(post_ids:, at:)
           Community::Topic.unscoped.where(redirect_to_topic_id: target.id).update_all(redirect_to_topic_id: nil)
           Community::Topic.unscoped.where(solved_post_id: post_ids).update_all(solved_post_id: nil) if post_ids.any?
           Community::Topic.unscoped.where(source_post_id: post_ids).update_all(source_post_id: nil) if post_ids.any?
         when Community::Post
+          cleanup_upload_ids = schedule_post_upload_cleanup(post_ids: [ target.id ], at:)
           Community::Topic.unscoped.where(solved_post_id: target.id).update_all(solved_post_id: nil)
           Community::Topic.unscoped.where(source_post_id: target.id).update_all(source_post_id: nil)
         when Community::Message
-          attachment_ids = Community::PostAttachment.with_discarded
-            .where(forum_message_id: target.id)
-            .pluck(:id)
-          cleanup_upload_ids = Community::Upload
-            .where(forum_post_attachment_id: attachment_ids)
-            .where.not(status: "cleaned")
-            .pluck(:id)
-          Community::Upload.where(id: cleanup_upload_ids).find_each do |upload|
-            upload.schedule_cleanup!(at: at)
-          end
+          cleanup_upload_ids = schedule_message_upload_cleanup(message_id: target.id, at:)
         end
 
         cleanup_upload_ids
+      end
+
+      # Schedule managed uploads before their post or attachment association is
+      # removed. Keeping the upload ledger's blob and attachment locators until
+      # the cleanup worker claims the item avoids both synchronous storage I/O
+      # and untracked blobs after dependent destroys.
+      def schedule_post_upload_cleanup(post_ids:, at: Time.current, detach: false)
+        normalized_post_ids = Array(post_ids).filter_map do |post_id|
+          Integer(post_id, exception: false)
+        end.uniq
+        return [] if normalized_post_ids.empty?
+
+        Community::Upload.transaction do
+          attachments = Community::PostAttachment.with_discarded
+            .where(forum_post_id: normalized_post_ids)
+          attachment_ids = attachments.order(:id).lock.pluck(:id)
+          uploads = Community::Upload
+            .where(kind: %w[inline_image post_attachment])
+          uploads_by_post = uploads.where(forum_post_id: normalized_post_ids)
+          uploads = if attachment_ids.any?
+            uploads_by_post.or(uploads.where(forum_post_attachment_id: attachment_ids))
+          else
+            uploads_by_post
+          end
+          scheduled = uploads.order(:id).lock.to_a
+          scheduled.each { |upload| upload.schedule_cleanup!(at:) }
+
+          if detach
+            now = Time.current
+            # The upload still points at its PostAttachment so the cleanup worker
+            # can detach the file and destroy the orphan. Only the visible parent
+            # links are removed here.
+            attachments.update_all(forum_post_id: nil, updated_at: now)
+            Community::Upload
+              .where(
+                kind: %w[inline_image post_attachment],
+                forum_post_id: normalized_post_ids
+              )
+              .update_all(forum_post_id: nil, updated_at: now)
+          end
+
+          scheduled.map(&:id)
+        end
       end
 
       def enqueue_scheduled_upload_cleanup(upload_ids)
@@ -189,6 +297,90 @@ module DataGovernance
       end
 
       private
+
+      def schedule_message_upload_cleanup(message_id:, at:)
+        attachment_ids = Community::PostAttachment.with_discarded
+          .where(forum_message_id: message_id)
+          .order(:id)
+          .lock
+          .pluck(:id)
+        return [] if attachment_ids.empty?
+
+        uploads = Community::Upload
+          .where(kind: "post_attachment", forum_post_attachment_id: attachment_ids)
+          .where.not(status: "cleaned")
+          .order(:id)
+          .lock
+          .to_a
+        uploads.each { |upload| upload.schedule_cleanup!(at:) }
+        uploads.map(&:id)
+      end
+
+      def reference_set(target_type, target_ids)
+        ReferenceSet.new(target_type:, target_ids:)
+      end
+
+      def direct_reference_set(target_or_model, target_id = nil)
+        if target_or_model.is_a?(Class)
+          type = target_or_model.base_class.name
+          id = target_id
+        else
+          type = target_or_model.class.base_class.name
+          id = target_or_model.id
+        end
+        return if id.nil?
+
+        reference_set(type, [ id ])
+      end
+
+      def content_owner_reference_sets(target)
+        references = []
+        if target.respond_to?(:user_id)
+          owner_reference = direct_reference_set(User, target.user_id)
+          references << owner_reference if owner_reference
+        end
+
+        case target
+        when Community::Topic
+          posts = Community::Post.with_discarded.where(forum_topic_id: target.id)
+          attachments = Community::PostAttachment.with_discarded
+            .where(forum_post_id: posts.reselect(:id))
+          references << user_reference_set(posts)
+          references << user_reference_set(attachments)
+        when Community::Post
+          references << user_reference_set(
+            Community::PostAttachment.with_discarded.where(forum_post_id: target.id)
+          )
+        when Community::Message
+          references << user_reference_set(
+            Community::PostAttachment.with_discarded.where(forum_message_id: target.id)
+          )
+        when Community::PostAttachment
+          references << user_reference_set(
+            Community::Post.with_discarded.where(id: target.forum_post_id)
+          )
+          references << user_reference_set(
+            Community::Message.with_discarded.where(id: target.forum_message_id)
+          )
+        when Community::ProfilePost
+          references << user_reference_set(
+            Community::ProfilePostComment.with_discarded.where(profile_post_id: target.id)
+          )
+        end
+
+        if references.compact.empty? && target.respond_to?(:user)
+          references << direct_reference_set(target.user) if target.user
+        end
+
+        references.compact
+      end
+
+      def user_reference_set(scope)
+        reference_set(
+          "User",
+          scope.where.not(user_id: nil).reselect(:user_id)
+        )
+      end
 
       def normalize_type(target_or_type)
         return target_or_type.class.base_class.name unless target_or_type.is_a?(String)

@@ -415,7 +415,10 @@ module Admin
       end
 
       def serialize_world_restore_plan(server, plan)
-        own_action = plan.actor_id == current_user.id
+        expired = world_restore_plan_expired?(plan)
+        own_action = current_user.permission?("minecraft.world_restores.execute") &&
+          plan.actor_id == current_user.id
+        resumable = own_action && plan.status.in?(%w[planned authorized]) && !expired
         can_resolve = current_user.permission?("minecraft.world_restores.resolve_recovery")
         resolution = plan.recovery_resolutions.recent.first
         {
@@ -431,8 +434,12 @@ module Admin
           rolled_back: plan.result_summary.to_h["rolled_back"],
           recovery_required: plan.result_summary.to_h["recovery_required"],
           error_code: plan.error_code,
-          authorize_url: own_action ? authorize_admin_minecraft_server_world_restore_path(server, plan) : nil,
-          execute_url: own_action ? execute_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          resumable: resumable,
+          is_expired: expired,
+          authorize_url: resumable ? authorize_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          execute_url: resumable && plan.status_authorized? ?
+            execute_admin_minecraft_server_world_restore_path(server, plan) : nil,
+          cancel_url: resumable ? cancel_admin_minecraft_server_world_restore_path(server, plan) : nil,
           plan_recovery_url: can_resolve && plan.status_recovery_required? ?
             plan_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
           recovery_resolution: serialize_world_restore_resolution(server, plan, resolution, can_resolve: can_resolve)
@@ -442,7 +449,9 @@ module Admin
       def serialize_world_restore_resolution(server, plan, resolution, can_resolve:)
         return unless resolution
 
+        expired = world_restore_resolution_expired?(resolution)
         own_action = resolution.actor_id == current_user.id
+        resumable = can_resolve && own_action && resolution.status.in?(%w[planned authorized]) && !expired
         {
           id: resolution.public_id,
           status: resolution.status,
@@ -460,15 +469,27 @@ module Admin
           error_code: resolution.error_code,
           recovery_resolution_proof: resolution.result_summary.to_h["recovery_resolution_proof"],
           verified_world_state: resolution.result_summary.to_h["verified_world_state"],
-          authorize_url: can_resolve && own_action && resolution.status.in?(%w[planned authorized]) ?
+          resumable: resumable,
+          is_expired: expired,
+          authorize_url: resumable ?
             authorize_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
-          execute_url: can_resolve && own_action && resolution.status_authorized? ?
+          execute_url: resumable && resolution.status_authorized? ?
             execute_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
-          cancel_url: can_resolve && resolution.status.in?(%w[planned authorized]) ?
+          cancel_url: can_resolve && resolution.status.in?(%w[planned authorized]) && !expired ?
             cancel_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil,
-          takeover_url: can_resolve && resolution.status.in?(%w[planned authorized]) ?
+          takeover_url: can_resolve && resolution.status.in?(%w[planned authorized]) && !expired ?
             takeover_recovery_admin_minecraft_server_world_restore_path(server, plan) : nil
         }.compact
+      end
+
+      def world_restore_plan_expired?(plan, now = Time.current)
+        plan.status_expired? || (
+          plan.status.in?(%w[planned authorized]) && plan.expires_at <= now
+        )
+      end
+
+      def world_restore_resolution_expired?(resolution, now = Time.current)
+        resolution.status_expired? || resolution.expired_by_time?(now)
       end
 
       def record_server_audit!(action, metadata = {})

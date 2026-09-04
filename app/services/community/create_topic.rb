@@ -65,6 +65,10 @@ module Community
       section_lock_attempts = 0
       begin
         Community::Topic.transaction do
+          @user = User.lock.find(@user.id)
+          state_result = account_write_access_result
+          raise ActiveRecord::Rollback if state_result.failure?
+
           @section = Community::SectionHierarchyLock.lock!(@section).sole
           state_result = create_access_result
           raise ActiveRecord::Rollback if state_result.failure?
@@ -181,6 +185,13 @@ module Community
     end
 
     private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @user.deleted?
+      return ServiceResult.failure(error: :account_banned) if @user.banned?
+
+      ServiceResult.success
+    end
 
     def create_access_result
       unless Community::SectionAccess.view?(section: @section, user: @user)

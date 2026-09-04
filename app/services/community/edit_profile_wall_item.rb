@@ -34,8 +34,24 @@ module Community
       return prepared if prepared.failure?
 
       result = nil
+      item_model = @item.class
+      item_id = @item.id
       @item.class.transaction do
-        @item.lock!
+        @author = User.lock.find_by(id: @author.id)
+        unless @author
+          result = failure("profile_post_edit_author_only")
+          raise ActiveRecord::Rollback
+        end
+        if @author.deleted? || @author.banned?
+          result = failure(@author.deleted? ? "account_deleted" : "account_banned")
+          raise ActiveRecord::Rollback
+        end
+
+        @item = item_model.with_discarded.lock.find_by(id: item_id)
+        unless @item && @item.user_id == @author.id
+          result = failure("profile_post_edit_author_only")
+          raise ActiveRecord::Rollback
+        end
         if @item.revision != @expected_revision
           result = failure("profile_post_revision_conflict")
           raise ActiveRecord::Rollback

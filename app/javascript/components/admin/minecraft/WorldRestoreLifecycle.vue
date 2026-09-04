@@ -26,6 +26,12 @@ interface AuthorizationResponse {
   plan: WorldRestorePlanRow
 }
 
+interface PlanLifecycleResponse {
+  message?: string
+  plan: WorldRestorePlanRow
+  idempotent: boolean
+}
+
 interface RecoveryPlanResponse {
   plan: WorldRestorePlanRow
   resolution: WorldRestoreResolutionRow
@@ -65,9 +71,12 @@ const authorizationToken = ref('')
 const requiredConfirmation = ref('')
 const confirmation = ref('')
 const authorizationExpiresIn = ref(0)
+const cancelReason = ref('')
+const cancelRequestId = ref(createIdempotencyKey())
 const planning = ref(false)
 const authorizing = ref(false)
 const executing = ref(false)
+const cancelling = ref(false)
 const creatingBackup = ref(false)
 const executionQueued = ref(false)
 const errorMessage = ref('')
@@ -118,14 +127,27 @@ const canPlan = computed(() => (
 ))
 const canAuthorize = computed(() => (
   Boolean(plan.value?.authorize_url)
+  && Boolean(plan.value?.resumable)
   && password.value.length > 0
   && !authorizing.value
 ))
 const canExecute = computed(() => (
   Boolean(plan.value?.execute_url)
+  && Boolean(plan.value?.resumable)
   && authorizationToken.value.length > 0
   && confirmation.value === requiredConfirmation.value
   && !executing.value
+  && !executionQueued.value
+))
+const canCancelPlan = computed(() => (
+  Boolean(plan.value?.cancel_url)
+  && Boolean(plan.value?.resumable)
+  && cancelReason.value.trim().length > 0
+  && cancelReason.value.trim().length <= 1000
+  && !planning.value
+  && !authorizing.value
+  && !executing.value
+  && !cancelling.value
   && !executionQueued.value
 ))
 const canPlanRecovery = computed(() => (
@@ -137,11 +159,13 @@ const canPlanRecovery = computed(() => (
 ))
 const canAuthorizeRecovery = computed(() => (
   Boolean(recoveryResolution.value?.authorize_url)
+  && Boolean(recoveryResolution.value?.resumable)
   && recoveryPassword.value.length > 0
   && !recoveryAuthorizing.value
 ))
 const canExecuteRecovery = computed(() => (
   Boolean(recoveryResolution.value?.execute_url)
+  && Boolean(recoveryResolution.value?.resumable)
   && recoveryAuthorizationToken.value.length > 0
   && recoveryConfirmation.value === recoveryRequiredConfirmation.value
   && !recoveryExecuting.value
@@ -167,6 +191,14 @@ watch([selectedBackupId, reason], () => {
   if (!plan.value) requestId.value = createIdempotencyKey()
 })
 
+watch(cancelReason, () => {
+  if (!cancelling.value) cancelRequestId.value = createIdempotencyKey()
+})
+
+watch(() => props.model.plans, () => {
+  if (!authorizationToken.value && !executionQueued.value) plan.value = initialOwnedPlan()
+}, { deep: true })
+
 watch(() => recoveryPlan.value?.recovery_resolution, (value) => {
   if (!recoveryAuthorizationToken.value) recoveryResolution.value = value || null
 })
@@ -185,10 +217,7 @@ watch([lifecycleReason, lifecyclePassword, lifecycleCode, recoveryAction], () =>
 })
 
 function initialOwnedPlan() {
-  return props.model.plans.find((candidate) => (
-    ['planned', 'authorized'].includes(candidate.status) && Boolean(candidate.authorize_url)
-    && new Date(candidate.expires_at || '').getTime() > Date.now()
-  )) || null
+  return props.model.plans.find((candidate) => candidate.resumable) || null
 }
 
 function translateStatus(status: string) {
@@ -234,8 +263,98 @@ function errorText(error: unknown) {
   return t('adminMinecraft.worldSafety.requestFailed')
 }
 
+const stateConflictCodes = new Set([
+  'world_restore_active',
+  'world_restore_authorization_expired',
+  'world_restore_authorization_invalid',
+  'world_restore_idempotency_conflict',
+  'world_restore_plan_expired',
+  'world_restore_plan_not_authorizable',
+  'world_restore_plan_not_authorized',
+  'world_restore_plan_not_cancellable',
+  'world_restore_recovery_active',
+  'world_restore_recovery_authorization_expired',
+  'world_restore_recovery_authorization_invalid',
+  'world_restore_recovery_idempotency_conflict',
+  'world_restore_recovery_lifecycle_not_allowed',
+  'world_restore_recovery_not_authorizable',
+  'world_restore_recovery_not_authorized',
+  'world_restore_recovery_resolution_expired',
+  'world_restore_recovery_stale',
+  'world_restore_stale',
+])
+
+function stateConflict(error: unknown) {
+  if (!(error instanceof HttpError)) return false
+  const code = error.body && typeof error.body === 'object'
+    ? (error.body as { code?: unknown }).code
+    : undefined
+  return error.status === 409 || (
+    typeof code === 'string'
+    && (stateConflictCodes.has(code) || code.includes('_changed'))
+  )
+}
+
+function clearPlanAuthorization() {
+  password.value = ''
+  verificationCode.value = ''
+  authorizationToken.value = ''
+  requiredConfirmation.value = ''
+  confirmation.value = ''
+  authorizationExpiresIn.value = 0
+  executionQueued.value = false
+}
+
+function clearPlanSelection() {
+  plan.value = null
+  selectedBackupId.value = ''
+  reason.value = ''
+  requestId.value = createIdempotencyKey()
+  cancelReason.value = ''
+  cancelRequestId.value = createIdempotencyKey()
+  clearPlanAuthorization()
+}
+
+function clearRecoverySelection() {
+  recoveryResolution.value = null
+  recoveryAction.value = 'reconcile'
+  recoveryReason.value = ''
+  recoveryRequestId.value = createIdempotencyKey()
+  recoveryPassword.value = ''
+  recoveryCode.value = ''
+  recoveryAuthorizationToken.value = ''
+  recoveryRequiredConfirmation.value = ''
+  recoveryConfirmation.value = ''
+  recoveryQueued.value = false
+  lifecycleReason.value = ''
+  lifecyclePassword.value = ''
+  lifecycleCode.value = ''
+  lifecycleCancelRequestId.value = createIdempotencyKey()
+  lifecycleTakeoverRequestId.value = createIdempotencyKey()
+}
+
+function handleRequestError(error: unknown, scope: 'plan' | 'recovery') {
+  errorMessage.value = errorText(error)
+  if (!stateConflict(error)) return
+
+  if (scope === 'plan') clearPlanSelection()
+  else clearRecoverySelection()
+  refresh()
+}
+
 function refresh() {
   router.reload({ only: ['worldSafety'], preserveScroll: true })
+}
+
+function continuePlan(candidate: WorldRestorePlanRow) {
+  if (!candidate.resumable) return
+  clearPlanAuthorization()
+  plan.value = candidate
+  selectedBackupId.value = candidate.backup_id
+  reason.value = candidate.reason
+  cancelReason.value = ''
+  cancelRequestId.value = createIdempotencyKey()
+  errorMessage.value = ''
 }
 
 function confirmBackup() {
@@ -278,10 +397,11 @@ async function createPlan() {
       request_id: requestId.value,
     })
     plan.value = result.plan
-    password.value = ''
-    verificationCode.value = ''
+    clearPlanAuthorization()
+    cancelReason.value = ''
+    cancelRequestId.value = createIdempotencyKey()
   } catch (error) {
-    errorMessage.value = errorText(error)
+    handleRequestError(error, 'plan')
   } finally {
     planning.value = false
   }
@@ -304,7 +424,7 @@ async function authorizePlan() {
     verificationCode.value = ''
     confirmation.value = ''
   } catch (error) {
-    errorMessage.value = errorText(error)
+    handleRequestError(error, 'plan')
   } finally {
     authorizing.value = false
   }
@@ -330,9 +450,41 @@ async function executeRestore() {
     Message.success(result.message || t('adminMinecraft.worldSafety.restoreQueued'))
     refresh()
   } catch (error) {
-    errorMessage.value = errorText(error)
+    handleRequestError(error, 'plan')
   } finally {
     executing.value = false
+  }
+}
+
+function confirmPlanCancellation() {
+  if (!canCancelPlan.value || !plan.value?.cancel_url) return
+  Modal.warning({
+    title: t('adminMinecraft.worldSafety.cancelPlan'),
+    content: t('adminMinecraft.worldSafety.cancelPlanConfirm'),
+    okText: t('adminMinecraft.worldSafety.cancelPlan'),
+    cancelText: t('common.cancel'),
+    hideCancel: false,
+    onOk: cancelPlan,
+  })
+}
+
+async function cancelPlan() {
+  if (!canCancelPlan.value || !plan.value?.cancel_url) return
+  cancelling.value = true
+  errorMessage.value = ''
+  try {
+    const result = await postJson<PlanLifecycleResponse>(plan.value.cancel_url, {
+      reason: cancelReason.value.trim(),
+      request_id: cancelRequestId.value,
+      expected_lock_version: plan.value.lock_version,
+    })
+    Message.success(result.message || t('adminMinecraft.worldSafety.planCancelled'))
+    clearPlanSelection()
+    refresh()
+  } catch (error) {
+    handleRequestError(error, 'plan')
+  } finally {
+    cancelling.value = false
   }
 }
 
@@ -352,7 +504,7 @@ async function planRecoveryResolution() {
     recoveryPassword.value = ''
     recoveryCode.value = ''
   } catch (error) {
-    errorMessage.value = errorText(error)
+    handleRequestError(error, 'recovery')
   } finally {
     recoveryPlanning.value = false
   }
@@ -379,7 +531,7 @@ async function authorizeRecoveryResolution() {
     recoveryPassword.value = ''
     recoveryCode.value = ''
   } catch (error) {
-    errorMessage.value = errorText(error)
+    handleRequestError(error, 'recovery')
   } finally {
     recoveryAuthorizing.value = false
   }
@@ -408,7 +560,7 @@ async function executeRecoveryResolution() {
     Message.success(result.message || t('adminMinecraft.worldSafety.recoveryQueued'))
     refresh()
   } catch (error) {
-    errorMessage.value = errorText(error)
+    handleRequestError(error, 'recovery')
   } finally {
     recoveryExecuting.value = false
   }
@@ -446,7 +598,7 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
     Message.success(result.message || t(`adminMinecraft.worldSafety.recoveryLifecycle${action === 'cancel' ? 'Cancelled' : 'TakenOver'}`))
     refresh()
   } catch (error) {
-    errorMessage.value = errorText(error)
+    handleRequestError(error, 'recovery')
   } finally {
     lifecycleManaging.value = ''
   }
@@ -540,6 +692,10 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
       <template v-if="model.can_restore || model.can_resolve_recovery">
         <template v-if="model.can_restore">
           <a-divider />
+          <a-alert v-if="plan?.resumable" type="info" show-icon :closable="false">
+            <template #title>{{ t('adminMinecraft.worldSafety.continuePlanTitle') }}</template>
+            {{ t('adminMinecraft.worldSafety.continuePlanBody', { id: plan.id }) }}
+          </a-alert>
           <a-steps :current="currentStep" size="small">
           <a-step :title="t('adminMinecraft.worldSafety.stepPlan')" />
           <a-step :title="t('adminMinecraft.worldSafety.stepAuthorize')" />
@@ -570,7 +726,7 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
             </a-button>
           </template>
 
-          <template v-else-if="!authorizationToken && !executionQueued">
+          <template v-else-if="plan.resumable && !authorizationToken && !executionQueued">
             <a-descriptions :column="1" bordered size="small">
               <a-descriptions-item :label="t('adminMinecraft.worldSafety.planId')">
                 <a-typography-text code>{{ plan.id }}</a-typography-text>
@@ -601,7 +757,7 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
             </a-button>
           </template>
 
-          <template v-else-if="!executionQueued">
+          <template v-else-if="plan.resumable && !executionQueued">
             <a-alert type="error" show-icon :closable="false">
               <template #title>{{ t('adminMinecraft.worldSafety.finalWarningTitle') }}</template>
               {{ t('adminMinecraft.worldSafety.finalWarningBody') }}
@@ -620,6 +776,32 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
             </a-form-item>
             <a-button type="primary" status="danger" :loading="executing" :disabled="!canExecute" @click="executeRestore">
               {{ t('adminMinecraft.worldSafety.execute') }}
+            </a-button>
+          </template>
+
+          <template v-if="plan?.resumable && !executionQueued">
+            <a-divider />
+            <a-alert type="warning" show-icon :closable="false">
+              <template #title>{{ t('adminMinecraft.worldSafety.cancelPlanTitle') }}</template>
+              {{ t('adminMinecraft.worldSafety.cancelPlanBody') }}
+            </a-alert>
+            <a-form-item field="cancelReason" :label="t('adminMinecraft.worldSafety.cancelPlanReason')" required>
+              <a-textarea
+                v-model="cancelReason"
+                :max-length="1000"
+                show-word-limit
+                :auto-size="{ minRows: 2, maxRows: 5 }"
+                :placeholder="t('adminMinecraft.worldSafety.cancelPlanReasonPlaceholder')"
+                :disabled="cancelling || authorizing || executing"
+              />
+            </a-form-item>
+            <a-button
+              status="warning"
+              :loading="cancelling"
+              :disabled="!canCancelPlan"
+              @click="confirmPlanCancellation"
+            >
+              {{ t('adminMinecraft.worldSafety.cancelPlan') }}
             </a-button>
           </template>
           </a-form>
@@ -656,7 +838,7 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
                 v-if="recoveryResolution"
                 :label="t('adminMinecraft.worldSafety.recoveryResolutionStatus')"
               >
-                {{ translateStatus(recoveryResolution.status) }} ·
+                {{ translateStatus(recoveryResolution.is_expired ? 'expired' : recoveryResolution.status) }} ·
                 {{ translateRecoveryAction(recoveryResolution.resolution_action) }}
               </a-descriptions-item>
               <a-descriptions-item
@@ -674,7 +856,7 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
             </a-descriptions>
 
             <a-form layout="vertical">
-              <template v-if="!recoveryResolution || ['failed', 'recovery_required', 'expired', 'cancelled', 'taken_over'].includes(recoveryResolution.status)">
+              <template v-if="!recoveryResolution || recoveryResolution.is_expired || ['failed', 'recovery_required', 'expired', 'cancelled', 'taken_over'].includes(recoveryResolution.status)">
                 <a-form-item field="recoveryAction" :label="t('adminMinecraft.worldSafety.recoveryAction')" required>
                   <a-select v-model="recoveryAction" :disabled="recoveryPlanning">
                     <a-option value="reconcile">{{ translateRecoveryAction('reconcile') }}</a-option>
@@ -703,7 +885,7 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
                 </a-button>
               </template>
 
-              <template v-else-if="!recoveryAuthorizationToken && !recoveryQueued && recoveryResolution.authorize_url && ['planned', 'authorized'].includes(recoveryResolution.status)">
+              <template v-else-if="!recoveryAuthorizationToken && !recoveryQueued && recoveryResolution.resumable && recoveryResolution.authorize_url">
                 <a-form-item field="recoveryPassword" :label="t('adminMinecraft.worldSafety.password')" required>
                   <a-input-password
                     v-model="recoveryPassword"
@@ -756,7 +938,7 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
               </template>
             </a-form>
 
-            <template v-if="recoveryResolution && ['planned', 'authorized'].includes(recoveryResolution.status)">
+            <template v-if="recoveryResolution && !recoveryResolution.is_expired && ['planned', 'authorized'].includes(recoveryResolution.status)">
               <a-divider />
               <a-alert type="warning" show-icon :closable="false">
                 <template #title>{{ t('adminMinecraft.worldSafety.recoveryLifecycleTitle') }}</template>
@@ -829,7 +1011,9 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
             </a-table-column>
             <a-table-column :title="t('adminMinecraft.worldSafety.backupId')" data-index="backup_id" />
             <a-table-column :title="t('adminMinecraft.worldSafety.status')" data-index="status">
-              <template #cell="{ record }"><a-tag>{{ translateStatus(record.status) }}</a-tag></template>
+              <template #cell="{ record }">
+                <a-tag>{{ translateStatus(record.is_expired ? 'expired' : record.status) }}</a-tag>
+              </template>
             </a-table-column>
             <a-table-column :title="t('adminMinecraft.worldSafety.phase')" data-index="phase">
               <template #cell="{ record }">{{ record.phase ? translatePhase(record.phase) : '—' }}</template>
@@ -842,6 +1026,14 @@ async function manageRecoveryLifecycle(action: 'cancel' | 'takeover') {
             </a-table-column>
             <a-table-column :title="t('adminMinecraft.worldSafety.createdAt')" data-index="created_at">
               <template #cell="{ record }">{{ formatDate(record.created_at) }}</template>
+            </a-table-column>
+            <a-table-column :title="t('common.actions')">
+              <template #cell="{ record }">
+                <a-button v-if="record.resumable" type="text" size="small" @click="continuePlan(record)">
+                  {{ t('adminMinecraft.worldSafety.continuePlan') }}
+                </a-button>
+                <span v-else>—</span>
+              </template>
             </a-table-column>
           </template>
           <template #empty>{{ t('adminMinecraft.worldSafety.noPlans') }}</template>

@@ -2,7 +2,6 @@
 
 module SecureEvidence
   class CreateAttachment < ApplicationService
-    ADVISORY_LOCK_ID = 7_804_261_559_014_332_187
     IDEMPOTENCY_PATTERN = /\A[A-Za-z0-9:_-]{8,100}\z/
 
     def initialize(
@@ -21,7 +20,6 @@ module SecureEvidence
       @idempotency_key = idempotency_key.to_s.strip
       @catalog = catalog
       @now = now
-      @upload = nil
     end
 
     def call
@@ -58,10 +56,54 @@ module SecureEvidence
         byte_size: inspection.byte_size,
         sha256:
       )
+      reservation = reserve_attempt(
+        entry:,
+        subject:,
+        filename:,
+        inspection:,
+        sha256:,
+        fingerprint:
+      )
+      if reservation.failure?
+        enqueue_retry_cleanup(reservation)
+        return reservation
+      end
+
+      reserved = reservation.value
+      attachment = reserved.fetch(:attachment)
+      unless reserved.fetch(:upload_required)
+        return ServiceResult.success(attachment:, idempotent: true)
+      end
+
+      stored = StoreAttachmentUpload.call(
+        attachment:,
+        upload: reserved.fetch(:upload),
+        payload: inspection.payload,
+        filename:,
+        content_type: inspection.content_type
+      )
+      return stored if stored.failure?
+
+      upload = stored.value.fetch(:upload)
+      enqueue_scan(upload)
+      ServiceResult.success(
+        attachment: stored.value.fetch(:attachment),
+        idempotent: reserved.fetch(:idempotent)
+      )
+    rescue ActiveRecord::RecordInvalid => error
+      ServiceResult.failure(errors: error.record.errors.to_hash)
+    rescue StandardError => error
+      Rails.logger.error("[SecureEvidence::CreateAttachment] failed error=#{error.class}")
+      failure("secure_evidence_creation_failed")
+    end
+
+    private
+
+    def reserve_attempt(entry:, subject:, filename:, inspection:, sha256:, fingerprint:)
       result = nil
 
       Attachment.transaction do
-        acquire_creation_lock!
+        Community::UploadQuota.acquire_admission_lock!
         subject.lock!
         unless AttachmentAccess.upload_allowed?(entry:, actor: @actor, subject:)
           result = failure("secure_evidence_subject_unavailable")
@@ -70,7 +112,13 @@ module SecureEvidence
 
         existing = idempotent_record(subject)
         if existing
-          result = replay_result(existing, fingerprint)
+          result = reserve_existing_attempt(
+            entry:,
+            subject:,
+            existing:,
+            fingerprint:,
+            requested_bytes: inspection.byte_size
+          )
           next
         end
 
@@ -94,19 +142,13 @@ module SecureEvidence
           next
         end
 
-        stored = Community::StoreUpload.call(
-          user: @actor,
-          kind: :secure_evidence_attachment,
-          payload: inspection.payload,
-          filename:,
-          content_type: inspection.content_type
-        )
-        if stored.failure?
-          result = stored
+        quota = reserve_upload_quota(inspection.byte_size)
+        if quota.failure?
+          result = quota
           next
         end
 
-        @upload = stored.value.fetch(:upload)
+        upload = quota.value
         attachment = Attachment.create!(
           uploader: @actor,
           uploader_public_id_snapshot: @actor.public_id,
@@ -119,12 +161,12 @@ module SecureEvidence
           content_type: inspection.content_type,
           byte_size: inspection.byte_size,
           sha256:,
-          state: "pending",
+          state: "uploading",
           retention_until:,
           created_at: @now,
           updated_at: @now
         )
-        @upload.update!(secure_evidence_attachment: attachment)
+        upload.update!(secure_evidence_attachment: attachment)
         EventRecorder.record!(
           attachment:,
           actor: @actor,
@@ -133,21 +175,74 @@ module SecureEvidence
           metadata: { retention_until: retention_until.iso8601(6) },
           at: @now
         )
-        result = ServiceResult.success(attachment: attachment, idempotent: false)
+        result = ServiceResult.success(
+          attachment:,
+          upload:,
+          idempotent: false,
+          upload_required: true
+        )
       end
 
-      enqueue_scan if result&.success? && !result.value.fetch(:idempotent)
       result || failure("secure_evidence_creation_failed")
-    rescue ActiveRecord::RecordInvalid => error
-      request_cleanup(error)
-      ServiceResult.failure(errors: error.record.errors.to_hash)
-    rescue StandardError => error
-      request_cleanup(error)
-      Rails.logger.error("[SecureEvidence::CreateAttachment] failed error=#{error.class}")
-      failure("secure_evidence_creation_failed")
     end
 
-    private
+    def reserve_existing_attempt(entry:, subject:, existing:, fingerprint:, requested_bytes:)
+      return replay_result(existing, fingerprint) unless existing.state_upload_failed?
+      return failure("secure_evidence_idempotency_conflict") unless secure_match?(
+        existing.request_fingerprint,
+        fingerprint
+      )
+
+      upload = Community::Upload.lock.find_by(
+        secure_evidence_attachment_id: existing.id
+      )
+      return failure("secure_evidence_upload_missing") unless upload
+
+      existing.lock!
+      return replay_result(existing, fingerprint) unless existing.state_upload_failed?
+      unless upload.status_cleaned? && upload.active_storage_blob_id.nil?
+        return failure(
+          "secure_evidence_upload_retry_pending",
+          value: {
+            attachment: existing,
+            retryable: true,
+            cleanup_upload_id: upload.id
+          }
+        )
+      end
+
+      limit_failure = subject_limit_failure(
+        entry:,
+        subject:,
+        requested_bytes:
+      )
+      return limit_failure if limit_failure
+
+      quota = reserve_upload_quota(requested_bytes, reuse_upload: upload)
+      return quota if quota.failure?
+
+      retry_upload = quota.value
+      SyncUploadResult.retried!(
+        attachment: existing,
+        upload: retry_upload,
+        at: Time.current
+      )
+      ServiceResult.success(
+        attachment: existing,
+        upload: retry_upload,
+        idempotent: true,
+        upload_required: true
+      )
+    end
+
+    def reserve_upload_quota(byte_size, reuse_upload: nil)
+      Community::UploadQuota.call(
+        user: @actor,
+        kind: :secure_evidence_attachment,
+        byte_size:,
+        reuse_upload:
+      )
+    end
 
     def failure(code, value: nil)
       ServiceResult.failure(error: code, code:, value:)
@@ -186,12 +281,6 @@ module SecureEvidence
       )
     end
 
-    def acquire_creation_lock!
-      ApplicationRecord.connection.select_value(
-        "SELECT pg_advisory_xact_lock(#{ADVISORY_LOCK_ID})::text"
-      )
-    end
-
     def idempotent_record(subject)
       Attachment.find_by(
         uploader: @actor,
@@ -207,14 +296,22 @@ module SecureEvidence
         fingerprint
       )
 
-      ServiceResult.success(attachment: existing, idempotent: true)
+      ServiceResult.success(
+        attachment: existing,
+        idempotent: true,
+        upload_required: false
+      )
     end
 
     def subject_limit_failure(entry:, subject:, requested_bytes:)
-      relation = Attachment.where(
+      relation = Attachment.left_joins(:upload_record).where(
         subject_key: entry.key,
-        subject_id: subject.id,
-        state: Attachment::ACTIVE_STATES
+        subject_id: subject.id
+      ).where(
+        "(secure_evidence_attachments.state IN (?) OR " \
+        "(secure_evidence_attachments.state = 'upload_failed' AND " \
+        "forum_uploads.status <> 'cleaned'))",
+        Attachment::ACTIVE_STATES
       )
       return failure("secure_evidence_file_limit_exceeded") if relation.count >= entry.max_files
       if relation.sum(:byte_size) + requested_bytes > entry.max_total_bytes
@@ -230,24 +327,27 @@ module SecureEvidence
       left.bytesize == right.bytesize && ActiveSupport::SecurityUtils.secure_compare(left, right)
     end
 
-    def enqueue_scan
-      Community::ScanPostAttachmentJob.perform_later(upload_id: @upload.id)
+    def enqueue_scan(upload)
+      Community::ScanPostAttachmentJob.perform_later(upload_id: upload.id)
     rescue StandardError => error
       Rails.logger.error(
         "[SecureEvidence::CreateAttachment] scan scheduling failed " \
-        "upload_id=#{@upload.id} error=#{error.class}"
+        "upload_id=#{upload.id} error=#{error.class}"
       )
     end
 
-    def request_cleanup(error)
-      return unless @upload&.persisted?
+    def enqueue_retry_cleanup(result)
+      value = result.value
+      return unless value.is_a?(Hash)
 
-      @upload.request_cleanup!(error:)
-      Maintenance::CleanupForumUploadsJob.perform_later(upload_id: @upload.id)
-    rescue StandardError => cleanup_error
+      upload_id = value[:cleanup_upload_id]
+      return unless upload_id
+
+      Maintenance::CleanupForumUploadsJob.perform_later(upload_id:)
+    rescue StandardError => error
       Rails.logger.error(
-        "[SecureEvidence::CreateAttachment] cleanup scheduling failed " \
-        "upload_id=#{@upload&.id} error=#{cleanup_error.class}"
+        "[SecureEvidence::CreateAttachment] retry cleanup scheduling failed " \
+        "upload_id=#{upload_id} error=#{error.class}"
       )
     end
   end

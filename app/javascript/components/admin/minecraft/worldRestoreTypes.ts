@@ -27,8 +27,11 @@ export interface WorldRestorePlanRow {
   rolled_back?: boolean
   recovery_required?: boolean
   error_code?: string
+  resumable: boolean
+  is_expired: boolean
   authorize_url?: string
   execute_url?: string
+  cancel_url?: string
   plan_recovery_url?: string
   recovery_resolution?: WorldRestoreResolutionRow
 }
@@ -50,6 +53,8 @@ export interface WorldRestoreResolutionRow {
   error_code?: string
   recovery_resolution_proof?: boolean
   verified_world_state?: string
+  resumable: boolean
+  is_expired: boolean
   authorize_url?: string
   execute_url?: string
   cancel_url?: string

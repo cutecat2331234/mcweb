@@ -54,8 +54,9 @@ module SecureEvidence
           next
         end
 
+        uploading = attachment.state_uploading?
         attachment.update!(state: "purge_pending")
-        upload.schedule_cleanup!(at: @now)
+        upload.schedule_cleanup!(at: cleanup_due_at(upload, uploading:))
         EventRecorder.record!(
           attachment:,
           actor: @actor,
@@ -90,8 +91,16 @@ module SecureEvidence
     def recover_cleanup_schedule(upload)
       return upload.id if upload.status_cleanup_pending?
 
-      upload.schedule_cleanup!(at: @now)
+      upload.schedule_cleanup!(
+        at: cleanup_due_at(upload, uploading: upload.status_reserved?)
+      )
       upload.id
+    end
+
+    def cleanup_due_at(upload, uploading:)
+      return @now unless uploading && upload.expires_at
+
+      [ @now, upload.expires_at ].max
     end
 
     def enqueue_cleanup_after_commit(upload_id)

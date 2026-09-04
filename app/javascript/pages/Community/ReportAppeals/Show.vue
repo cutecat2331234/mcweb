@@ -94,7 +94,7 @@ watch(
 
 const baseError = computed(() => form.errors.base || props.form_errors?.base || '')
 const activeEvidenceCount = computed(() => props.appeal.attachments.filter((attachment) =>
-  ['pending', 'available', 'quarantined'].includes(attachment.state),
+  ['uploading', 'pending', 'available', 'quarantined'].includes(attachment.state),
 ).length)
 
 function submitAppeal() {

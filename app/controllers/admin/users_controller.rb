@@ -2,6 +2,8 @@
 
 module Admin
   class UsersController < BaseController
+    include StoreCreditLedgerSerialization
+
     before_action -> { require_admin_module!("system") },
                   except: %i[
                     store_credit_index
@@ -116,6 +118,14 @@ module Admin
     end
 
     def store_credit_show
+      ledger_result = Commerce::StoreCreditLedgerPage.call(user: @user, cursor: params[:cursor])
+      unless ledger_result.success?
+        return redirect_to admin_store_credit_user_path(@user), alert: service_error_message(ledger_result)
+      end
+
+      ledger_transactions = ledger_result.value.fetch(:transactions)
+      ledger_pagination = ledger_result.value.fetch(:pagination)
+
       render inertia: "Admin/Generic/Show", props: {
         title: @user.username,
         subtitle: t("mcweb.admin.store_credit_users.detail_subtitle"),
@@ -132,6 +142,21 @@ module Admin
         ],
         sections: [],
         backUrl: admin_store_credit_users_path,
+        storeCreditLedger: {
+          transactions: ledger_transactions.map do |transaction|
+            serialize_store_credit_ledger_entry(
+              transaction,
+              order_url: transaction.order && allowed_user_action?("store", "store.orders.read") ?
+                admin_store_order_path(transaction.order) : nil,
+              include_actor: true
+            )
+          end,
+          pagination: {
+            has_more: ledger_pagination.fetch(:has_more),
+            next_url: ledger_pagination[:next_cursor] ?
+              admin_store_credit_user_path(@user, cursor: ledger_pagination[:next_cursor]) : nil
+          }
+        },
         storeCreditForm: store_credit_form_props
       }
     end

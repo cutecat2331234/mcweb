@@ -5,8 +5,9 @@ module Maintenance
     queue_as :maintenance
 
     def perform
-      Identity::DataExport.completed.where("expires_at <= ?", Time.current).find_each do |data_export|
-        data_export.mark_expired_if_needed!
+      now = Time.current
+      Identity::DataExport.completed.where("expires_at <= ?", now).find_each do |data_export|
+        data_export.mark_expired_if_needed!(at: now)
       end
     end
   end

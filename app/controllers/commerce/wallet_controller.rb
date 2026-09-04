@@ -3,26 +3,31 @@
 module Commerce
   class WalletController < ApplicationController
     include PrivateNoStoreResponse
+    include StoreCreditLedgerSerialization
 
     before_action :require_login
 
     def show
-      transactions = current_user.store_credit_transactions.includes(:order).recent.limit(50)
+      result = Commerce::StoreCreditLedgerPage.call(user: current_user, cursor: params[:cursor])
+      return redirect_to store_wallet_path, alert: service_error_message(result) unless result.success?
+
+      transactions = result.value.fetch(:transactions)
+      pagination = result.value.fetch(:pagination)
 
       render inertia: "Commerce/Wallet/Show", props: {
         balanceCents: current_user.store_credit_cents.to_i,
         balanceLabel: format_money(current_user.store_credit_cents.to_i, "CNY"),
         memberships: Commerce::SerializeUserMemberships.for_user(current_user),
-        transactions: transactions.map do |tx|
-          {
-            amount_cents: tx.amount_cents,
-            amount_label: format_money(tx.amount_cents.abs, "CNY"),
-            credit: tx.amount_cents.positive?,
-            note: tx.note,
-            created_at: l(tx.created_at, format: :short),
-            order_url: tx.order ? store_order_path(tx.order) : nil
-          }
-        end
+        transactions: transactions.map do |transaction|
+          serialize_store_credit_ledger_entry(
+            transaction,
+            order_url: transaction.order ? store_order_path(transaction.order) : nil
+          )
+        end,
+        pagination: {
+          has_more: pagination.fetch(:has_more),
+          next_url: pagination[:next_cursor] ? store_wallet_path(cursor: pagination[:next_cursor]) : nil
+        }
       }
     end
   end

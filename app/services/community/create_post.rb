@@ -53,6 +53,10 @@ module Community
       section_lock_attempts = 0
       begin
         Community::Post.transaction do
+          @user = User.lock.find(@user.id)
+          state_result = account_write_access_result
+          raise ActiveRecord::Rollback if state_result.failure?
+
           @topic, = Community::SectionHierarchyLock.lock_topic!(@topic)
           state_result = reply_access_result
           raise ActiveRecord::Rollback if state_result.failure?
@@ -153,6 +157,13 @@ module Community
     end
 
     private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @user.deleted?
+      return ServiceResult.failure(error: :account_banned) if @user.banned?
+
+      ServiceResult.success
+    end
 
     def reply_access_result
       unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)

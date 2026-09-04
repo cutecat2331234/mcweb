@@ -12,6 +12,8 @@ function source(relativePath: string) {
 const lifecycle = source('app/javascript/components/admin/minecraft/WorldRestoreLifecycle.vue')
 const serverShow = source('app/javascript/pages/Admin/Minecraft/Servers/Show.vue')
 const serverController = source('app/controllers/admin/minecraft/servers_controller.rb')
+const worldRestoresController = source('app/controllers/admin/minecraft/world_restores_controller.rb')
+const cancelService = source('app/services/minecraft/cancel_world_restore.rb')
 const routes = source('config/routes.rb')
 const executeService = source('app/services/minecraft/execute_world_restore.rb')
 
@@ -40,8 +42,47 @@ test('server controls expose managed lifecycle props and remain blocked during r
   assert.doesNotMatch(serverController, /def backup_world|def restore_world|backup_directory:/)
   assert.match(routes, /resources :world_backups, only: :create/)
   assert.match(routes, /resources :world_restores, only: :create[\s\S]*post :authorize[\s\S]*post :execute/)
+  assert.match(routes, /post :execute[\s\S]*post :cancel[\s\S]*post :plan_recovery/)
   assert.match(routes, /post :plan_recovery[\s\S]*post :authorize_recovery[\s\S]*post :execute_recovery/)
   assert.match(routes, /post :cancel_recovery[\s\S]*post :takeover_recovery/)
+})
+
+test('server-owned resumability keeps local clock skew out of restore reachability', () => {
+  assert.doesNotMatch(lifecycle, /Date\.now\(\)/)
+  assert.match(lifecycle, /props\.model\.plans\.find\(\(candidate\) => candidate\.resumable\)/)
+  assert.match(lifecycle, /plan\?\.resumable[\s\S]*continuePlanTitle/)
+  assert.match(lifecycle, /record\.resumable[\s\S]*continuePlan\(record\)/)
+  assert.match(serverController, /resumable: resumable[\s\S]*is_expired: expired/)
+  assert.match(serverController, /plan\.expires_at <= now/)
+  assert.match(worldRestoresController, /resumable: resumable[\s\S]*is_expired: expired/)
+  assert.match(worldRestoresController, /resolution\.expired_by_time\?\(now\)/)
+})
+
+test('restore state conflicts clear local selections and reload authoritative props', () => {
+  assert.match(lifecycle, /function stateConflict\(error: unknown\)/)
+  assert.match(lifecycle, /world_restore_plan_expired/)
+  assert.match(lifecycle, /world_restore_recovery_resolution_expired/)
+  assert.match(lifecycle, /function clearPlanSelection\(\)[\s\S]*plan\.value = null[\s\S]*selectedBackupId\.value = ''/)
+  assert.match(lifecycle, /function clearRecoverySelection\(\)[\s\S]*recoveryResolution\.value = null/)
+  assert.match(lifecycle, /if \(scope === 'plan'\) clearPlanSelection\(\)[\s\S]*refresh\(\)/)
+  assert.match(lifecycle, /router\.reload\(\{ only: \['worldSafety'\]/)
+})
+
+test('owned unqueued restore plans expose an audited idempotent cancellation contract', () => {
+  assert.match(routes, /post :cancel/)
+  assert.match(worldRestoresController, /CancelWorldRestore\.call/)
+  assert.match(worldRestoresController, /expected_lock_version: params\[:expected_lock_version\]/)
+  assert.match(lifecycle, /plan\.value\.cancel_url/)
+  assert.match(lifecycle, /request_id: cancelRequestId\.value/)
+  assert.match(lifecycle, /expected_lock_version: plan\.value\.lock_version/)
+  assert.match(cancelService, /@actor\.id == @plan\.actor_id/)
+  assert.match(cancelService, /@plan\.lock![\s\S]*status\.in\?\(%w\[planned authorized\]\)/)
+  assert.match(cancelService, /@plan\.expires_at <= now/)
+  assert.match(cancelService, /status: "cancelled"/)
+  assert.match(cancelService, /result_summary:[\s\S]*"cancellation" => cancellation/)
+  assert.match(cancelService, /minecraft\.world_restore\.cancelled/)
+  assert.match(cancelService, /AuditLog\.record!/)
+  assert.doesNotMatch(cancelService, /destroy!?|delete(?:_all)?/)
 })
 
 test('recovery resolution uses Arco controls and node-proven step-up execution', () => {

@@ -88,7 +88,7 @@ module Minecraft
       contribution = Minecraft::IdentityLifecycle::DataExportContributor.call(
         context: ::Identity::DataExporting::Context.new(user:, generated_at: Time.current)
       )
-      accounts = contribution.documents.fetch("minecraft/accounts.json")
+      accounts = contribution.documents.fetch("minecraft/accounts.json").each_record.to_a
       json = JSON.generate(accounts)
 
       assert_equal 4, accounts.length
@@ -121,8 +121,11 @@ module Minecraft
       first = Minecraft::IdentityLifecycle::DataExportContributor.call(context:)
       second = Minecraft::IdentityLifecycle::DataExportContributor.call(context:)
 
-      assert_equal [], first.documents.fetch("minecraft/accounts.json")
-      assert_equal first.documents, second.documents
+      first_accounts = first.documents.fetch("minecraft/accounts.json").each_record.to_a
+      second_accounts = second.documents.fetch("minecraft/accounts.json").each_record.to_a
+      assert_equal [], first_accounts
+      assert_equal first_accounts, second_accounts
+      assert_equal first.documents.keys, second.documents.keys
       assert_equal 0, first.record_count
     end
 

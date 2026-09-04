@@ -446,6 +446,7 @@ Rails.application.routes.draw do
           member do
             post :authorize
             post :execute
+            post :cancel
             post :plan_recovery
             post :authorize_recovery
             post :execute_recovery

@@ -78,6 +78,7 @@ async function onChange(event: Event) {
 
 async function waitForScan(initial: SecureEvidenceAttachment) {
   if (initial.state === 'available' && initial.scan_status === 'clean') return initial
+  if (initial.state === 'upload_failed') throw new Error(props.copy.uploadFailed)
 
   for (let attempt = 0; attempt < 90; attempt += 1) {
     await new Promise((resolve) => window.setTimeout(resolve, 1000))
@@ -88,6 +89,7 @@ async function waitForScan(initial: SecureEvidenceAttachment) {
     if (!response.ok) throw new Error(props.copy.scanFailed)
     const payload = await response.json() as SecureEvidenceAttachment
     if (payload.state === 'available' && payload.scan_status === 'clean') return payload
+    if (payload.state === 'upload_failed') throw new Error(props.copy.uploadFailed)
     if (['quarantined', 'purge_pending', 'purged'].includes(payload.state)) {
       throw new Error(props.copy.scanFailed)
     }

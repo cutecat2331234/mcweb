@@ -42,11 +42,16 @@ module Community
       tag_result = nil
       poll_result = nil
       field_result = nil
+      attachment_result = nil
       inline_upload_result = nil
       state_result = nil
       lock_attempts = 0
       begin
         Community::Topic.transaction do
+          @user = User.lock.find(@user.id)
+          state_result = account_write_access_result
+          raise ActiveRecord::Rollback if state_result.failure?
+
           @section = Community::SectionHierarchyLock.lock!(@section).sole
           state_result = create_access_result
           raise ActiveRecord::Rollback if state_result.failure?
@@ -101,6 +106,13 @@ module Community
             require_required: true
           )
           raise ActiveRecord::Rollback unless field_result.success?
+
+          attachment_result = Community::LinkPostAttachments.call(
+            user: @user,
+            post: opening_post,
+            attachment_ids: @attachment_ids
+          )
+          raise ActiveRecord::Rollback if attachment_result.failure?
         end
       rescue Community::SectionHierarchyLock::HierarchyChanged, ActiveRecord::Deadlocked
         lock_attempts += 1
@@ -119,12 +131,7 @@ module Community
       return poll_result if poll_result&.failure?
       return field_result if field_result&.failure?
       return inline_upload_result if inline_upload_result&.failure?
-
-      opening_post = topic.posts.first
-      if opening_post
-        link_result = Community::LinkPostAttachments.call(user: @user, post: opening_post, attachment_ids: @attachment_ids)
-        return link_result if link_result.failure?
-      end
+      return attachment_result if attachment_result&.failure?
 
       ServiceResult.success(topic)
     rescue ActiveRecord::RecordInvalid => e
@@ -132,6 +139,13 @@ module Community
     end
 
     private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @user.deleted?
+      return ServiceResult.failure(error: :account_banned) if @user.banned?
+
+      ServiceResult.success
+    end
 
     def create_access_result
       unless Community::SectionAccess.view?(section: @section, user: @user)

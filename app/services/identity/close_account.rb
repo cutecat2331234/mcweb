@@ -199,6 +199,11 @@ module Identity
         account_closed_at: closed_at
       )
       @user.soft_delete!
+      AccountClosure::AuthoredContentDeletion.enqueue_initial!(
+        user: @user,
+        contribution: closure_results.fetch("identity.authored_content"),
+        requested_at: closed_at
+      )
 
       audit_result = Administration::AuditLogger.call(
         actor: @user,

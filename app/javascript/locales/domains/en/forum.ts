@@ -894,6 +894,8 @@ export default {
         "scanFailed": "The attachment did not pass the required scan.",
         "scanTimeout": "Scanning is taking longer than expected. Refresh to check its status.",
         "state": {
+          "uploading": "Uploading",
+          "upload_failed": "Upload failed",
           "pending": "Scanning",
           "available": "Available",
           "quarantined": "Quarantined",

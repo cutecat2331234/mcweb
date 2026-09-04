@@ -42,6 +42,7 @@ test('private draft submission exposes explicit upload cancel and versioned subm
   assert.match(show, /createIdempotencyKey/)
   assert.match(show, /cancelAppeal/)
   assert.match(show, /discardAttachment/)
+  assert.match(show, /\['uploading', 'pending', 'available', 'quarantined'\]/)
 })
 
 test('review UI keeps protected context separate and states that reversal is not automatic', () => {
@@ -51,6 +52,8 @@ test('review UI keeps protected context separate and states that reversal is not
   assert.match(show, /review\.noAutomaticReversal/)
   assert.match(show, /appeal\.can_decide/)
   assert.match(show, /SecureEvidenceUpload/)
+  assert.match(show, /forum\.reportAppeals\.evidence\.state/)
+  assert.match(show, /\['uploading', 'pending', 'available', 'quarantined'\]/)
 })
 
 test('appeal copy and nested vocabularies are symmetric in both locales', () => {

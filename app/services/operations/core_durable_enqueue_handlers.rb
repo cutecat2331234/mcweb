@@ -28,6 +28,7 @@ module Operations
       Identity::EmailChangeDelivery.register(registry)
       Identity::SecurityRecoveryMailDelivery.register(registry)
       Identity::DataExportGeneration.register(registry)
+      Identity::AccountClosure::AuthoredContentDeletion.register(registry)
       Commerce::FinanceExportGeneration.register(registry)
       Minecraft::NodeOperationPreparation.register(registry)
 

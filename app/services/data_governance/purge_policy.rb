@@ -11,6 +11,9 @@ module DataGovernance
     def call
       blockers = []
       blockers << "content_not_soft_deleted" unless @record.status_soft_deleted?
+      if account_closure_structural_container?
+        blockers << "account_closure_shared_container"
+      end
 
       policy = RetentionPolicy.find_by(resource_type: @record.target_type)
       blockers << "retention_policy_missing" unless policy
@@ -32,6 +35,15 @@ module DataGovernance
           retention_days: policy.retention_days
         }
       )
+    end
+
+    private
+
+    def account_closure_structural_container?
+      return false unless @record.deletion_reason == "account_closure_delete_content"
+      return true if @record.target_type.in?([ "Community::Topic", "Community::ProfilePost" ])
+
+      @target.is_a?(Community::Post) && @target.floor_number == 1
     end
   end
 end

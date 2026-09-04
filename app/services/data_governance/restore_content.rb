@@ -13,6 +13,7 @@ module DataGovernance
     def call
       return failure("reason_required") if @reason.blank?
       return failure("content_already_purged") if @record.status_purged?
+      return failure("account_closure_content_not_restorable") if account_closure_deletion?
       return ServiceResult.success(record: @record, replayed: true) if @record.status_restored?
 
       target = @record.target
@@ -29,6 +30,7 @@ module DataGovernance
           next
         end
         return failure("content_already_purged") if @record.status_purged?
+        return failure("account_closure_content_not_restorable") if account_closure_deletion?
 
         target.restore! if target.soft_deleted?
         @record.update!(
@@ -58,6 +60,10 @@ module DataGovernance
     end
 
     private
+
+    def account_closure_deletion?
+      @record.deletion_reason == "account_closure_delete_content"
+    end
 
     def failure(code)
       ServiceResult.failure(error: code, code: code)

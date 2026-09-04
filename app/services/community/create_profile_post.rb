@@ -16,12 +16,30 @@ module Community
       prepared = Community::PrepareProfileWallBody.call(author: @author, body: @body, max_length: 5_000)
       return prepared if prepared.failure?
 
-      post = Community::ProfilePost.create!(
-        profile_user: @profile_user,
-        author: @author,
-        body: prepared.value,
-        status: :published
-      )
+      post = nil
+      state_result = nil
+      Community::ProfilePost.transaction do
+        @author = User.lock.find(@author.id)
+        state_result = account_write_access_result
+        unless state_result.failure?
+          unless Community::ProfileWallPolicy.can_post?(
+            author: @author,
+            profile_user: @profile_user
+          )
+            state_result = ServiceResult.failure(error: "profile_post_not_allowed")
+          end
+        end
+        raise ActiveRecord::Rollback if state_result.failure?
+
+        post = Community::ProfilePost.create!(
+          profile_user: @profile_user,
+          author: @author,
+          body: prepared.value,
+          status: :published
+        )
+      end
+      return state_result if state_result&.failure?
+
       notify_owner!(post, prepared.value)
       ServiceResult.success(post)
     rescue ActiveRecord::RecordInvalid => e
@@ -29,6 +47,13 @@ module Community
     end
 
     private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @author.deleted?
+      return ServiceResult.failure(error: :account_banned) if @author.banned?
+
+      ServiceResult.success
+    end
 
     def notify_owner!(post, body)
       return if @profile_user.id == @author.id

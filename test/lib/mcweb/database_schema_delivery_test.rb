@@ -154,5 +154,15 @@ module Mcweb
       )
       assert_includes schema, "secure_evidence_attachment_events_immutable"
     end
+
+    test "fresh database schema preserves the append-only store-credit ledger contract" do
+      schema = Rails.root.join("db/schema.rb").read
+
+      assert_includes schema, 't.integer "ledger_version", default: 2, null: false'
+      assert_includes schema, 'name: "chk_store_credit_transactions_ledger_version"'
+      assert_includes schema, 'name: "chk_store_credit_transactions_balance_snapshot"'
+      assert_includes schema, "CREATE OR REPLACE FUNCTION public.store_credit_transactions_enforce_append_only()"
+      assert_includes schema, "CREATE TRIGGER store_credit_transactions_append_only"
+    end
   end
 end

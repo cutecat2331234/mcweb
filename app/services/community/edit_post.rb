@@ -73,9 +73,13 @@ module Community
 
       Community::Post.transaction do
         Identity::PermissionMutationLock.acquire_shared!
-        @user = User.uncached { User.find_by(id: @user&.id) }
+        @user = User.lock.find_by(id: @user&.id)
         unless @user
           result = failure(:you_cannot_edit_this_post)
+          raise ActiveRecord::Rollback
+        end
+        if @user.deleted? || @user.banned?
+          result = failure(@user.deleted? ? :account_deleted : :account_banned)
           raise ActiveRecord::Rollback
         end
 

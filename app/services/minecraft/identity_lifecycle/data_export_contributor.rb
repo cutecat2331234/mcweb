@@ -9,14 +9,21 @@ module Minecraft
             .where(user_id: context.user.id)
             .includes(player_profile: :player_identities)
             .order(:linked_at, :id)
-            .to_a
-          represented_profile_ids = links.filter_map(&:player_profile_id).index_with(true)
+          represented_profile_ids = links.where.not(player_profile_id: nil).select(:player_profile_id)
+          legacy = legacy_identities(context.user)
+          legacy_with_profile = legacy.where.not(player_profile_id: nil).where.not(player_profile_id: represented_profile_ids)
+          legacy_without_profile = legacy.where(player_profile_id: nil)
+          declared_count = links.count + legacy_with_profile.count + legacy_without_profile.count
 
-          accounts = links.map { |link| serialize_link(link) }
-          legacy_identities(context.user).each do |legacy_identity|
-            next if represented_profile_ids.key?(legacy_identity.player_profile_id)
-
-            accounts << serialize_legacy_identity(legacy_identity)
+          accounts = ::Identity::DataExporting::StreamingDocument.new(
+            declared_count:,
+            format: :json_array
+          ) do
+            Enumerator.new do |records|
+              stream_relation(links) { |link| records << serialize_link(link) }
+              stream_relation(legacy_with_profile) { |identity| records << serialize_legacy_identity(identity) }
+              stream_relation(legacy_without_profile) { |identity| records << serialize_legacy_identity(identity) }
+            end
           end
 
           ::Identity::DataExporting::Contribution.new(
@@ -25,6 +32,15 @@ module Minecraft
         end
 
         private
+
+        def stream_relation(relation)
+          relation.reorder(nil).find_in_batches(
+            batch_size: ::Identity::DataExporting::RecordSerializer::DEFAULT_STREAM_BATCH_SIZE,
+            order: :asc
+          ) do |batch|
+            batch.each { |record| yield record }
+          end
+        end
 
         def legacy_identities(user)
           Minecraft::Identity

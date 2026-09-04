@@ -4,17 +4,17 @@ module Identity
   module AccountClosure
     module AuthoredContentContributor
       RESOURCE_CONFIG = {
-        "topics" => {
-          model: Community::Topic,
-          fields: %w[title status deleted_at updated_at]
-        },
-        "posts" => {
-          model: Community::Post,
-          fields: %w[body status deleted_at updated_at]
-        },
-        "messages" => {
-          model: Community::Message,
-          fields: %w[body deleted_at updated_at]
+        # A topic is a shared container. Permanently purging it would cascade to
+        # replies owned by other people, so account closure only scrubs the
+        # closing author's title and never creates a lifecycle record for it.
+        "topics" => { model: Community::Topic, strategy: :scrub_title },
+        "posts" => { model: Community::Post, strategy: :soft_delete },
+        "messages" => { model: Community::Message, strategy: :soft_delete },
+        # Profile posts are shared containers for other members' comments.
+        "profile_posts" => { model: Community::ProfilePost, strategy: :scrub_body },
+        "profile_post_comments" => {
+          model: Community::ProfilePostComment,
+          strategy: :soft_delete
         }
       }.freeze
 
@@ -23,9 +23,7 @@ module Identity
       def preflight(context:)
         held = DataGovernance::RetentionHold.effective.exists?(target: context.user)
         counts = resource_counts(context.user)
-        outcome = if held
-          "legally_retained"
-        elsif context.closure_mode == "delete_content"
+        outcome = if context.closure_mode == "delete_content"
           "authored_content_deletion_planned"
         else
           "stable_anonymous_author"
@@ -35,65 +33,58 @@ module Identity
           details: {
             outcome:,
             retention_hold: held,
-            records: counts
+            records: counts,
+            upper_bounds: resource_upper_bounds(context.user)
           }
         )
       end
 
       def execute(context:, preflight:)
-        if preflight.details.fetch("retention_hold")
-          return Contribution.completed(
-            details: preflight.details.merge("outcome" => "legally_retained")
-          )
-        end
         unless context.closure_mode == "delete_content"
           return Contribution.completed(
-            details: preflight.details.merge("outcome" => "stable_anonymous_author")
+            details: preflight.details.except("upper_bounds").merge(
+              "outcome" => "stable_anonymous_author"
+            )
           )
         end
 
-        snapshots = {}
-        deleted_counts = {}
-        blocked_counts = {}
-        RESOURCE_CONFIG.each do |key, config|
-          snapshots[key] = []
-          deleted_counts[key] = 0
-          blocked_counts[key] = 0
-          records_for(config.fetch(:model), context.user).order(:id).lock.each do |record|
-            if deletion_allowed?(record)
-              snapshots[key] << snapshot(record, config.fetch(:fields))
-              delete_record!(record, key:, at: context.at, locale: context.user.locale)
-              deleted_counts[key] += 1
-            else
-              blocked_counts[key] += 1
-            end
-          end
-        end
-
-        outcome = blocked_counts.values.sum.positive? ?
-          "legally_retained" : "authored_content_deleted"
+        request_key = SecureRandom.uuid
+        zero_counts = RESOURCE_CONFIG.keys.index_with { 0 }
         Contribution.completed(
           details: {
-            outcome:,
-            deleted_records: deleted_counts,
-            retained_records: blocked_counts
-          },
-          compensation_data: snapshots
+            outcome: "authored_content_deletion_queued",
+            closure_mode: "delete_content",
+            retention_hold_at_request: preflight.details.fetch("retention_hold"),
+            records: preflight.details.fetch("records"),
+            deleted_records: zero_counts,
+            retained_records: zero_counts,
+            processing: {
+              schema_version: AuthoredContentDeletion::SCHEMA_VERSION,
+              status: "queued",
+              request_key:,
+              repair_only: false,
+              batch_number: 1,
+              resource_index: 0,
+              cursors: zero_counts,
+              upper_bounds: preflight.details.fetch("upper_bounds"),
+              deleted_records: zero_counts,
+              retained_records: zero_counts,
+              missing_records: zero_counts,
+              blocker_counts: {},
+              requested_at: context.at.iso8601
+            }
+          }
         )
       end
 
       def compensate(context:, execution:)
-        snapshots = (execution.compensation_data || {}).to_h
-        restored_counts = {}
-        RESOURCE_CONFIG.each do |key, config|
-          restored_counts[key] = 0
-          Array(snapshots[key]).reverse_each do |entry|
-            attributes = entry.fetch("attributes")
-            config.fetch(:model).unscoped.where(id: entry.fetch("id")).update_all(attributes)
-            restored_counts[key] += 1
-          end
-        end
-        Contribution.compensated(details: { restored_records: restored_counts })
+        Contribution.compensated(
+          details: {
+            outcome: "deletion_plan_cancelled",
+            at: context.at.iso8601,
+            prior_status: execution.status
+          }
+        )
       end
 
       def resource_counts(user)
@@ -101,49 +92,16 @@ module Identity
           records_for(config.fetch(:model), user).count
         end
       end
-      private_class_method :resource_counts
 
-      def records_for(model, user)
-        model.where(user:)
-      end
-      private_class_method :records_for
-
-      def deletion_allowed?(record)
-        result = DataGovernance::DeletionPolicy.call(target: record)
-        result.success? && result.value.fetch(:allowed)
-      end
-      private_class_method :deletion_allowed?
-
-      def snapshot(record, fields)
-        {
-          "id" => record.id,
-          "attributes" => record.attributes.slice(*fields)
-        }
-      end
-      private_class_method :snapshot
-
-      def delete_record!(record, key:, at:, locale:)
-        case key
-        when "topics"
-          record.update!(
-            title: I18n.t("mcweb.identity.deleted_content_title", locale:),
-            status: :deleted,
-            deleted_at: at
-          )
-        when "posts"
-          record.update!(
-            body: I18n.t("mcweb.identity.deleted_content_body", locale:),
-            status: :deleted,
-            deleted_at: at
-          )
-        when "messages"
-          record.update!(
-            body: I18n.t("mcweb.identity.deleted_content_body", locale:),
-            deleted_at: at
-          )
+      def resource_upper_bounds(user)
+        RESOURCE_CONFIG.transform_values do |config|
+          records_for(config.fetch(:model), user).maximum(:id).to_i
         end
       end
-      private_class_method :delete_record!
+
+      def records_for(model, user)
+        model.unscoped.where(user_id: user.id)
+      end
     end
   end
 end

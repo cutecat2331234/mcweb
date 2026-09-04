@@ -8,11 +8,13 @@ module Community
           user = context.user
           ::Identity::DataExporting::Contribution.new(
             documents: {
-              "forum/report_cases.json" => {
-                "submitted_reports" => submitted_reports(user),
-                "appeals" => appeals(user),
-                "account_actions" => account_actions(user)
-              }
+              "forum/report_cases.json" => ::Identity::DataExporting::StreamingObjectDocument.new(
+                members: {
+                  "submitted_reports" => submitted_reports(user),
+                  "appeals" => appeals(user),
+                  "account_actions" => account_actions(user)
+                }
+              )
             }
           )
         end
@@ -20,7 +22,8 @@ module Community
         private
 
         def submitted_reports(user)
-          Community::Report.where(reporter_id: user.id).order(:id).map do |report|
+          scope = Community::Report.where(reporter_id: user.id).order(:id)
+          ::Identity::DataExporting::RecordSerializer.stream_relation(scope) do |report|
             {
               "public_id" => report.public_id,
               "target_kind" => Community::ReporterReportSerializer::SAFE_TARGET_KINDS
@@ -36,37 +39,38 @@ module Community
         end
 
         def appeals(user)
-          Community::ReportAppeal
+          scope = Community::ReportAppeal
             .where(appellant_id: user.id)
             .includes(:report, :events)
             .order(:id)
-            .map do |appeal|
-              {
-                "public_id" => appeal.public_id,
-                "report_public_id" => appeal.report.public_id,
-                "appellant_role" => appeal.appellant_role,
-                "reason" => appeal.reason,
-                "status" => appeal.status,
-                "public_outcome_code" => appeal.public_outcome_code,
-                "expires_at" => timestamp(appeal.expires_at),
-                "submitted_at" => timestamp(appeal.submitted_at),
-                "decided_at" => timestamp(appeal.decided_at),
-                "cancelled_at" => timestamp(appeal.cancelled_at),
-                "events" => appeal.events.timeline.map do |event|
-                  {
-                    "type" => event.event_type,
-                    "from_status" => event.from_status,
-                    "to_status" => event.to_status,
-                    "public_outcome_code" => event.public_outcome_code,
-                    "occurred_at" => timestamp(event.occurred_at)
-                  }.compact
-                end
-              }.compact
-            end
+          ::Identity::DataExporting::RecordSerializer.stream_relation(scope) do |appeal|
+            {
+              "public_id" => appeal.public_id,
+              "report_public_id" => appeal.report.public_id,
+              "appellant_role" => appeal.appellant_role,
+              "reason" => appeal.reason,
+              "status" => appeal.status,
+              "public_outcome_code" => appeal.public_outcome_code,
+              "expires_at" => timestamp(appeal.expires_at),
+              "submitted_at" => timestamp(appeal.submitted_at),
+              "decided_at" => timestamp(appeal.decided_at),
+              "cancelled_at" => timestamp(appeal.cancelled_at),
+              "events" => appeal.events.sort_by { |event| [ event.occurred_at, event.id ] }.map do |event|
+                {
+                  "type" => event.event_type,
+                  "from_status" => event.from_status,
+                  "to_status" => event.to_status,
+                  "public_outcome_code" => event.public_outcome_code,
+                  "occurred_at" => timestamp(event.occurred_at)
+                }.compact
+              end
+            }.compact
+          end
         end
 
         def account_actions(user)
-          Community::Report.where(affected_user_id: user.id).order(:id).map do |report|
+          scope = Community::Report.where(affected_user_id: user.id).order(:id)
+          ::Identity::DataExporting::RecordSerializer.stream_relation(scope) do |report|
             {
               "report_public_id" => report.public_id,
               "status" => report.status,

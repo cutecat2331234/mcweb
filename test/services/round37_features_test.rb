@@ -110,6 +110,21 @@ class Commerce::RestoreGiftCardBalanceTest < ActiveSupport::TestCase
     assert @gift_card.active?
   end
 
+  test "full restoration rolls back when its ledger entry fails" do
+    failure = ServiceResult.failure(error: "gift_card_transaction_invalid")
+    original_amount = @order.gift_card_amount_cents
+
+    result = Commerce::RecordGiftCardTransaction.stub(:call, failure) do
+      Commerce::RestoreGiftCardBalance.call(order: @order)
+    end
+
+    assert_predicate result, :failure?
+    assert_equal 0, @gift_card.reload.balance_cents
+    assert_equal original_amount, @order.reload.gift_card_amount_cents
+    assert_equal 0, @order.gift_card_restored_cents
+    refute @gift_card.transactions.exists?(order: @order, transaction_type: :credit)
+  end
+
   test "fails when gift card association is missing" do
     @order.update_columns(store_gift_card_id: nil)
 
@@ -169,6 +184,24 @@ class Commerce::RestoreGiftCardPartialTest < ActiveSupport::TestCase
     )
     assert result.failure?
     assert_equal "礼品卡信息无效。", result.error
+  end
+
+
+  test "partial restoration rolls back when its ledger entry fails" do
+    failure = ServiceResult.failure(error: "gift_card_transaction_invalid")
+
+    result = Commerce::RecordGiftCardTransaction.stub(:call, failure) do
+      Commerce::RestoreGiftCardPartial.call(
+        order: @order,
+        refund_amount_cents: 150,
+        payment_amount_cents: 300
+      )
+    end
+
+    assert_predicate result, :failure?
+    assert_equal 0, @gift_card.reload.balance_cents
+    assert_equal 0, @order.reload.gift_card_restored_cents
+    refute @gift_card.transactions.exists?(order: @order, transaction_type: :credit)
   end
 end
 

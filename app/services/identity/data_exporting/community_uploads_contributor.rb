@@ -11,7 +11,7 @@ module Identity
       def self.call(context:)
         Contribution.new(
           documents: {
-            "uploads.json" => RecordSerializer.records(
+            "uploads.json" => RecordSerializer.stream_records(
               Community::Upload.where(user: context.user).order(:id),
               FIELDS
             )

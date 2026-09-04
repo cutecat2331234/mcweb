@@ -53,7 +53,15 @@ module Community
       message = nil
       invitations = []
       failure = nil
-      Identity::UserMutationLock.with_users(users: [ @sender, *recipients ]) do
+      Identity::UserMutationLock.with_users(users: [ @sender, *recipients ]) do |locked_users|
+        @sender = locked_users.fetch(@sender.id)
+        recipients = recipients.map { |recipient| locked_users.fetch(recipient.id) }
+        state_result = account_write_access_result
+        if state_result.failure?
+          failure = state_result
+          raise ActiveRecord::Rollback
+        end
+
         conversation = Community::Conversation.create!(
           title: @title,
           is_group: true,
@@ -104,6 +112,15 @@ module Community
       ServiceResult.success(conversation: conversation, message: message, invitations: invitations)
     rescue ActiveRecord::RecordInvalid => error
       ServiceResult.failure(errors: error.record.errors.to_hash)
+    end
+
+    private
+
+    def account_write_access_result
+      return ServiceResult.failure(error: :account_deleted) if @sender.deleted?
+      return ServiceResult.failure(error: :account_banned) if @sender.banned?
+
+      ServiceResult.success
     end
   end
 end

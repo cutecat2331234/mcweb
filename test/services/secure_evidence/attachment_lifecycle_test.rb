@@ -40,7 +40,176 @@ module SecureEvidence
       assert_equal "stored", upload.status
       assert_equal attachment.byte_size, upload.byte_size
       assert_equal 1, attachment.events.where(event_type: "created").count
+      assert_equal 1, attachment.events.where(event_type: "upload_stored").count
       assert AuditLog.exists?(action: "secure_evidence.created", resource_public_id: attachment.public_id)
+    end
+
+    test "failed storage is tracked cleaned and retried on the same attachment" do
+      registry = build_registry(max_files: 1)
+      SiteSetting.set("forum.upload_quota.account.hourly_count", "1")
+      original_upload = ActiveStorage::Blob.instance_method(:upload_without_unfurling)
+      ActiveStorage::Blob.define_method(:upload_without_unfurling) do |_io|
+        raise Timeout::Error, "object storage response timed out"
+      end
+
+      failed = create_attachment(
+        file: uploaded_file("retryable storage failure"),
+        key: "evidence-storage-retry-0001",
+        registry:
+      )
+      assert_predicate failed, :failure?
+      assert_equal "secure_evidence_upload_failed", failed.code
+
+      attachment = Attachment.find_by!(
+        uploader: @actor,
+        idempotency_key: "evidence-storage-retry-0001"
+      )
+      first_upload = attachment.upload_record
+      first_blob_id = first_upload.active_storage_blob_id
+      assert_equal "upload_failed", attachment.state
+      assert_equal "cleanup_failed", first_upload.status
+      assert_equal "pending", first_upload.scan_status
+      assert_operator first_upload.expires_at, :>, Time.current
+      refute Community::Upload.cleanup_due(Time.current).exists?(first_upload.id)
+      assert ActiveStorage::Blob.exists?(first_blob_id)
+      refute AttachmentAccess.download_allowed?(
+        attachment,
+        actor: @actor,
+        catalog: registry
+      )
+      refute enqueued_jobs.any? { |job| job[:job] == Community::ScanPostAttachmentJob }
+
+      pending_retry = create_attachment(
+        file: uploaded_file("retryable storage failure"),
+        key: "evidence-storage-retry-0001",
+        registry:
+      )
+      assert_predicate pending_retry, :failure?
+      assert_equal "secure_evidence_upload_retry_pending", pending_retry.code
+      assert_equal 1, Community::Upload.where(
+        user: @actor,
+        kind: "secure_evidence_attachment"
+      ).count
+
+      other_key = create_attachment(
+        file: uploaded_file("other evidence while cleanup is pending"),
+        key: "evidence-storage-retry-0002",
+        registry:
+      )
+      assert_predicate other_key, :failure?
+      assert_equal "secure_evidence_file_limit_exceeded", other_key.code
+
+      early_cleanup = Community::CleanupUpload.call(upload: first_upload, now: Time.current)
+      assert_predicate early_cleanup, :success?
+      assert_equal "not_due", early_cleanup.value.fetch(:skipped)
+
+      cleanup = Community::CleanupUpload.call(
+        upload: first_upload,
+        now: first_upload.expires_at + 1.second
+      )
+      assert_predicate cleanup, :success?
+      assert_equal "upload_failed", attachment.reload.state
+      assert_equal "cleaned", first_upload.reload.status
+      refute ActiveStorage::Blob.exists?(first_blob_id)
+
+      ActiveStorage::Blob.define_method(:upload_without_unfurling, original_upload)
+      retried = create_attachment(
+        file: uploaded_file("retryable storage failure"),
+        key: "evidence-storage-retry-0001",
+        registry:
+      )
+
+      assert_predicate retried, :success?
+      assert_equal true, retried.value.fetch(:idempotent)
+      assert_equal attachment.id, retried.value.fetch(:attachment).id
+      assert_equal "pending", attachment.reload.state
+      attempts = Community::Upload.where(
+        user: @actor,
+        kind: "secure_evidence_attachment"
+      ).order(:id)
+      assert_equal [ first_upload.id ], attempts.pluck(:id)
+      assert_equal [ "stored" ], attempts.pluck(:status)
+      assert_equal 1, attempts.counted_toward_quota.count
+      assert_equal 1, attachment.events.where(event_type: "upload_failed").count
+      assert_equal 1, attachment.events.where(event_type: "upload_retried").count
+      assert_equal 1, attachment.events.where(event_type: "upload_stored").count
+    ensure
+      ActiveStorage::Blob.define_method(:upload_without_unfurling, original_upload) if original_upload
+    end
+
+    test "a lost finalize acknowledgement reconciles the committed upload" do
+      original_finalize = StoreAttachmentUpload.instance_method(:finalize_upload!)
+      StoreAttachmentUpload.define_method(:finalize_upload!) do
+        original_finalize.bind_call(self)
+        raise IOError, "simulated lost commit acknowledgement"
+      end
+      StoreAttachmentUpload.send(:private, :finalize_upload!)
+
+      result = create_attachment(
+        file: uploaded_file("commit acknowledgement evidence"),
+        key: "evidence-commit-ack-0001"
+      )
+
+      assert_predicate result, :success?
+      attachment = result.value.fetch(:attachment)
+      upload = attachment.upload_record
+      assert_equal "pending", attachment.state
+      assert_equal "stored", upload.status
+      assert upload.blob.present?
+      assert_equal 1, attachment.events.where(event_type: "upload_stored").count
+      assert_equal 0, attachment.events.where(event_type: "upload_failed").count
+      assert_enqueued_with(
+        job: Community::ScanPostAttachmentJob,
+        args: [ { upload_id: upload.id } ]
+      )
+    ensure
+      if original_finalize
+        StoreAttachmentUpload.define_method(:finalize_upload!, original_finalize)
+        StoreAttachmentUpload.send(:private, :finalize_upload!)
+      end
+    end
+
+    test "maintenance reconciles an uploading attempt abandoned after remote storage" do
+      original_upload = ActiveStorage::Blob.instance_method(:upload_without_unfurling)
+      ActiveStorage::Blob.define_method(:upload_without_unfurling) do |io|
+        original_upload.bind_call(self, io)
+        raise SystemExit, "simulated worker loss"
+      end
+
+      assert_raises(SystemExit) do
+        create_attachment(
+          file: uploaded_file("abandoned after storage"),
+          key: "evidence-abandoned-upload-0001"
+        )
+      end
+      attachment = Attachment.find_by!(
+        uploader: @actor,
+        idempotency_key: "evidence-abandoned-upload-0001"
+      )
+      upload = attachment.upload_record
+      blob_id = upload.active_storage_blob_id
+      assert_equal "uploading", attachment.state
+      assert_equal "reserved", upload.status
+      assert ActiveStorage::Blob.exists?(blob_id)
+      refute AttachmentAccess.download_allowed?(
+        attachment,
+        actor: @actor,
+        catalog: @registry
+      )
+
+      ActiveStorage::Blob.define_method(:upload_without_unfurling, original_upload)
+      upload.update!(expires_at: 1.minute.ago)
+      assert Community::Upload.cleanup_due(Time.current).exists?(upload.id)
+      cleanup = Community::CleanupUpload.call(upload:, now: Time.current)
+
+      assert_predicate cleanup, :success?
+      assert_equal "upload_failed", attachment.reload.state
+      assert_equal "cleaned", upload.reload.status
+      refute ActiveStorage::Blob.exists?(blob_id)
+      failure_event = attachment.events.find_by!(event_type: "upload_failed")
+      assert_equal "secure_evidence_upload_timeout", failure_event.metadata.fetch("failure_code")
+    ensure
+      ActiveStorage::Blob.define_method(:upload_without_unfurling, original_upload) if original_upload
     end
 
     test "rejects spoofed executable content and enforces per-subject file limit" do
@@ -232,7 +401,8 @@ module SecureEvidence
       assert_equal "purged", attachment.reload.state
       assert_equal metadata, attachment.attributes.slice(*metadata.keys)
       refute ActiveStorage::Blob.exists?(blob_id)
-      assert_equal %w[created discarded purged], attachment.events.timeline.pluck(:event_type)
+      assert_equal %w[created upload_stored discarded purged],
+        attachment.events.timeline.pluck(:event_type)
 
       replay = DiscardAttachment.call(
         attachment:,
@@ -396,7 +566,7 @@ module SecureEvidence
       assert attachment.purged_at
       assert_equal "expired evidence.txt", attachment.filename
       refute ActiveStorage::Blob.exists?(blob_id)
-      assert_equal %w[created scan_clean cleanup_scheduled purged],
+      assert_equal %w[created upload_stored scan_clean cleanup_scheduled purged],
         attachment.events.timeline.pluck(:event_type)
     end
 
@@ -437,12 +607,12 @@ module SecureEvidence
       assert_predicate scheduled, :success?
 
       blob = attachment.blob
-      original_purge = ActiveStorage::Blob.instance_method(:purge)
+      original_delete = ActiveStorage::Blob.instance_method(:delete)
       target_blob_id = blob.id
-      ActiveStorage::Blob.define_method(:purge) do
+      ActiveStorage::Blob.define_method(:delete) do
         raise IOError, "storage unavailable" if id == target_blob_id
 
-        original_purge.bind_call(self)
+        original_delete.bind_call(self)
       end
       begin
         failed = Community::CleanupUpload.call(
@@ -450,12 +620,13 @@ module SecureEvidence
           now: Time.current
         )
       ensure
-        ActiveStorage::Blob.define_method(:purge, original_purge)
+        ActiveStorage::Blob.define_method(:delete, original_delete)
       end
 
       assert_predicate failed, :failure?
       assert_equal "cleanup_failed", attachment.upload_record.reload.status
       assert_equal "purge_pending", attachment.reload.state
+      assert ActiveStorage::Blob.exists?(blob.id)
 
       retried = Community::CleanupUpload.call(
         upload: attachment.upload_record,
@@ -516,11 +687,15 @@ module SecureEvidence
       context = ::Identity::DataExporting::Context.new(user: @actor, generated_at: Time.current)
       export = IdentityLifecycle::DataExportContributor.call(context:)
       record = export.documents.fetch("secure_evidence/attachments.json").first
+      events = export.documents.fetch("secure_evidence/attachment-events.json").each_record.to_a
 
       assert_equal attachment.public_id, record.fetch("public_id")
       assert_equal attachment.sha256, record.fetch("sha256")
+      assert events.any? { |event| event.fetch("attachment_public_id") == attachment.public_id }
       refute record.key?("blob_key")
       refute record.key?("download_url")
+      refute record.key?("scanner")
+      refute record.key?("scan_result_code")
 
       closure_context = ::Identity::AccountClosure::Context.new(
         user: @actor,

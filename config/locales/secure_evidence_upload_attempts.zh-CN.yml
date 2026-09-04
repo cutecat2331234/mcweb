@@ -1,0 +1,12 @@
+zh-CN:
+  mcweb:
+    services:
+      errors:
+        secure_evidence_upload_failed: "证据文件未能完成存储；系统会先清理残留上传，再允许安全重试。"
+        secure_evidence_upload_retry_pending: "上一次证据上传仍在清理中，请稍后使用同一文件重试。"
+    commerce:
+      payment_disputes:
+        evidence:
+          statuses:
+            uploading: "正在上传"
+            upload_failed: "上传失败"

@@ -15,6 +15,13 @@ private_s3:
   region: <%= ENV["MCWEB_S3_REGION"] %>
   bucket: <%= ENV["MCWEB_S3_BUCKET"] %>
   public: false
+  # Keep every SDK attempt bounded well inside the one-hour upload lease. Three
+  # standard attempts can spend at most about 6.5 minutes in connect/read waits,
+  # leaving the cleanup worker a wide safety margin before it may reclaim a key.
+  http_open_timeout: 10
+  http_read_timeout: 120
+  retry_mode: standard
+  max_attempts: 3
   force_path_style: <%= ActiveModel::Type::Boolean.new.cast(ENV.fetch("MCWEB_S3_FORCE_PATH_STYLE", "0")) %>
 <% if ENV["MCWEB_S3_ENDPOINT"].present? %>
   endpoint: <%= ENV["MCWEB_S3_ENDPOINT"] %>

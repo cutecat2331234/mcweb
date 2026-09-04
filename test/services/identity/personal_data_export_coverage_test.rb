@@ -20,8 +20,10 @@ module Identity
       commerce_first = DataExporting::CommerceActivityContributor.call(context:)
       commerce_second = DataExporting::CommerceActivityContributor.call(context:)
 
-      assert_equal community_first.documents, community_second.documents
-      assert_equal commerce_first.documents, commerce_second.documents
+      assert_equal materialize_export(community_first.documents),
+                   materialize_export(community_second.documents)
+      assert_equal materialize_export(commerce_first.documents),
+                   materialize_export(commerce_second.documents)
       assert_equal 0, community_first.record_count
       assert_equal 0, commerce_first.record_count
     end
@@ -37,11 +39,12 @@ module Identity
         context: DataExporting::Context.new(user:, generated_at: Time.current)
       )
 
-      follows = contribution.documents.fetch("forum/relationships/follows.json")
-      blocks = contribution.documents.fetch("forum/relationships/blocks.json")
+      documents = materialize_export(contribution.documents)
+      follows = documents.fetch("forum/relationships/follows.json")
+      blocks = documents.fetch("forum/relationships/blocks.json")
       assert_equal followed.public_id, follows.sole.fetch("target_public_id")
       assert_empty blocks
-      refute_includes JSON.generate(contribution.documents), incoming_blocker.username
+      refute_includes JSON.generate(documents), incoming_blocker.username
     end
 
     test "commerce allowlists exclude provider payloads and internal dispute signals" do
@@ -59,9 +62,50 @@ module Identity
       ].each { |field| refute_includes exported_fields, field }
     end
 
+    test "commerce account export includes the complete store credit ledger without authorization secrets" do
+      user = create_user
+      transaction = Commerce::StoreCreditTransaction.create!(
+        user: user,
+        amount_cents: 250,
+        balance_before_cents: 100,
+        balance_after_cents: 350,
+        note: "customer-visible correction"
+      )
+
+      contribution = DataExporting::CommerceAccountContributor.call(
+        context: DataExporting::Context.new(user:, generated_at: Time.current)
+      )
+      rows = contribution.documents.fetch("commerce/store-credit-transactions.json").each_record.to_a
+
+      assert_equal transaction.id, rows.sole.fetch("id")
+      assert_equal 100, rows.sole.fetch("balance_before_cents")
+      assert_equal 350, rows.sole.fetch("balance_after_cents")
+      assert_equal "credit", rows.sole.fetch("source")
+      %w[store_order_id request_id request_fingerprint authorization_digest actor_id].each do |field|
+        refute_includes rows.sole.keys, field
+      end
+    end
+
     test "community points omit internal deduplication tokens" do
       refute_includes DataExporting::CommunityActivityContributor::POINT_TRANSACTION_FIELDS,
                       "dedupe_token"
+    end
+
+    private
+
+    def materialize_export(value)
+      case value
+      when DataExporting::StreamingDocument
+        value.each_record.map { |record| materialize_export(record) }
+      when DataExporting::StreamingObjectDocument
+        value.members.transform_values { |member| materialize_export(member) }
+      when Hash
+        value.transform_values { |member| materialize_export(member) }
+      when Array
+        value.map { |member| materialize_export(member) }
+      else
+        value
+      end
     end
   end
 end

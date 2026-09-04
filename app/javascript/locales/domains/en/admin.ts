@@ -4021,6 +4021,14 @@ export default {
       "noMemberships": "No memberships yet.",
       "transactions": "Transaction history",
       "viewOrder": "View order",
+      "viewOrderNumber": "Order {number}",
+      "ledgerId": "Transaction ID",
+      "change": "Change",
+      "source": "Source",
+      "balance": "Balance before → after",
+      "recordedAt": "Recorded at",
+      "legacyBalanceUnavailable": "Balance snapshot unavailable for this legacy entry",
+      "olderTransactions": "View older transactions",
       "empty": "No transactions yet."
     },
     "stockAlerts": {
@@ -5215,13 +5223,21 @@ export default {
       "revoke": "Revoke",
       "revokeConfirm": "Revoke this export and remove its download file?",
       "failedDescription": "Generation failed without exposing internal error details. You can retry safely.",
+      "tooLargeDescription": "This account archive exceeded the export size limit. Contact support to arrange a scoped export.",
+      "resourceExhaustedDescription": "The export service ran out of capacity while building this archive. Retry later; your source data was not changed.",
+      "recoveryDescription": "Background processing stopped before this archive became ready. Restart this export to continue safely.",
       "backToSecurity": "Back to account security",
       "modules": {
         "identityProfile": "Account profile",
         "identityNotifications": "Notifications",
         "communityContent": "Community content",
+        "communityActivity": "Community activity",
         "communityUploads": "Uploads",
-        "commerceAccount": "Commerce account data"
+        "communityReportCases": "Reports and appeals",
+        "commerceAccount": "Commerce account data",
+        "commerceActivity": "Commerce activity",
+        "minecraftAccounts": "Minecraft accounts",
+        "secureEvidenceAttachments": "Evidence attachments"
       },
       "status": {
         "queued": "Queued",

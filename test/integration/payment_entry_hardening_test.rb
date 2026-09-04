@@ -150,7 +150,7 @@ class PaymentEntryHardeningTest < ActionDispatch::IntegrationTest
       post store_checkout_path, params: {
         order_id: order.public_id,
         checkout: { provider: "fake" }
-      }
+      }, headers: store_order_checkout_headers(order)
     end
 
     assert_redirected_to store_order_path(order)
@@ -175,7 +175,7 @@ class PaymentEntryHardeningTest < ActionDispatch::IntegrationTest
         post store_checkout_path, params: {
           order_id: order.public_id,
           checkout: { provider: "stripe" }
-        }
+        }, headers: store_order_checkout_headers(order)
 
         assert_redirected_to store_order_path(order)
         assert_equal "pending", order.reload.status
@@ -184,7 +184,7 @@ class PaymentEntryHardeningTest < ActionDispatch::IntegrationTest
         post store_checkout_path, params: {
           order_id: order.public_id,
           checkout: { provider: "fake" }
-        }
+        }, headers: store_order_checkout_headers(order)
 
         assert_response :redirect
         assert_match %r{/app/payments/fake/fake_}, response.location
@@ -197,6 +197,13 @@ class PaymentEntryHardeningTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def store_order_checkout_headers(order)
+    frontend_application_request_headers(
+      application_id: "store",
+      referer: store_order_url(order)
+    )
+  end
 
   def configure_stripe!(enabled:, credentials:)
     Payments::ProviderConfig.find_or_initialize_by(provider: "stripe").tap do |config|

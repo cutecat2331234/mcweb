@@ -151,6 +151,50 @@ load_runtime_environment() {
   fi
 }
 
+valid_non_secret_s3_endpoint() {
+  local endpoint="$1"
+
+  printf '%s' "${endpoint}" | ruby -ripaddr -e '
+    endpoint = STDIN.read
+    match = /\Ahttps:\/\/(?<authority>[^\/?#@]+)\/?\z/i.match(endpoint)
+    exit 1 unless match
+
+    authority = match[:authority]
+    if authority.start_with?("[")
+      authority_match = /\A\[(?<host>[0-9a-f:.]+)\](?::(?<port>[0-9]+))?\z/i.match(authority)
+      exit 1 unless authority_match
+      begin
+        exit 1 unless IPAddr.new(authority_match[:host]).ipv6?
+      rescue IPAddr::InvalidAddressError
+        exit 1
+      end
+    else
+      authority_match = /\A(?<host>[^:]+)(?::(?<port>[0-9]+))?\z/.match(authority)
+      exit 1 unless authority_match
+      host = authority_match[:host]
+      if host.match?(/\A[0-9.]+\z/)
+        begin
+          exit 1 unless IPAddr.new(host).ipv4?
+        rescue IPAddr::InvalidAddressError
+          exit 1
+        end
+      else
+        dns_host = host.delete_suffix(".")
+        labels = dns_host.split(".", -1)
+        valid_dns = dns_host.bytesize.between?(1, 253) &&
+          labels.all? do |label|
+            label.bytesize.between?(1, 63) &&
+              label.match?(/\A[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\z/)
+          end
+        exit 1 unless valid_dns
+      end
+    end
+
+    port = authority_match[:port]
+    exit 1 if port && (!port.match?(/\A[0-9]{1,5}\z/) || !Integer(port, 10).between?(1, 65_535))
+  ' >/dev/null 2>&1
+}
+
 write_safe_configuration() {
   local output="$1"
   local key value line
@@ -203,8 +247,7 @@ write_safe_configuration() {
       [[ "${value}" != *$'\n'* && "${value}" != *$'\r'* ]] ||
         die "refusing multiline value in non-secret configuration: ${key}"
       if [[ ( "${key}" == "MCWEB_S3_ENDPOINT" || "${key}" == "MCWEB_BACKUP_S3_ENDPOINT" ) &&
-            -n "${value}" &&
-            ! "${value}" =~ ^https://[A-Za-z0-9._:\[\]-]+/?$ ]]; then
+            -n "${value}" ]] && ! valid_non_secret_s3_endpoint "${value}"; then
         die "refusing a credential-bearing or invalid S3 endpoint in non-secret configuration"
       fi
       printf '%s=%s\n' "${key}" "${value}" >> "${output}"

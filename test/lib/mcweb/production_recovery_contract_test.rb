@@ -300,6 +300,119 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
     end
   end
 
+  test "backup accepts only credential-free HTTPS S3 origins in non-secret configuration" do
+    Dir.mktmpdir("mcweb-s3-endpoint-contract") do |directory|
+      fake_bin = File.join(directory, "bin")
+      backup_root = File.join(directory, "backups")
+      storage_root = File.join(directory, "storage")
+      config_file = File.join(directory, "mcweb.env")
+      FileUtils.mkdir_p([ fake_bin, storage_root ])
+      File.binwrite(File.join(storage_root, "blob"), "contract object")
+
+      write_executable(
+        File.join(fake_bin, "pg_dump"),
+        <<~BASH
+          #!/usr/bin/env bash
+          set -euo pipefail
+          for argument in "$@"; do
+            case "${argument}" in
+              --file=*) printf 'isolated custom dump' > "${argument#--file=}" ;;
+            esac
+          done
+        BASH
+      )
+      write_executable(
+        File.join(fake_bin, "pg_restore"),
+        <<~BASH
+          #!/usr/bin/env bash
+          set -euo pipefail
+          [[ "${1:-}" == "--list" ]]
+          [[ -s "${@: -1}" ]]
+        BASH
+      )
+      File.write(
+        config_file,
+        <<~ENV_FILE
+          RAILS_ENV=test
+          DATABASE_URL=isolated-contract-database
+          MCWEB_ACTIVE_STORAGE_SERVICE=local
+          MCWEB_LOCAL_STORAGE_ROOT=#{bash_path(storage_root)}
+          MCWEB_BACKUP_DIR=#{bash_path(backup_root)}
+          MCWEB_SECRET_BACKUP_REFERENCE=vault://mcweb/production/versions/42
+        ENV_FILE
+      )
+
+      base_environment = {
+        "MCWEB_APPLICATION_ROOT" => bash_path(ROOT),
+        "MCWEB_CONFIG_FILE" => bash_path(config_file),
+        "MCWEB_S3_ENDPOINT" => nil,
+        "MCWEB_BACKUP_S3_ENDPOINT" => nil
+      }
+      valid_endpoints = [
+        "https://minio",
+        "https://minio:9000",
+        "https://objects.example.internal:9000/",
+        "https://127.0.0.1:1",
+        "https://[2001:db8::1]:9000/"
+      ]
+      invalid_endpoints = [
+        "http://minio:9000",
+        "https://user:password@minio:9000",
+        "https://minio:9000/path",
+        "https://minio:9000/?query=1",
+        "https://minio:9000/#fragment",
+        "https://minio:0",
+        "https://minio:65536",
+        "https://999.1.1.1",
+        "https://[not-ip]:9000",
+        "https://minio:9000/\t"
+      ]
+
+      valid_endpoints.each_with_index do |endpoint, index|
+        key = if index == valid_endpoints.length - 1
+                "MCWEB_BACKUP_S3_ENDPOINT"
+              else
+                "MCWEB_S3_ENDPOINT"
+              end
+        stdout, stderr, status = run_bash(
+          "bin/backup",
+          fake_bin:,
+          environment: base_environment.merge(
+            "MCWEB_BACKUP_ID" => "valid-s3-endpoint-#{index}",
+            key => endpoint
+          )
+        )
+
+        assert status.success?, "#{endpoint.inspect}\n#{stdout}\n#{stderr}"
+        configuration = File.read(
+          File.join(backup_root, "valid-s3-endpoint-#{index}", "configuration.env")
+        )
+        assert_includes configuration, "#{key}=#{endpoint}"
+      end
+
+      invalid_endpoints.each_with_index do |endpoint, index|
+        key = if index == invalid_endpoints.length - 1
+                "MCWEB_BACKUP_S3_ENDPOINT"
+              else
+                "MCWEB_S3_ENDPOINT"
+              end
+        stdout, stderr, status = run_bash(
+          "bin/backup",
+          fake_bin:,
+          environment: base_environment.merge(
+            "MCWEB_BACKUP_ID" => "invalid-s3-endpoint-#{index}",
+            key => endpoint
+          )
+        )
+
+        refute status.success?, endpoint.inspect
+        assert_includes stderr,
+          "refusing a credential-bearing or invalid S3 endpoint in non-secret configuration"
+        refute_includes "#{stdout}\n#{stderr}", endpoint
+      end
+    end
+  end
+
   test "restore defaults to verification and protects database storage and config targets" do
     source = script("restore")
 

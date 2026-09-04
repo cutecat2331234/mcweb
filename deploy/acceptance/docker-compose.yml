@@ -5,8 +5,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
-    ports:
-      - "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-127.0.0.1}::5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -18,8 +16,6 @@ services:
   redis:
     image: ${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}
     command: ["redis-server", "--save", "", "--appendonly", "no"]
-    ports:
-      - "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-127.0.0.1}::6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -41,19 +37,47 @@ services:
       - --address
       - ":9000"
       - --certs-dir
-      - /certs
+      - /acceptance/certs
       - /data
-    ports:
-      - "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-127.0.0.1}::9000"
     volumes:
       - minio_data:/data
-      - ${MCWEB_ACCEPTANCE_CERTS_DIR}:/certs:ro
+      - acceptance_workspace:/acceptance:ro
     healthcheck:
       test: ["CMD", "curl", "--fail", "--insecure", "https://127.0.0.1:9000/minio/health/live"]
       interval: 2s
       timeout: 5s
       retries: 60
 
+  acceptance-runner:
+    image: ${MCWEB_ACCEPTANCE_RUNNER_IMAGE:?MCWEB_ACCEPTANCE_RUNNER_IMAGE is required}
+    working_dir: /workspace
+    command: ["bash", "scripts/run-production-acceptance.sh"]
+    user: "10002:10002"
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    environment:
+      CI: "1"
+      MCWEB_ACCEPTANCE_EXECUTION_MODE: compose-runner
+      MCWEB_ACCEPTANCE_POSTGRES_PASSWORD: ${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}
+      MCWEB_ACCEPTANCE_S3_ACCESS_KEY: ${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}
+      MCWEB_ACCEPTANCE_S3_SECRET_KEY: ${MCWEB_ACCEPTANCE_S3_SECRET_KEY}
+      BOOTSNAP_CACHE_DIR: /tmp/bootsnap
+      NO_PROXY: postgres,redis,minio
+      no_proxy: postgres,redis,minio
+    volumes:
+      - acceptance_workspace:/acceptance
+
 volumes:
+  acceptance_workspace:
   postgres_data:
   minio_data:
+
+networks:
+  default:
+    internal: true

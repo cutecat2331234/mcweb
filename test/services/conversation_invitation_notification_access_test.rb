@@ -29,7 +29,9 @@ class ConversationInvitationNotificationAccessTest < ActiveSupport::TestCase
 
     assert_not @conversation.participant?(@invitee)
     assert Community::NotificationAccess.visible?(notification: notification, user: @invitee)
-    assert_equal forum_conversations_path(anchor: "conversation-invitations"), notification.destination_path
+    assert_equal Rails.application.routes.url_helpers.forum_conversations_path(
+      anchor: "conversation-invitations"
+    ), notification.destination_path
   end
 
   test "declined or blocked invite notifications fail closed" do

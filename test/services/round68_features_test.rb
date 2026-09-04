@@ -74,7 +74,11 @@ class Round68PreviewCompareTest < ActionDispatch::IntegrationTest
     )
 
     sign_in_as(user)
-    post store_toggle_compare_path(product_id: product.public_id)
+    post store_toggle_compare_path(product_id: product.public_id),
+      headers: frontend_application_request_headers(
+        application_id: "store",
+        referer: preview_store_product_url(product)
+      )
     assert_redirected_to preview_store_product_path(product)
 
     follow_redirect!

@@ -127,6 +127,8 @@ module Admin
       grant_permission(editor, "website.pages.read")
       grant_permission(editor, "website.pages.edit")
       grant_admin_module(editor, "website")
+      delete identity_session_path
+      assert_response :redirect
       sign_in_as(editor)
 
       post restore_admin_website_theme_revision_path(@theme, source.revision_number), params: {

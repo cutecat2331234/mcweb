@@ -313,9 +313,9 @@ module Community
     test "coordinator raises a retryable error when an item cleanup fails" do
       upload, blob = stored_upload(kind: :inline_image)
       upload.update!(expires_at: 1.minute.ago)
-      original = ActiveStorage::Blob.instance_method(:purge)
+      original = ActiveStorage::Blob.instance_method(:delete)
       target_id = blob.id
-      ActiveStorage::Blob.define_method(:purge) do
+      ActiveStorage::Blob.define_method(:delete) do
         raise IOError, "simulated storage outage" if id == target_id
 
         original.bind_call(self)
@@ -326,7 +326,7 @@ module Community
       end
       assert_equal "cleanup_failed", upload.reload.status
     ensure
-      ActiveStorage::Blob.define_method(:purge, original) if original
+      ActiveStorage::Blob.define_method(:delete, original) if original
     end
 
     private

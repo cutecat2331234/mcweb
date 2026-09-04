@@ -78,7 +78,10 @@ module Admin
       assert_equal previous, SiteSetting.get("forum.digest_hour")
       refute_includes flash[:alert], rejected
 
-      @admin.update!(locale: "en")
+      patch locale_path,
+        params: { locale: "en" },
+        headers: { "Accept" => "application/json" }
+      assert_response :no_content
       patch admin_forum_settings_path, params: {
         settings: { "forum.digest_hour" => rejected }
       }

@@ -144,7 +144,8 @@ class FrontendTemplateIntegrationTest < ActionDispatch::IntegrationTest
 
   test "theme asset route blocks path traversal" do
     install_and_activate_template!
-    get "/theme-assets/template-test/%2e%2e/secret.css"
+    get "/theme-assets/template-test/%2e%2e/secret.css",
+      frontend_application_source: false
     assert_response :not_found
   end
 

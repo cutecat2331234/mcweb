@@ -550,7 +550,6 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
     sources = SCRIPT_NAMES.to_h { |name| [ name, script(name) ] }
     sources["postgres-connection"] = database_connection_helper
     sources.each do |name, source|
-
       assert_no_match(/\|\|\s+true\b/, source, "#{name} must not swallow a critical failure")
     end
   end

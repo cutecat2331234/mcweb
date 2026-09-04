@@ -2,12 +2,13 @@
 
 module Admin
   module Website
-    class HomeController < Admin::BaseController
+    class HomeController < BaseController
       DESTINATIONS = [
         [ "website.pages.read", :admin_website_pages_path ],
         [ "website.articles.read", :admin_website_articles_path ],
-        [ "website.pages.read", :admin_website_themes_path ],
-        [ "website.pages.read", :admin_website_nav_items_path ]
+        [ "website.content.restore", :admin_website_recycle_bin_path ],
+        [ "website.content.purge", :admin_website_recycle_bin_path ],
+        [ "website.templates.manage", :admin_frontend_templates_path ]
       ].freeze
 
       def show

@@ -69,11 +69,7 @@ module Community
         )
       when "purchases"
         scope.order(
-          Arel.sql(<<~SQL.squish),
-            (SELECT COUNT(*) FROM store_orders
-             WHERE store_orders.user_id = users.id
-             AND #{completed_order_statuses_sql}) DESC
-          SQL
+          Arel::Nodes::Descending.new(member_purchase_count_subquery),
           created_at: :desc,
           id: :desc
         )
@@ -143,16 +139,19 @@ module Community
       count_subquery(Community::Reaction.where(forum_post_id: post_ids))
     end
 
+    def member_purchase_count_subquery
+      orders = Commerce::Order.arel_table
+      users = User.arel_table
+      count_subquery(
+        Commerce::Order
+          .where(orders[:user_id].eq(users[:id]))
+          .where(status: Community::UserProfileActivitySerializer::COMPLETED_ORDER_STATUSES)
+      )
+    end
+
     def count_subquery(relation)
       count = Arel::Nodes::Count.new([ Arel.star ])
       Arel::Nodes::Grouping.new(relation.reorder(nil).select(count).arel.ast)
-    end
-
-    def completed_order_statuses_sql
-      ActiveRecord::Base.sanitize_sql_array([
-        "store_orders.status IN (?)",
-        Community::UserProfileActivitySerializer::COMPLETED_ORDER_STATUSES
-      ])
     end
 
     def serialize_member(user, stats:)

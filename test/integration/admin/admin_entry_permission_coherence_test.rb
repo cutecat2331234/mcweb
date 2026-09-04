@@ -178,6 +178,35 @@ module Admin
       end
     end
 
+    test "CMS root routes specialized website permissions to their reachable entry" do
+      {
+        "website.content.restore" => admin_website_recycle_bin_path,
+        "website.content.purge" => admin_website_recycle_bin_path,
+        "website.templates.manage" => admin_frontend_templates_path
+      }.each do |permission, destination|
+        specialist = create_user(account_type: "staff")
+        grant_permission(specialist, "admin.access")
+        grant_permission(specialist, permission)
+        grant_admin_module(specialist, "website")
+        sign_in_as(specialist)
+
+        get admin_website_root_path
+
+        assert_redirected_to destination, "expected #{permission} to reach #{destination}"
+      end
+    end
+
+    test "CMS root rejects permissions that are not backed by the website module" do
+      outside_website_module = create_user(account_type: "staff")
+      grant_permission(outside_website_module, "admin.access")
+      grant_permission(outside_website_module, "website.pages.read")
+      sign_in_as(outside_website_module)
+
+      get admin_website_root_path
+
+      assert_redirected_to admin_root_path
+    end
+
     test "CMS page, article, revision, and preview direct links resolve through their owning entry" do
       page = ::Website::Page.create!(
         title: "Reachable page",

@@ -25,7 +25,7 @@ test('admin owns a dedicated and same-origin Sidekiq console host', () => {
   assert.match(routes, /sidekiqWeb: '\/jobs'/)
   assert.match(
     railsRoutes,
-    /get "sidekiq\/\(\*sidekiq_path\)"[\s\S]*?format: false/,
+    /get "sidekiq\(\/\*sidekiq_path\)"[\s\S]*?format: false/,
   )
   assert.match(
     layout,

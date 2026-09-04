@@ -103,6 +103,13 @@ test('portal layout relies on the application provider instead of nesting Arco p
 
     assert.match(entrypoint, /provider:\s*true/)
   }
+
+  const websiteEntrypoint = readFileSync(
+    resolve(process.cwd(), 'app/javascript/entrypoints/website-document.ts'),
+    'utf8',
+  )
+  assert.match(websiteEntrypoint, /applicationId:\s*'website'/)
+  assert.match(websiteEntrypoint, /provider:\s*true/)
 })
 
 test('portal provider keeps Arco controls synchronized with the shared dark theme', () => {

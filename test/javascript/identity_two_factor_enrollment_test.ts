@@ -14,7 +14,11 @@ const chinese = source('app/javascript/locales/zh-CN.ts')
 test('two-factor enrollment requires current-password reauthentication in the visible form', () => {
   assert.match(securityPage, /totp: \{ password: '', code: '' \}/)
   assert.match(securityPage, /id="confirm_password"[\s\S]*v-model="confirmForm\.totp\.password"/m)
-  assert.match(securityPage, /id="confirm_password"[\s\S]*autocomplete="current-password"[\s\S]*required/m)
+  assert.match(securityPage, /id="confirm_password"[\s\S]*autocomplete="current-password"/m)
+  assert.match(
+    securityPage,
+    /(?:<a-form-item[^>]*field="password"[^>]*required|id="confirm_password"[\s\S]*required)/m,
+  )
   assert.match(securityPage, /v-model="confirmForm\.totp\.code"[\s\S]*autocomplete="one-time-code"/m)
   assert.match(securityPage, /identity\.security\.confirmTotpHint/)
 })

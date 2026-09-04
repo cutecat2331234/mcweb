@@ -26,8 +26,13 @@ test('private profile counters disappear instead of rendering as false zeroes', 
 test('profile owner receives an explicit activity-summary opt-in control', () => {
   assert.match(source, /const activityPrivacyForm = useForm/)
   assert.match(source, /forum_profile_activity_public: props\.profile\.forum_profile_activity_public === true/)
+  assert.match(source, /profileEditPanel === 'privacy'/)
   assert.match(source, /v-model="activityPrivacyForm\.user\.forum_profile_activity_public"/)
-  assert.match(source, /@submit\.prevent="saveActivityPrivacy"/)
+  assert.match(source, /@submit(?:\.prevent)?="saveActivityPrivacy"/)
+  assert.match(
+    source,
+    /activityPrivacyForm\.patch\(`\/app\/forum\/users\/\$\{props\.profile\.username\}`/,
+  )
   assert.match(source, /userProfile\.activityPrivacy\.description/)
 })
 

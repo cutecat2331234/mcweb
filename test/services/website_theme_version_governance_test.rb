@@ -50,6 +50,20 @@ class WebsiteThemeVersionGovernanceTest < ActiveSupport::TestCase
     assert_not edited.destroy
   end
 
+  test "timestamp advancement remains monotonic without Numeric microsecond extensions" do
+    contract = Class.new do
+      include Website::ThemeVersionContract
+    end.new
+    original = Time.current.change(usec: 123_456)
+    timestamp_holder = Struct.new(:updated_at).new(original)
+
+    Time.stub(:current, original) do
+      contract.send(:advance_theme_timestamp, timestamp_holder)
+    end
+
+    assert_equal original + Rational(1, 1_000_000), timestamp_holder.updated_at
+  end
+
   test "activation serializes the global active set and revisions every changed Theme" do
     created = Website::MutateTheme.call(
       operation: :create,

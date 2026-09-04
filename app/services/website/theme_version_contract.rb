@@ -4,6 +4,7 @@ module Website
   module ThemeVersionContract
     IDEMPOTENCY_PATTERN = /\A[A-Za-z0-9_.:-]{8,128}\z/
     MAX_REASON_LENGTH = 1_000
+    TIMESTAMP_INCREMENT_SECONDS = Rational(1, 1_000_000)
 
     private
 
@@ -82,7 +83,7 @@ module Website
     end
 
     def advance_theme_timestamp(theme)
-      next_timestamp = theme.updated_at ? theme.updated_at + 1.microsecond : Time.current
+      next_timestamp = theme.updated_at ? theme.updated_at + TIMESTAMP_INCREMENT_SECONDS : Time.current
       theme.updated_at = [ Time.current, next_timestamp ].max
     end
 

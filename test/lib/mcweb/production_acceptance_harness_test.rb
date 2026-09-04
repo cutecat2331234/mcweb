@@ -84,8 +84,8 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, 'export PGCONNECT_TIMEOUT="${POSTGRES_CONNECT_TIMEOUT_SECONDS}"'
     assert_includes script, 'run_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}"'
     assert_includes script, 'for attempt in $(seq 1 "${POSTGRES_PROBE_ATTEMPTS}")'
-    assert_includes script, 'exec --no-TTY postgres'
-    assert_includes script, 'pg_isready --host=127.0.0.1 --port=5432'
+    assert_includes script, "exec --no-TTY postgres"
+    assert_includes script, "pg_isready --host=127.0.0.1 --port=5432"
     assert_includes script, "method=container-pg_isready"
     assert_includes script, "method=published-psql"
     assert_includes script, "container_status=%s published_status=%s"

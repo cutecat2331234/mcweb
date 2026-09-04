@@ -792,7 +792,7 @@ function submitAccountAccess() {
       >
         <template #columns>
           <a-table-column :title="t('admin.genericShow.storeCreditLedgerId')" data-index="ledger_id" :width="120" />
-          <a-table-column :title="t('admin.genericShow.storeCreditChange')" :width="150">
+          <a-table-column :title="t('admin.genericShow.storeCreditLedgerChange')" :width="150">
             <template #cell="{ record }">
               <a-tag :color="record.credit ? 'green' : 'orangered'">
                 {{ record.credit ? '+' : '−' }}{{ record.amount_label }}

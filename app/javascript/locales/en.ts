@@ -3355,7 +3355,7 @@ export default {
       storeCreditUpdated: 'Store credit updated and the audit record was saved.',
       storeCreditLedger: 'Store credit ledger',
       storeCreditLedgerId: 'Transaction ID',
-      storeCreditChange: 'Change',
+      storeCreditLedgerChange: 'Change',
       storeCreditSource: 'Source / order',
       storeCreditBalanceMovement: 'Balance before → after',
       storeCreditActor: 'Recorded by',

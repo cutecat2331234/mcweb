@@ -3158,7 +3158,7 @@ export default {
       "storeCreditUpdated": "商店余额已更新，审计记录已保存。",
       "storeCreditLedger": "商店余额账本",
       "storeCreditLedgerId": "流水编号",
-      "storeCreditChange": "变动金额",
+      "storeCreditLedgerChange": "变动金额",
       "storeCreditSource": "来源 / 订单",
       "storeCreditBalanceMovement": "变动前 → 变动后",
       "storeCreditActor": "记录方",

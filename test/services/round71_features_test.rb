@@ -138,7 +138,10 @@ class Round71GroupCreatorOnlyAddTest < ActionDispatch::IntegrationTest
     get forum_conversation_path(conv)
     assert_response :success
     assert_includes response.body, "addParticipantRestrictedReason"
-    assert_includes response.body, "仅群主可添加新成员"
+    assert_includes response.body, I18n.t(
+      "mcweb.forum.messages.group_add_restrictions.creator_only",
+      locale: :"zh-CN"
+    )
   end
 end
 

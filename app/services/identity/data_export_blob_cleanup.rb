@@ -98,7 +98,7 @@ module Identity
         metadata = blob.metadata.to_h.merge(STAGING_METADATA_KEY => true)
         # Internal cleanup metadata must not trigger an object-store metadata
         # rewrite while the object is about to be deleted.
-        blob.update_columns(metadata:, updated_at: Time.current)
+        blob.update_columns(metadata:)
       end
     end
     private_class_method :mark_for_cleanup!

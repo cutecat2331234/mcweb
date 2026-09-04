@@ -186,6 +186,30 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
     assert_equal "zh-CN", session[:locale]
   end
 
+  test "sign in adopts the account locale when the guest bridge was only implicit" do
+    user = create_user(locale: "en")
+
+    sign_in_as(user)
+    get account_path
+
+    assert_response :success
+    assert_equal "en", inertia.props.deep_symbolize_keys[:locale]
+    assert_equal "en", session[:locale]
+  end
+
+  test "an explicit signed-out locale remains selected after sign in" do
+    user = create_user(locale: "zh-CN")
+    patch locale_path, params: { locale: "en" }
+
+    sign_in_as(user)
+    get account_path
+
+    assert_response :success
+    assert_equal "en", inertia.props.deep_symbolize_keys[:locale]
+    assert_equal "en", session[:locale]
+    assert_equal "zh-CN", user.reload.locale
+  end
+
   private
 
   def inertia_headers

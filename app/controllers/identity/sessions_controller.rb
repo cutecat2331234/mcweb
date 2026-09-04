@@ -44,7 +44,7 @@ module Identity
         return redirect_to identity_session_two_factor_path, status: :see_other
       end
 
-      result.success? ? finish_sign_in(result, remember_me:) : render_sign_in_error(result)
+      result.success? ? finish_sign_in(result, remember_me:, user:) : render_sign_in_error(result)
     end
 
     def two_factor
@@ -74,7 +74,11 @@ module Identity
 
       if result.success?
         clear_pending_second_factor!
-        finish_sign_in(result, remember_me: pending.fetch(:remember_me))
+        finish_sign_in(
+          result,
+          remember_me: pending.fetch(:remember_me),
+          user: pending.fetch(:user)
+        )
       else
         render_two_factor_error(result)
       end
@@ -117,12 +121,13 @@ module Identity
       )
     end
 
-    def finish_sign_in(result, remember_me:)
+    def finish_sign_in(result, remember_me:, user:)
       sign_in(
         session_record: result.value.fetch(:session),
         token: result.value.fetch(:token),
         remember_me:
       )
+      adopt_account_locale_after_sign_in!(user)
       merge_guest_cart!
       redirect_after_login(
         default: FeatureFlags.primary_portal_path(self),

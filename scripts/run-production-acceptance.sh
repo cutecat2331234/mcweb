@@ -147,8 +147,21 @@ export PGPASSWORD="${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}"
 REDIS_PORT="$(published_port redis 6379)"
 MINIO_PORT="$(published_port minio 9000)"
 
-psql --dbname=postgres --no-psqlrc --set=ON_ERROR_STOP=1 \
-  --command="SELECT 1" >/dev/null
+postgres_ready=0
+for attempt in $(seq 1 60); do
+  if psql --dbname=postgres --no-psqlrc --set=ON_ERROR_STOP=1 \
+    --command="SELECT 1" >/dev/null 2>&1; then
+    postgres_ready=1
+    break
+  fi
+
+  sleep 1
+done
+
+if [[ "${postgres_ready}" != "1" ]]; then
+  compose ps postgres >&2 || true
+  die "PostgreSQL published port did not become reachable"
+fi
 
 export RAILS_ENV=production
 export MCWEB_DEVELOPER_MODE="0"

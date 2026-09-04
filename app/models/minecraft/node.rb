@@ -78,7 +78,7 @@ module Minecraft
     end
 
     def fresh_heartbeat?(at: Time.current, maximum_age: 3.minutes)
-      status_online? && last_heartbeat_at.present? && last_heartbeat_at >= at - maximum_age
+      online? && last_heartbeat_at.present? && last_heartbeat_at >= at - maximum_age
     end
 
     def supports_managed_world_backups_v2?

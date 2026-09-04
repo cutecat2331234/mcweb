@@ -14,7 +14,18 @@ module Minecraft
       assert_equal "image/png", result.value.fetch(:avatar).fetch(:content_type)
       assert_equal 128, result.value.fetch(:avatar).fetch(:width)
       assert_equal 128, result.value.fetch(:avatar).fetch(:height)
-      assert_equal avatar, result.value.fetch(:avatar).fetch(:payload)
+
+      expected_image = Vips::Image.new_from_buffer(avatar, "")
+      generated_image = Vips::Image.new_from_buffer(
+        result.value.fetch(:avatar).fetch(:payload),
+        ""
+      )
+      assert_equal expected_image.width, generated_image.width
+      assert_equal expected_image.height, generated_image.height
+      assert_equal expected_image.bands, generated_image.bands
+      assert_equal expected_image.interpretation, generated_image.interpretation
+      assert_equal expected_image.has_alpha?, generated_image.has_alpha?
+      assert_equal expected_image.write_to_memory, generated_image.write_to_memory
     end
   end
 end

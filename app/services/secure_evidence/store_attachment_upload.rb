@@ -10,19 +10,21 @@ module SecureEvidence
     REMOTE_UPLOAD_TIMEOUT = 10.minutes
     WRITER_LEASE = 1.hour
 
-    def initialize(attachment:, upload:, payload:, filename:, content_type:)
+    def initialize(attachment:, upload:, payload:, filename:, content_type:, at: Time.current)
       @attachment = attachment
       @upload = upload
       @payload = payload.to_s.b
       @sha256 = Digest::SHA256.hexdigest(@payload)
       @filename = filename
       @content_type = content_type
+      @at = at
       @blob = nil
       @upload_attempt = upload.cleanup_attempts
       @remote_upload_started = false
     end
 
     def call
+      caller_connection = ApplicationRecord.connection_pool.active_connection
       io = StringIO.new(@payload)
       @blob = ActiveStorage::Blob.build_after_unfurling(
         io:,
@@ -31,6 +33,7 @@ module SecureEvidence
         identify: false
       )
       persist_tracked_blob!
+      release_storage_database_lease!(caller_connection)
       ensure_remote_io_without_database_lease!
 
       io.rewind
@@ -123,7 +126,7 @@ module SecureEvidence
         @attachment = SyncUploadResult.stored!(
           attachment: @attachment,
           upload: @upload,
-          at: Time.current
+          at: @at
         )
       end
     end
@@ -176,7 +179,7 @@ module SecureEvidence
             attachment: @attachment,
             upload: @upload,
             failure_code: error.class.name,
-            at: Time.current
+            at: @at
           )
         end
         @upload.request_cleanup!(error:, at: failure_cleanup_due_at)
@@ -232,6 +235,21 @@ module SecureEvidence
         "[SecureEvidence::StoreAttachmentUpload] cleanup enqueue deferred " \
         "upload_id=#{upload_id} error=#{error.class}"
       )
+    end
+
+    def release_storage_database_lease!(caller_connection)
+      return if caller_connection
+
+      pool = ApplicationRecord.connection_pool
+      connection = pool.active_connection
+      return unless connection
+
+      if connection.transaction_open?
+        raise ActiveRecord::ActiveRecordError,
+          "secure_evidence_remote_upload_transaction_open"
+      end
+
+      pool.release_connection
     end
 
     def delete_orphaned_remote_object

@@ -23,6 +23,7 @@ module SecureEvidence
     end
 
     def call
+      caller_connection = ApplicationRecord.connection_pool.active_connection
       entry = @catalog.entry_for_key(@subject_key)
       return failure("secure_evidence_subject_unavailable") unless entry
       return failure("secure_evidence_idempotency_key_invalid") unless valid_idempotency_key?
@@ -75,12 +76,14 @@ module SecureEvidence
         return ServiceResult.success(attachment:, idempotent: true)
       end
 
+      release_service_database_lease!(caller_connection)
       stored = StoreAttachmentUpload.call(
         attachment:,
         upload: reserved.fetch(:upload),
         payload: inspection.payload,
         filename:,
-        content_type: inspection.content_type
+        content_type: inspection.content_type,
+        at: @now
       )
       return stored if stored.failure?
 
@@ -225,7 +228,7 @@ module SecureEvidence
       SyncUploadResult.retried!(
         attachment: existing,
         upload: retry_upload,
-        at: Time.current
+        at: @now
       )
       ServiceResult.success(
         attachment: existing,
@@ -242,6 +245,21 @@ module SecureEvidence
         byte_size:,
         reuse_upload:
       )
+    end
+
+    def release_service_database_lease!(caller_connection)
+      return if caller_connection
+
+      pool = ApplicationRecord.connection_pool
+      connection = pool.active_connection
+      return unless connection
+
+      if connection.transaction_open?
+        raise ActiveRecord::ActiveRecordError,
+          "secure_evidence_remote_upload_transaction_open"
+      end
+
+      pool.release_connection
     end
 
     def failure(code, value: nil)

@@ -56,7 +56,7 @@ module Minecraft
       end
 
       def failure(code)
-        ServiceResult.failure(error: code, code: code)
+        ServiceResult.failure(error: code.to_s, code: code.to_s)
       end
     end
 
@@ -98,7 +98,7 @@ module Minecraft
         end
 
         reservation_id = reservation.value.fetch(:reservation_id)
-        verification = Identity::SensitiveActionVerifier.call(
+        verification = ::Identity::SensitiveActionVerifier.call(
           user: @actor,
           password: @password,
           code: @code
@@ -200,7 +200,7 @@ module Minecraft
     end
 
     def sensitive_action_reserve
-      Administration::SensitiveActionRateLimit.call(
+      ::Administration::SensitiveActionRateLimit.call(
         scope: RATE_LIMIT_SCOPE,
         user: @actor,
         ip_address: @ip_address,
@@ -210,7 +210,7 @@ module Minecraft
     end
 
     def sensitive_action_settle(action, reservation_id)
-      Administration::SensitiveActionRateLimit.call(
+      ::Administration::SensitiveActionRateLimit.call(
         scope: RATE_LIMIT_SCOPE,
         user: @actor,
         action: action,
@@ -233,7 +233,7 @@ module Minecraft
     end
 
     def failure(code)
-      ServiceResult.failure(error: code, code: code)
+      ServiceResult.failure(error: code.to_s, code: code.to_s)
     end
   end
 end

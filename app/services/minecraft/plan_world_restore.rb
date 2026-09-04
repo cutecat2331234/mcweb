@@ -234,7 +234,7 @@ module Minecraft
     end
 
     def failure(code)
-      ServiceResult.failure(error: code, code: code)
+      ServiceResult.failure(error: code.to_s, code: code.to_s)
     end
   end
 end

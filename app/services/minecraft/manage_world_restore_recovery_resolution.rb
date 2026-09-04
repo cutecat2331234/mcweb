@@ -162,7 +162,7 @@ module Minecraft
     class LifecycleError < StandardError; end
 
     def verify_step_up
-      reservation = Administration::SensitiveActionRateLimit.call(
+      reservation = ::Administration::SensitiveActionRateLimit.call(
         scope: RATE_LIMIT_SCOPE,
         user: @actor,
         ip_address: @ip_address,
@@ -179,13 +179,13 @@ module Minecraft
       end
 
       reservation_id = reservation.value.fetch(:reservation_id)
-      verification = Identity::SensitiveActionVerifier.call(
+      verification = ::Identity::SensitiveActionVerifier.call(
         user: @actor,
         password: @password,
         code: @code
       )
       settlement_action = verification.failure? ? :failure : :success
-      settlement = Administration::SensitiveActionRateLimit.call(
+      settlement = ::Administration::SensitiveActionRateLimit.call(
         scope: RATE_LIMIT_SCOPE,
         user: @actor,
         action: settlement_action,
@@ -309,7 +309,7 @@ module Minecraft
     end
 
     def failure(code)
-      ServiceResult.failure(error: code, code: code)
+      ServiceResult.failure(error: code.to_s, code: code.to_s)
     end
   end
 end

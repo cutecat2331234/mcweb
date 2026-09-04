@@ -165,7 +165,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
       expected_lock_version: expected_lock_version
     )
     assert_predicate conflict, :failure?
-    assert_equal :world_restore_idempotency_conflict, conflict.code
+    assert_equal "world_restore_idempotency_conflict", conflict.code
   end
 
   test "plan cancellation is owner-only, server-expired, and closed after queueing begins" do
@@ -180,7 +180,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
       expected_lock_version: plan.lock_version
     )
     assert_predicate unauthorized, :failure?
-    assert_equal :world_restore_unauthorized, unauthorized.code
+    assert_equal "world_restore_unauthorized", unauthorized.code
     assert plan.reload.status_planned?
 
     expired = nil
@@ -194,7 +194,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
       )
     end
     assert_predicate expired, :failure?
-    assert_equal :world_restore_plan_expired, expired.code
+    assert_equal "world_restore_plan_expired", expired.code
     assert plan.reload.status_expired?
     assert_equal 1, plan.events.where(event_type: "minecraft.world_restore.expired").count
 
@@ -209,7 +209,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
       expected_lock_version: queued_plan.lock_version
     )
     assert_predicate not_cancellable, :failure?
-    assert_equal :world_restore_plan_not_cancellable, not_cancellable.code
+    assert_equal "world_restore_plan_not_cancellable", not_cancellable.code
     assert queued_plan.reload.status_queued?
   end
 
@@ -325,7 +325,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     )
 
     assert_predicate result, :failure?
-    assert_equal :world_restore_plan_not_authorized, result.code
+    assert_equal "world_restore_plan_not_authorized", result.code
     assert_nil plan.reload.node_operation
   end
 
@@ -341,7 +341,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
         ip_address: "203.0.113.20"
       )
       assert_predicate result, :failure?
-      assert_equal :world_restore_authorization_failed, result.code
+      assert_equal "world_restore_authorization_failed", result.code
     end
 
     blocked = Identity::SensitiveActionVerifier.stub(:call, ->(**) { flunk("blocked reserve reached credential verification") }) do
@@ -354,7 +354,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
       )
     end
     assert_predicate blocked, :failure?
-    assert_equal :rate_limited, blocked.code
+    assert_equal "rate_limited", blocked.code
     assert_operator blocked.retry_after, :>, 0
     assert_equal 2, RateLimitCounter.where("key LIKE ?", "sensitive:minecraft_world_restore_authorize:%").count
     assert_equal 5, Administration::SensitiveActionRateLimitReservation.where(
@@ -442,7 +442,7 @@ class Minecraft::WorldRestoreLifecycleTest < ActiveSupport::TestCase
     )
 
     assert_predicate result, :failure?
-    assert_equal :world_restore_configuration_changed, result.code
+    assert_equal "world_restore_configuration_changed", result.code
     assert_nil plan.reload.node_operation
     assert_nil plan.pre_restore_world_backup
     assert plan.status_authorized?

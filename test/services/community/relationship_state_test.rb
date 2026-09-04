@@ -135,6 +135,37 @@ module Community
       end
     end
 
+    test "legacy direct relationship calls derive and lock both scoped participants" do
+      relationships = [
+        UserBlock.where(blocker: @actor, blocked: @target),
+        UserFollow.where(follower: @actor, followed: @target),
+        UserIgnore.where(ignorer: @actor, ignored: @target)
+      ]
+
+      relationships.each do |relation|
+        result = SetUserRelationship.call(relation: relation, desired_state: true)
+
+        assert_predicate result, :success?
+        assert relation.exists?
+      end
+    end
+
+    test "explicit relationship participants must match the scoped endpoints" do
+      other = create_user
+      relation = UserBlock.where(blocker: @actor, blocked: @target)
+
+      error = assert_raises(ArgumentError) do
+        SetUserRelationship.call(
+          relation: relation,
+          desired_state: true,
+          participants: [ @actor, other ]
+        )
+      end
+
+      assert_equal "community_user_relationship_participants_mismatch", error.message
+      assert_not relation.exists?
+    end
+
     test "relationship pairs are protected by database unique indexes" do
       expected_indexes = {
         UserBlock => %w[blocker_id blocked_id],

@@ -111,21 +111,38 @@ module Identity
     private
 
     def wait_until_advisory_lock_wait(backend_pid)
+      lock_key = PermissionMutationLock::LOCK_KEY
+      lock_class_id = (lock_key >> 32) & 0xffff_ffff
+      lock_object_id = lock_key & 0xffff_ffff
+      waiting_lock_sql = ApplicationRecord.sanitize_sql_array(
+        [
+          <<~SQL.squish,
+            SELECT 1
+            FROM pg_locks
+            WHERE locktype = 'advisory'
+              AND database = (
+                SELECT oid FROM pg_database WHERE datname = current_database()
+              )
+              AND classid = ?::oid
+              AND objid = ?::oid
+              AND objsubid = 1
+              AND mode = 'ExclusiveLock'
+              AND granted = FALSE
+              AND pid = ?
+            LIMIT 1
+          SQL
+          lock_class_id,
+          lock_object_id,
+          backend_pid
+        ]
+      )
+
       Timeout.timeout(5) do
         loop do
-          wait_event = ApplicationRecord.connection.select_one(
-            ApplicationRecord.sanitize_sql_array(
-              [
-                <<~SQL.squish,
-                  SELECT wait_event_type, wait_event
-                  FROM pg_stat_activity
-                  WHERE pid = ?
-                SQL
-                backend_pid
-              ]
-            )
-          )
-          break if wait_event == { "wait_event_type" => "Lock", "wait_event" => "advisory" }
+          waiting_lock = ApplicationRecord.uncached do
+            ApplicationRecord.connection.select_value(waiting_lock_sql)
+          end
+          break if waiting_lock
 
           sleep 0.01
         end

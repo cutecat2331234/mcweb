@@ -244,9 +244,53 @@ main:
         - name: run-reviewed-chromium-acceptance
           script: |
             set -eu
-            npm run check:e2e-baselines
-            npm run test:e2e
+            bash -o pipefail -c \
+              '{ npm run check:e2e-baselines && npm run test:e2e; } 2>&1 | tee playwright-e2e.log'
           timeout: 2h
+
+      failStages:
+        - name: package-playwright-failure-artifacts
+          script: |
+            set -eu
+            artifact_id="${CNB_BUILD_ID:-${CNB_COMMIT_SHORT:-unknown}}"
+            artifact_id="$(printf '%s' "${artifact_id}" | tr -c 'A-Za-z0-9._-' '-')"
+            archive="mcweb-playwright-failure-${artifact_id}.tar.gz"
+            context="mcweb-playwright-failure-${artifact_id}.txt"
+            inputs="tmp/playwright-failure-${artifact_id}.files"
+
+            if [ ! -f playwright-e2e.log ]; then
+              printf 'Playwright output was not produced; the pipeline failed during %s.\n' \
+                "${CNB_BUILD_FAILED_STAGE_NAME:-an earlier stage}" > playwright-e2e.log
+            fi
+
+            {
+              printf 'build_url=%s\n' "${CNB_BUILD_WEB_URL:-unknown}"
+              printf 'commit=%s\n' "${CNB_COMMIT:-unknown}"
+              printf 'pipeline=%s\n' "${CNB_PIPELINE_NAME:-chromium-system-acceptance}"
+              printf 'pipeline_id=%s\n' "${CNB_PIPELINE_ID:-unknown}"
+              printf 'failed_stage=%s\n' "${CNB_BUILD_FAILED_STAGE_NAME:-unknown}"
+              printf 'failure=%s\n' "${CNB_BUILD_FAILED_MSG:-unknown}"
+            } > "${context}"
+
+            mkdir -p tmp
+            {
+              printf '%s\n' "${context}"
+              printf '%s\n' playwright-e2e.log
+              for path in playwright-report test-results log/test.log; do
+                if [ -e "${path}" ]; then
+                  printf '%s\n' "${path}"
+                fi
+              done
+            } > "${inputs}"
+
+            tar -czf "${archive}" -T "${inputs}"
+
+        - name: upload-playwright-failure-artifacts
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - "./mcweb-playwright-failure-*.tar.gz"
+              - "./mcweb-playwright-failure-*.txt"
 
     - name: build-rails-production-image
       services:

@@ -4,6 +4,20 @@ require "test_helper"
 
 module Identity
   class DataExportBlobCleanupTest < ActiveSupport::TestCase
+    test "cleanup reuses the durable cursor across batches" do
+      cursor = DataExportBlobCleanupCursor.create!(
+        name: DataExportBlobCleanup::CLEANUP_CURSOR_NAME,
+        last_blob_id: 17,
+        cycle_max_blob_id: 29
+      )
+
+      resolved = DataExportBlobCleanup.send(:cleanup_cursor)
+
+      assert_equal cursor.id, resolved.id
+      assert_equal 17, resolved.last_blob_id
+      assert_equal 29, resolved.cycle_max_blob_id
+    end
+
     test "staged cleanup removes old orphaned archives but preserves a live generation owner" do
       now = Time.zone.parse("2026-09-04 12:00:00 UTC")
       orphan = staged_blob(public_id: "missing-export", created_at: now - 3.hours)

@@ -104,7 +104,7 @@ module Identity
     private_class_method :mark_for_cleanup!
 
     def cleanup_cursor
-      Identity::DataExportBlobCleanupCursor.create_or_find_by!(
+      Identity::DataExportBlobCleanupCursor.find_or_create_by!(
         name: CLEANUP_CURSOR_NAME
       )
     end

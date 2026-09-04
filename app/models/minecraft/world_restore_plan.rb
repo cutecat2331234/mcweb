@@ -6,6 +6,9 @@ module Minecraft
 
     self.table_name = "minecraft_world_restore_plans"
 
+    alias_attribute :server_id, :minecraft_server_id
+    alias_attribute :node_id, :minecraft_node_id
+
     ACTIVE_STATUSES = %w[planned authorized queued running recovery_required].freeze
     TERMINAL_STATUSES = %w[completed failed rolled_back expired cancelled].freeze
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/

@@ -6,6 +6,9 @@ module Minecraft
 
     self.table_name = "minecraft_world_backups"
 
+    alias_attribute :server_id, :minecraft_server_id
+    alias_attribute :node_id, :minecraft_node_id
+
     PURPOSES = %w[manual scheduled pre_restore].freeze
     STATUSES = %w[requested queued creating available failed quarantined].freeze
     SHA256_PATTERN = /\A[0-9a-f]{64}\z/

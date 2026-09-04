@@ -29,7 +29,7 @@ function leavePreview(path: string) {
         <Button type="primary" @click="leavePreview(return_url)">{{ t('common.back') }}</Button>
       </Space>
     </div>
-    <Alert v-if="!document_url" type="error" :title="t('common.error')" />
+    <Alert v-if="!document_url" type="error" :title="t('common.notAvailable')" />
     <iframe
       v-else
       class="mc-website-preview-frame__canvas"

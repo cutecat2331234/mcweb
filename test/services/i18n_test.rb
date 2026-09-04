@@ -114,9 +114,13 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
   end
 
   test "invalid locale is rejected" do
+    patch locale_path, params: { locale: "en" }
+    assert_redirected_to root_path
+    assert_equal "en", session[:locale]
+
     patch locale_path, params: { locale: "fr" }
     assert_redirected_to root_path
-    assert_nil session[:locale]
+    assert_equal "en", session[:locale]
   end
 
   test "locale switch removes a conflicting locale from the return URL" do

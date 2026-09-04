@@ -12,6 +12,8 @@ module Identity
       WAITING_STATUS = "waiting_for_blockers"
       RECOVERY_BACKOFF_STATUS = "recovery_backoff"
       MANUAL_ATTENTION_STATUS = "manual_attention"
+      STRUCTURAL_RESTORATION_REASON =
+        "account_closure_structural_container_preserved"
       NON_TERMINAL_STATUSES = (
         ACTIVE_STATUSES + [ WAITING_STATUS, RECOVERY_BACKOFF_STATUS ]
       ).freeze
@@ -689,10 +691,17 @@ module Identity
         )
         snapshot_scrubbed = lifecycle.target_snapshot.deep_stringify_keys !=
           scrubbed_snapshot.deep_stringify_keys
+        restoration_reason_normalized =
+          lifecycle.restoration_reason != STRUCTURAL_RESTORATION_REASON
         target_was_deleted = target.soft_deleted?
         target.restore! if target_was_deleted
         if lifecycle.status_restored?
-          lifecycle.update!(target_snapshot: scrubbed_snapshot) if snapshot_scrubbed
+          if snapshot_scrubbed || restoration_reason_normalized
+            lifecycle.update!(
+              target_snapshot: scrubbed_snapshot,
+              restoration_reason: STRUCTURAL_RESTORATION_REASON
+            )
+          end
           DataGovernance::ContentRegistry.after_lifecycle_change(target) if target_was_deleted
           audit_structural_snapshot_scrub!(
             target:,
@@ -708,7 +717,7 @@ module Identity
           status: "restored",
           restored_by: nil,
           restored_at: now,
-          restoration_reason: "account_closure_structural_container_preserved",
+          restoration_reason: STRUCTURAL_RESTORATION_REASON,
           target_snapshot: scrubbed_snapshot,
           blocker_codes: [],
           last_evaluated_at: now
@@ -719,7 +728,7 @@ module Identity
           action: "identity.account_closure_structural_lifecycle_neutralized",
           resource: target,
           request_id:,
-          reason: "account_closure_structural_container_preserved",
+          reason: STRUCTURAL_RESTORATION_REASON,
           metadata: {
             lifecycle_public_id: lifecycle.public_id,
             target_type: target.class.base_class.name,
@@ -735,7 +744,7 @@ module Identity
           action: "identity.account_closure_structural_lifecycle_snapshot_scrubbed",
           resource: target,
           request_id: Digest::SHA256.hexdigest("#{request_id}:snapshot").first(64),
-          reason: "account_closure_structural_container_preserved",
+          reason: STRUCTURAL_RESTORATION_REASON,
           before_state: { lifecycle_snapshot_contained_label: true },
           after_state: { lifecycle_snapshot_scrubbed: true },
           metadata: {

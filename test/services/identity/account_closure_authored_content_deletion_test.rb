@@ -698,6 +698,43 @@ module Identity
         end
       end
 
+      test "completed closures reconcile a legacy structural restoration reason" do
+        wall_post = Community::ProfilePost.create!(
+          profile_user: create_user,
+          author: @user,
+          body: "Legacy shared wall body",
+          status: "published"
+        )
+
+        close_with_content_deletion
+        AuthoredContentDeletion.execute(deletion_intents.first)
+        lifecycle = create_legacy_structural_lifecycle(wall_post.reload)
+        wall_post.restore!
+        scrubbed_snapshot = DataGovernance::ContentRegistry.scrubbed_snapshot(
+          lifecycle.target_snapshot,
+          type: wall_post.class.base_class.name
+        )
+        lifecycle.update!(
+          status: "restored",
+          restored_at: Time.current,
+          restoration_reason: "legacy_restore_without_snapshot_scrub",
+          target_snapshot: scrubbed_snapshot
+        )
+
+        reconciled = ReconcileAuthoredContentDeletion.call
+
+        assert_predicate reconciled, :success?, reconciled.error
+        assert_equal 1, reconciled.value.fetch(:queued)
+        processed = AuthoredContentDeletion.execute(deletion_intents.last)
+
+        assert_equal "succeeded", processed.status
+        assert_predicate lifecycle.reload, :status_restored?
+        assert_equal AuthoredContentDeletion::STRUCTURAL_RESTORATION_REASON,
+                     lifecycle.restoration_reason
+        refute lifecycle.target_snapshot.key?("label")
+        refute_predicate wall_post.reload, :soft_deleted?
+      end
+
       test "automatic dead letter recovery becomes terminal manual attention" do
         Community::Message.create!(
           conversation: @conversation,

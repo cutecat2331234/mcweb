@@ -657,16 +657,13 @@ module Identity
       end
 
       def structural_lifecycle_target_ids(model)
+        lifecycles = DataGovernance::ContentLifecycleRecord.arel_table
         DataGovernance::ContentLifecycleRecord
           .where(
             target_type: model.base_class.name,
             deletion_reason: "account_closure_delete_content"
           )
-          .where(<<~SQL.squish, restored: "restored")
-            status <> :restored
-            OR target_snapshot ? 'label'
-            OR target_snapshot #>> '{owner,username}' IS NOT NULL
-          SQL
+          .where(unsafe_structural_lifecycle_predicate(lifecycles))
           .select(:target_id)
       end
 
@@ -833,21 +830,27 @@ module Identity
 
       def structural_lifecycle_exists(model, target_id)
         lifecycles = DataGovernance::ContentLifecycleRecord.arel_table
-        unsafe_snapshot = lifecycles[:status].not_eq("restored")
-          .or(json_has_key(lifecycles[:target_snapshot], "label"))
-          .or(json_text_path(
-            lifecycles[:target_snapshot],
-            %w[owner username]
-          ).not_eq(nil))
 
         DataGovernance::ContentLifecycleRecord
           .where(lifecycles[:target_type].eq(model.base_class.name))
           .where(lifecycles[:target_id].eq(target_id))
           .where(lifecycles[:deletion_reason].eq("account_closure_delete_content"))
-          .where(unsafe_snapshot)
+          .where(unsafe_structural_lifecycle_predicate(lifecycles))
           .select(lifecycles[:id])
           .arel
           .exists
+      end
+
+      def unsafe_structural_lifecycle_predicate(lifecycles)
+        lifecycles[:status].not_eq("restored")
+          .or(coalesce(lifecycles[:restoration_reason], "").not_eq(
+            AuthoredContentDeletion::STRUCTURAL_RESTORATION_REASON
+          ))
+          .or(json_has_key(lifecycles[:target_snapshot], "label"))
+          .or(json_text_path(
+            lifecycles[:target_snapshot],
+            %w[owner username]
+          ).not_eq(nil))
       end
 
       def marker_missing_or_not_true(marker)

@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
     ports:
-      - "127.0.0.1::5432"
+      - "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-127.0.0.1}::5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -19,7 +19,7 @@ services:
     image: ${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
-      - "127.0.0.1::6379"
+      - "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-127.0.0.1}::6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -44,7 +44,7 @@ services:
       - /certs
       - /data
     ports:
-      - "127.0.0.1::9000"
+      - "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-127.0.0.1}::9000"
     volumes:
       - minio_data:/data
       - ${MCWEB_ACCEPTANCE_CERTS_DIR}:/certs:ro

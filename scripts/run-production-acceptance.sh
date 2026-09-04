@@ -27,6 +27,83 @@ WORKSPACE="$(mktemp -d "${WORKSPACE_ROOT%/}/mcweb-acceptance.XXXXXX")"
 PROJECT_NAME="mcwebacceptance$$_${RANDOM}"
 CERTS_DIR="${WORKSPACE}/certs"
 COMPOSE_DEPENDENCY_BUILD_FLAG="--build"
+DOCKER_ENDPOINT="${DOCKER_HOST:-}"
+if [[ -z "${DOCKER_ENDPOINT}" ]]; then
+  DOCKER_ENDPOINT="$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null || true)"
+fi
+
+valid_ipv4() {
+  local value="$1"
+  local octet
+  local -a octets
+
+  [[ "${value}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  [[ "${value}" != "0.0.0.0" ]] || return 1
+  IFS=. read -r -a octets <<<"${value}"
+  for octet in "${octets[@]}"; do
+    ((10#${octet} <= 255)) || return 1
+  done
+}
+
+CNB_ACCEPTANCE_SERVICE_HOST=""
+if [[ -n "${CNB_RUNNER_IP:-}" ]]; then
+  valid_ipv4 "${CNB_RUNNER_IP}" || die "CNB_RUNNER_IP is not a usable IPv4 address"
+  CNB_ACCEPTANCE_SERVICE_HOST="${CNB_RUNNER_IP}"
+fi
+
+acceptance_service_host() {
+  local authority
+
+  if [[ -n "${CNB_ACCEPTANCE_SERVICE_HOST}" ]]; then
+    printf '%s\n' "${CNB_ACCEPTANCE_SERVICE_HOST}"
+    return 0
+  fi
+
+  case "${DOCKER_ENDPOINT}" in
+    ""|unix://*)
+      printf '%s\n' "127.0.0.1"
+      ;;
+    tcp://*)
+      authority="${DOCKER_ENDPOINT#tcp://}"
+      authority="${authority%%/*}"
+      if [[ "${authority}" =~ ^([A-Za-z0-9._-]+):[0-9]+$ ]]; then
+        printf '%s\n' "${BASH_REMATCH[1]}"
+      else
+        die "could not resolve the Docker service host from DOCKER_HOST"
+      fi
+      ;;
+    *)
+      die "production acceptance requires a local or TCP Docker endpoint"
+      ;;
+  esac
+}
+
+ACCEPTANCE_SERVICE_HOST="$(acceptance_service_host)"
+if [[ -z "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-}" ]]; then
+  if [[ -n "${CNB_ACCEPTANCE_SERVICE_HOST}" || "${DOCKER_ENDPOINT}" == tcp://* ]]; then
+    MCWEB_ACCEPTANCE_PUBLISH_HOST="0.0.0.0"
+  else
+    MCWEB_ACCEPTANCE_PUBLISH_HOST="127.0.0.1"
+  fi
+fi
+case "${MCWEB_ACCEPTANCE_PUBLISH_HOST}" in
+  127.0.0.1|0.0.0.0)
+    ;;
+  *)
+    die "MCWEB_ACCEPTANCE_PUBLISH_HOST must be 127.0.0.1 or 0.0.0.0"
+    ;;
+esac
+export MCWEB_ACCEPTANCE_PUBLISH_HOST
+export NO_PROXY="${NO_PROXY:+${NO_PROXY},}${ACCEPTANCE_SERVICE_HOST}"
+export no_proxy="${no_proxy:+${no_proxy},}${ACCEPTANCE_SERVICE_HOST}"
+
+if [[ "${ACCEPTANCE_SERVICE_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+  ACCEPTANCE_SERVICE_SAN="IP:${ACCEPTANCE_SERVICE_HOST}"
+elif [[ "${ACCEPTANCE_SERVICE_HOST}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  ACCEPTANCE_SERVICE_SAN="DNS:${ACCEPTANCE_SERVICE_HOST}"
+else
+  die "Docker service host cannot be represented in the acceptance certificate"
+fi
 
 case "${WORKSPACE}" in
   "${WORKSPACE_ROOT%/}"/mcweb-acceptance.*)
@@ -96,8 +173,8 @@ openssl req -newkey rsa:2048 -sha256 -nodes \
   -subj "/CN=minio" \
   -keyout "${CERTS_DIR}/private.key" \
   -out "${WORKSPACE}/minio.csr" >/dev/null 2>&1
-cat > "${WORKSPACE}/minio.ext" <<'EOF'
-subjectAltName=DNS:minio,DNS:localhost,IP:127.0.0.1
+cat > "${WORKSPACE}/minio.ext" <<EOF
+subjectAltName=DNS:minio,DNS:localhost,IP:127.0.0.1,${ACCEPTANCE_SERVICE_SAN}
 extendedKeyUsage=serverAuth
 EOF
 openssl x509 -req -sha256 -days 2 \
@@ -139,7 +216,7 @@ published_port() {
   printf '%s\n' "${port}"
 }
 
-export PGHOST=127.0.0.1
+export PGHOST="${ACCEPTANCE_SERVICE_HOST}"
 export PGPORT
 PGPORT="$(published_port postgres 5432)"
 export PGUSER=postgres
@@ -183,26 +260,26 @@ export MCWEB_S3_BUCKET="mcweb-acceptance"
 export MCWEB_S3_REGION="us-east-1"
 export MCWEB_S3_ACCESS_KEY_ID="${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}"
 export MCWEB_S3_SECRET_ACCESS_KEY="${MCWEB_ACCEPTANCE_S3_SECRET_KEY}"
-export MCWEB_S3_ENDPOINT="https://127.0.0.1:${MINIO_PORT}"
+export MCWEB_S3_ENDPOINT="https://${ACCEPTANCE_SERVICE_HOST}:${MINIO_PORT}"
 export MCWEB_S3_FORCE_PATH_STYLE="1"
 export MCWEB_BACKUP_S3_BUCKET="mcweb-acceptance-backups"
 export MCWEB_BACKUP_S3_REGION="us-east-1"
 export MCWEB_BACKUP_S3_ACCESS_KEY_ID="${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}"
 export MCWEB_BACKUP_S3_SECRET_ACCESS_KEY="${MCWEB_ACCEPTANCE_S3_SECRET_KEY}"
-export MCWEB_BACKUP_S3_ENDPOINT="https://127.0.0.1:${MINIO_PORT}"
+export MCWEB_BACKUP_S3_ENDPOINT="https://${ACCEPTANCE_SERVICE_HOST}:${MINIO_PORT}"
 export MCWEB_BACKUP_S3_FORCE_PATH_STYLE="1"
 export MCWEB_BACKUP_S3_PREFIX="acceptance-backups"
 export MCWEB_RESTORE_S3_BUCKET="mcweb-acceptance-restore"
 export MCWEB_RESTORE_S3_REGION="us-east-1"
 export MCWEB_RESTORE_S3_ACCESS_KEY_ID="${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}"
 export MCWEB_RESTORE_S3_SECRET_ACCESS_KEY="${MCWEB_ACCEPTANCE_S3_SECRET_KEY}"
-export MCWEB_RESTORE_S3_ENDPOINT="https://127.0.0.1:${MINIO_PORT}"
+export MCWEB_RESTORE_S3_ENDPOINT="https://${ACCEPTANCE_SERVICE_HOST}:${MINIO_PORT}"
 export MCWEB_RESTORE_S3_FORCE_PATH_STYLE="1"
 export SSL_CERT_FILE="${WORKSPACE}/ca.crt"
 export AWS_CA_BUNDLE="${WORKSPACE}/ca.crt"
 export AWS_EC2_METADATA_DISABLED="true"
 export AWS_MAX_ATTEMPTS="1"
-export REDIS_URL="redis://127.0.0.1:${REDIS_PORT}/0"
+export REDIS_URL="redis://${ACCEPTANCE_SERVICE_HOST}:${REDIS_PORT}/0"
 export MCWEB_DATABASE_HOST="${PGHOST}"
 export MCWEB_DATABASE_PORT="${PGPORT}"
 export MCWEB_DATABASE_USERNAME="${PGUSER}"

@@ -13,7 +13,7 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes compose, "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-mcweb-acceptance-minio:local}"
     assert_includes compose, "deploy/acceptance/minio.Dockerfile"
     assert_includes compose, "RELEASE.2025-10-15T17-29-55Z"
-    assert_operator compose.scan('"127.0.0.1::').length, :>=, 3
+    assert_operator compose.scan('"${MCWEB_ACCEPTANCE_PUBLISH_HOST:-127.0.0.1}::').length, :>=, 3
     assert_includes compose, "${MCWEB_ACCEPTANCE_CERTS_DIR}:/certs:ro"
   end
 
@@ -24,6 +24,11 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
 
     assert_includes script, "mktemp -d"
     assert_includes script, 'WORKSPACE_ROOT_INPUT="${CNB_BUILD_WORKSPACE:-${TMPDIR:-/tmp}}"'
+    assert_includes script, 'if [[ -n "${CNB_RUNNER_IP:-}" ]]; then'
+    assert_includes script, 'CNB_ACCEPTANCE_SERVICE_HOST="${CNB_RUNNER_IP}"'
+    assert_includes script, 'MCWEB_ACCEPTANCE_PUBLISH_HOST="0.0.0.0"'
+    assert_includes script, 'MCWEB_ACCEPTANCE_PUBLISH_HOST="127.0.0.1"'
+    assert_includes script, 'ACCEPTANCE_SERVICE_SAN="IP:${ACCEPTANCE_SERVICE_HOST}"'
     assert_includes script, 'chmod 0755 "${CERTS_DIR}" "${CERTS_DIR}/CAs"'
     assert_includes script, 'chmod 0644 "${CERTS_DIR}/private.key"'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}" ]]'

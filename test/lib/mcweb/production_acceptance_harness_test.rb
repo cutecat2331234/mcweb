@@ -34,8 +34,13 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, "exit phase=%s status=%s"
     assert_includes script, "mktemp -d"
     assert_includes script, 'WORKSPACE_ROOT_INPUT="${CNB_BUILD_WORKSPACE:-${TMPDIR:-/tmp}}"'
-    assert_includes script, 'if [[ -n "${CNB_RUNNER_IP:-}" ]]; then'
-    assert_includes script, 'CNB_ACCEPTANCE_SERVICE_HOST="${CNB_RUNNER_IP}"'
+    refute_includes script, "CNB_RUNNER_IP"
+    refute_includes script, "CNB_ACCEPTANCE_SERVICE_HOST"
+    assert_includes script, 'case "${DOCKER_ENDPOINT}" in'
+    assert_includes script, '""|unix://*)'
+    assert_includes script, 'tcp://*)'
+    assert_includes script, 'ACCEPTANCE_SERVICE_HOST="$(acceptance_service_host)"'
+    assert_includes script, 'if [[ "${DOCKER_ENDPOINT}" == tcp://* ]]; then'
     assert_includes script, 'MCWEB_ACCEPTANCE_PUBLISH_HOST="0.0.0.0"'
     assert_includes script, 'MCWEB_ACCEPTANCE_PUBLISH_HOST="127.0.0.1"'
     assert_includes script, 'ACCEPTANCE_SERVICE_SAN="IP:${ACCEPTANCE_SERVICE_HOST}"'
@@ -86,12 +91,39 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, 'for attempt in $(seq 1 "${POSTGRES_PROBE_ATTEMPTS}")'
     assert_includes script, "exec --no-TTY postgres"
     assert_includes script, "pg_isready --host=127.0.0.1 --port=5432"
-    assert_includes script, "method=container-pg_isready"
     assert_includes script, "method=published-psql"
     assert_includes script, "container_status=%s published_status=%s"
     assert_includes script, "PostgreSQL readiness probes failed"
+    assert_includes script, 'export PGHOST="${ACCEPTANCE_SERVICE_HOST}"'
+    assert_includes script, 'export MCWEB_DATABASE_HOST="${PGHOST}"'
+    assert_includes script, 'export MCWEB_DATABASE_PORT="${PGPORT}"'
+    assert_includes script, 'export REDIS_URL="redis://${ACCEPTANCE_SERVICE_HOST}:${REDIS_PORT}/0"'
+    assert_includes script, 'export MCWEB_S3_ENDPOINT="https://${ACCEPTANCE_SERVICE_HOST}:${MINIO_PORT}"'
+    assert_includes script, "published-endpoints host=%s publish_host=%s"
     refute_includes script, "PostgreSQL published port did not become reachable"
+    refute_includes script, "method=container-pg_isready"
     refute_includes script, "compose ps postgres"
+  end
+
+  test "acceptance readiness requires the published lifecycle endpoint" do
+    script = File.read(
+      Rails.root.join("scripts/run-production-acceptance.sh")
+    )
+    readiness_match = script.match(
+      /phase "postgres-readiness"\n(?<body>.*?)\nexport RAILS_ENV=production/m
+    )
+
+    assert_not_nil readiness_match
+    readiness = readiness_match[:body]
+    published_probe_index = readiness.index("psql --dbname=postgres")
+    container_probe_index = readiness.index("pg_isready --host=127.0.0.1")
+
+    assert_equal 1, readiness.scan("postgres_ready=1").length
+    assert_not_nil published_probe_index
+    assert_not_nil container_probe_index
+    assert_operator published_probe_index, :<, container_probe_index
+    assert_includes readiness, 'postgres_container_probe_status="ready"'
+    refute_includes readiness, "method=container-pg_isready"
   end
 
   test "CNB preserves the full lifecycle stage budget" do

@@ -146,32 +146,8 @@ if [[ -z "${DOCKER_ENDPOINT}" ]]; then
   )"
 fi
 
-valid_ipv4() {
-  local value="$1"
-  local octet
-  local -a octets
-
-  [[ "${value}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
-  [[ "${value}" != "0.0.0.0" ]] || return 1
-  IFS=. read -r -a octets <<<"${value}"
-  for octet in "${octets[@]}"; do
-    ((10#${octet} <= 255)) || return 1
-  done
-}
-
-CNB_ACCEPTANCE_SERVICE_HOST=""
-if [[ -n "${CNB_RUNNER_IP:-}" ]]; then
-  valid_ipv4 "${CNB_RUNNER_IP}" || die "CNB_RUNNER_IP is not a usable IPv4 address"
-  CNB_ACCEPTANCE_SERVICE_HOST="${CNB_RUNNER_IP}"
-fi
-
 acceptance_service_host() {
   local authority
-
-  if [[ -n "${CNB_ACCEPTANCE_SERVICE_HOST}" ]]; then
-    printf '%s\n' "${CNB_ACCEPTANCE_SERVICE_HOST}"
-    return 0
-  fi
 
   case "${DOCKER_ENDPOINT}" in
     ""|unix://*)
@@ -194,7 +170,7 @@ acceptance_service_host() {
 
 ACCEPTANCE_SERVICE_HOST="$(acceptance_service_host)"
 if [[ -z "${MCWEB_ACCEPTANCE_PUBLISH_HOST:-}" ]]; then
-  if [[ -n "${CNB_ACCEPTANCE_SERVICE_HOST}" || "${DOCKER_ENDPOINT}" == tcp://* ]]; then
+  if [[ "${DOCKER_ENDPOINT}" == tcp://* ]]; then
     MCWEB_ACCEPTANCE_PUBLISH_HOST="0.0.0.0"
   else
     MCWEB_ACCEPTANCE_PUBLISH_HOST="127.0.0.1"
@@ -390,25 +366,15 @@ export PGPASSWORD="${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}"
 export PGCONNECT_TIMEOUT="${POSTGRES_CONNECT_TIMEOUT_SECONDS}"
 REDIS_PORT="$(published_port redis 6379)"
 MINIO_PORT="$(published_port minio 9000)"
+printf '[acceptance] published-endpoints host=%s publish_host=%s postgres=%s redis=%s minio=%s\n' \
+  "${ACCEPTANCE_SERVICE_HOST}" "${MCWEB_ACCEPTANCE_PUBLISH_HOST}" \
+  "${PGPORT}" "${REDIS_PORT}" "${MINIO_PORT}"
 
 phase "postgres-readiness"
 postgres_ready=0
 postgres_container_probe_status="not-run"
 postgres_published_probe_status="not-run"
 for attempt in $(seq 1 "${POSTGRES_PROBE_ATTEMPTS}"); do
-  if compose_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}" \
-    exec --no-TTY postgres \
-    pg_isready --host=127.0.0.1 --port=5432 \
-    --username=postgres --dbname=postgres >/dev/null 2>&1
-  then
-    postgres_ready=1
-    printf '[acceptance] postgres-readiness=ready method=container-pg_isready attempt=%s\n' \
-      "${attempt}"
-    break
-  else
-    postgres_container_probe_status=$?
-  fi
-
   if run_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}" \
     psql --dbname=postgres --no-psqlrc --set=ON_ERROR_STOP=1 \
     --command="SELECT 1" >/dev/null 2>&1; then
@@ -418,6 +384,16 @@ for attempt in $(seq 1 "${POSTGRES_PROBE_ATTEMPTS}"); do
     break
   else
     postgres_published_probe_status=$?
+  fi
+
+  if compose_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}" \
+    exec --no-TTY postgres \
+    pg_isready --host=127.0.0.1 --port=5432 \
+    --username=postgres --dbname=postgres >/dev/null 2>&1
+  then
+    postgres_container_probe_status="ready"
+  else
+    postgres_container_probe_status=$?
   fi
 
   printf '[acceptance] postgres-readiness=retry attempt=%s container_status=%s published_status=%s\n' \

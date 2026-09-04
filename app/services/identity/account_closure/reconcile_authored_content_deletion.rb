@@ -494,11 +494,11 @@ module Identity
           )
           .where(historical_deletion_sql)
           .where(
-            "(#{missing_lifecycle_sql}) OR " \
-            "(#{active_authored_content_sql}) OR " \
-            "(#{topic_scrub_required_sql}) OR " \
-            "(#{opening_post_scrub_required_sql}) OR " \
-            "(#{profile_post_scrub_required_sql})"
+            missing_lifecycle_predicate
+              .or(active_authored_content_predicate)
+              .or(topic_scrub_required_predicate)
+              .or(opening_post_scrub_required_predicate)
+              .or(profile_post_scrub_required_predicate)
           )
           .order(:id)
       end
@@ -708,214 +708,185 @@ module Identity
         ]
       end
 
-      def missing_lifecycle_sql
-        connection = ApplicationRecord.connection
-        lifecycle_table = connection.quote_table_name(
-          DataGovernance::ContentLifecycleRecord.table_name
-        )
-        user_table = connection.quote_table_name(User.table_name)
-        clauses = AuthoredContentContributor::RESOURCE_CONFIG.values
+      def missing_lifecycle_predicate
+        users = User.arel_table
+        lifecycles = DataGovernance::ContentLifecycleRecord.arel_table
+        AuthoredContentContributor::RESOURCE_CONFIG.values
           .select { |config| config.fetch(:strategy) == :soft_delete }
           .map do |config|
-          model = config.fetch(:model)
-          content_table = connection.quote_table_name(model.table_name)
-          target_type = connection.quote(model.base_class.name)
-          structural_filter = model == Community::Post ? "AND account_closure_content.floor_number <> 1" : ""
-          <<~SQL.squish
-            EXISTS (
-              SELECT 1
-              FROM #{content_table} account_closure_content
-              WHERE account_closure_content.user_id = #{user_table}.id
-                AND account_closure_content.deleted_at IS NOT NULL
-                #{structural_filter}
-                AND NOT EXISTS (
-                  SELECT 1
-                  FROM #{lifecycle_table} account_closure_lifecycle
-                  WHERE account_closure_lifecycle.target_type = #{target_type}
-                    AND account_closure_lifecycle.target_id = account_closure_content.id
-                )
-            )
-          SQL
-        end
-        clauses.map { |clause| "(#{clause})" }.join(" OR ")
+            model = config.fetch(:model)
+            content = model.arel_table
+            lifecycle_exists = DataGovernance::ContentLifecycleRecord
+              .where(lifecycles[:target_type].eq(model.base_class.name))
+              .where(lifecycles[:target_id].eq(content[:id]))
+              .select(lifecycles[:id])
+              .arel
+              .exists
+            predicate = content[:user_id].eq(users[:id])
+              .and(content[:deleted_at].not_eq(nil))
+              .and(lifecycle_exists.not)
+            if model == Community::Post
+              predicate = predicate.and(content[:floor_number].not_eq(1))
+            end
+
+            model.unscoped.where(predicate).select(content[:id]).arel.exists
+          end.reduce(&:or)
       end
 
-      def active_authored_content_sql
-        connection = ApplicationRecord.connection
-        user_table = connection.quote_table_name(User.table_name)
-        clauses = AuthoredContentContributor::RESOURCE_CONFIG.values
+      def active_authored_content_predicate
+        users = User.arel_table
+        AuthoredContentContributor::RESOURCE_CONFIG.values
           .select { |config| config.fetch(:strategy) == :soft_delete }
           .map do |config|
-          model = config.fetch(:model)
-          content_table = connection.quote_table_name(model.table_name)
-          structural_filter = model == Community::Post ? "AND retained_account_closure_content.floor_number <> 1" : ""
-          <<~SQL.squish
-            EXISTS (
-              SELECT 1
-              FROM #{content_table} retained_account_closure_content
-              WHERE retained_account_closure_content.user_id = #{user_table}.id
-                AND retained_account_closure_content.deleted_at IS NULL
-                #{structural_filter}
-            )
-          SQL
-        end
-        clauses.map { |clause| "(#{clause})" }.join(" OR ")
+            model = config.fetch(:model)
+            content = model.arel_table
+            predicate = content[:user_id].eq(users[:id])
+              .and(content[:deleted_at].eq(nil))
+            if model == Community::Post
+              predicate = predicate.and(content[:floor_number].not_eq(1))
+            end
+
+            model.unscoped.where(predicate).select(content[:id]).arel.exists
+          end.reduce(&:or)
       end
 
-      def topic_scrub_required_sql
-        connection = ApplicationRecord.connection
-        marker = "account_closure_results #>> " \
-          "'{identity.authored_content,details,topic_titles_scrubbed}'"
-        topic_table = connection.quote_table_name(Community::Topic.table_name)
-        lifecycle_table = connection.quote_table_name(
-          DataGovernance::ContentLifecycleRecord.table_name
-        )
-        user_table = connection.quote_table_name(User.table_name)
-        replacement_sql = structural_tombstone_sql("mcweb.identity.deleted_content_title")
-        target_type = connection.quote(Community::Topic.base_class.name)
-        deletion_reason = connection.quote("account_closure_delete_content")
-        restored = connection.quote("restored")
-        <<~SQL.squish
-          EXISTS (
-            SELECT 1
-            FROM #{topic_table} account_closure_topic_titles
-            WHERE account_closure_topic_titles.user_id = #{user_table}.id
-              AND (
-                COALESCE((#{marker}), 'false') <> 'true'
-                OR account_closure_topic_titles.deleted_at IS NOT NULL
-                OR account_closure_topic_titles.title NOT IN (#{replacement_sql})
-                OR EXISTS (
-                  SELECT 1
-                  FROM #{lifecycle_table} account_closure_topic_lifecycle
-                  WHERE account_closure_topic_lifecycle.target_type = #{target_type}
-                    AND account_closure_topic_lifecycle.target_id = account_closure_topic_titles.id
-                    AND account_closure_topic_lifecycle.deletion_reason = #{deletion_reason}
-                    AND (
-                      account_closure_topic_lifecycle.status <> #{restored}
-                      OR account_closure_topic_lifecycle.target_snapshot ? 'label'
-                      OR account_closure_topic_lifecycle.target_snapshot #>>
-                        '{owner,username}' IS NOT NULL
-                    )
-                )
-              )
+      def topic_scrub_required_predicate
+        users = User.arel_table
+        topics = Community::Topic.arel_table
+        repair_required = marker_missing_or_not_true("topic_titles_scrubbed")
+          .or(topics[:deleted_at].not_eq(nil))
+          .or(topics[:title].not_in(structural_tombstone_values(
+            "mcweb.identity.deleted_content_title"
+          )))
+          .or(structural_lifecycle_exists(Community::Topic, topics[:id]))
+
+        Community::Topic.unscoped
+          .where(topics[:user_id].eq(users[:id]))
+          .where(repair_required)
+          .select(topics[:id])
+          .arel
+          .exists
+      end
+
+      def opening_post_scrub_required_predicate
+        users = User.arel_table
+        posts = Community::Post.arel_table
+        edits = Community::PostEdit.arel_table
+        attachments = Community::PostAttachment.arel_table
+        uploads = Community::Upload.arel_table
+        replacements = structural_tombstone_values("mcweb.identity.deleted_content_body")
+        unsafe_edits = Community::PostEdit
+          .where(edits[:forum_post_id].eq(posts[:id]))
+          .where(
+            coalesce(edits[:body_before], "").not_in(replacements)
+              .or(coalesce(edits[:body_after], "").not_in(replacements))
+              .or(edits[:reason].not_eq(nil))
           )
-        SQL
+          .select(edits[:id])
+          .arel
+          .exists
+        attached = Community::PostAttachment.unscoped
+          .where(attachments[:forum_post_id].eq(posts[:id]))
+          .select(attachments[:id])
+          .arel
+          .exists
+        uploaded = Community::Upload
+          .where(uploads[:forum_post_id].eq(posts[:id]))
+          .where(uploads[:kind].in(%w[inline_image post_attachment]))
+          .select(uploads[:id])
+          .arel
+          .exists
+        repair_required = marker_missing_or_not_true("opening_posts_scrubbed")
+          .or(posts[:deleted_at].not_eq(nil))
+          .or(posts[:body].not_in(replacements))
+          .or(unsafe_edits)
+          .or(attached)
+          .or(uploaded)
+          .or(structural_lifecycle_exists(Community::Post, posts[:id]))
+
+        Community::Post.unscoped
+          .where(posts[:user_id].eq(users[:id]))
+          .where(posts[:floor_number].eq(1))
+          .where(repair_required)
+          .select(posts[:id])
+          .arel
+          .exists
       end
 
+      def profile_post_scrub_required_predicate
+        users = User.arel_table
+        posts = Community::ProfilePost.arel_table
+        repair_required = marker_missing_or_not_true("profile_posts_scrubbed")
+          .or(posts[:deleted_at].not_eq(nil))
+          .or(posts[:body].not_in(structural_tombstone_values(
+            "mcweb.identity.deleted_content_body"
+          )))
+          .or(structural_lifecycle_exists(Community::ProfilePost, posts[:id]))
 
-      def opening_post_scrub_required_sql
-        connection = ApplicationRecord.connection
-        marker = "account_closure_results #>> " \
-          "'{identity.authored_content,details,opening_posts_scrubbed}'"
-        post_table = connection.quote_table_name(Community::Post.table_name)
-        edit_table = connection.quote_table_name(Community::PostEdit.table_name)
-        attachment_table = connection.quote_table_name(Community::PostAttachment.table_name)
-        upload_table = connection.quote_table_name(Community::Upload.table_name)
-        lifecycle_table = connection.quote_table_name(
-          DataGovernance::ContentLifecycleRecord.table_name
+        Community::ProfilePost.unscoped
+          .where(posts[:user_id].eq(users[:id]))
+          .where(repair_required)
+          .select(posts[:id])
+          .arel
+          .exists
+      end
+
+      def structural_lifecycle_exists(model, target_id)
+        lifecycles = DataGovernance::ContentLifecycleRecord.arel_table
+        unsafe_snapshot = lifecycles[:status].not_eq("restored")
+          .or(json_has_key(lifecycles[:target_snapshot], "label"))
+          .or(json_text_path(
+            lifecycles[:target_snapshot],
+            %w[owner username]
+          ).not_eq(nil))
+
+        DataGovernance::ContentLifecycleRecord
+          .where(lifecycles[:target_type].eq(model.base_class.name))
+          .where(lifecycles[:target_id].eq(target_id))
+          .where(lifecycles[:deletion_reason].eq("account_closure_delete_content"))
+          .where(unsafe_snapshot)
+          .select(lifecycles[:id])
+          .arel
+          .exists
+      end
+
+      def marker_missing_or_not_true(marker)
+        value = json_text_path(
+          User.arel_table[:account_closure_results],
+          [ "identity.authored_content", "details", marker ]
         )
-        user_table = connection.quote_table_name(User.table_name)
-        replacement_sql = structural_tombstone_sql("mcweb.identity.deleted_content_body")
-        target_type = connection.quote(Community::Post.base_class.name)
-        deletion_reason = connection.quote("account_closure_delete_content")
-        restored = connection.quote("restored")
-        upload_kinds = %w[inline_image post_attachment].map { |kind| connection.quote(kind) }.join(", ")
-        <<~SQL.squish
-          EXISTS (
-            SELECT 1
-            FROM #{post_table} account_closure_opening_posts
-            WHERE account_closure_opening_posts.user_id = #{user_table}.id
-              AND account_closure_opening_posts.floor_number = 1
-              AND (
-                COALESCE((#{marker}), 'false') <> 'true'
-                OR account_closure_opening_posts.deleted_at IS NOT NULL
-                OR account_closure_opening_posts.body NOT IN (#{replacement_sql})
-                OR EXISTS (
-                  SELECT 1
-                  FROM #{edit_table} account_closure_opening_post_edits
-                  WHERE account_closure_opening_post_edits.forum_post_id = account_closure_opening_posts.id
-                    AND (
-                      COALESCE(account_closure_opening_post_edits.body_before, '') NOT IN (#{replacement_sql})
-                      OR COALESCE(account_closure_opening_post_edits.body_after, '') NOT IN (#{replacement_sql})
-                      OR account_closure_opening_post_edits.reason IS NOT NULL
-                    )
-                )
-                OR EXISTS (
-                  SELECT 1
-                  FROM #{attachment_table} account_closure_opening_post_attachments
-                  WHERE account_closure_opening_post_attachments.forum_post_id = account_closure_opening_posts.id
-                )
-                OR EXISTS (
-                  SELECT 1
-                  FROM #{upload_table} account_closure_opening_post_uploads
-                  WHERE account_closure_opening_post_uploads.forum_post_id = account_closure_opening_posts.id
-                    AND account_closure_opening_post_uploads.kind IN (#{upload_kinds})
-                )
-                OR EXISTS (
-                  SELECT 1
-                  FROM #{lifecycle_table} account_closure_opening_post_lifecycle
-                  WHERE account_closure_opening_post_lifecycle.target_type = #{target_type}
-                    AND account_closure_opening_post_lifecycle.target_id = account_closure_opening_posts.id
-                    AND account_closure_opening_post_lifecycle.deletion_reason = #{deletion_reason}
-                    AND (
-                      account_closure_opening_post_lifecycle.status <> #{restored}
-                      OR account_closure_opening_post_lifecycle.target_snapshot ? 'label'
-                      OR account_closure_opening_post_lifecycle.target_snapshot #>>
-                        '{owner,username}' IS NOT NULL
-                    )
-                )
-              )
-          )
-        SQL
+        value.eq(nil).or(value.not_eq("true"))
       end
 
-      def profile_post_scrub_required_sql
-        connection = ApplicationRecord.connection
-        marker = "account_closure_results #>> " \
-          "'{identity.authored_content,details,profile_posts_scrubbed}'"
-        post_table = connection.quote_table_name(Community::ProfilePost.table_name)
-        lifecycle_table = connection.quote_table_name(
-          DataGovernance::ContentLifecycleRecord.table_name
+      def json_text_path(column, path)
+        Arel::Nodes::InfixOperation.new(
+          "#>>",
+          column,
+          Arel::Nodes.build_quoted("{#{path.join(',')}}")
         )
-        user_table = connection.quote_table_name(User.table_name)
-        replacement_sql = structural_tombstone_sql("mcweb.identity.deleted_content_body")
-        target_type = connection.quote(Community::ProfilePost.base_class.name)
-        deletion_reason = connection.quote("account_closure_delete_content")
-        restored = connection.quote("restored")
-        <<~SQL.squish
-          EXISTS (
-            SELECT 1
-            FROM #{post_table} account_closure_profile_posts
-            WHERE account_closure_profile_posts.user_id = #{user_table}.id
-              AND (
-                COALESCE((#{marker}), 'false') <> 'true'
-                OR account_closure_profile_posts.deleted_at IS NOT NULL
-                OR account_closure_profile_posts.body NOT IN (#{replacement_sql})
-                OR EXISTS (
-                  SELECT 1
-                  FROM #{lifecycle_table} account_closure_profile_post_lifecycle
-                  WHERE account_closure_profile_post_lifecycle.target_type = #{target_type}
-                    AND account_closure_profile_post_lifecycle.target_id = account_closure_profile_posts.id
-                    AND account_closure_profile_post_lifecycle.deletion_reason = #{deletion_reason}
-                    AND (
-                      account_closure_profile_post_lifecycle.status <> #{restored}
-                      OR account_closure_profile_post_lifecycle.target_snapshot ? 'label'
-                      OR account_closure_profile_post_lifecycle.target_snapshot #>>
-                        '{owner,username}' IS NOT NULL
-                    )
-                )
-              )
-          )
-        SQL
       end
 
-      def structural_tombstone_sql(key)
-        connection = ApplicationRecord.connection
+      def json_has_key(column, key)
+        Arel::Nodes::InfixOperation.new(
+          "?",
+          column,
+          Arel::Nodes.build_quoted(key)
+        )
+      end
+
+      def coalesce(column, fallback)
+        Arel::Nodes::NamedFunction.new(
+          "COALESCE",
+          [ column, Arel::Nodes.build_quoted(fallback) ]
+        )
+      end
+
+      def structural_tombstone_values(key)
         values = I18n.available_locales.map do |locale|
           I18n.t(key, locale:)
         end.uniq
         values = [ I18n.t(key) ] if values.empty?
-        values.map { |value| connection.quote(value) }.join(", ")
+        values
       end
 
       def normalized_existing_counts(value)

@@ -253,6 +253,56 @@ module Identity
         assert_predicate Community::Message.with_discarded.find(message.id), :soft_deleted?
       end
 
+      test "reconciliation candidates use Arel predicates without widening closure gates" do
+        Community::Message.create!(
+          conversation: @conversation,
+          user: @user,
+          body: "Historical deletion candidate"
+        )
+        @user.update!(
+          status: :deleted,
+          account_closed_at: 1.day.ago,
+          account_closure_outcome: "authored_content_deleted",
+          account_closure_results: {
+            "identity.authored_content" => {
+              "details" => { "closure_mode" => "delete_content" }
+            }
+          }
+        )
+
+        retained_user = create_user
+        Community::Message.create!(
+          conversation: @conversation,
+          user: retained_user,
+          body: "Retained content is not a deletion candidate"
+        )
+        retained_user.update!(
+          status: :deleted,
+          account_closed_at: 1.day.ago,
+          account_closure_outcome: "stable_anonymous_author",
+          account_closure_results: {
+            "identity.authored_content" => {
+              "details" => { "closure_mode" => "retain_content" }
+            }
+          }
+        )
+
+        service = ReconcileAuthoredContentDeletion.new
+        predicates = %i[
+          missing_lifecycle_predicate
+          active_authored_content_predicate
+          topic_scrub_required_predicate
+          opening_post_scrub_required_predicate
+          profile_post_scrub_required_predicate
+        ].map { |name| service.send(name) }
+
+        predicates.each { |predicate| assert_kind_of Arel::Nodes::Node, predicate }
+        assert_equal [ @user.id ],
+                     service.send(:candidate_users)
+                       .where(id: [ @user.id, retained_user.id ])
+                       .pluck(:id)
+      end
+
       test "historically redacted content is reconciled into a governed lifecycle" do
         message = Community::Message.create!(
           conversation: @conversation,

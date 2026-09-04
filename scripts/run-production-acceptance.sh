@@ -19,11 +19,16 @@ COMPOSE_UP_TIMEOUT_SECONDS=360
 COMPOSE_DIAGNOSTICS_TIMEOUT_SECONDS=30
 COMPOSE_DOWN_TIMEOUT_SECONDS=120
 COMPOSE_LOG_TAIL_LINES=200
+POSTGRES_CONNECT_TIMEOUT_SECONDS=3
+POSTGRES_PROBE_TIMEOUT_SECONDS=5
+POSTGRES_PROBE_ATTEMPTS=15
 readonly DOCKER_INFO_TIMEOUT_SECONDS DOCKER_CONTROL_TIMEOUT_SECONDS
 readonly DOCKER_PULL_TIMEOUT_SECONDS COMPOSE_BUILD_TIMEOUT_SECONDS
 readonly COMPOSE_WAIT_TIMEOUT_SECONDS COMPOSE_UP_TIMEOUT_SECONDS
 readonly COMPOSE_DIAGNOSTICS_TIMEOUT_SECONDS COMPOSE_DOWN_TIMEOUT_SECONDS
 readonly COMPOSE_LOG_TAIL_LINES
+readonly POSTGRES_CONNECT_TIMEOUT_SECONDS POSTGRES_PROBE_TIMEOUT_SECONDS
+readonly POSTGRES_PROBE_ATTEMPTS
 
 phase() {
   CURRENT_PHASE="$1"
@@ -382,15 +387,18 @@ export PGPORT
 PGPORT="$(published_port postgres 5432)"
 export PGUSER=postgres
 export PGPASSWORD="${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}"
+export PGCONNECT_TIMEOUT="${POSTGRES_CONNECT_TIMEOUT_SECONDS}"
 REDIS_PORT="$(published_port redis 6379)"
 MINIO_PORT="$(published_port minio 9000)"
 
 phase "postgres-readiness"
 postgres_ready=0
-for attempt in $(seq 1 60); do
-  if psql --dbname=postgres --no-psqlrc --set=ON_ERROR_STOP=1 \
+for attempt in $(seq 1 "${POSTGRES_PROBE_ATTEMPTS}"); do
+  if run_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}" \
+    psql --dbname=postgres --no-psqlrc --set=ON_ERROR_STOP=1 \
     --command="SELECT 1" >/dev/null 2>&1; then
     postgres_ready=1
+    printf '[acceptance] postgres-readiness=ready attempt=%s\n' "${attempt}"
     break
   fi
 
@@ -398,7 +406,6 @@ for attempt in $(seq 1 60); do
 done
 
 if [[ "${postgres_ready}" != "1" ]]; then
-  compose ps postgres >&2 || true
   die "PostgreSQL published port did not become reachable"
 fi
 

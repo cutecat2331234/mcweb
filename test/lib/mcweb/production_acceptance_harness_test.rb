@@ -81,6 +81,11 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, "dependency image could not be resolved from Docker Compose configuration"
     refute_includes script, "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}"
     refute_includes script, "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}"
+    assert_includes script, 'export PGCONNECT_TIMEOUT="${POSTGRES_CONNECT_TIMEOUT_SECONDS}"'
+    assert_includes script, 'run_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}"'
+    assert_includes script, 'for attempt in $(seq 1 "${POSTGRES_PROBE_ATTEMPTS}")'
+    assert_includes script, "postgres-readiness=ready"
+    refute_includes script, "compose ps postgres"
   end
 
   test "CNB preserves the full lifecycle stage budget" do

@@ -24,6 +24,11 @@ class CommunitySelfServiceFoundationMigrationTest < ActiveSupport::TestCase
   teardown do
     reset_foundation!
     cleanup_migration_records!
+    # The migration's ordinary up path intentionally stops before the
+    # post-deploy message-revision contract. Restore that production contract
+    # after each non-transactional test so the suite cannot leave db:schema:dump
+    # without its function and constraint trigger.
+    Mcweb::Migrations::CommunityMessageRevisionContract.new.call
   ensure
     @track_migration_records = false
     ActiveRecord::Migration.verbose = @original_migration_verbosity unless @original_migration_verbosity.nil?

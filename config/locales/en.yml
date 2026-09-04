@@ -27,6 +27,7 @@ en:
         too_long: is too long (maximum is %{count} characters)
         invalid: is invalid
         confirmation: doesn't match confirmation
+        immutable: cannot be changed
       models:
         commerce/product:
           attributes:

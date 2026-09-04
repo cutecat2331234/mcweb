@@ -29,6 +29,7 @@ module Admin
         active: false,
         tokens: {}
       )
+      delete identity_session_path
       sign_in_as(reader)
 
       get admin_website_nav_items_path
@@ -51,6 +52,7 @@ module Admin
       grant_permission(writer, "admin.access")
       grant_permission(writer, "website.pages.edit")
       grant_admin_module(writer, "website")
+      delete identity_session_path
       sign_in_as(writer)
 
       get new_admin_website_theme_path
@@ -205,6 +207,7 @@ module Admin
       }
       page.update_columns(lifecycle_fields.merge(discard_idempotency_key_digest: SecureRandom.hex(32)))
       article.update_columns(lifecycle_fields.merge(discard_idempotency_key_digest: SecureRandom.hex(32)))
+      delete identity_session_path
       sign_in_as(reader)
 
       get admin_website_page_revisions_path(page)

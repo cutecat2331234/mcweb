@@ -5,8 +5,6 @@ require "tempfile"
 
 module Community
   class ReportAppealLifecycleTest < ActiveSupport::TestCase
-    include Rails.application.routes.url_helpers
-
     setup do
       @reporter = create_user
       @affected_user = create_user
@@ -99,7 +97,8 @@ module Community
       assert_equal @affected_user.id, report.reload.affected_user_id
       delivery = report.subject_action_delivery
       assert_equal @affected_user.id, delivery.notification.user_id
-      assert_equal forum_report_appeals_path, delivery.notification.destination_path
+      assert_equal Rails.application.routes.url_helpers.forum_report_appeals_path,
+        delivery.notification.destination_path
 
       wrong_role = create_draft(
         report:,

@@ -103,7 +103,10 @@ module Admin
 
       audit = AuditLog.order(:id).last
       assert_equal "admin.settings_protected_write_rejected", audit.action
-      assert_equal [ "owned_test.policy_version" ], audit.metadata.fetch("keys")
+      assert_equal [ "forum.bump_cooldown_hours", "owned_test.policy_version" ],
+        audit.metadata.fetch("keys")
+      assert_equal "admin.forum.settings",
+        audit.metadata.fetch("owners").fetch("forum.bump_cooldown_hours")
       assert_equal "test.dedicated_configuration",
         audit.metadata.fetch("owners").fetch("owned_test.policy_version")
       refute_includes audit.to_json, submitted_secret

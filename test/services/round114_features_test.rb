@@ -212,6 +212,9 @@ class Round114ModerationApprovalsControllerTest < ActionDispatch::IntegrationTes
   test "section moderator can access moderation approvals index" do
     sign_in_as(@mod)
     get forum_moderation_approvals_path
+    assert_redirected_to staff_forum_approvals_path
+
+    follow_redirect!
     assert_response :success
     assert_includes response.body, "Pending ctrl"
   end

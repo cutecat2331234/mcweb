@@ -93,6 +93,7 @@
         restrict_dependent_destroy:
           has_one: 由于存在关联的 %{record}，无法删除
           has_many: 由于存在关联的 %{record}，无法删除
+        immutable: 不可修改
       models:
         commerce/product:
           attributes:

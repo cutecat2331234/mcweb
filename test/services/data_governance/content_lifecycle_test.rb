@@ -413,8 +413,8 @@ module DataGovernance
       attachment_ids = evidence_references.find do |reference|
         reference.target_type == "Community::PostAttachment"
       end
-      assert_instance_of ActiveRecord::Relation, post_ids.target_ids
-      assert_instance_of ActiveRecord::Relation, attachment_ids.target_ids
+      assert_kind_of ActiveRecord::Relation, post_ids.target_ids
+      assert_kind_of ActiveRecord::Relation, attachment_ids.target_ids
       refute_predicate post_ids.target_ids, :loaded?
       refute_predicate attachment_ids.target_ids, :loaded?
       assert_predicate hold, :success?, hold.error

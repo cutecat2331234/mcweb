@@ -22,6 +22,16 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
       Rails.root.join("scripts/run-production-acceptance.sh")
     )
 
+    assert_includes script, "set -Eeuo pipefail"
+    refute_includes script, "set -x"
+    assert_includes script, 'phase "startup"'
+    assert_includes script, 'run_with_timeout "${DOCKER_INFO_TIMEOUT_SECONDS}" docker info'
+    assert_includes script, 'docker image inspect "${image}"'
+    assert_includes script, 'run_with_timeout "${DOCKER_PULL_TIMEOUT_SECONDS}" docker pull "${image}"'
+    assert_includes script, "action=reuse-exact"
+    assert_includes script, "action=pull-start"
+    assert_includes script, "action=pull-complete"
+    assert_includes script, "exit phase=%s status=%s"
     assert_includes script, "mktemp -d"
     assert_includes script, 'WORKSPACE_ROOT_INPUT="${CNB_BUILD_WORKSPACE:-${TMPDIR:-/tmp}}"'
     assert_includes script, 'if [[ -n "${CNB_RUNNER_IP:-}" ]]; then'
@@ -34,14 +44,15 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}" ]]'
-    assert_includes script, 'docker pull "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE}"'
-    assert_includes script, 'docker pull "${MCWEB_ACCEPTANCE_REDIS_IMAGE}"'
-    assert_includes script, 'docker pull "${MCWEB_ACCEPTANCE_MINIO_IMAGE}"'
-    assert_includes script, 'COMPOSE_DEPENDENCY_BUILD_FLAG="--no-build"'
-    assert_includes script, 'start_compose up --detach "${COMPOSE_DEPENDENCY_BUILD_FLAG}" --wait'
-    assert_includes script, "compose ps --all"
-    assert_includes script, "compose logs --no-color minio"
-    assert_includes script, "compose down --volumes --remove-orphans"
+    assert_includes script, 'pull_dependency_image "postgres" "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE}"'
+    assert_includes script, 'pull_dependency_image "redis" "${MCWEB_ACCEPTANCE_REDIS_IMAGE}"'
+    assert_includes script, 'pull_dependency_image "minio" "${MCWEB_ACCEPTANCE_MINIO_IMAGE}"'
+    assert_includes script, "up --detach --no-build --pull never --wait"
+    assert_includes script, '--wait-timeout "${COMPOSE_WAIT_TIMEOUT_SECONDS}"'
+    assert_includes script, 'ps --all'
+    assert_includes script, 'logs --no-color --tail "${COMPOSE_LOG_TAIL_LINES}"'
+    assert_includes script, 'compose_with_timeout "${COMPOSE_DOWN_TIMEOUT_SECONDS}"'
+    assert_includes script, "down --volumes --remove-orphans"
     assert_includes script, "deploy/docker/Dockerfile"
     assert_includes script, "bundle exec rails db:prepare"
     assert_includes script, "VERSION=\"${UPGRADE_BASELINE_VERSION}\" bundle exec rails db:migrate"
@@ -50,7 +61,18 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, "unreachable object storage"
     assert_includes script, "invalid confirmation"
     assert_includes script, "non-empty target database"
-    assert_includes script, "fail-closed Redis dependency"
+    assert_includes script, 'phase "redis-fail-closed"'
+  end
+
+  test "CNB preserves the full lifecycle stage budget" do
+    config = File.read(Rails.root.join(".cnb.yml"))
+    lifecycle_stage = Regexp.new(
+      "name: run-production-data-lifecycle-acceptance\\n" \
+      "\\s+script: bash scripts/run-production-acceptance\\.sh\\n" \
+      "\\s+timeout: 90m"
+    )
+
+    assert_match lifecycle_stage, config
   end
 
   test "production probe refuses arbitrary databases and verifies durable state" do

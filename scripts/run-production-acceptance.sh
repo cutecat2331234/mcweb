@@ -3,8 +3,38 @@ set -Eeuo pipefail
 
 umask 077
 
+CURRENT_PHASE="startup"
+WORKSPACE=""
+WORKSPACE_ROOT=""
+PROJECT_NAME=""
+COMPOSE_FILE=""
+COMPOSE_DIAGNOSTICS_READY=0
+
+DOCKER_INFO_TIMEOUT_SECONDS=60
+DOCKER_CONTROL_TIMEOUT_SECONDS=30
+DOCKER_PULL_TIMEOUT_SECONDS=600
+COMPOSE_BUILD_TIMEOUT_SECONDS=900
+COMPOSE_WAIT_TIMEOUT_SECONDS=300
+COMPOSE_UP_TIMEOUT_SECONDS=360
+COMPOSE_DIAGNOSTICS_TIMEOUT_SECONDS=30
+COMPOSE_DOWN_TIMEOUT_SECONDS=120
+COMPOSE_LOG_TAIL_LINES=200
+readonly DOCKER_INFO_TIMEOUT_SECONDS DOCKER_CONTROL_TIMEOUT_SECONDS
+readonly DOCKER_PULL_TIMEOUT_SECONDS COMPOSE_BUILD_TIMEOUT_SECONDS
+readonly COMPOSE_WAIT_TIMEOUT_SECONDS COMPOSE_UP_TIMEOUT_SECONDS
+readonly COMPOSE_DIAGNOSTICS_TIMEOUT_SECONDS COMPOSE_DOWN_TIMEOUT_SECONDS
+readonly COMPOSE_LOG_TAIL_LINES
+
+phase() {
+  CURRENT_PHASE="$1"
+  printf '[acceptance] phase=%s\n' "${CURRENT_PHASE}"
+}
+
+phase "startup"
+
 die() {
-  echo "Production acceptance failed: $*" >&2
+  printf 'Production acceptance failed during phase %s: %s\n' \
+    "${CURRENT_PHASE}" "$*" >&2
   exit 1
 }
 
@@ -12,13 +42,90 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "required command is unavailable: $1"
 }
 
-for command in docker openssl bundle ruby psql createdb pg_dump pg_restore realpath mktemp grep; do
+run_with_timeout() {
+  local seconds="$1"
+  shift
+
+  timeout -k 10 "${seconds}" "$@"
+}
+
+compose_with_timeout() {
+  local seconds="$1"
+  shift
+
+  run_with_timeout "${seconds}" \
+    docker compose --project-name "${PROJECT_NAME}" --file "${COMPOSE_FILE}" "$@"
+}
+
+collect_compose_diagnostics() {
+  [[ "${COMPOSE_DIAGNOSTICS_READY}" == "1" ]] || return 0
+
+  printf '[acceptance] diagnostics=compose-ps phase=%s\n' "${CURRENT_PHASE}" >&2
+  compose_with_timeout "${COMPOSE_DIAGNOSTICS_TIMEOUT_SECONDS}" \
+    ps --all >&2 || printf '[acceptance] diagnostics=compose-ps-unavailable\n' >&2
+  printf '[acceptance] diagnostics=compose-logs phase=%s tail=%s\n' \
+    "${CURRENT_PHASE}" "${COMPOSE_LOG_TAIL_LINES}" >&2
+  compose_with_timeout "${COMPOSE_DIAGNOSTICS_TIMEOUT_SECONDS}" \
+    logs --no-color --tail "${COMPOSE_LOG_TAIL_LINES}" >&2 || \
+    printf '[acceptance] diagnostics=compose-logs-unavailable\n' >&2
+}
+
+cleanup() {
+  local status=$?
+  local exit_phase="${CURRENT_PHASE}"
+
+  trap - EXIT INT TERM
+  printf '[acceptance] exit phase=%s status=%s\n' "${exit_phase}" "${status}" >&2
+
+  if ((status != 0)); then
+    collect_compose_diagnostics
+  fi
+
+  if [[ "${PROJECT_NAME}" =~ ^mcwebacceptance[0-9]+_[0-9]+$ ]]; then
+    printf '[acceptance] phase=compose-down timeout_seconds=%s\n' \
+      "${COMPOSE_DOWN_TIMEOUT_SECONDS}" >&2
+    if compose_with_timeout "${COMPOSE_DOWN_TIMEOUT_SECONDS}" \
+      down --volumes --remove-orphans >/dev/null 2>&1; then
+      printf '[acceptance] compose-down=complete\n' >&2
+    else
+      printf '[acceptance] compose-down=failed-or-timed-out\n' >&2
+      status=1
+    fi
+  fi
+
+  if [[ -n "${WORKSPACE}" && -d "${WORKSPACE}" && -n "${WORKSPACE_ROOT}" ]]; then
+    case "${WORKSPACE}" in
+      "${WORKSPACE_ROOT%/}"/mcweb-acceptance.*)
+        rm -rf -- "${WORKSPACE}"
+        ;;
+    esac
+  fi
+
+  printf '[acceptance] exit-complete phase=%s status=%s\n' \
+    "${exit_phase}" "${status}" >&2
+  exit "${status}"
+}
+
+for command in docker openssl bundle ruby psql createdb pg_dump pg_restore realpath mktemp grep timeout; do
   require_command "${command}"
 done
-docker compose version >/dev/null
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+phase "docker-daemon-check"
+if ! run_with_timeout "${DOCKER_INFO_TIMEOUT_SECONDS}" docker info >/dev/null 2>&1; then
+  die "Docker daemon did not answer the bounded readiness check"
+fi
+if ! run_with_timeout "${DOCKER_CONTROL_TIMEOUT_SECONDS}" \
+  docker compose version >/dev/null 2>&1
+then
+  die "Docker Compose did not answer the bounded version check"
+fi
 pg_dump --version | grep -Eq ' 18\.' ||
   die "PostgreSQL 18 client tools are required for the PostgreSQL 18 acceptance service"
 
+phase "workspace-preparation"
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${APP_ROOT}/deploy/acceptance/docker-compose.yml"
 WORKSPACE_ROOT_INPUT="${CNB_BUILD_WORKSPACE:-${TMPDIR:-/tmp}}"
@@ -26,10 +133,12 @@ WORKSPACE_ROOT="$(realpath --canonicalize-existing "${WORKSPACE_ROOT_INPUT}")"
 WORKSPACE="$(mktemp -d "${WORKSPACE_ROOT%/}/mcweb-acceptance.XXXXXX")"
 PROJECT_NAME="mcwebacceptance$$_${RANDOM}"
 CERTS_DIR="${WORKSPACE}/certs"
-COMPOSE_DEPENDENCY_BUILD_FLAG="--build"
 DOCKER_ENDPOINT="${DOCKER_HOST:-}"
 if [[ -z "${DOCKER_ENDPOINT}" ]]; then
-  DOCKER_ENDPOINT="$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null || true)"
+  DOCKER_ENDPOINT="$(
+    run_with_timeout "${DOCKER_CONTROL_TIMEOUT_SECONDS}" \
+      docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null || true
+  )"
 fi
 
 valid_ipv4() {
@@ -115,12 +224,45 @@ esac
 [[ "${PROJECT_NAME}" =~ ^mcwebacceptance[0-9]+_[0-9]+$ ]] ||
   die "unsafe Docker Compose project name"
 
-compose() {
-  docker compose --project-name "${PROJECT_NAME}" --file "${COMPOSE_FILE}" "$@"
+pull_dependency_image() {
+  local dependency="$1"
+  local image="$2"
+  local inspect_status
+
+  phase "dependency-image-${dependency}"
+  if run_with_timeout "${DOCKER_CONTROL_TIMEOUT_SECONDS}" \
+    docker image inspect "${image}" >/dev/null 2>&1
+  then
+    printf '[acceptance] dependency-image=%s action=reuse-exact\n' "${dependency}"
+    return 0
+  else
+    inspect_status=$?
+  fi
+  if [[ "${inspect_status}" == "124" || "${inspect_status}" == "137" ]]; then
+    die "${dependency} dependency image inspection timed out"
+  fi
+
+  printf '[acceptance] dependency-image=%s action=pull-start timeout_seconds=%s\n' \
+    "${dependency}" "${DOCKER_PULL_TIMEOUT_SECONDS}"
+  if ! run_with_timeout "${DOCKER_PULL_TIMEOUT_SECONDS}" docker pull "${image}"; then
+    die "${dependency} dependency image pull failed or timed out"
+  fi
+  printf '[acceptance] dependency-image=%s action=pull-complete\n' "${dependency}"
 }
 
 prepare_dependency_images() {
-  if [[ "${MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS:-0}" != "1" ]]; then
+  local cached_inputs="${MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS:-0}"
+
+  if [[ "${cached_inputs}" != "1" ]]; then
+    pull_dependency_image \
+      "postgres" "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}"
+    pull_dependency_image \
+      "redis" "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}"
+    phase "dependency-image-minio-build"
+    if ! compose_with_timeout "${COMPOSE_BUILD_TIMEOUT_SECONDS}" build minio; then
+      die "local MinIO dependency image build failed or timed out"
+    fi
+    printf '[acceptance] dependency-image=minio action=build-complete\n'
     return 0
   fi
 
@@ -131,38 +273,12 @@ prepare_dependency_images() {
   [[ -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}" ]] ||
     die "MCWEB_ACCEPTANCE_MINIO_IMAGE is required when cached inputs are enforced"
 
-  docker pull "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE}"
-  docker pull "${MCWEB_ACCEPTANCE_REDIS_IMAGE}"
-  docker pull "${MCWEB_ACCEPTANCE_MINIO_IMAGE}"
-  COMPOSE_DEPENDENCY_BUILD_FLAG="--no-build"
+  pull_dependency_image "postgres" "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE}"
+  pull_dependency_image "redis" "${MCWEB_ACCEPTANCE_REDIS_IMAGE}"
+  pull_dependency_image "minio" "${MCWEB_ACCEPTANCE_MINIO_IMAGE}"
 }
 
-start_compose() {
-  if compose "$@"; then
-    return 0
-  fi
-
-  compose ps --all >&2 || true
-  compose logs --no-color minio >&2 || true
-  die "Docker Compose dependencies did not become healthy"
-}
-
-cleanup() {
-  local status=$?
-  if [[ "${PROJECT_NAME}" =~ ^mcwebacceptance[0-9]+_[0-9]+$ ]]; then
-    compose down --volumes --remove-orphans >/dev/null 2>&1 || true
-  fi
-  if [[ -d "${WORKSPACE}" ]]; then
-    case "${WORKSPACE}" in
-      "${WORKSPACE_ROOT%/}"/mcweb-acceptance.*)
-        rm -rf -- "${WORKSPACE}"
-        ;;
-    esac
-  fi
-  exit "${status}"
-}
-trap cleanup EXIT INT TERM
-
+phase "ephemeral-tls"
 mkdir -p "${CERTS_DIR}/CAs"
 openssl req -x509 -newkey rsa:2048 -sha256 -nodes \
   -days 2 \
@@ -198,24 +314,37 @@ export MCWEB_ACCEPTANCE_S3_SECRET_KEY="mcweb-acceptance-secret-key-000000000000"
 
 cd "${APP_ROOT}"
 if [[ "${MCWEB_ACCEPTANCE_SKIP_APP_IMAGE_BUILD:-0}" != "1" ]]; then
+  phase "application-image-build"
   docker build \
     --file deploy/docker/Dockerfile \
     --tag "${PROJECT_NAME}-app:acceptance" \
     .
 fi
 prepare_dependency_images
-start_compose up --detach "${COMPOSE_DEPENDENCY_BUILD_FLAG}" --wait
+phase "compose-up"
+COMPOSE_DIAGNOSTICS_READY=1
+if ! compose_with_timeout "${COMPOSE_UP_TIMEOUT_SECONDS}" \
+  up --detach --no-build --pull never --wait \
+  --wait-timeout "${COMPOSE_WAIT_TIMEOUT_SECONDS}"
+then
+  die "Docker Compose dependencies did not become healthy before the bounded wait"
+fi
+printf '[acceptance] compose-up=complete\n'
 
 published_port() {
   local service="$1"
   local container_port="$2"
   local address port
-  address="$(compose port "${service}" "${container_port}")"
+  address="$(
+    compose_with_timeout "${DOCKER_CONTROL_TIMEOUT_SECONDS}" \
+      port "${service}" "${container_port}"
+  )"
   port="${address##*:}"
   [[ "${port}" =~ ^[0-9]+$ ]] || die "could not resolve ${service} port from ${address}"
   printf '%s\n' "${port}"
 }
 
+phase "published-port-discovery"
 export PGHOST="${ACCEPTANCE_SERVICE_HOST}"
 export PGPORT
 PGPORT="$(published_port postgres 5432)"
@@ -224,6 +353,7 @@ export PGPASSWORD="${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}"
 REDIS_PORT="$(published_port redis 6379)"
 MINIO_PORT="$(published_port minio 9000)"
 
+phase "postgres-readiness"
 postgres_ready=0
 for attempt in $(seq 1 60); do
   if psql --dbname=postgres --no-psqlrc --set=ON_ERROR_STOP=1 \
@@ -318,14 +448,14 @@ UPGRADE_BASELINE_VERSION="20260729126000"
 [[ -f "db/migrate/${UPGRADE_BASELINE_VERSION}_create_operations_worker_heartbeats.rb" ]] ||
   die "recorded upgrade baseline migration is missing"
 
-echo "[acceptance] fresh production database"
+phase "fresh-production-database"
 create_database_pair "${FRESH_DATABASE}"
 use_database "${FRESH_DATABASE}"
 bundle exec rails db:prepare
 run_probe seed-fresh
 run_probe verify-fresh
 
-echo "[acceptance] migration upgrade from ${UPGRADE_BASELINE_VERSION}"
+phase "migration-upgrade"
 create_database_pair "${UPGRADE_DATABASE}"
 use_database "${UPGRADE_DATABASE}"
 VERSION="${UPGRADE_BASELINE_VERSION}" bundle exec rails db:migrate
@@ -334,7 +464,7 @@ bundle exec rails db:migrate
 bundle exec rails db:prepare
 run_probe verify-upgrade
 
-echo "[acceptance] fail-closed unreachable object storage"
+phase "object-storage-fail-closed"
 use_database "${FRESH_DATABASE}"
 export MCWEB_BACKUP_DIR="${WORKSPACE}/failed-backups"
 if MCWEB_BACKUP_ID="unreachable-object-store" \
@@ -344,7 +474,7 @@ then
   die "backup unexpectedly succeeded with unreachable object storage"
 fi
 
-echo "[acceptance] real backup and verify-only restore"
+phase "backup-and-verify-only-restore"
 export MCWEB_BACKUP_DIR="${WORKSPACE}/backups"
 export MCWEB_BACKUP_ID="acceptance-v1"
 bash bin/backup
@@ -352,7 +482,7 @@ BACKUP_PATH="${MCWEB_BACKUP_DIR}/${MCWEB_BACKUP_ID}"
 run_probe delete-primary-object
 bash bin/restore --backup "${BACKUP_PATH}" --verify
 
-echo "[acceptance] guarded restore into a new database"
+phase "guarded-restore"
 create_database_pair "${RESTORE_DATABASE}"
 use_database "${RESTORE_DATABASE}"
 if bash bin/restore \
@@ -381,9 +511,10 @@ then
   die "restore unexpectedly accepted a non-empty target database"
 fi
 
-echo "[acceptance] fail-closed Redis dependency"
+phase "redis-fail-closed"
 if REDIS_URL="redis://127.0.0.1:1/0" run_probe verify-restored; then
   die "production probe unexpectedly succeeded with unreachable Redis"
 fi
 
+phase "complete"
 echo "Production acceptance passed: image build, fresh install, upgrade, S3, Redis, backup, and restore."

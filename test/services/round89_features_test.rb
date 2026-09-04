@@ -126,7 +126,17 @@ class Round89TopicSubscriptionIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "patch subscription sets level via dropdown endpoint" do
-    patch subscription_forum_topic_path(@topic), params: { level: "normal" }
+    request_from(
+      application_id: "forum",
+      method: :patch,
+      path: subscription_forum_topic_path(@topic),
+      referer: forum_topic_url(@topic),
+      params: { level: "normal" },
+      headers: {
+        "X-Inertia" => "true",
+        "X-Inertia-Version" => InertiaRails.configuration.version
+      }
+    )
     assert_redirected_to forum_topic_path(@topic)
     assert_equal "normal", Community::Subscription.find_by(user: @user, subscribable: @topic).notification_level
   end

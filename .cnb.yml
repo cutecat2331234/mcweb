@@ -63,7 +63,7 @@ main:
           script: |
             set -eu
             bundle exec rails tailwindcss:build
-            bin/vite build
+            bin/vite build --mode=production
             npm run check:vite-resource-boundaries
             npm run check:vite-budgets
           timeout: 60m

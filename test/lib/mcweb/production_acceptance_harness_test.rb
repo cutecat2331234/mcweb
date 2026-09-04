@@ -105,6 +105,14 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_match lifecycle_stage, config
   end
 
+  test "CNB builds production and test Vite assets in explicit modes" do
+    config = File.read(Rails.root.join(".cnb.yml"))
+
+    assert_includes config, "bin/vite build --mode=production"
+    assert_includes config, "bin/vite build --mode=test"
+    refute_match(/^\h+bin\/vite build\h*$/, config)
+  end
+
   test "production probe refuses arbitrary databases and verifies durable state" do
     probe = File.read(
       Rails.root.join("scripts/production-acceptance-probe.rb")

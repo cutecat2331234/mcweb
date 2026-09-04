@@ -116,7 +116,7 @@ class Administration::SensitiveActionRateLimitConcurrencyTest < ActiveSupport::T
     threads.each(&:join)
 
     assert_equal 5, responses.count(&:success?)
-    assert_equal 5, responses.count { |result| result.code == :rate_limited }
+    assert_equal 5, responses.count(&:rate_limited?)
     assert_equal 5, Administration::SensitiveActionRateLimitReservation
       .where(user_id: @user.id, scope: @scope, status: "pending").count
   end

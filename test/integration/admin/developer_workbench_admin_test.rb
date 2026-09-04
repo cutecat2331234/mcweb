@@ -116,7 +116,11 @@ module Admin
             1
           ) do
             post seed_scenario_admin_system_developer_workbench_path,
-              params: { scenario: "personas" }
+              params: { scenario: "personas" },
+              headers: frontend_application_request_headers(
+                application_id: "admin",
+                referer: admin_system_developer_workbench_url
+              )
           end
 
           assert_redirected_to admin_system_developer_workbench_path

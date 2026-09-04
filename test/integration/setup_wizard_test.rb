@@ -4,6 +4,11 @@ require "test_helper"
 
 class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
   SITE_SETTING_KEYS = %w[site.name site.url].freeze
+  DURABLE_LEDGER_IMMUTABLE_TRIGGERS = {
+    "operations_durable_enqueue_events" => "operations_durable_events_immutable",
+    "operations_durable_enqueue_attempts" => "operations_durable_attempts_immutable",
+    "operations_durable_enqueue_intents" => "operations_durable_intents_immutable"
+  }.freeze
 
   parallelize(workers: 1)
 
@@ -296,10 +301,33 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     return if user_ids.empty?
 
     intents = Operations::DurableEnqueueIntent.where(source_kind: "user", source_id: user_ids)
-    Operations::DurableEnqueueEvent.where(intent_id: intents.select(:id)).delete_all
-    Operations::DurableEnqueueAttempt.where(intent_id: intents.select(:id)).delete_all
-    intents.delete_all
+    without_durable_ledger_immutability do
+      Operations::DurableEnqueueEvent.where(intent_id: intents.select(:id)).delete_all
+      Operations::DurableEnqueueAttempt.where(intent_id: intents.select(:id)).delete_all
+      intents.delete_all
+    end
     AuditLog.where(actor_id: user_ids).delete_all
     users.find_each(&:destroy!)
+  end
+
+  def without_durable_ledger_immutability
+    connection = ApplicationRecord.connection
+    disabled = []
+    DURABLE_LEDGER_IMMUTABLE_TRIGGERS.each do |table, trigger|
+      connection.execute(
+        "ALTER TABLE #{connection.quote_table_name(table)} " \
+        "DISABLE TRIGGER #{connection.quote_column_name(trigger)}"
+      )
+      disabled << [ table, trigger ]
+    end
+
+    yield
+  ensure
+    disabled&.reverse_each do |table, trigger|
+      connection.execute(
+        "ALTER TABLE #{connection.quote_table_name(table)} " \
+        "ENABLE TRIGGER #{connection.quote_column_name(trigger)}"
+      )
+    end
   end
 end

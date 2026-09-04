@@ -95,7 +95,8 @@ class Commerce::ImagePackTexturesControllerTest < ActionDispatch::IntegrationTes
   end
 
   test "returns not found for path traversal" do
-    get "/app/store/image-packs/demo/item/..%2F..%2Fetc/passwd"
+    get "/app/store/image-packs/demo/item/..%2F..%2Fetc/passwd",
+      frontend_application_source: false
     assert_response :not_found
   end
 

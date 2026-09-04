@@ -24,7 +24,7 @@ test('Arco form controls receive the visible FormItem label as an accessible nam
   const attributes = attributeStore()
   const formItem = {
     querySelector: () => ({ textContent: '  Stable mode key  ' }),
-    querySelectorAll: () => [control],
+    querySelectorAll: (selector: string) => selector === 'button.arco-input-number-step-button' ? [] : [control],
   }
   const control = {
     ...attributes,

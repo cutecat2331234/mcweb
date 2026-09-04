@@ -393,20 +393,43 @@ MINIO_PORT="$(published_port minio 9000)"
 
 phase "postgres-readiness"
 postgres_ready=0
+postgres_container_probe_status="not-run"
+postgres_published_probe_status="not-run"
 for attempt in $(seq 1 "${POSTGRES_PROBE_ATTEMPTS}"); do
+  if compose_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}" \
+    exec --no-TTY postgres \
+    pg_isready --host=127.0.0.1 --port=5432 \
+    --username=postgres --dbname=postgres >/dev/null 2>&1
+  then
+    postgres_ready=1
+    printf '[acceptance] postgres-readiness=ready method=container-pg_isready attempt=%s\n' \
+      "${attempt}"
+    break
+  else
+    postgres_container_probe_status=$?
+  fi
+
   if run_with_timeout "${POSTGRES_PROBE_TIMEOUT_SECONDS}" \
     psql --dbname=postgres --no-psqlrc --set=ON_ERROR_STOP=1 \
     --command="SELECT 1" >/dev/null 2>&1; then
     postgres_ready=1
-    printf '[acceptance] postgres-readiness=ready attempt=%s\n' "${attempt}"
+    printf '[acceptance] postgres-readiness=ready method=published-psql attempt=%s\n' \
+      "${attempt}"
     break
+  else
+    postgres_published_probe_status=$?
   fi
 
-  sleep 1
+  printf '[acceptance] postgres-readiness=retry attempt=%s container_status=%s published_status=%s\n' \
+    "${attempt}" "${postgres_container_probe_status}" \
+    "${postgres_published_probe_status}" >&2
+  if ((attempt < POSTGRES_PROBE_ATTEMPTS)); then
+    sleep 1
+  fi
 done
 
 if [[ "${postgres_ready}" != "1" ]]; then
-  die "PostgreSQL published port did not become reachable"
+  die "PostgreSQL readiness probes failed: container pg_isready status ${postgres_container_probe_status}; published endpoint status ${postgres_published_probe_status} (${PGHOST}:${PGPORT})"
 fi
 
 export RAILS_ENV=production

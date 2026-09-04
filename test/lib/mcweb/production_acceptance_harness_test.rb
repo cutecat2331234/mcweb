@@ -183,7 +183,7 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
       Rails.root.join("scripts/run-production-acceptance.sh")
     )
     readiness_match = script.match(
-      /phase "postgres-readiness"\n(?<body>.*?)\nexport RAILS_ENV=production/m
+      /^  phase "postgres-readiness"\n(?<body>.*?)^  phase "redis-readiness"$/m
     )
 
     assert_not_nil readiness_match
@@ -191,6 +191,7 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
 
     assert_equal 1, readiness.scan("postgres_ready=1").length
     assert_includes readiness, "psql --dbname=postgres"
+    assert_includes readiness, '--command="SELECT 1"'
     assert_includes readiness, "method=compose-network-psql"
     assert_includes readiness, "endpoint=postgres:5432"
     refute_includes readiness, "pg_isready"

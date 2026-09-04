@@ -79,6 +79,7 @@ module Admin
         grant_permission(reader, "admin.access")
         grant_permission(reader, "system.jobs.read")
         grant_admin_module(reader, "system")
+        delete identity_session_path
         sign_in_as(reader)
 
         get admin_system_sidekiq_path
@@ -91,6 +92,7 @@ module Admin
         grant_permission(reader, "admin.access")
         grant_permission(reader, "system.sidekiq.read")
         grant_admin_module(reader, "forum")
+        delete identity_session_path
         sign_in_as(reader)
 
         get admin_system_sidekiq_path

@@ -38,7 +38,7 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     refute_includes script, "CNB_ACCEPTANCE_SERVICE_HOST"
     assert_includes script, 'case "${DOCKER_ENDPOINT}" in'
     assert_includes script, '""|unix://*)'
-    assert_includes script, 'tcp://*)'
+    assert_includes script, "tcp://*)"
     assert_includes script, 'ACCEPTANCE_SERVICE_HOST="$(acceptance_service_host)"'
     assert_includes script, 'if [[ "${DOCKER_ENDPOINT}" == tcp://* ]]; then'
     assert_includes script, 'MCWEB_ACCEPTANCE_PUBLISH_HOST="0.0.0.0"'

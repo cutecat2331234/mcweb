@@ -143,7 +143,7 @@ class WebsiteContentRecoveryTest < ActiveSupport::TestCase
 
     restore_key = request_id("restore")
     restored = restore(page, key: restore_key)
-    replayed = restore(page, key: restore_key, expected_version: page.lock_version - 1)
+    replayed = restore(page, key: restore_key, expected_version: page.reload.lock_version - 1)
     assert restored.success?
     assert replayed.success?
     assert replayed.value.fetch(:replayed)
@@ -218,7 +218,7 @@ class WebsiteContentRecoveryTest < ActiveSupport::TestCase
       actor: nil,
       reason: "retention_expired",
       confirmation: Website::FinalPurge.confirmation_for(page),
-      expected_lock_version: page.lock_version,
+      expected_lock_version: page.reload.lock_version,
       idempotency_key: request_id("purge-blocked"),
       background: true
     )
@@ -231,7 +231,7 @@ class WebsiteContentRecoveryTest < ActiveSupport::TestCase
       actor: nil,
       reason: "retention_expired",
       confirmation: Website::FinalPurge.confirmation_for(page),
-      expected_lock_version: page.lock_version,
+      expected_lock_version: page.reload.lock_version,
       idempotency_key: purge_key,
       background: true
     )
@@ -321,7 +321,7 @@ class WebsiteContentRecoveryTest < ActiveSupport::TestCase
       actor: @actor,
       reason: reason,
       confirmation: issued.value.fetch(:confirmation),
-      expected_lock_version: page.lock_version,
+      expected_lock_version: page.reload.lock_version,
       idempotency_key: key,
       authorization_token: issued.value.fetch(:authorization_token)
     )

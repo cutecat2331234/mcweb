@@ -127,8 +127,22 @@ module ProductionAcceptanceProbe
     connection.call("SET", key, "ok", "EX", 30)
     abort("Redis round trip failed") unless connection.call("GET", key) == "ok"
   ensure
-    connection&.call("DEL", key)
-    connection&.close
+    primary_failure = $!
+    cleanup_failure = nil
+    if connection
+      begin
+        connection.call("DEL", key)
+      rescue StandardError => error
+        cleanup_failure = error
+      ensure
+        begin
+          connection.close
+        rescue StandardError => error
+          cleanup_failure ||= error
+        end
+      end
+    end
+    raise cleanup_failure if cleanup_failure && primary_failure.nil?
   end
 
   def client

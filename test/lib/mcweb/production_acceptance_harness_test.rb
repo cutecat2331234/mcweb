@@ -281,6 +281,11 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes probe, ').new_client'
     assert_includes probe, 'connection.call("SET", key, "ok", "EX", 30)'
     assert_includes probe, 'connection.call("GET", key) == "ok"'
+    assert_includes probe, 'primary_failure = $!'
+    assert_includes probe, 'cleanup_failure ||= error'
+    assert_includes probe, "connection.close"
+    assert_includes probe,
+      'raise cleanup_failure if cleanup_failure && primary_failure.nil?'
     assert_includes probe, "verify_current_schema!"
   end
 end

@@ -44,9 +44,9 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}" ]]'
-    assert_includes script, 'pull_dependency_image "postgres" "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE}"'
-    assert_includes script, 'pull_dependency_image "redis" "${MCWEB_ACCEPTANCE_REDIS_IMAGE}"'
-    assert_includes script, 'pull_dependency_image "minio" "${MCWEB_ACCEPTANCE_MINIO_IMAGE}"'
+    assert_includes script, 'pull_dependency_image "postgres" "${postgres_image}"'
+    assert_includes script, 'pull_dependency_image "redis" "${redis_image}"'
+    assert_includes script, 'pull_dependency_image "minio" "${minio_image}"'
     assert_includes script, "up --detach --no-build --pull never --wait"
     assert_includes script, '--wait-timeout "${COMPOSE_WAIT_TIMEOUT_SECONDS}"'
     assert_includes script, 'ps --all'
@@ -62,6 +62,25 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, "invalid confirmation"
     assert_includes script, "non-empty target database"
     assert_includes script, 'phase "redis-fail-closed"'
+  end
+
+  test "acceptance harness pulls exact images from the resolved compose config" do
+    script = File.read(
+      Rails.root.join("scripts/run-production-acceptance.sh")
+    )
+
+    assert_includes script,
+      "compose_with_timeout \"${DOCKER_CONTROL_TIMEOUT_SECONDS}\" \\\n" \
+      "      config --format json 2>/dev/null |"
+    assert_includes script, 'JSON.parse(STDIN.read).dig("services", service, "image")'
+    assert_includes script, 'image.match?(/\A[^\u0000-\u0020\u007f]+\z/)'
+    assert_includes script, 'postgres_image="$(resolved_compose_image postgres)"'
+    assert_includes script, 'redis_image="$(resolved_compose_image redis)"'
+    assert_includes script, 'minio_image="$(resolved_compose_image minio)"'
+    assert_includes script, 'docker pull "${image}" >/dev/null 2>&1'
+    assert_includes script, "dependency image could not be resolved from Docker Compose configuration"
+    refute_includes script, '${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}'
+    refute_includes script, '${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}'
   end
 
   test "CNB preserves the full lifecycle stage budget" do

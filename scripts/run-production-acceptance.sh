@@ -244,20 +244,51 @@ pull_dependency_image() {
 
   printf '[acceptance] dependency-image=%s action=pull-start timeout_seconds=%s\n' \
     "${dependency}" "${DOCKER_PULL_TIMEOUT_SECONDS}"
-  if ! run_with_timeout "${DOCKER_PULL_TIMEOUT_SECONDS}" docker pull "${image}"; then
+  if ! run_with_timeout "${DOCKER_PULL_TIMEOUT_SECONDS}" docker pull "${image}" >/dev/null 2>&1; then
     die "${dependency} dependency image pull failed or timed out"
   fi
   printf '[acceptance] dependency-image=%s action=pull-complete\n' "${dependency}"
 }
 
+resolved_compose_image() {
+  local service="$1"
+  local image
+
+  [[ "${service}" =~ ^[a-z0-9_-]+$ ]] ||
+    die "unsafe Docker Compose service name"
+  if ! image="$(
+    compose_with_timeout "${DOCKER_CONTROL_TIMEOUT_SECONDS}" \
+      config --format json 2>/dev/null |
+      MCWEB_ACCEPTANCE_COMPOSE_SERVICE="${service}" ruby -rjson -e '
+        service = ENV.fetch("MCWEB_ACCEPTANCE_COMPOSE_SERVICE")
+        image = JSON.parse(STDIN.read).dig("services", service, "image")
+        valid = image.is_a?(String) &&
+          image.match?(/\A[^\u0000-\u0020\u007f]+\z/)
+        exit 1 unless valid
+
+        STDOUT.write(image)
+      ' 2>/dev/null
+  )"
+  then
+    die "${service} dependency image could not be resolved from Docker Compose configuration"
+  fi
+
+  printf '%s\n' "${image}"
+}
+
 prepare_dependency_images() {
   local cached_inputs="${MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS:-0}"
+  local postgres_image
+  local redis_image
+  local minio_image
+
+  phase "dependency-image-resolution"
+  postgres_image="$(resolved_compose_image postgres)"
+  redis_image="$(resolved_compose_image redis)"
 
   if [[ "${cached_inputs}" != "1" ]]; then
-    pull_dependency_image \
-      "postgres" "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}"
-    pull_dependency_image \
-      "redis" "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}"
+    pull_dependency_image "postgres" "${postgres_image}"
+    pull_dependency_image "redis" "${redis_image}"
     phase "dependency-image-minio-build"
     if ! compose_with_timeout "${COMPOSE_BUILD_TIMEOUT_SECONDS}" build minio; then
       die "local MinIO dependency image build failed or timed out"
@@ -273,9 +304,10 @@ prepare_dependency_images() {
   [[ -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}" ]] ||
     die "MCWEB_ACCEPTANCE_MINIO_IMAGE is required when cached inputs are enforced"
 
-  pull_dependency_image "postgres" "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE}"
-  pull_dependency_image "redis" "${MCWEB_ACCEPTANCE_REDIS_IMAGE}"
-  pull_dependency_image "minio" "${MCWEB_ACCEPTANCE_MINIO_IMAGE}"
+  minio_image="$(resolved_compose_image minio)"
+  pull_dependency_image "postgres" "${postgres_image}"
+  pull_dependency_image "redis" "${redis_image}"
+  pull_dependency_image "minio" "${minio_image}"
 }
 
 phase "ephemeral-tls"

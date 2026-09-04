@@ -2029,6 +2029,7 @@ export default {
     },
     "website": {
       "title": "官网",
+      "preview": "预览",
       "nav": {
         "title": "导航",
         "add": "添加导航项",

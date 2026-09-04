@@ -8,6 +8,10 @@ function source(relativePath: string) {
 }
 
 const navigationPage = source('app/javascript/pages/Admin/Website/NavItems/Index.vue')
+const pageForm = source('app/javascript/pages/Admin/Website/Pages/Form.vue')
+const articleForm = source('app/javascript/pages/Admin/Website/Articles/Form.vue')
+const pageController = source('app/controllers/admin/website/pages_controller.rb')
+const articleController = source('app/controllers/admin/website/articles_controller.rb')
 const themeForm = source('app/javascript/pages/Admin/Website/Themes/Form.vue')
 const themeController = source('app/controllers/admin/website/themes_controller.rb')
 
@@ -27,6 +31,29 @@ test('website navigation exposes its existing update endpoint through the Arco e
   assert.match(navigationPage, /@click="resetDraft"/)
   assert.match(navigationPage, /if \(requestSucceeded\(page\)\) resetDraft\(\)/)
   assert.match(navigationPage, /requestSucceeded\(page\) && editingId\.value === item\.id/)
+})
+
+test('website edit forms open preview through the registered document boundary', () => {
+  assert.match(
+    pageController,
+    /previewUrl: page\.persisted\? \? preview_admin_website_page_path\(page\) : nil/,
+  )
+  assert.match(
+    articleController,
+    /previewUrl: article\.persisted\? \? preview_admin_website_article_path\(article\) : nil/,
+  )
+
+  for (const form of [pageForm, articleForm]) {
+    assert.match(
+      form,
+      /import \{ navigateFrontendDocument \} from '@\/lib\/applicationNavigation'/,
+    )
+    assert.match(form, /import \{ confirmUnsavedNavigation \} from '@\/lib\/unsavedForms'/)
+    assert.match(form, /previewUrl: string \| null/)
+    assert.match(form, /if \(!props\.previewUrl \|\| !confirmUnsavedNavigation\(\)\) return/)
+    assert.match(form, /navigateFrontendDocument\(props\.previewUrl\)/)
+    assert.match(form, /<a-button v-if="previewUrl" @click="openPreview">/)
+  }
 })
 
 test('persisted website themes expose the existing delete operation with shared confirmation', () => {

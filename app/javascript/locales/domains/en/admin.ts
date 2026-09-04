@@ -2029,6 +2029,7 @@ export default {
     },
     "website": {
       "title": "Website",
+      "preview": "Preview",
       "nav": {
         "title": "Navigation",
         "add": "Add item",

@@ -7,7 +7,9 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import BlockEditor, { type BlockItem } from '@/components/admin/website/BlockEditor.vue'
 import SeoFields from '@/components/admin/website/SeoFields.vue'
 import TranslationsPanel from '@/components/admin/website/TranslationsPanel.vue'
+import { navigateFrontendDocument } from '@/lib/applicationNavigation'
 import { createIdempotencyKey } from '@/lib/idempotency'
+import { confirmUnsavedNavigation } from '@/lib/unsavedForms'
 
 defineOptions({ layout: AdminLayout })
 
@@ -34,6 +36,7 @@ const props = defineProps<{
   submitUrl: string
   publishUrl: string | null
   scheduleUrl: string | null
+  previewUrl: string | null
   blocksBaseUrl: string | null
   revisionsUrl: string | null
   method: 'post' | 'patch'
@@ -83,12 +86,20 @@ function schedulePublish() {
     request_id: createIdempotencyKey(),
   })
 }
+
+function openPreview() {
+  if (!props.previewUrl || !confirmUnsavedNavigation()) return
+  navigateFrontendDocument(props.previewUrl)
+}
 </script>
 
 <template>
   <a-page-header :title="title" :show-back="false">
     <template #extra>
       <a-space wrap>
+        <a-button v-if="previewUrl" @click="openPreview">
+          {{ t('admin.website.preview') }}
+        </a-button>
         <a-button v-if="revisionsUrl" @click="router.visit(revisionsUrl)">
           {{ t('admin.website.revisions.title', 'Revisions') }}
         </a-button>

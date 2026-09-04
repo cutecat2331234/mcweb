@@ -155,10 +155,11 @@ module Admin
       grant_permission(@editor, "website.articles.edit")
       grant_permission(@editor, "website.content.restore")
       grant_admin_module(@editor, "website")
-      sign_in_as(@editor)
     end
 
     test "authorized website staff can open every CMS menu destination" do
+      sign_in_as(@editor)
+
       {
         admin_website_pages_path => "Admin/Generic/Index",
         admin_website_articles_path => "Admin/Generic/Index",
@@ -183,7 +184,9 @@ module Admin
         "website.content.restore" => admin_website_recycle_bin_path,
         "website.content.purge" => admin_website_recycle_bin_path,
         "website.templates.manage" => admin_frontend_templates_path
-      }.each do |permission, destination|
+      }.each_with_index do |(permission, destination), index|
+        delete identity_session_path unless index.zero?
+
         specialist = create_user(account_type: "staff")
         grant_permission(specialist, "admin.access")
         grant_permission(specialist, permission)
@@ -200,6 +203,7 @@ module Admin
       outside_website_module = create_user(account_type: "staff")
       grant_permission(outside_website_module, "admin.access")
       grant_permission(outside_website_module, "website.pages.read")
+      grant_admin_module(outside_website_module, "identity")
       sign_in_as(outside_website_module)
 
       get admin_website_root_path
@@ -208,6 +212,8 @@ module Admin
     end
 
     test "CMS page, article, revision, and preview direct links resolve through their owning entry" do
+      sign_in_as(@editor)
+
       page = ::Website::Page.create!(
         title: "Reachable page",
         slug: "reachable-page-#{SecureRandom.hex(4)}",

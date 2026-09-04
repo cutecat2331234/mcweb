@@ -6,6 +6,7 @@ umask 077
 CURRENT_PHASE="startup"
 APP_ROOT=""
 WORKSPACE=""
+RUNTIME_ROOT=""
 PROJECT_NAME=""
 COMPOSE_FILE=""
 COMPOSE_DIAGNOSTICS_READY=0
@@ -68,13 +69,24 @@ initialize_acceptance_workspace() {
   done
 
   WORKSPACE="$(realpath --canonicalize-existing /acceptance)"
+  RUNTIME_ROOT="$(realpath --canonicalize-existing /var/lib/mcweb)"
   [[ "${WORKSPACE}" == "/acceptance" ]] ||
     die "acceptance initializer workspace must be /acceptance"
+  [[ "${RUNTIME_ROOT}" == "/var/lib/mcweb" ]] ||
+    die "acceptance initializer runtime root must be /var/lib/mcweb"
 
   for candidate in ca.crt ca.key minio.csr minio.ext certs; do
     [[ ! -e "${WORKSPACE}/${candidate}" ]] ||
       die "acceptance named volume was not empty at ${candidate}"
   done
+  for candidate in image_packs.yml templates; do
+    [[ ! -e "${RUNTIME_ROOT}/${candidate}" ]] ||
+      die "acceptance runtime volume was not empty at ${candidate}"
+  done
+
+  phase "runtime-volume-preparation"
+  mkdir -p "${RUNTIME_ROOT}/templates"
+  chmod 0750 "${RUNTIME_ROOT}" "${RUNTIME_ROOT}/templates"
 
   phase "ephemeral-tls"
   mkdir -p "${WORKSPACE}/certs/CAs"
@@ -110,8 +122,8 @@ EOF
   openssl verify \
     -CAfile "${WORKSPACE}/ca.crt" \
     "${WORKSPACE}/certs/public.crt" >/dev/null
-  chown -R 10002:10002 "${WORKSPACE}"
-  printf '[acceptance] workspace-init=complete transport=compose-named-volume\n'
+  chown -R 10002:10002 "${WORKSPACE}" "${RUNTIME_ROOT}"
+  printf '[acceptance] workspace-init=complete transport=compose-named-volumes\n'
 }
 
 run_acceptance_lifecycle() {
@@ -129,10 +141,24 @@ run_acceptance_lifecycle() {
 
   APP_ROOT="$(realpath --canonicalize-existing "${MCWEB_ACCEPTANCE_APP_ROOT:-/workspace}")"
   WORKSPACE="$(realpath --canonicalize-existing "${MCWEB_ACCEPTANCE_WORKSPACE:-/acceptance}")"
+  RUNTIME_ROOT="$(realpath --canonicalize-existing /var/lib/mcweb)"
   [[ "${APP_ROOT}" == "/workspace" ]] ||
     die "acceptance runner application root must be /workspace"
   [[ "${WORKSPACE}" == "/acceptance" ]] ||
     die "acceptance runner workspace must be /acceptance"
+  [[ "${RUNTIME_ROOT}" == "/var/lib/mcweb" ]] ||
+    die "acceptance runner runtime root must be /var/lib/mcweb"
+  [[ "${MCWEB_IMAGE_PACKS_PATH:-}" == "/var/lib/mcweb/image_packs.yml" ]] ||
+    die "acceptance image pack registry must use the runtime volume"
+  [[ "${MCWEB_IMAGE_PACKS_EXAMPLE_PATH:-}" == "/workspace/config/image_packs.yml.example" ]] ||
+    die "acceptance image pack example must use the read-only source image"
+  [[ "${MCWEB_TEMPLATE_DIR:-}" == "/var/lib/mcweb/templates" ]] ||
+    die "acceptance template storage must use the runtime volume"
+  [[ -f "${MCWEB_IMAGE_PACKS_EXAMPLE_PATH}" ]] ||
+    die "acceptance image pack example is missing from the source image"
+  [[ -d "${MCWEB_TEMPLATE_DIR}" && -w "${RUNTIME_ROOT}" &&
+      -w "${MCWEB_TEMPLATE_DIR}" ]] ||
+    die "acceptance runtime volume is not writable by the runner"
   [[ -f "${WORKSPACE}/ca.crt" ]] || die "acceptance CA is missing from the runner workspace"
   [[ -n "${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD:-}" ]] ||
     die "acceptance PostgreSQL password is missing"
@@ -318,6 +344,11 @@ run_acceptance_lifecycle() {
   create_database_pair "${fresh_database}"
   use_database "${fresh_database}"
   bundle exec rails db:prepare
+  [[ -f "${MCWEB_IMAGE_PACKS_PATH}" ]] ||
+    die "production boot did not initialize the writable image pack registry"
+  [[ -d "${MCWEB_TEMPLATE_DIR}/mcweb-default" ]] ||
+    die "production seeds did not install the default template in runtime storage"
+  printf '[acceptance] runtime-writes=verified image-packs=ready templates=ready\n'
   run_probe seed-fresh
   run_probe verify-fresh
 

@@ -63,7 +63,7 @@ main:
           script: |
             set -eu
             bundle exec rails tailwindcss:build
-            bin/vite build --mode=production
+            VITE_RUBY_MODE=production bin/vite build --mode=production
             npm run check:vite-resource-boundaries
             npm run check:vite-budgets
           timeout: 60m
@@ -147,7 +147,7 @@ main:
           script: |
             set -eu
             bundle exec rails tailwindcss:build
-            bin/vite build --mode=test
+            VITE_RUBY_MODE=test bin/vite build --mode=test
           timeout: 60m
 
         - name: prepare-fresh-test-database

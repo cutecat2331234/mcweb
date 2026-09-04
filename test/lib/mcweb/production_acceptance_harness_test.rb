@@ -15,18 +15,53 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes compose, "RELEASE.2025-10-15T17-29-55Z"
     assert_includes compose, "${MCWEB_ACCEPTANCE_RUNNER_IMAGE:?MCWEB_ACCEPTANCE_RUNNER_IMAGE is required}"
     assert_includes compose, "acceptance_workspace:/acceptance"
+    assert_includes compose, "acceptance_runtime:/var/lib/mcweb"
     assert_includes compose, "- /acceptance/certs"
+    assert_includes compose,
+      "MCWEB_IMAGE_PACKS_PATH: /var/lib/mcweb/image_packs.yml"
+    assert_includes compose,
+      "MCWEB_IMAGE_PACKS_EXAMPLE_PATH: /workspace/config/image_packs.yml.example"
+    assert_includes compose, "MCWEB_TEMPLATE_DIR: /var/lib/mcweb/templates"
     assert_includes compose, "read_only: true"
     assert_includes compose, 'user: "10002:10002"'
     assert_includes compose, "no-new-privileges:true"
     assert_includes compose, "internal: true"
     refute_includes compose, "ports:"
     refute_includes compose, "type: bind"
+    refute_match(/^\s+-\s+\S+:\/workspace(?:$|:)/, compose)
     refute_includes compose, "env_file:"
     refute_includes compose, "/var/run/docker.sock"
     refute_includes compose, "CNB_TOKEN"
     refute_includes compose, "MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE"
     refute_match(/^\s+CNB_[A-Z0-9_]+:/, compose)
+  end
+
+  test "acceptance writable mounts use production path override contracts" do
+    registry = File.read(Rails.root.join("lib/mcweb/image_pack_registry.rb"))
+    templates = File.read(
+      Rails.root.join("app/models/frontend/template_storage.rb")
+    )
+    production_compose = File.read(
+      Rails.root.join("deploy/docker/docker-compose.yml")
+    )
+    seeds = File.read(Rails.root.join("db/seeds.rb"))
+    default_template = File.read(
+      Rails.root.join("app/services/frontend/ensure_default_template.rb")
+    )
+    template_installer = File.read(
+      Rails.root.join("app/services/frontend/install_template_archive.rb")
+    )
+
+    assert_includes registry, 'ENV.fetch("MCWEB_IMAGE_PACKS_PATH")'
+    assert_includes registry, 'ENV.fetch("MCWEB_IMAGE_PACKS_EXAMPLE_PATH")'
+    assert_includes templates,
+      'ENV.fetch("MCWEB_TEMPLATE_DIR", "/var/lib/mcweb/templates")'
+    assert_includes production_compose, "mcweb_data:/var/lib/mcweb"
+    assert_includes seeds, "Frontend::EnsureDefaultTemplate.call"
+    assert_includes default_template, 'BUILTIN_KEY = "mcweb-default"'
+    assert_includes default_template, "key_override: BUILTIN_KEY"
+    assert_includes template_installer,
+      "target = Frontend::TemplateStorage.path_for(key)"
   end
 
   test "acceptance harness is isolated, fail closed, and exercises release lifecycle" do
@@ -55,7 +90,17 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, 'WORKSPACE="$(realpath --canonicalize-existing /acceptance)"'
     assert_includes script, "subjectAltName=DNS:minio,DNS:localhost,IP:127.0.0.1"
     assert_includes script, 'chmod 0755 "${WORKSPACE}/certs"'
-    assert_includes script, "transport=compose-named-volume"
+    assert_includes script, "transport=compose-named-volumes"
+    assert_includes script,
+      'RUNTIME_ROOT="$(realpath --canonicalize-existing /var/lib/mcweb)"'
+    assert_includes script,
+      'chmod 0750 "${RUNTIME_ROOT}" "${RUNTIME_ROOT}/templates"'
+    assert_includes script, 'chown -R 10002:10002 "${WORKSPACE}" "${RUNTIME_ROOT}"'
+    assert_includes script,
+      '[[ "${MCWEB_IMAGE_PACKS_PATH:-}" == "/var/lib/mcweb/image_packs.yml" ]]'
+    assert_includes script,
+      '[[ "${MCWEB_TEMPLATE_DIR:-}" == "/var/lib/mcweb/templates" ]]'
+    assert_includes script, "runtime-writes=verified"
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_RUNNER_BASE_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}" ]]'
     assert_includes script, '[[ -n "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-}" ]]'
@@ -214,8 +259,9 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
   test "CNB builds production and test Vite assets in explicit modes" do
     config = File.read(Rails.root.join(".cnb.yml"))
 
-    assert_includes config, "bin/vite build --mode=production"
-    assert_includes config, "bin/vite build --mode=test"
+    assert_includes config,
+      "VITE_RUBY_MODE=production bin/vite build --mode=production"
+    assert_includes config, "VITE_RUBY_MODE=test bin/vite build --mode=test"
     refute_match(/^\h+bin\/vite build\h*$/, config)
   end
 

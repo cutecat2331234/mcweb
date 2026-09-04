@@ -67,13 +67,18 @@ services:
       MCWEB_ACCEPTANCE_POSTGRES_PASSWORD: ${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}
       MCWEB_ACCEPTANCE_S3_ACCESS_KEY: ${MCWEB_ACCEPTANCE_S3_ACCESS_KEY}
       MCWEB_ACCEPTANCE_S3_SECRET_KEY: ${MCWEB_ACCEPTANCE_S3_SECRET_KEY}
+      MCWEB_IMAGE_PACKS_PATH: /var/lib/mcweb/image_packs.yml
+      MCWEB_IMAGE_PACKS_EXAMPLE_PATH: /workspace/config/image_packs.yml.example
+      MCWEB_TEMPLATE_DIR: /var/lib/mcweb/templates
       BOOTSNAP_CACHE_DIR: /tmp/bootsnap
       NO_PROXY: postgres,redis,minio
       no_proxy: postgres,redis,minio
     volumes:
       - acceptance_workspace:/acceptance
+      - acceptance_runtime:/var/lib/mcweb
 
 volumes:
+  acceptance_runtime:
   acceptance_workspace:
   postgres_data:
   minio_data:

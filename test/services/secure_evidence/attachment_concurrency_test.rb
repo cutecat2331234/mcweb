@@ -42,23 +42,21 @@ module SecureEvidence
       results = Queue.new
       threads = 2.times.map do
         Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection do
-            file = uploaded_file("concurrent evidence")
-            ready << true
-            gate.pop
-            results << CreateAttachment.call(
-              actor: User.find(@user.id),
-              subject_key: "test.concurrent_case",
-              subject_public_id: @user.public_id,
-              file:,
-              idempotency_key: "concurrent-evidence-0001",
-              catalog: @registry
-            )
-          ensure
-            file&.tempfile&.close!
-          end
+          file = uploaded_file("concurrent evidence")
+          ready << true
+          gate.pop
+          results << CreateAttachment.call(
+            actor: User.find(@user.id),
+            subject_key: "test.concurrent_case",
+            subject_public_id: @user.public_id,
+            file:,
+            idempotency_key: "concurrent-evidence-0001",
+            catalog: @registry
+          )
         rescue StandardError => error
           results << error
+        ensure
+          file&.tempfile&.close!
         end
       end
 
@@ -177,6 +175,77 @@ module SecureEvidence
       second&.join
       ActiveStorage::Blob.define_method(:upload_without_unfurling, original_upload) if original_upload
       User.where(id: other_subject&.id).delete_all
+    end
+
+    test "remote storage does not release an outer connection lease" do
+      storage_called = false
+      original_upload = ActiveStorage::Blob.instance_method(:upload_without_unfurling)
+      ActiveStorage::Blob.define_method(:upload_without_unfurling) do |io|
+        storage_called = true
+        original_upload.bind_call(self, io)
+      end
+
+      file = uploaded_file("outer lease evidence")
+      result = nil
+      ActiveRecord::Base.connection_pool.with_connection do |connection|
+        result = CreateAttachment.call(
+          actor: @user,
+          subject_key: "test.concurrent_case",
+          subject_public_id: @user.public_id,
+          file:,
+          idempotency_key: "outer-lease-evidence-0001",
+          catalog: @registry
+        )
+
+        assert_same connection, ActiveRecord::Base.connection_pool.active_connection
+        assert_equal 1, connection.select_value("SELECT 1")
+      end
+
+      assert_predicate result, :failure?
+      assert_equal "secure_evidence_upload_failed", result.code
+      refute storage_called
+      attachment = Attachment.find_by!(idempotency_key: "outer-lease-evidence-0001")
+      assert_equal "upload_failed", attachment.state
+      assert_equal "cleanup_failed", attachment.upload_record.status
+    ensure
+      file&.tempfile&.close!
+      ActiveStorage::Blob.define_method(:upload_without_unfurling, original_upload) if original_upload
+    end
+
+    test "remote storage does not escape an outer database transaction" do
+      storage_called = false
+      original_upload = ActiveStorage::Blob.instance_method(:upload_without_unfurling)
+      ActiveStorage::Blob.define_method(:upload_without_unfurling) do |io|
+        storage_called = true
+        original_upload.bind_call(self, io)
+      end
+
+      file = uploaded_file("outer transaction evidence")
+      result = nil
+      ActiveRecord::Base.transaction do
+        connection = ActiveRecord::Base.connection_pool.active_connection
+        result = CreateAttachment.call(
+          actor: @user,
+          subject_key: "test.concurrent_case",
+          subject_public_id: @user.public_id,
+          file:,
+          idempotency_key: "outer-transaction-evidence-0001",
+          catalog: @registry
+        )
+
+        assert_same connection, ActiveRecord::Base.connection_pool.active_connection
+        assert_predicate connection, :transaction_open?
+      end
+
+      assert_predicate result, :failure?
+      assert_equal "secure_evidence_upload_failed", result.code
+      refute storage_called
+      attachment = Attachment.find_by!(idempotency_key: "outer-transaction-evidence-0001")
+      assert_equal "upload_failed", attachment.state
+      assert_equal "cleanup_failed", attachment.upload_record.status
+    ensure
+      file&.tempfile&.close!
+      ActiveStorage::Blob.define_method(:upload_without_unfurling, original_upload) if original_upload
     end
 
     test "an in-flight idempotent retry shares one subject and site reservation" do
@@ -308,6 +377,7 @@ module SecureEvidence
       )
       upload = attachment.upload_record
       writer_lease = upload.expires_at
+      cleanup_jobs_before = cleanup_job_count
 
       discarded = DiscardAttachment.call(
         attachment:,
@@ -320,13 +390,16 @@ module SecureEvidence
       assert_equal "purge_pending", attachment.reload.state
       assert_equal "cleanup_pending", upload.reload.status
       assert_equal writer_lease.to_i, upload.expires_at.to_i
+      assert_equal cleanup_jobs_before + 1, cleanup_job_count
 
       release_storage << true
       writer_result = Timeout.timeout(5) { results.pop }
       worker.join
       assert_instance_of ServiceResult, writer_result
       assert_predicate writer_result, :failure?
+      assert_equal "cleanup_pending", upload.reload.status
       assert_operator upload.reload.expires_at, :<=, Time.current
+      assert_equal cleanup_jobs_before + 2, cleanup_job_count
     ensure
       release_storage << true if release_storage && worker&.alive?
       worker&.join
@@ -564,6 +637,12 @@ module SecureEvidence
     end
 
     private
+
+    def cleanup_job_count
+      enqueued_jobs.count do |job|
+        job[:job] == Maintenance::CleanupForumUploadsJob
+      end
+    end
 
     def uploaded_file(content)
       tempfile = Tempfile.new([ "evidence", ".txt" ])

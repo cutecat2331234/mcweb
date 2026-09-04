@@ -57,14 +57,15 @@ module Community
     end
 
     def self.acquire_admission_lock!
-      connection = ApplicationRecord.connection
-      unless connection.transaction_open?
-        raise ActiveRecord::ActiveRecordError, "upload_quota_transaction_required"
-      end
+      ApplicationRecord.with_connection do |connection|
+        unless connection.transaction_open?
+          raise ActiveRecord::ActiveRecordError, "upload_quota_transaction_required"
+        end
 
-      connection.select_value(
-        "SELECT pg_advisory_xact_lock(#{ADVISORY_LOCK_ID})::text"
-      )
+        connection.select_value(
+          "SELECT pg_advisory_xact_lock(#{ADVISORY_LOCK_ID})::text"
+        )
+      end
     end
 
     def self.configured_site_limit(metric)

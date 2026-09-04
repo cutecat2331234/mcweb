@@ -64,8 +64,10 @@ module Mcweb
       end
 
       def available?
-        ActiveRecord::Base.connection.data_source_exists?("plugin_generations") &&
-          ActiveRecord::Base.connection.data_source_exists?("plugin_process_acks")
+        ActiveRecord::Base.with_connection do |connection|
+          connection.data_source_exists?("plugin_generations") &&
+            connection.data_source_exists?("plugin_process_acks")
+        end
       rescue ActiveRecord::ActiveRecordError
         false
       end

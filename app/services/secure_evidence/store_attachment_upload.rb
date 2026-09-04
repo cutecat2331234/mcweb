@@ -31,6 +31,7 @@ module SecureEvidence
         identify: false
       )
       persist_tracked_blob!
+      ensure_remote_io_without_database_lease!
 
       io.rewind
       @remote_upload_started = true
@@ -53,7 +54,7 @@ module SecureEvidence
         )
       end
 
-      delete_untracked_blob(error)
+      delete_orphaned_remote_object
       Rails.logger.error(
         "[SecureEvidence::StoreAttachmentUpload] failed " \
         "attachment_id=#{@attachment.id} upload_id=#{@upload.id} error=#{error.class}"
@@ -66,6 +67,26 @@ module SecureEvidence
     end
 
     private
+
+    def ensure_remote_io_without_database_lease!
+      connection = ApplicationRecord.connection_pool.active_connection
+      return unless connection
+      # Transactional test fixtures pin a deliberately isolated connection for
+      # the whole example. They do not represent an application-owned lease;
+      # the non-transactional concurrency suite covers the production contract.
+      return if Rails.env.test? && connection.pinned &&
+        !connection.current_transaction.joinable?
+
+      # A nested service never owns a lease that was already checked out by
+      # its caller. Refuse remote I/O instead of returning that connection to
+      # the pool while the caller can still use it.
+      raise ActiveRecord::ActiveRecordError,
+        if connection.transaction_open?
+          "secure_evidence_remote_upload_transaction_open"
+        else
+          "secure_evidence_remote_upload_connection_leased"
+        end
+    end
 
     def persist_tracked_blob!
       Community::Upload.transaction do
@@ -138,6 +159,16 @@ module SecureEvidence
           next
         end
 
+        if discarded_attempt_current?
+          # Discard deliberately retained the lease while the PUT was in
+          # flight. This exact writer has now returned, so cleanup can resume.
+          now = Time.current
+          @upload.update!(expires_at: [ @upload.expires_at, now ].compact.min)
+          upload_id = @upload.id
+          outcome = :cleanup_scheduled
+          next
+        end
+
         next unless failed_attempt_current?
 
         if @attachment.state_uploading? && @upload.status_reserved?
@@ -169,6 +200,12 @@ module SecureEvidence
         @attachment.state_pending?
     end
 
+    def discarded_attempt_current?
+      exact_blob_attempt? &&
+        @upload.status_cleanup_pending? &&
+        @attachment.state_purge_pending?
+    end
+
     def failed_attempt_current?
       exact_blob_attempt? &&
         @upload.status_reserved? &&
@@ -197,15 +234,21 @@ module SecureEvidence
       )
     end
 
-    def delete_untracked_blob(error)
+    def delete_orphaned_remote_object
       return unless @remote_upload_started && @blob&.key
-      referenced = ApplicationRecord.with_connection do
-        Community::Upload.where(active_storage_blob_id: @blob.id).exists?
+      tracked = ApplicationRecord.with_connection do
+        ActiveStorage::Blob.where(id: @blob.id).exists? ||
+          Community::Upload.where(active_storage_blob_id: @blob.id).exists? ||
+          ActiveStorage::Attachment.where(blob_id: @blob.id).exists?
       end
-      return if referenced && !error.is_a?(StaleAttempt)
+      return if tracked
 
+      ensure_remote_io_without_database_lease!
+      # A cleanup generation may have removed the durable blob row while an
+      # expired writer was still returning from object storage. Only that
+      # row-less, unaddressable key is safe to delete synchronously. Tracked
+      # blobs always stay on the durable cleanup path.
       @blob.delete
-      @blob.destroy! if !referenced && @blob.persisted?
     rescue StandardError => error
       Rails.logger.error(
         "[SecureEvidence::StoreAttachmentUpload] late blob cleanup deferred " \

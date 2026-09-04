@@ -89,7 +89,7 @@ module Admin
 
       get admin_minecraft_player_access_rules_path
 
-      assert_redirected_to admin_root_path
+      assert_redirected_to root_path
     end
   end
 end

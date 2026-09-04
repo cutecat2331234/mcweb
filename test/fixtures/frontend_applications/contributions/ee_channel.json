@@ -38,7 +38,7 @@
     },
     "routes": [
       { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/chat", "priority": 2000 },
-      { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/chat/**", "priority": 2000 },
+      { "kind": "api", "methods": ["GET", "HEAD"], "pattern": "/app/chat/**", "priority": 2000 },
       { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/channels", "priority": 2000 },
       { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/channels/**", "priority": 2000 },
       { "kind": "inertia_page", "methods": ["GET", "HEAD"], "pattern": "/app/messages", "priority": 2000 },

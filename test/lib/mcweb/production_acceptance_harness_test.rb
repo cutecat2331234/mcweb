@@ -85,6 +85,10 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, "invalid confirmation"
     assert_includes script, "non-empty target database"
     assert_includes script, 'phase "redis-fail-closed"'
+    assert_includes script, "MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS"
+    assert_includes script, "Application image build was skipped here"
+    assert_includes script, "Production data-lifecycle acceptance passed"
+    refute_includes script, "Production acceptance passed: image build"
     refute_includes script, "published_port"
     refute_includes script, "MCWEB_ACCEPTANCE_PUBLISH_HOST"
     refute_includes script, "ACCEPTANCE_SERVICE_HOST"

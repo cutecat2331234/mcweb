@@ -383,7 +383,7 @@ run_acceptance_lifecycle() {
   fi
 
   phase "complete"
-  echo "Production acceptance passed: image build, fresh install, upgrade, S3, Redis, backup, and restore."
+  echo "Production data-lifecycle acceptance passed: fresh install, upgrade, S3, Redis, backup, and restore."
 }
 
 case "${MCWEB_ACCEPTANCE_EXECUTION_MODE:-}" in
@@ -643,6 +643,7 @@ export MCWEB_ACCEPTANCE_S3_ACCESS_KEY="mcweb_acceptance_access"
 export MCWEB_ACCEPTANCE_S3_SECRET_KEY="mcweb-acceptance-secret-key-000000000000"
 
 cd "${APP_ROOT}"
+APP_IMAGE_BUILT=0
 if [[ "${MCWEB_ACCEPTANCE_SKIP_APP_IMAGE_BUILD:-0}" != "1" ]]; then
   phase "application-image-build"
   if ! run_with_timeout "${COMPOSE_BUILD_TIMEOUT_SECONDS}" \
@@ -653,6 +654,7 @@ if [[ "${MCWEB_ACCEPTANCE_SKIP_APP_IMAGE_BUILD:-0}" != "1" ]]; then
   then
     die "application image build failed or timed out"
   fi
+  APP_IMAGE_BUILT=1
 fi
 
 prepare_acceptance_runner_image
@@ -692,3 +694,8 @@ fi
 
 phase "complete"
 printf '[acceptance] orchestration=complete cleanup=compose-project-and-volumes\n'
+if [[ "${APP_IMAGE_BUILT}" == "1" ]]; then
+  echo "Application image build passed; lifecycle probes ran inside the isolated Compose network."
+else
+  echo "Application image build was skipped here and remains covered by its separate build gate."
+fi

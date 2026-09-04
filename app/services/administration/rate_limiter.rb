@@ -2,6 +2,8 @@
 
 module Administration
   class RateLimiter < ApplicationService
+    MAX_WRITE_ATTEMPTS = 3
+
     def initialize(key:, limit:, window:, developer_mode_bypass: true)
       @key = key.to_s
       @limit = limit
@@ -17,7 +19,7 @@ module Administration
 
       attempts = 0
       begin
-        RateLimitCounter.transaction do
+        RateLimitCounter.transaction(requires_new: true) do
           counter = RateLimitCounter.lock.find_or_initialize_by(key: @key)
           now = Time.current
           reset_counter_if_expired!(counter, now)
@@ -40,16 +42,28 @@ module Administration
 
           ServiceResult.success(remaining: @limit - counter.count)
         end
-      rescue ActiveRecord::RecordNotUnique
-        # Two concurrent first-hits for a brand-new key raced to insert. Retry: the row
-        # now exists, so the locked find_or_initialize_by becomes a normal update.
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => error
+        raise unless retryable_key_conflict?(error)
+
+        # Concurrent first-hits can surface through model uniqueness validation or the
+        # database constraint. The savepoint is rolled back, so retry against the row.
         attempts += 1
-        retry if attempts < 3
+        retry if attempts < MAX_WRITE_ATTEMPTS
         raise
       end
     end
 
     private
+
+    def retryable_key_conflict?(error)
+      return true if error.is_a?(ActiveRecord::RecordNotUnique)
+      return false unless error.record.is_a?(RateLimitCounter)
+
+      details = error.record.errors.details
+      key_errors = details[:key]
+      details.keys == [ :key ] && key_errors.present? &&
+        key_errors.all? { |detail| detail[:error] == :taken }
+    end
 
     def reset_counter_if_expired!(counter, now)
       if counter.new_record? || counter.window_start.blank? || counter.window_start <= now - @window

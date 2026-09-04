@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "timeout"
 
 module Administration
   class AbuseRateLimitTest < ActiveSupport::TestCase
@@ -113,5 +114,134 @@ module Administration
     def abuse_limit(action, account:, ip:)
       Administration::AbuseRateLimit.call(action: action, account: account, ip_address: ip)
     end
+  end
+end
+
+class Administration::RateLimiterConcurrencyTest < ActiveSupport::TestCase
+  self.use_transactional_tests = false
+
+  setup do
+    @key_prefix = "rate-limiter-race-#{SecureRandom.hex(6)}"
+  end
+
+  teardown do
+    RateLimitCounter.where("key LIKE ?", "#{@key_prefix}%").delete_all
+  end
+
+  test "concurrent first hits converge on one fully counted key" do
+    key = "#{@key_prefix}:concurrent"
+    ready = Queue.new
+    release = Queue.new
+    outcomes = Queue.new
+    mutex = Mutex.new
+    first_reads = 0
+    relation = RateLimitCounter.lock
+    finder = lambda do |*args, **kwargs|
+      attributes = kwargs.presence || args.first
+      counter = RateLimitCounter.find_or_initialize_by(attributes)
+      wait = mutex.synchronize do
+        first_reads += 1
+        first_reads <= 2 && counter.new_record?
+      end
+      if wait
+        ready << true
+        release.pop
+      end
+      counter
+    end
+
+    threads = relation.stub(:find_or_initialize_by, finder) do
+      RateLimitCounter.stub(:lock, relation) do
+        2.times.map do
+          Thread.new do
+            ActiveRecord::Base.connection_pool.with_connection do
+              outcomes << Administration::RateLimiter.call(key: key, limit: 5, window: 1.minute)
+            end
+          rescue StandardError => error
+            outcomes << error
+          end
+        end.tap do |started|
+          Timeout.timeout(5) { 2.times { ready.pop } }
+          2.times { release << true }
+          started.each { |thread| Timeout.timeout(10) { thread.join } }
+        end
+      end
+    end
+
+    results = 2.times.map { Timeout.timeout(5) { outcomes.pop } }
+    error = results.find { |result| result.is_a?(Exception) }
+    raise error if error
+
+    assert_equal 2, results.count(&:success?)
+    assert_equal 1, RateLimitCounter.where(key: key).count
+    assert_equal 2, RateLimitCounter.find_by!(key: key).count
+  ensure
+    2.times { release << true } if release
+    threads&.each { |thread| thread.kill if thread.alive? }
+  end
+
+  test "a database uniqueness race rolls back its savepoint without poisoning an outer transaction" do
+    key = "#{@key_prefix}:outer"
+    marker_key = "#{@key_prefix}:marker"
+    RateLimitCounter.create!(key: key, count: 0, window_start: Time.current)
+    conflicting = RateLimitCounter.new(key: key)
+    conflicting.define_singleton_method(:save!) do
+      now = Time.current
+      RateLimitCounter.insert_all!([ {
+        key: key,
+        count: count,
+        blocked_count: blocked_count,
+        window_start: window_start,
+        expires_at: expires_at,
+        created_at: now,
+        updated_at: now
+      } ])
+    end
+    relation = RateLimitCounter.lock
+    original_find = relation.method(:find_or_initialize_by)
+    calls = 0
+    finder = lambda do |*args, **kwargs|
+      calls += 1
+      attributes = kwargs.presence || args.first
+      calls == 1 ? conflicting : original_find.call(attributes)
+    end
+
+    relation.stub(:find_or_initialize_by, finder) do
+      RateLimitCounter.stub(:lock, relation) do
+        RateLimitCounter.transaction do
+          result = Administration::RateLimiter.call(key: key, limit: 5, window: 1.minute)
+          assert_predicate result, :success?
+          RateLimitCounter.create!(key: marker_key, count: 0, window_start: Time.current)
+        end
+      end
+    end
+
+    assert_equal 1, RateLimitCounter.find_by!(key: key).count
+    assert RateLimitCounter.exists?(key: marker_key)
+  end
+
+  test "a non-uniqueness validation failure is not retried or swallowed" do
+    key = "#{@key_prefix}:invalid"
+    invalid = RateLimitCounter.new(key: key, count: 0, window_start: Time.current)
+    invalid.errors.add(:count, :greater_than_or_equal_to, count: 0)
+    validation_error = ActiveRecord::RecordInvalid.new(invalid)
+    invalid.define_singleton_method(:save!) { raise validation_error }
+    relation = RateLimitCounter.lock
+    calls = 0
+    finder = lambda do |*_args, **_kwargs|
+      calls += 1
+      invalid
+    end
+
+    raised = relation.stub(:find_or_initialize_by, finder) do
+      RateLimitCounter.stub(:lock, relation) do
+        assert_raises(ActiveRecord::RecordInvalid) do
+          Administration::RateLimiter.call(key: key, limit: 5, window: 1.minute)
+        end
+      end
+    end
+
+    assert_same validation_error, raised
+    assert_equal 1, calls
   end
 end

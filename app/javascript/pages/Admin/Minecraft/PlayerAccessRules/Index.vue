@@ -213,7 +213,6 @@ function statusColor(status: Rule['status']) {
                 v-model="form.access_rule.expires_at"
                 show-time
                 value-format="YYYY-MM-DD HH:mm:ss"
-                style="width: 100%"
               />
             </a-form-item>
           </a-grid-item>

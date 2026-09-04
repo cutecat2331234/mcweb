@@ -35,7 +35,9 @@ async function switchLocale(value: string | number | Record<string, unknown>) {
       data: { locale },
     })
     transaction.commit()
-    navigateFrontendDocument(window.location.href)
+    const destination = new URL(window.location.href)
+    destination.searchParams.delete('locale')
+    navigateFrontendDocument(destination)
   } catch (error) {
     transaction.rollback()
     throw error

@@ -370,10 +370,10 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
 
       valid_endpoints.each_with_index do |endpoint, index|
         key = if index == valid_endpoints.length - 1
-                "MCWEB_BACKUP_S3_ENDPOINT"
-              else
-                "MCWEB_S3_ENDPOINT"
-              end
+          "MCWEB_BACKUP_S3_ENDPOINT"
+        else
+          "MCWEB_S3_ENDPOINT"
+        end
         stdout, stderr, status = run_bash(
           "bin/backup",
           fake_bin:,
@@ -392,10 +392,10 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
 
       invalid_endpoints.each_with_index do |endpoint, index|
         key = if index == invalid_endpoints.length - 1
-                "MCWEB_BACKUP_S3_ENDPOINT"
-              else
-                "MCWEB_S3_ENDPOINT"
-              end
+          "MCWEB_BACKUP_S3_ENDPOINT"
+        else
+          "MCWEB_S3_ENDPOINT"
+        end
         stdout, stderr, status = run_bash(
           "bin/backup",
           fake_bin:,

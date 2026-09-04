@@ -49,7 +49,7 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, 'pull_dependency_image "minio" "${minio_image}"'
     assert_includes script, "up --detach --no-build --pull never --wait"
     assert_includes script, '--wait-timeout "${COMPOSE_WAIT_TIMEOUT_SECONDS}"'
-    assert_includes script, 'ps --all'
+    assert_includes script, "ps --all"
     assert_includes script, 'logs --no-color --tail "${COMPOSE_LOG_TAIL_LINES}"'
     assert_includes script, 'compose_with_timeout "${COMPOSE_DOWN_TIMEOUT_SECONDS}"'
     assert_includes script, "down --volumes --remove-orphans"
@@ -79,8 +79,8 @@ class ProductionAcceptanceHarnessTest < ActiveSupport::TestCase
     assert_includes script, 'minio_image="$(resolved_compose_image minio)"'
     assert_includes script, 'docker pull "${image}" >/dev/null 2>&1'
     assert_includes script, "dependency image could not be resolved from Docker Compose configuration"
-    refute_includes script, '${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}'
-    refute_includes script, '${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}'
+    refute_includes script, "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}"
+    refute_includes script, "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}"
   end
 
   test "CNB preserves the full lifecycle stage budget" do

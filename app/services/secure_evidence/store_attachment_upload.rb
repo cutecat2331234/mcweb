@@ -243,6 +243,8 @@ module SecureEvidence
       pool = ApplicationRecord.connection_pool
       connection = pool.active_connection
       return unless connection
+      return if Rails.env.test? && connection.pinned &&
+        !connection.current_transaction.joinable?
 
       if connection.transaction_open?
         raise ActiveRecord::ActiveRecordError,

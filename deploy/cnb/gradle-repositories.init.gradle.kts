@@ -1,7 +1,7 @@
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 
-private const val aliyunPublic = "https://maven.aliyun.com/repository/public/"
-private const val aliyunGradlePlugin = "https://maven.aliyun.com/repository/gradle-plugin/"
+private val aliyunPublic = "https://maven.aliyun.com/repository/public/"
+private val aliyunGradlePlugin = "https://maven.aliyun.com/repository/gradle-plugin/"
 
 fun org.gradle.api.artifacts.dsl.RepositoryHandler.prependMirror(
     repositoryName: String,

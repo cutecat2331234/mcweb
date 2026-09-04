@@ -21,12 +21,15 @@ pg_dump --version | grep -Eq ' 18\.' ||
 
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${APP_ROOT}/deploy/acceptance/docker-compose.yml"
-WORKSPACE="$(mktemp -d "${TMPDIR:-/tmp}/mcweb-acceptance.XXXXXX")"
+WORKSPACE_ROOT_INPUT="${CNB_BUILD_WORKSPACE:-${TMPDIR:-/tmp}}"
+WORKSPACE_ROOT="$(realpath --canonicalize-existing "${WORKSPACE_ROOT_INPUT}")"
+WORKSPACE="$(mktemp -d "${WORKSPACE_ROOT%/}/mcweb-acceptance.XXXXXX")"
 PROJECT_NAME="mcwebacceptance$$_${RANDOM}"
 CERTS_DIR="${WORKSPACE}/certs"
+COMPOSE_DEPENDENCY_BUILD_FLAG="--build"
 
 case "${WORKSPACE}" in
-  /tmp/mcweb-acceptance.*|*/Temp/mcweb-acceptance.*)
+  "${WORKSPACE_ROOT%/}"/mcweb-acceptance.*)
     ;;
   *)
     die "temporary workspace is outside the accepted prefix: ${WORKSPACE}"
@@ -39,6 +42,34 @@ compose() {
   docker compose --project-name "${PROJECT_NAME}" --file "${COMPOSE_FILE}" "$@"
 }
 
+prepare_dependency_images() {
+  if [[ "${MCWEB_ACCEPTANCE_REQUIRE_CACHED_INPUTS:-0}" != "1" ]]; then
+    return 0
+  fi
+
+  [[ -n "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-}" ]] ||
+    die "MCWEB_ACCEPTANCE_POSTGRES_IMAGE is required when cached inputs are enforced"
+  [[ -n "${MCWEB_ACCEPTANCE_REDIS_IMAGE:-}" ]] ||
+    die "MCWEB_ACCEPTANCE_REDIS_IMAGE is required when cached inputs are enforced"
+  [[ -n "${MCWEB_ACCEPTANCE_MINIO_IMAGE:-}" ]] ||
+    die "MCWEB_ACCEPTANCE_MINIO_IMAGE is required when cached inputs are enforced"
+
+  docker pull "${MCWEB_ACCEPTANCE_POSTGRES_IMAGE}"
+  docker pull "${MCWEB_ACCEPTANCE_REDIS_IMAGE}"
+  docker pull "${MCWEB_ACCEPTANCE_MINIO_IMAGE}"
+  COMPOSE_DEPENDENCY_BUILD_FLAG="--no-build"
+}
+
+start_compose() {
+  if compose "$@"; then
+    return 0
+  fi
+
+  compose ps --all >&2 || true
+  compose logs --no-color minio >&2 || true
+  die "Docker Compose dependencies did not become healthy"
+}
+
 cleanup() {
   local status=$?
   if [[ "${PROJECT_NAME}" =~ ^mcwebacceptance[0-9]+_[0-9]+$ ]]; then
@@ -46,7 +77,7 @@ cleanup() {
   fi
   if [[ -d "${WORKSPACE}" ]]; then
     case "${WORKSPACE}" in
-      /tmp/mcweb-acceptance.*|*/Temp/mcweb-acceptance.*)
+      "${WORKSPACE_ROOT%/}"/mcweb-acceptance.*)
         rm -rf -- "${WORKSPACE}"
         ;;
     esac
@@ -79,6 +110,7 @@ openssl x509 -req -sha256 -days 2 \
 cp "${WORKSPACE}/ca.crt" "${CERTS_DIR}/CAs/acceptance-ca.crt"
 # The key only protects an ephemeral loopback test service; make it readable by
 # the unprivileged container uid and destroy it with the unique workspace.
+chmod 0755 "${CERTS_DIR}" "${CERTS_DIR}/CAs"
 chmod 0644 "${CERTS_DIR}/private.key" "${CERTS_DIR}/public.crt" "${CERTS_DIR}/CAs/acceptance-ca.crt"
 
 export MCWEB_ACCEPTANCE_CERTS_DIR
@@ -94,7 +126,8 @@ if [[ "${MCWEB_ACCEPTANCE_SKIP_APP_IMAGE_BUILD:-0}" != "1" ]]; then
     --tag "${PROJECT_NAME}-app:acceptance" \
     .
 fi
-compose up --detach --build --wait
+prepare_dependency_images
+start_compose up --detach "${COMPOSE_DEPENDENCY_BUILD_FLAG}" --wait
 
 published_port() {
   local service="$1"

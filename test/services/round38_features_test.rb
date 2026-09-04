@@ -254,7 +254,7 @@ class Community::ReportAccessControlTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to root_path
+    assert_redirected_to forum_latest_path
     assert_equal "内容不存在或无权访问。", flash[:alert]
     assert_not Community::Report.exists?(reportable: @topic, reporter: @other)
   end
@@ -269,7 +269,7 @@ class Community::ReportAccessControlTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to root_path
+    assert_redirected_to forum_latest_path
     assert_equal "内容不存在或无权访问。", flash[:alert]
     assert_not Community::Report.exists?(reportable: @post, reporter: @other)
   end

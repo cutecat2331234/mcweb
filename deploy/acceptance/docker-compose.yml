@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:18.4-trixie
+    image: ${MCWEB_ACCEPTANCE_POSTGRES_IMAGE:-postgres:18.4-trixie}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${MCWEB_ACCEPTANCE_POSTGRES_PASSWORD}
@@ -16,7 +16,7 @@ services:
       retries: 30
 
   redis:
-    image: redis:8.8.1-alpine3.23
+    image: ${MCWEB_ACCEPTANCE_REDIS_IMAGE:-redis:8.8.1-alpine3.23}
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
       - "127.0.0.1::6379"
@@ -27,6 +27,7 @@ services:
       retries: 30
 
   minio:
+    image: ${MCWEB_ACCEPTANCE_MINIO_IMAGE:-mcweb-acceptance-minio:local}
     build:
       context: ../..
       dockerfile: deploy/acceptance/minio.Dockerfile

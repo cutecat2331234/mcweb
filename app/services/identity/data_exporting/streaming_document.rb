@@ -20,7 +20,7 @@ module Identity
 
       def initialize(declared_count:, format: :jsonl, &enumerator_factory)
         count = Integer(declared_count, exception: false)
-        raise ArgumentError, "data_export_stream_count_invalid" unless count&.nonnegative?
+        raise ArgumentError, "data_export_stream_count_invalid" unless count && count >= 0
         raise ArgumentError, "data_export_stream_factory_required" unless enumerator_factory
         raise ArgumentError, "data_export_stream_format_invalid" unless format.to_sym.in?(FORMATS)
 
@@ -66,6 +66,5 @@ module Identity
         declared_count
       end
     end
-
   end
 end

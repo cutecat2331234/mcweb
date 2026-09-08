@@ -89,7 +89,10 @@ class CreateMinecraftWorldRestoreLifecycle < ActiveRecord::Migration[8.1]
       t.string :public_id, null: false
       t.references :minecraft_server, null: false, foreign_key: true
       t.references :minecraft_node, null: false, foreign_key: true
-      t.references :minecraft_world_backup, null: false, foreign_key: true
+      t.references :minecraft_world_backup,
+        null: false,
+        foreign_key: true,
+        index: { name: "idx_minecraft_restore_plans_world_backup" }
       t.references :pre_restore_world_backup,
         foreign_key: { to_table: :minecraft_world_backups },
         index: { name: "idx_minecraft_restore_plans_pre_backup" }

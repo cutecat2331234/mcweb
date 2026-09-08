@@ -2143,7 +2143,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["minecraft_server_id", "status", "created_at"], name: "idx_minecraft_restore_plans_server_status"
     t.index ["minecraft_server_id"], name: "idx_minecraft_restore_plans_one_active", unique: true, where: "((status)::text = ANY (ARRAY['planned'::text, 'authorized'::text, 'queued'::text, 'running'::text, 'recovery_required'::text]))"
     t.index ["minecraft_server_id"], name: "index_minecraft_world_restore_plans_on_minecraft_server_id"
-    t.index ["minecraft_world_backup_id"], name: "index_minecraft_world_restore_plans_on_minecraft_world_backup_id"
+    t.index ["minecraft_world_backup_id"], name: "idx_minecraft_restore_plans_world_backup"
     t.index ["pre_restore_world_backup_id"], name: "idx_minecraft_restore_plans_pre_backup"
     t.index ["public_id"], name: "index_minecraft_world_restore_plans_on_public_id", unique: true
     t.index ["request_id"], name: "index_minecraft_world_restore_plans_on_request_id", unique: true

@@ -4,6 +4,16 @@ require "test_helper"
 
 module Mcweb
   class DatabaseSchemaDeliveryTest < ActiveSupport::TestCase
+    test "fresh database schema uses PostgreSQL-safe index names" do
+      schema = Rails.root.join("db/schema.rb").read
+      index_names = schema.scan(/t\.index .*? name: "([^"]+)"/).flatten
+      oversized_names = index_names.select { |name| name.bytesize > 63 }
+
+      assert_predicate index_names, :any?
+      assert_empty oversized_names,
+        "PostgreSQL index names must be at most 63 bytes: #{oversized_names.join(', ')}"
+    end
+
     test "fresh database schema includes durable enqueue ledgers and their guards" do
       schema = Rails.root.join("db/schema.rb").read
 

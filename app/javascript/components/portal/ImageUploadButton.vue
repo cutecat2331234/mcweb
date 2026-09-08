@@ -40,13 +40,17 @@ async function onFileChange(event: Event) {
         body: form,
         credentials: 'same-origin',
       })
-      const data = await res.json()
-      if (!res.ok) {
-        error.value = data.error || t('components.imageUpload.uploadFailed')
+      const data = await res.json() as { error?: unknown; markdown?: unknown }
+      if (!res.ok || typeof data.markdown !== 'string') {
+        error.value = typeof data.error === 'string' && data.error.length > 0
+          ? data.error
+          : t('components.imageUpload.uploadFailed')
         break
       }
       emit('insert', data.markdown)
     }
+  } catch {
+    error.value = t('components.imageUpload.uploadFailed')
   } finally {
     uploading.value = false
     input.value = ''

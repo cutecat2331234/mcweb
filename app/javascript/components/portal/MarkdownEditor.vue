@@ -82,10 +82,12 @@ function insertImage(markdown: string) {
 }
 
 const uploadingImage = ref(false)
+const requestError = ref('')
 
 async function uploadImageFile(file: File) {
   if (!canUploadImages.value || uploadingImage.value) return
   uploadingImage.value = true
+  requestError.value = ''
   try {
     const form = new FormData()
     form.append('file', file)
@@ -95,8 +97,16 @@ async function uploadImageFile(file: File) {
       body: form,
       credentials: 'same-origin',
     })
-    const data = await res.json()
-    if (res.ok && data.markdown) insertImage(data.markdown)
+    const data = await res.json() as { error?: unknown; markdown?: unknown }
+    if (!res.ok || typeof data.markdown !== 'string') {
+      requestError.value = typeof data.error === 'string' && data.error.length > 0
+        ? data.error
+        : t('components.imageUpload.uploadFailed')
+      return
+    }
+    insertImage(data.markdown)
+  } catch {
+    requestError.value = t('components.imageUpload.uploadFailed')
   } finally {
     uploadingImage.value = false
   }
@@ -194,6 +204,7 @@ function handleKeydown(event: KeyboardEvent) {
 async function preview() {
   if (!props.modelValue.trim()) return
   previewLoading.value = true
+  requestError.value = ''
   try {
     const res = await fetch(routes.forumPreview, {
       method: 'POST',
@@ -201,8 +212,14 @@ async function preview() {
       body: JSON.stringify({ body: props.modelValue }),
       credentials: 'same-origin',
     })
-    const data = await res.json()
+    const data = await res.json() as { html?: unknown }
+    if (!res.ok || typeof data.html !== 'string') {
+      requestError.value = t('components.markdownEditor.previewFailed')
+      return
+    }
     previewHtml.value = data.html
+  } catch {
+    requestError.value = t('components.markdownEditor.previewFailed')
   } finally {
     previewLoading.value = false
   }
@@ -250,6 +267,7 @@ async function preview() {
       </div>
     </div>
     <p v-if="uploadingImage" class="text-xs text-muted-foreground">{{ t('components.imageUpload.uploading') }}</p>
+    <p v-if="requestError" role="alert" class="text-xs text-destructive">{{ requestError }}</p>
     <MentionAutocomplete v-if="showMention" :model-value="modelValue" @update:model-value="update">
       <template #default="{ onInput, onKeydown }">
         <textarea

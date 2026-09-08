@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { Message } from '@mcweb/ui'
 import { usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { IconBug } from '@arco-design/web-vue/es/icon'
@@ -40,6 +41,8 @@ async function switchPersona(persona: Persona) {
       data: { persona: persona.key },
     })
     navigateFrontendDocument('/app')
+  } catch {
+    Message.error(t('common.developerPersonaSwitchFailed'))
   } finally {
     switching.value = null
   }

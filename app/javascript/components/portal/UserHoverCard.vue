@@ -65,6 +65,8 @@ async function loadCard() {
     if (response.ok) {
       card.value = await response.json()
     }
+  } catch {
+    card.value = null
   } finally {
     loading.value = false
   }
@@ -82,11 +84,10 @@ function clearCloseTimer() {
   if (closeTimer) { clearTimeout(closeTimer); closeTimer = null }
 }
 
-async function reallyOpen() {
+function reallyOpen() {
   open.value = true
-  loadCard()
-  await nextTick()
-  updatePosition()
+  void loadCard()
+  void nextTick(updatePosition)
 }
 
 function onEnter() {

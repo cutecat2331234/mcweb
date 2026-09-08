@@ -82,6 +82,8 @@ async function switchPersona(persona: Persona) {
       data: { persona: persona.key },
     })
     navigateFrontendDocument('/app')
+  } catch {
+    Message.error(t('common.developerPersonaSwitchFailed'))
   } finally {
     switchingPersona.value = null
   }

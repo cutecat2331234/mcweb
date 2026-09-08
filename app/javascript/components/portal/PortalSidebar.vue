@@ -62,7 +62,14 @@ const STORAGE_KEY = 'mc-portal-nav-expanded'
 function loadExpanded(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as Record<string, boolean>
+    if (!raw) return {}
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, boolean] => (
+        typeof entry[1] === 'boolean'
+      )),
+    )
   } catch {
     /* ignore */
   }
@@ -93,7 +100,11 @@ function isGroupExpanded(key: string, defaultExpanded: boolean) {
 }
 
 function persistExpanded() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+  } catch {
+    /* Storage can be unavailable in restricted browser contexts. */
+  }
 }
 
 watch(

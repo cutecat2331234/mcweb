@@ -111,10 +111,12 @@ function insertUploadedImage(markdown: string) {
 }
 
 const uploadingImage = ref(false)
+const uploadError = ref('')
 
 async function uploadImageFile(file: File) {
   if (!canUploadImages.value || uploadingImage.value) return
   uploadingImage.value = true
+  uploadError.value = ''
   try {
     const form = new FormData()
     form.append('file', file)
@@ -124,8 +126,16 @@ async function uploadImageFile(file: File) {
       body: form,
       credentials: 'same-origin',
     })
-    const data = await res.json()
-    if (res.ok && data.markdown) insertUploadedImage(data.markdown)
+    const data = await res.json() as { error?: unknown; markdown?: unknown }
+    if (!res.ok || typeof data.markdown !== 'string') {
+      uploadError.value = typeof data.error === 'string' && data.error.length > 0
+        ? data.error
+        : t('components.imageUpload.uploadFailed')
+      return
+    }
+    insertUploadedImage(data.markdown)
+  } catch {
+    uploadError.value = t('components.imageUpload.uploadFailed')
   } finally {
     uploadingImage.value = false
   }
@@ -186,5 +196,6 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       @drop="handleDrop"
     />
     <p v-if="uploadingImage" class="text-xs text-muted-foreground">{{ t('components.imageUpload.uploading') }}</p>
+    <p v-if="uploadError" role="alert" class="text-xs text-destructive">{{ uploadError }}</p>
   </div>
 </template>

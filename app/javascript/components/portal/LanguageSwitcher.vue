@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import { Button, Doption, Dropdown } from '@mcweb/ui'
+import { Button, Doption, Dropdown, Message } from '@mcweb/ui'
 import { IconCheck, IconLanguage } from '@arco-design/web-vue/es/icon'
 
 import { documentFrontendApplicationId } from '@/lib/frontendApplications'
@@ -22,12 +22,21 @@ const availableLocales = computed(() => {
   return raw.map((locale) => normalizeAppLocale(locale))
 })
 
+function reportLocaleSwitchFailure(_error: unknown) {
+  Message.error(t('locale.switchFailed'))
+}
+
 async function switchLocale(value: string | number | Record<string, unknown>) {
   if (typeof value !== 'string') return
   const locale = normalizeAppLocale(value)
   if (locale === currentLocale.value) return
   if (!confirmUnsavedNavigation()) return
-  await preloadAppLocale(locale)
+  try {
+    await preloadAppLocale(locale)
+  } catch (error) {
+    reportLocaleSwitchFailure(error)
+    return
+  }
   const transaction = beginAppLocalePreferenceTransaction(locale)
   try {
     await performSharedAction(documentFrontendApplicationId(), routes.locale, {
@@ -40,7 +49,7 @@ async function switchLocale(value: string | number | Record<string, unknown>) {
     navigateFrontendDocument(destination)
   } catch (error) {
     transaction.rollback()
-    throw error
+    reportLocaleSwitchFailure(error)
   }
 }
 </script>

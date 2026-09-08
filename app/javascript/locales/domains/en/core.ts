@@ -58,6 +58,7 @@ export default {
     "copyDeveloperDiagnostics": "Copy redacted diagnostics",
     "developerDiagnosticsCopied": "Redacted diagnostics copied.",
     "developerDiagnosticsCopyFailed": "Could not copy diagnostics.",
+    "developerPersonaSwitchFailed": "Could not switch test persona.",
     "openDeveloperWorkbench": "Open Developer Workbench",
     "colon": ":",
     "listSeparator": ", ",
@@ -86,7 +87,8 @@ export default {
   "locale": {
     "label": "Language",
     "zh-CN": "简体中文",
-    "en": "English"
+    "en": "English",
+    "switchFailed": "Could not change language. Try again."
   },
   "components": {
     "bulkModerate": {
@@ -157,7 +159,8 @@ export default {
       "emojiNoResults": "No emoji found",
       "uploadLevelHint": "Image upload at Lv.1+",
       "previewing": "Previewing…",
-      "preview": "Preview"
+      "preview": "Preview",
+      "previewFailed": "Preview failed"
     },
     "richTextEditor": {
       "orderedList": "Numbered list",

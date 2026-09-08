@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import { ref, type HTMLAttributes } from 'vue'
 import { cn } from '@/lib/utils'
 
 const model = defineModel<string | number>()
+const inputElement = ref<HTMLInputElement | null>(null)
 
 defineOptions({ inheritAttrs: false })
 
@@ -17,10 +18,21 @@ withDefaults(defineProps<{
 }>(), {
   density: 'default',
 })
+
+function focus() {
+  inputElement.value?.focus()
+}
+
+function select() {
+  inputElement.value?.select()
+}
+
+defineExpose({ focus, select })
 </script>
 
 <template>
   <input
+    ref="inputElement"
     v-bind="$attrs"
     v-model="model"
     :type="type ?? 'text'"

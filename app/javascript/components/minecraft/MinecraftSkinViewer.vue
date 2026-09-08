@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let viewer: { dispose: () => void; loadSkin: (url: string, options?: { model?: string }) => Promise<void> } | null = null
+let mountGeneration = 0
 
 function resolveSkinUrl(): string | null {
   if (typeof props.skinTextureUrl !== 'string') return null
@@ -23,19 +24,32 @@ function resolveSkinUrl(): string | null {
 }
 
 async function mountViewer() {
+  const generation = ++mountGeneration
   const canvas = canvasRef.value
   const skinUrl = resolveSkinUrl()
+  viewer?.dispose()
+  viewer = null
   if (!canvas || !skinUrl) return
 
-  const { SkinViewer } = await import('skinview3d')
-  viewer?.dispose()
-  viewer = new SkinViewer({
-    canvas,
-    width: props.width,
-    height: props.height,
-    skin: skinUrl,
-    model: props.skinModel === 'slim' ? 'slim' : 'default',
-  })
+  try {
+    const { SkinViewer } = await import('skinview3d')
+    if (generation !== mountGeneration || canvasRef.value !== canvas) return
+
+    const nextViewer = new SkinViewer({
+      canvas,
+      width: props.width,
+      height: props.height,
+    })
+    viewer = nextViewer
+    await nextViewer.loadSkin(skinUrl, {
+      model: props.skinModel === 'slim' ? 'slim' : 'default',
+    })
+  } catch {
+    if (generation === mountGeneration) {
+      viewer?.dispose()
+      viewer = null
+    }
+  }
 }
 
 onMounted(() => {
@@ -50,6 +64,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  mountGeneration += 1
   viewer?.dispose()
   viewer = null
 })

@@ -228,7 +228,7 @@ export async function createMcWebInertiaApplication({
       completeSubmittedForm(
         (event as CustomEvent<{ visitId?: string }>).detail.visitId,
       )
-      void syncLocaleFromPage(detail.page)
+      void syncLocaleFromPage(detail.page).catch(failApplication)
     }
     document.addEventListener('inertia:success', onSuccess)
     cleanupFunctions.push(() => document.removeEventListener('inertia:success', onSuccess))

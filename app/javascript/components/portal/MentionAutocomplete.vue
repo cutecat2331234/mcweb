@@ -13,6 +13,8 @@ const emit = defineEmits<{
 }>()
 
 type Suggestion = { insert: string; label: string; sublabel?: string | null; avatar?: string | null }
+type MentionUser = { username: string; display_name?: string | null; avatar_url?: string }
+type Hashtag = { name: string; slug: string }
 
 const suggestions = ref<Suggestion[]>([])
 const activeIndex = ref(0)
@@ -47,28 +49,54 @@ async function getJson(url: string) {
     headers: { Accept: 'application/json', ...csrfHeaders() },
     credentials: 'same-origin',
   })
+  if (!res.ok) throw new Error(`Suggestion request failed with status ${res.status}`)
   return res.json()
 }
 
 async function fetchMentions(q: string) {
-  const data = await getJson(`${routes.forumMentionSearch}?q=${encodeURIComponent(q)}`)
-  suggestions.value = (data.users || []).map((u: { username: string; display_name?: string | null; avatar_url?: string }) => ({
-    insert: `@${u.username} `,
-    label: `@${u.username}`,
-    sublabel: u.display_name,
-    avatar: u.avatar_url,
-  }))
-  activeIndex.value = 0
+  try {
+    const data = await getJson(`${routes.forumMentionSearch}?q=${encodeURIComponent(q)}`) as { users?: unknown }
+    const users = Array.isArray(data.users)
+      ? data.users.filter((user): user is MentionUser => (
+          typeof user === 'object'
+          && user !== null
+          && typeof (user as { username?: unknown }).username === 'string'
+        ))
+      : []
+    if (mode !== 'mention') return
+    suggestions.value = users.map((user) => ({
+      insert: `@${user.username} `,
+      label: `@${user.username}`,
+      sublabel: user.display_name,
+      avatar: user.avatar_url,
+    }))
+    activeIndex.value = 0
+  } catch {
+    if (mode === 'mention') suggestions.value = []
+  }
 }
 
 async function fetchHashtags(q: string) {
-  const data = await getJson(`${routes.forumTagSuggest}?q=${encodeURIComponent(q)}`)
-  suggestions.value = (data.tags || []).map((t: { name: string; slug: string }) => ({
-    insert: `#${t.slug} `,
-    label: `#${t.slug}`,
-    sublabel: t.name,
-  }))
-  activeIndex.value = 0
+  try {
+    const data = await getJson(`${routes.forumTagSuggest}?q=${encodeURIComponent(q)}`) as { tags?: unknown }
+    const tags = Array.isArray(data.tags)
+      ? data.tags.filter((tag): tag is Hashtag => (
+          typeof tag === 'object'
+          && tag !== null
+          && typeof (tag as { name?: unknown }).name === 'string'
+          && typeof (tag as { slug?: unknown }).slug === 'string'
+        ))
+      : []
+    if (mode !== 'hashtag') return
+    suggestions.value = tags.map((tag) => ({
+      insert: `#${tag.slug} `,
+      label: `#${tag.slug}`,
+      sublabel: tag.name,
+    }))
+    activeIndex.value = 0
+  } catch {
+    if (mode === 'hashtag') suggestions.value = []
+  }
 }
 
 function pick(suggestion: Suggestion) {

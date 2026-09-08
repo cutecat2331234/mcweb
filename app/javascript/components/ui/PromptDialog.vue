@@ -7,7 +7,12 @@ import Input from '@/components/ui/Input.vue'
 
 const { t } = useI18n()
 
-const inputRef = ref<HTMLInputElement | null>(null)
+type InputHandle = {
+  focus: () => void
+  select: () => void
+}
+
+const inputRef = ref<InputHandle | null>(null)
 
 watch(
   () => promptState.open,

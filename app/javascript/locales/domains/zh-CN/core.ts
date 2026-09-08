@@ -58,6 +58,7 @@ export default {
     "copyDeveloperDiagnostics": "复制脱敏诊断",
     "developerDiagnosticsCopied": "脱敏诊断已复制。",
     "developerDiagnosticsCopyFailed": "无法复制诊断信息。",
+    "developerPersonaSwitchFailed": "无法切换测试身份。",
     "openDeveloperWorkbench": "打开开发工作台",
     "colon": "：",
     "listSeparator": "、",
@@ -86,7 +87,8 @@ export default {
   "locale": {
     "label": "语言",
     "zh-CN": "简体中文",
-    "en": "English"
+    "en": "English",
+    "switchFailed": "无法切换语言，请重试。"
   },
   "components": {
     "bulkModerate": {
@@ -157,7 +159,8 @@ export default {
       "emojiNoResults": "未找到表情",
       "uploadLevelHint": "Lv.1 后可上传图片",
       "previewing": "预览中…",
-      "preview": "预览"
+      "preview": "预览",
+      "previewFailed": "预览失败"
     },
     "richTextEditor": {
       "orderedList": "有序列表",

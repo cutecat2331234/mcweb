@@ -39,6 +39,7 @@ interface NavItem {
   permissionKey?: string
   permissionAny?: string[]
   capabilityKey?: string
+  requiresAdminAccess?: boolean
 }
 interface NavGroup {
   key: string
@@ -59,6 +60,7 @@ const auth = computed(
   () => (page.props.auth ?? { user: null }) as {
     user: {
       username: string
+      can_access_admin?: boolean
       admin_modules?: string[]
       admin_permissions?: string[]
       admin_capabilities?: Record<string, boolean>
@@ -97,6 +99,9 @@ const grantedAdminModules = computed(
 const grantedAdminPermissions = computed(
   () => new Set(auth.value.user?.admin_permissions || []),
 )
+const canAccessAdminDashboard = computed(
+  () => auth.value.user?.can_access_admin === true,
+)
 
 function hasAdminModule(moduleKey: string) {
   return grantedAdminModules.value.has(moduleKey)
@@ -121,7 +126,11 @@ const nav = computed<NavGroup[]>(() => {
       label: t('admin.overview'),
       icon: IconDashboard,
       items: [
-        { label: t('admin.dashboard.title'), href: adminRoutes.dashboard },
+        {
+          label: t('admin.dashboard.title'),
+          href: adminRoutes.dashboard,
+          requiresAdminAccess: true,
+        },
         {
           label: t('admin.users'),
           href: adminRoutes.users,
@@ -135,7 +144,11 @@ const nav = computed<NavGroup[]>(() => {
           permissionKey: 'identity.roles.read',
         },
         ...(adminDemoEnabled.value
-          ? [{ label: t('admin.arcoDemo'), href: adminRoutes.arcoDemo }]
+          ? [{
+              label: t('admin.arcoDemo'),
+              href: adminRoutes.arcoDemo,
+              requiresAdminAccess: true,
+            }]
           : []),
       ],
     },
@@ -599,6 +612,7 @@ const nav = computed<NavGroup[]>(() => {
       items: pluginItems.map((item) => ({
         label: item.label,
         href: item.href,
+        requiresAdminAccess: true,
       })),
     })
   }
@@ -633,6 +647,7 @@ const nav = computed<NavGroup[]>(() => {
             && (!item.permissionKey || hasAdminPermission(item.permissionKey))
             && (!item.permissionAny || hasAnyAdminPermission(item.permissionAny))
             && (!item.capabilityKey || hasAdminCapability(item.capabilityKey))
+            && (!item.requiresAdminAccess || canAccessAdminDashboard.value)
           )
         },
       ),
@@ -664,6 +679,15 @@ const activeItemHref = computed(() => {
     if (item) return item.href
   }
   return ''
+})
+
+const adminHomeHref = computed(() => {
+  if (canAccessAdminDashboard.value) return adminRoutes.dashboard
+
+  // Capability-only management pages may deliberately bypass the full admin
+  // dashboard gate. Keep their shell links inside the route the server already
+  // authorized instead of exposing an inaccessible `/admin` destination.
+  return activeItemHref.value || currentPath.value
 })
 
 const trailingCrumbs = computed<Array<{ label: string }>>(() => {
@@ -766,7 +790,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       :hide-trigger="true"
     >
       <div class="arco-admin-brand">
-        <Link :href="adminRoutes.dashboard" class="arco-admin-brand__link">
+        <Link :href="adminHomeHref" class="arco-admin-brand__link">
           <icon-command class="arco-admin-brand__icon" />
           <span v-show="!collapsed" class="arco-admin-brand__text">
             {{ t('common.adminBrand') }}
@@ -836,7 +860,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </a-button>
           <a-breadcrumb class="arco-admin-breadcrumb">
             <a-breadcrumb-item>
-              <Link :href="adminRoutes.dashboard">{{ t('common.adminPanel') }}</Link>
+              <Link :href="adminHomeHref">{{ t('common.adminPanel') }}</Link>
             </a-breadcrumb-item>
             <a-breadcrumb-item v-for="crumb in trailingCrumbs" :key="crumb.label">
               {{ crumb.label }}
@@ -893,7 +917,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   >
     <div class="arco-admin-drawer">
       <div class="arco-admin-brand arco-admin-brand--drawer">
-        <Link :href="adminRoutes.dashboard" class="arco-admin-brand__link" @click="mobileNavOpen = false">
+        <Link :href="adminHomeHref" class="arco-admin-brand__link" @click="mobileNavOpen = false">
           <icon-command class="arco-admin-brand__icon" />
           <span class="arco-admin-brand__text">{{ t('common.adminBrand') }}</span>
         </Link>

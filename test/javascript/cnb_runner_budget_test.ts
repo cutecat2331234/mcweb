@@ -5,6 +5,9 @@ import test from 'node:test'
 
 const config = readFileSync(resolve(process.cwd(), '.cnb.yml'), 'utf8')
 const pushPipelines = config.split(/^  web_trigger_/m, 1)[0]
+const packageJson = JSON.parse(
+  readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'),
+) as { scripts?: Record<string, string> }
 
 test('CNB push gates keep explicit right-sized runner allocations', () => {
   const allocations = [...pushPipelines.matchAll(
@@ -26,4 +29,18 @@ test('CNB dependency and service image caches remain synchronized', () => {
 
   assert.ok(cacheBlocks.length >= 6)
   for (const block of cacheBlocks) assert.match(block, /^            sync: true$/m)
+})
+
+test('every npm command referenced by CNB exists in package scripts', () => {
+  const referencedScripts = [...config.matchAll(/\bnpm run ([\w:-]+)/g)]
+    .map((match) => match[1])
+
+  assert.ok(referencedScripts.length > 0)
+  for (const script of referencedScripts) {
+    assert.equal(
+      typeof packageJson.scripts?.[script],
+      'string',
+      `.cnb.yml references an undefined package script: ${script}`,
+    )
+  }
 })

@@ -11,33 +11,25 @@ class FrontendPortalThemeCssTest < ActiveSupport::TestCase
   end
 
   test "portal layout skips template css injection to avoid website theme bleed" do
-    source = Rails.root.join("app/javascript/layouts/PortalLayout.vue").read
+    shell = Rails.root.join(
+      "app/javascript/components/application-shell/ApplicationPortalShell.vue"
+    ).read
+    wrapper = Rails.root.join("app/javascript/layouts/PortalLayout.vue").read
 
-    refute_includes source, "TemplateAssets"
-    refute_includes source, "styles/theme.css"
+    [shell, wrapper].each do |source|
+      refute_includes source, "TemplateAssets"
+      refute_includes source, "styles/theme.css"
+    end
   end
 
-  test "page header element stays separate from portal top nav" do
-    require "nokogiri"
-    html = Nokogiri::HTML(<<~HTML)
-      <div class="portal-themed">
-        <header class="portal-header sticky bg-sidebar">nav</header>
-        <main>
-          <div class="page-header mb-8 flex flex-col">
-            <h1>论坛板块</h1>
-            <p>浏览社区讨论分区</p>
-          </div>
-        </main>
-      </div>
-    HTML
+  test "shared portal chrome keeps navigation outside the application content target" do
+    source = Rails.root.join(
+      "app/javascript/components/application-shell/ApplicationPortalShell.vue"
+    ).read
 
-    page_headers = html.css("main .page-header")
-    legacy_headers = html.css("main header")
-    scoped = html.css(".portal-themed header.portal-header")
-
-    assert_equal 1, page_headers.size
-    assert_empty legacy_headers
-    assert_equal 1, scoped.size
-    refute_includes scoped, page_headers.first
+    assert_match(/<LayoutHeader\b/, source)
+    assert_match(/<LayoutContent\b[\s\S]*?id="application-content"/, source)
+    refute_match(/<header\b/, source)
+    refute_match(/<main\b[\s\S]*?<header\b/, source)
   end
 end

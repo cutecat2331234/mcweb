@@ -1,5 +1,19 @@
+@import "tailwindcss" source(none);
 @import "../shell-foundation.css";
 @import "../arco-admin.css";
+
+@source "../../entrypoints/admin.ts";
+@source "../../shells/admin.ts";
+@source "../../frontend-application-adapters/admin";
+@source "../../pages/Admin";
+@source "../../layouts/AdminLayout.vue";
+@source "../../layouts/ArcoAdminLayout.vue";
+@source "../../components/ApplicationErrorBoundary.vue";
+@source "../../components/AccessibleSkipLink.vue";
+@source "../../components/admin";
+@source "../../components/community/ReportAppealReviewIndex.vue";
+@source "../../components/community/ReportAppealReviewShow.vue";
+@source "../../components/plugins";
 
 html[data-mcweb-application="admin"] body {
   --mc-application-accent: #2563eb;

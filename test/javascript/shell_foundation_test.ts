@@ -62,6 +62,11 @@ test('admin and application style roots load one shared shell geometry contract'
   ]) {
     assert.match(foundation, new RegExp(`${token}:`))
   }
+
+  assert.match(
+    foundation,
+    /html body\[data-mcweb-application\][\s\S]*-webkit-font-smoothing:\s*antialiased;[\s\S]*-moz-osx-font-smoothing:\s*grayscale;/,
+  )
 })
 
 test('application shells pass numeric sider widths while content consumes shared geometry', () => {

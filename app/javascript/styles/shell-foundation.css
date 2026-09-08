@@ -37,6 +37,11 @@
   --mc-control-primary-background-active: #0e42d2;
 }
 
+html body[data-mcweb-application] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .mc-shell-skip-link {
   position: fixed;
   inset-block-start: 8px;

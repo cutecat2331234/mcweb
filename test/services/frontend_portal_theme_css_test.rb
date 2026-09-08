@@ -16,7 +16,7 @@ class FrontendPortalThemeCssTest < ActiveSupport::TestCase
     ).read
     wrapper = Rails.root.join("app/javascript/layouts/PortalLayout.vue").read
 
-    [shell, wrapper].each do |source|
+    [ shell, wrapper ].each do |source|
       refute_includes source, "TemplateAssets"
       refute_includes source, "styles/theme.css"
     end

@@ -32,10 +32,11 @@ test('CNB dependency and service image caches remain synchronized', () => {
 })
 
 test('every npm command referenced by CNB exists in package scripts', () => {
-  const referencedScripts = [...config.matchAll(/\bnpm run ([\w:-]+)/g)]
+  const referencedScripts = [...config.matchAll(/\bnpm run (?:--if-present\s+)?([\w:-]+)/g)]
     .map((match) => match[1])
 
   assert.ok(referencedScripts.length > 0)
+  assert.ok(referencedScripts.every((script) => !script.startsWith('--')))
   for (const script of referencedScripts) {
     assert.equal(
       typeof packageJson.scripts?.[script],

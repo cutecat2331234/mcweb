@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { Alert, Button, Space, TypographyText } from '@mcweb/ui'
 import { IconAttachment } from '@arco-design/web-vue/es/icon'
 import { csrfHeaders } from '@/lib/csrf'
@@ -25,6 +25,15 @@ const input = ref<HTMLInputElement | null>(null)
 const busy = ref(false)
 const error = ref('')
 const retryKeys = new Map<string, string>()
+let activeController: AbortController | null = null
+let disposed = false
+
+onBeforeUnmount(() => {
+  disposed = true
+  activeController?.abort()
+  activeController = null
+  retryKeys.clear()
+})
 
 function openPicker() {
   if (!busy.value && !props.disabled) input.value?.click()
@@ -35,6 +44,9 @@ async function onChange(event: Event) {
   const file = element.files?.[0]
   if (!file) return
 
+  activeController?.abort()
+  const controller = new AbortController()
+  activeController = controller
   busy.value = true
   error.value = ''
   const retryKey = [
@@ -57,37 +69,52 @@ async function onChange(event: Event) {
       headers: { ...csrfHeaders(), Accept: 'application/json' },
       credentials: 'same-origin',
       body,
+      signal: controller.signal,
     })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.message || payload.error)
+    const payload = await responsePayload(response)
+    if (!response.ok) {
+      throw new Error(payloadMessage(payload) || props.copy.uploadFailed)
+    }
+    const attachment = attachmentPayload(payload)
+    if (!attachment) throw new Error(props.copy.uploadFailed)
 
-    const attachment = await waitForScan(payload as SecureEvidenceAttachment)
-    if (attachment) {
+    const scannedAttachment = await waitForScan(attachment, controller.signal)
+    if (!disposed && activeController === controller) {
       retryKeys.delete(retryKey)
-      emit('uploaded', attachment)
+      emit('uploaded', scannedAttachment)
     }
   } catch (cause) {
+    if (disposed || controller.signal.aborted) return
     error.value = cause instanceof Error && cause.message
       ? cause.message
       : props.copy.uploadFailed
   } finally {
-    busy.value = false
-    element.value = ''
+    if (!disposed && activeController === controller) {
+      activeController = null
+      busy.value = false
+      element.value = ''
+    }
   }
 }
 
-async function waitForScan(initial: SecureEvidenceAttachment) {
+async function waitForScan(
+  initial: SecureEvidenceAttachment,
+  signal: AbortSignal,
+): Promise<SecureEvidenceAttachment> {
   if (initial.state === 'available' && initial.scan_status === 'clean') return initial
   if (initial.state === 'upload_failed') throw new Error(props.copy.uploadFailed)
+  if (!initial.scan_status_url) throw new Error(props.copy.scanFailed)
 
   for (let attempt = 0; attempt < 90; attempt += 1) {
-    await new Promise((resolve) => window.setTimeout(resolve, 1000))
+    await abortableDelay(1000, signal)
     const response = await fetch(initial.scan_status_url, {
       headers: { Accept: 'application/json' },
       credentials: 'same-origin',
+      signal,
     })
     if (!response.ok) throw new Error(props.copy.scanFailed)
-    const payload = await response.json() as SecureEvidenceAttachment
+    const payload = attachmentPayload(await responsePayload(response))
+    if (!payload) throw new Error(props.copy.scanFailed)
     if (payload.state === 'available' && payload.scan_status === 'clean') return payload
     if (payload.state === 'upload_failed') throw new Error(props.copy.uploadFailed)
     if (['quarantined', 'purge_pending', 'purged'].includes(payload.state)) {
@@ -95,6 +122,52 @@ async function waitForScan(initial: SecureEvidenceAttachment) {
     }
   }
   throw new Error(props.copy.scanTimeout)
+}
+
+function abortableDelay(milliseconds: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    const timeout = window.setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, milliseconds)
+    function onAbort() {
+      window.clearTimeout(timeout)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+async function responsePayload(response: Response): Promise<unknown> {
+  try {
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
+function payloadMessage(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return ''
+  const record = payload as Record<string, unknown>
+  const value = record.message || record.error
+  return typeof value === 'string' ? value : ''
+}
+
+function attachmentPayload(payload: unknown): SecureEvidenceAttachment | null {
+  if (!payload || typeof payload !== 'object') return null
+  const record = payload as Partial<SecureEvidenceAttachment>
+  if (
+    typeof record.public_id !== 'string'
+    || typeof record.filename !== 'string'
+    || typeof record.state !== 'string'
+    || typeof record.scan_status_url !== 'string'
+  ) return null
+
+  return record as SecureEvidenceAttachment
 }
 </script>
 

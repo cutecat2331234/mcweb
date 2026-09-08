@@ -15,6 +15,7 @@ module SecureEvidence
       :upload_authorizer,
       :download_authorizer,
       :discard_authorizer,
+      :purge_guard,
       :retention,
       :max_files,
       :max_file_bytes,
@@ -39,7 +40,8 @@ module SecureEvidence
       max_file_bytes:,
       max_total_bytes:,
       allowed_extensions:,
-      discard_authorizer: nil
+      discard_authorizer: nil,
+      purge_guard: nil
     )
       raise FrozenError, "secure_evidence_subject_registry_frozen" if frozen?
 
@@ -50,6 +52,7 @@ module SecureEvidence
       validate_callable!(:upload_authorizer, upload_authorizer)
       validate_callable!(:download_authorizer, download_authorizer)
       validate_optional_callable!(:discard_authorizer, discard_authorizer)
+      validate_optional_callable!(:purge_guard, purge_guard)
       validate_callable!(:retention, retention)
 
       limits = validate_limits!(
@@ -66,6 +69,7 @@ module SecureEvidence
         upload_authorizer:,
         download_authorizer:,
         discard_authorizer:,
+        purge_guard:,
         retention:,
         **limits,
         allowed_extensions: extensions

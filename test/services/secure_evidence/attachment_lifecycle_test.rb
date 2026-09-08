@@ -682,6 +682,56 @@ module SecureEvidence
       assert held.blob.present?
     end
 
+    test "product purge guard wraps the final state transition and fails closed" do
+      created_at = 3.days.ago
+      @retention_period = 1.day
+      observations = []
+      denying_registry = build_registry(
+        purge_guard: lambda { |subject:, attachment:, now:, operation:|
+          observations << {
+            subject_id: subject.id,
+            attachment_id: attachment.id,
+            now:,
+            transaction_open: ApplicationRecord.connection.transaction_open?,
+            operation:
+          }
+        }
+      )
+      attachment = create_attachment(
+        file: uploaded_file("product-held evidence"),
+        registry: denying_registry,
+        key: "evidence-product-hold-1",
+        now: created_at
+      ).value.fetch(:attachment)
+
+      denied = PurgeAttachment.call(
+        attachment:,
+        catalog: denying_registry,
+        now: Time.current
+      )
+
+      assert_predicate denied, :failure?
+      assert_equal "secure_evidence_retention_hold", denied.code
+      assert_equal "pending", attachment.reload.state
+      assert observations.sole.fetch(:transaction_open)
+      assert_equal @actor.id, observations.sole.fetch(:subject_id)
+      assert_equal attachment.id, observations.sole.fetch(:attachment_id)
+
+      permitting_registry = build_registry(
+        purge_guard: ->(subject:, attachment:, now:, operation:) {
+          operation.call if subject && attachment && now
+        }
+      )
+      permitted = PurgeAttachment.call(
+        attachment:,
+        catalog: permitting_registry,
+        now: Time.current
+      )
+
+      assert_predicate permitted, :success?
+      assert_equal "purge_pending", attachment.reload.state
+    end
+
     test "identity export and closure contributors retain metadata without raw storage locators" do
       attachment = create_attachment(file: uploaded_file("identity evidence")).value.fetch(:attachment)
       context = ::Identity::DataExporting::Context.new(user: @actor, generated_at: Time.current)
@@ -810,7 +860,8 @@ module SecureEvidence
       max_files: 4,
       max_file_bytes: 1.megabyte,
       max_total_bytes: 4.megabytes,
-      discard_authorizer: :default
+      discard_authorizer: :default,
+      purge_guard: nil
     )
       registry = SubjectRegistry.new
       registry.register(
@@ -827,6 +878,7 @@ module SecureEvidence
             actor.id == subject.id &&
             attachment.subject_id == subject.id
         } : discard_authorizer,
+        purge_guard:,
         retention: ->(subject:, attached_at:) {
           attached_at + @retention_period if subject.persisted?
         },

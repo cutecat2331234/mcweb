@@ -14,54 +14,31 @@ module SecureEvidence
       upload_id = nil
 
       Attachment.transaction do
-        upload = @attachment.upload_record
-        unless upload
-          result = failure("secure_evidence_upload_missing")
-          next
-        end
-
-        upload.lock!
-        @attachment.lock!
-        if @attachment.state_purged?
-          result = ServiceResult.success(attachment: @attachment, idempotent: true)
-          next
-        end
-        if @attachment.state_purge_pending?
-          result = ServiceResult.success(attachment: @attachment, idempotent: true)
-          upload_id = upload.id
-          next
-        end
-
-        eligibility = purge_eligibility
-        if eligibility.failure?
-          result = eligibility
-          next
-        end
-        if eligibility.value[:retention_extended]
-          result = ServiceResult.success(
-            attachment: @attachment,
-            idempotent: false,
-            retention_extended: true
-          )
-          next
-        end
-
-        @attachment.update!(state: "purge_pending")
-        upload.schedule_cleanup!(at: @now)
-        EventRecorder.record!(
-          attachment: @attachment,
-          actor: @actor,
-          event_type: "cleanup_scheduled",
-          idempotency_key: "evidence:cleanup-scheduled:#{@attachment.id}:#{@attachment.retention_until.to_i}",
-          metadata: { retention_until: @attachment.retention_until.iso8601(6) },
-          at: @now
+        entry = @catalog.entry_for_key(@attachment.subject_key)
+        subject = entry && SubjectPolicy.resolve(
+          entry:,
+          public_id: @attachment.subject_public_id
         )
-        upload_id = upload.id
-        result = ServiceResult.success(attachment: @attachment, idempotent: false)
+        guarded = SubjectPolicy.with_purge_guard(
+          entry:,
+          subject:,
+          attachment: @attachment,
+          now: @now
+        ) do
+          persist_purge(entry:)
+        end
+        unless guarded.allowed
+          result = failure("secure_evidence_retention_hold")
+          next
+        end
+
+        result, upload_id = guarded.value
       end
 
       enqueue_cleanup(upload_id) if upload_id
       result || failure("secure_evidence_cleanup_failed")
+    rescue SubjectPolicy::PurgeGuardFailure
+      failure("secure_evidence_retention_hold")
     rescue ActiveRecord::RecordInvalid => error
       ServiceResult.failure(errors: error.record.errors.to_hash)
     rescue StandardError => error
@@ -74,11 +51,58 @@ module SecureEvidence
 
     private
 
-    def purge_eligibility
+    def persist_purge(entry:)
+      upload = @attachment.upload_record
+      return [ failure("secure_evidence_upload_missing"), nil ] unless upload
+
+      upload.lock!
+      @attachment.lock!
+      if @attachment.state_purged?
+        return [
+          ServiceResult.success(attachment: @attachment, idempotent: true),
+          nil
+        ]
+      end
+      if @attachment.state_purge_pending?
+        return [
+          ServiceResult.success(attachment: @attachment, idempotent: true),
+          upload.id
+        ]
+      end
+
+      eligibility = purge_eligibility(entry:)
+      return [ eligibility, nil ] if eligibility.failure?
+      if eligibility.value[:retention_extended]
+        return [
+          ServiceResult.success(
+            attachment: @attachment,
+            idempotent: false,
+            retention_extended: true
+          ),
+          nil
+        ]
+      end
+
+      @attachment.update!(state: "purge_pending")
+      upload.schedule_cleanup!(at: @now)
+      EventRecorder.record!(
+        attachment: @attachment,
+        actor: @actor,
+        event_type: "cleanup_scheduled",
+        idempotency_key: "evidence:cleanup-scheduled:#{@attachment.id}:#{@attachment.retention_until.to_i}",
+        metadata: { retention_until: @attachment.retention_until.iso8601(6) },
+        at: @now
+      )
+      [
+        ServiceResult.success(attachment: @attachment, idempotent: false),
+        upload.id
+      ]
+    end
+
+    def purge_eligibility(entry:)
       return failure("secure_evidence_retention_active") if @attachment.retention_until > @now
       return failure("secure_evidence_retention_hold") if held?(@attachment) || held?(@attachment.uploader)
 
-      entry = @catalog.entry_for_key(@attachment.subject_key)
       return failure("secure_evidence_subject_unavailable") unless entry
 
       subject = SubjectPolicy.resolve(entry:, public_id: @attachment.subject_public_id)

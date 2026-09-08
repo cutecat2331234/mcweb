@@ -11,6 +11,7 @@ module SecureEvidence
       assert_equal "test.evidence_case", entry.key
       assert_equal %w[pdf txt], entry.allowed_extensions
       assert_nil entry.discard_authorizer
+      assert_nil entry.purge_guard
       assert_raises(ArgumentError) { registry.register(**valid_registration) }
       assert_raises(ArgumentError) do
         registry.register(**valid_registration.merge(key: "invalid"))
@@ -26,6 +27,9 @@ module SecureEvidence
       end
       assert_raises(ArgumentError) do
         registry.register(**valid_registration.merge(discard_authorizer: true))
+      end
+      assert_raises(ArgumentError) do
+        registry.register(**valid_registration.merge(purge_guard: true))
       end
 
       registry.freeze!
@@ -50,6 +54,80 @@ module SecureEvidence
         subject: Object.new,
         attachment: Object.new
       )
+    end
+
+    test "optional purge guard must explicitly run the protected operation" do
+      permitted = SubjectRegistry.new.register(
+        **valid_registration.merge(
+          purge_guard: ->(subject:, attachment:, now:, operation:) {
+            operation.call if subject && attachment && now
+          }
+        )
+      )
+      result = SubjectPolicy.with_purge_guard(
+        entry: permitted,
+        subject: Object.new,
+        attachment: Object.new,
+        now: Time.current
+      ) { :purged }
+
+      assert result.allowed
+      assert_equal :purged, result.value
+
+      denied = SubjectRegistry.new.register(
+        **valid_registration.merge(
+          purge_guard: ->(subject:, attachment:, now:, operation:) {
+            subject && attachment && now && operation
+          }
+        )
+      )
+      result = SubjectPolicy.with_purge_guard(
+        entry: denied,
+        subject: Object.new,
+        attachment: Object.new,
+        now: Time.current
+      ) { flunk "denied purge guard executed the operation" }
+
+      refute result.allowed
+      assert_nil result.value
+    end
+
+    test "purge guard exceptions fail closed" do
+      entry = SubjectRegistry.new.register(
+        **valid_registration.merge(
+          purge_guard: ->(**) { raise IOError, "downstream unavailable" }
+        )
+      )
+
+      assert_raises(SubjectPolicy::PurgeGuardFailure) do
+        SubjectPolicy.with_purge_guard(
+          entry:,
+          subject: Object.new,
+          attachment: Object.new,
+          now: Time.current
+        ) { flunk "failed purge guard executed the operation" }
+      end
+    end
+
+    test "purge guard cannot defer the protected operation" do
+      deferred_operation = nil
+      entry = SubjectRegistry.new.register(
+        **valid_registration.merge(
+          purge_guard: ->(operation:, **) { deferred_operation = operation }
+        )
+      )
+
+      result = SubjectPolicy.with_purge_guard(
+        entry:,
+        subject: Object.new,
+        attachment: Object.new,
+        now: Time.current
+      ) { flunk "deferred purge guard executed the operation" }
+
+      refute result.allowed
+      assert_raises(SubjectPolicy::PurgeGuardFailure) do
+        deferred_operation.call
+      end
     end
 
     test "boot catalog is frozen even when CE has no product subjects" do

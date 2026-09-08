@@ -150,6 +150,21 @@ test('portal shell exposes a focus-only skip link without motion', () => {
   assert.doesNotMatch(foundation, /\.mc-shell-skip-link[\s\S]{0,500}transition:/)
 })
 
+test('portal shell exposes stable application acceptance hooks on shared structure', () => {
+  for (const hook of [
+    'data-mc-application-shell',
+    ':data-mc-application="shell.applicationId"',
+    'data-mc-application-header',
+    'data-mc-application-content',
+    'data-mc-application-user-menu-trigger',
+    'data-mc-application-sidebar',
+    'data-mc-application-navigation',
+    ':data-navigation-group="group.id"',
+  ]) {
+    assert.match(portalLayout, new RegExp(hook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  }
+})
+
 test('compound Arco detail views retain one token-backed content surface', () => {
   assert.match(
     foundation,

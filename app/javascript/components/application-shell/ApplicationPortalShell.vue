@@ -180,10 +180,16 @@ watch(isDark, syncArcoTheme, { immediate: true })
       :is="DeveloperModeTools"
       v-if="DeveloperModeTools && developerMode.enabled"
     />
-    <Layout class="mc-shell-layout" :style="{ minHeight: '100dvh' }">
+    <Layout
+      class="mc-shell-layout"
+      data-mc-application-shell
+      :data-mc-application="shell.applicationId"
+      :style="{ minHeight: '100dvh' }"
+    >
       <LayoutSider
         v-if="!compact"
         class="mc-shell-sidebar"
+        data-mc-application-sidebar
         :width="248"
         :style="{
           position: 'fixed',
@@ -212,6 +218,8 @@ watch(isDark, syncArcoTheme, { immediate: true })
             {{ t(group.labelKey) }}
           </TypographyText>
           <Menu
+            data-mc-application-navigation
+            :data-navigation-group="group.id"
             :selected-keys="selectedKey ? [selectedKey] : []"
             :style="{ borderRight: 0 }"
             @menu-item-click="visit"
@@ -239,6 +247,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       >
         <LayoutHeader
           class="mc-shell-header"
+          data-mc-application-header
           :style="{
             position: 'sticky',
             top: 0,
@@ -316,7 +325,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               </Button>
             </Badge>
             <Dropdown v-if="auth.user" trigger="click" position="br">
-              <Button type="text" shape="round">
+              <Button type="text" shape="round" data-mc-application-user-menu-trigger>
                 <Space align="center" :size="8">
                   <slot
                     name="user-avatar"
@@ -367,6 +376,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
         <LayoutContent
           id="application-content"
           class="mc-page-content mc-page-surface"
+          data-mc-application-content
           tabindex="-1"
           :style="{
             padding: 'var(--mc-page-gutter, 24px)',
@@ -397,7 +407,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <template #title>{{ t(shell.brandKey) }}</template>
       <template v-for="group in visibleGroups" :key="`mobile-${group.id}`">
         <TypographyText type="secondary">{{ t(group.labelKey) }}</TypographyText>
-        <Menu :selected-keys="selectedKey ? [selectedKey] : []" @menu-item-click="visit">
+        <Menu
+          data-mc-application-navigation
+          :data-navigation-group="group.id"
+          :selected-keys="selectedKey ? [selectedKey] : []"
+          @menu-item-click="visit"
+        >
           <MenuItem v-for="item in group.items" :key="item.href">
             <span :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
               <span>{{ t(item.labelKey) }}</span>

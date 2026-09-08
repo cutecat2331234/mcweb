@@ -10,7 +10,7 @@ function source(path: string): string {
 }
 
 const layoutPaths = [
-  'app/javascript/layouts/PortalLayout.vue',
+  'app/javascript/components/application-shell/ApplicationPortalShell.vue',
   'app/javascript/layouts/ArcoAdminLayout.vue',
   'app/javascript/layouts/WebsiteLayout.vue',
 ]
@@ -44,7 +44,7 @@ test('each CE shell keeps its existing visual component system', () => {
   assert.match(websiteCss, /\.website-developer-mode\s*\{/)
 })
 
-test('PortalLayout does not key its page content by the URL', () => {
+test('shared application shell does not key its page content by the URL', () => {
   const portal = source(layoutPaths[0])
 
   assert.doesNotMatch(portal, /:key=["']page\.url["']/)

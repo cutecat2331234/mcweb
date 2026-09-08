@@ -1,5 +1,18 @@
+@import "tailwindcss" source(none);
 @import "../shell-foundation.css";
 @import "../app-shell.css";
+
+@source "../../entrypoints/forum.ts";
+@source "../../shells/forum.ts";
+@source "../../pages/Community";
+@source "../../layouts/PortalLayout.vue";
+@source "../../components/application-shell/ApplicationPortalShell.vue";
+@source "../../components/AppProvider.vue";
+@source "../../components/ApplicationErrorBoundary.vue";
+@source "../../components/ui";
+@source "../../components/portal";
+@source "../../components/community";
+@source "../../components/minecraft";
 
 @layer base {
   .spoiler {

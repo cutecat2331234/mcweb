@@ -12,7 +12,7 @@ function source(path: string) {
 
 const pagePath = 'app/javascript/pages/Account/Notifications/Index.vue'
 const page = source(pagePath)
-const layout = source('app/javascript/layouts/PortalLayout.vue')
+const layout = source('app/javascript/components/application-shell/ApplicationPortalShell.vue')
 const sharedProps = source('app/controllers/concerns/inertia_shared_props.rb')
 const controller = source('app/controllers/account/notifications_controller.rb')
 

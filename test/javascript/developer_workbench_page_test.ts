@@ -69,7 +69,7 @@ test('Developer Mode global tools keep details in focused modal surfaces', () =>
     'app/javascript/layouts/ArcoAdminLayout.vue',
   )
   const portalLayout = projectSource(
-    'app/javascript/layouts/PortalLayout.vue',
+    'app/javascript/components/application-shell/ApplicationPortalShell.vue',
   )
   const websiteLayout = projectSource(
     'app/javascript/layouts/WebsiteLayout.vue',

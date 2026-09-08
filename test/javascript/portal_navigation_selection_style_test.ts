@@ -8,7 +8,7 @@ function source(path: string) {
 }
 
 test('portal navigation uses stable library colors without decorative selection bars or press movement', () => {
-  const portal = source('app/javascript/layouts/PortalLayout.vue')
+  const portal = source('app/javascript/components/application-shell/ApplicationPortalShell.vue')
 
   assert.match(portal, /import \{[\s\S]*\bMenu,[\s\S]*\bMenuItem,[\s\S]*\} from '@mcweb\/ui'/m)
   assert.match(portal, /<Menu[\s\S]*?:selected-keys="selectedKey \? \[selectedKey\] : \[\]"/m)

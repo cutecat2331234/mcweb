@@ -1,5 +1,22 @@
+@import "tailwindcss" source(none);
 @import "../shell-foundation.css";
 @import "../app-shell.css";
+
+@source "../../entrypoints/store.ts";
+@source "../../shells/store.ts";
+@source "../../pages/Commerce";
+@source "../../pages/Payments";
+@source "../../layouts/PortalLayout.vue";
+@source "../../components/application-shell/ApplicationPortalShell.vue";
+@source "../../components/AppProvider.vue";
+@source "../../components/ApplicationErrorBoundary.vue";
+@source "../../components/ui";
+@source "../../components/commerce";
+@source "../../components/portal/Breadcrumb.vue";
+@source "../../components/portal/FlashMessages.vue";
+@source "../../components/portal/LanguageSwitcher.vue";
+@source "../../components/portal/PageHeader.vue";
+@source "../../components/portal/Pagination.vue";
 
 html[data-mcweb-application="store"] body {
   --mc-application-accent: #059669;

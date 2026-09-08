@@ -17,7 +17,7 @@
   "projections": [],
   "shell_adapter": "staff",
   "ui_adapter": "mcweb_ui",
-  "styles": ["tokens", "shell_foundation", "arco_admin", "staff"],
+  "styles": ["tokens", "shell_foundation", "app_shell", "staff"],
   "locales": ["core", "staff"],
   "error_boundary": "staff",
   "capabilities": ["locale", "theme", "session", "dirty_forms", "developer_persona", "secure_evidence"],

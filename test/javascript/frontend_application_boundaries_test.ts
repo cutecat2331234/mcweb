@@ -172,10 +172,18 @@ test('downstream navigation visibility is a shared fail-closed authorization con
   assert.match(shell, /auth\.user\.admin_capabilities/)
   assert.match(shell, /capabilities as Record<string, unknown>\)\[capability\] === true/)
   assert.match(shell, /item\.permissionAny\.some/)
-  for (const layout of ['PortalLayout.vue', 'StaffLayout.vue', 'ArcoAdminLayout.vue']) {
-    const source = readFileSync(resolve(root, 'app/javascript/layouts', layout), 'utf8')
+  for (const path of [
+    'app/javascript/components/application-shell/ApplicationPortalShell.vue',
+    'app/javascript/layouts/ArcoAdminLayout.vue',
+  ]) {
+    const source = readFileSync(resolve(root, path), 'utf8')
     assert.match(source, /isApplicationShellNavigationItemVisible/)
   }
+  const staffLayout = readFileSync(
+    resolve(root, 'app/javascript/layouts/StaffLayout.vue'),
+    'utf8',
+  )
+  assert.match(staffLayout, /<ApplicationPortalShell>/)
 })
 
 test('downstream page loaders are confined to declared repository page roots', () => {

@@ -24,7 +24,10 @@ const staffLayout = readFileSync(
   'utf8',
 )
 const portalLayout = readFileSync(
-  resolve(process.cwd(), 'app/javascript/layouts/PortalLayout.vue'),
+  resolve(
+    process.cwd(),
+    'app/javascript/components/application-shell/ApplicationPortalShell.vue',
+  ),
   'utf8',
 )
 
@@ -62,12 +65,12 @@ test('admin and application style roots load one shared shell geometry contract'
 })
 
 test('application shells pass numeric sider widths while content consumes shared geometry', () => {
-  for (const layout of [adminLayout, staffLayout, portalLayout]) {
+  for (const layout of [adminLayout, portalLayout]) {
     assert.match(layout, /:width="248"/)
     assert.doesNotMatch(layout, /:width="'var\(--mc-shell-sidebar-width/)
   }
 
-  for (const layout of [adminLayout, staffLayout]) {
+  for (const layout of [adminLayout, portalLayout]) {
     assert.match(layout, /mc-shell-header/)
     assert.match(layout, /mc-page-content mc-page-surface/)
     assert.match(layout, /mc-page-container/)
@@ -75,12 +78,12 @@ test('application shells pass numeric sider widths while content consumes shared
     assert.match(layout, /var\(--mc-page-max-width, 1440px\)/)
   }
 
-  for (const layout of [staffLayout, portalLayout]) {
-    assert.match(layout, /marginLeft: .*?'var\(--mc-shell-sidebar-width, 248px\)'/)
-    assert.match(layout, /width: .*?'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
-  }
+  assert.match(portalLayout, /marginLeft: .*?'var\(--mc-shell-sidebar-width, 248px\)'/)
+  assert.match(portalLayout, /width: .*?'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
+  assert.match(portalLayout, /name="user-avatar"/)
+  assert.match(portalLayout, /name="flash-messages"/)
 
-  assert.doesNotMatch(staffLayout, /(?:236|1480)px/)
+  assert.match(staffLayout, /<ApplicationPortalShell>/)
   assert.doesNotMatch(adminLayout, /:width="260"/)
 })
 

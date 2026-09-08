@@ -1,5 +1,23 @@
+@import "tailwindcss" source(none);
 @import "../shell-foundation.css";
-@import "../arco-admin.css";
+@import "../app-shell.css";
+
+@source "../../entrypoints/staff.ts";
+@source "../../shells/staff.ts";
+@source "../../pages/Staff/Dashboard";
+@source "../../pages/Staff/Forum/Approvals";
+@source "../../pages/Staff/ModerationCases";
+@source "../../pages/Staff/ReportAppeals";
+@source "../../layouts/StaffLayout.vue";
+@source "../../components/application-shell/ApplicationPortalShell.vue";
+@source "../../components/AppProvider.vue";
+@source "../../components/ApplicationErrorBoundary.vue";
+@source "../../components/ui";
+@source "../../components/admin/ModerationActionModal.vue";
+@source "../../components/community/ReportAppealReviewIndex.vue";
+@source "../../components/community/ReportAppealReviewShow.vue";
+@source "../../components/portal/FlashMessages.vue";
+@source "../../components/portal/LanguageSwitcher.vue";
 
 html[data-mcweb-application="staff"] body {
   --mc-application-accent: #d97706;

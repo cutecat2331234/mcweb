@@ -1,4 +1,16 @@
+@import "tailwindcss" source(none);
 @import "../website.css";
+
+@source "../../entrypoints/website-document.ts";
+@source "../../pages/Website";
+@source "../../pages/Plugins";
+@source "../../layouts/WebsiteLayout.vue";
+@source "../../components/AppProvider.vue";
+@source "../../components/ApplicationErrorBoundary.vue";
+@source "../../components/plugins";
+@source "../../components/portal/PageHeader.vue";
+@source "../../components/portal/TemplateAssets.vue";
+@source "../../components/ui";
 
 html[data-mcweb-application="website"] body {
   min-height: 100dvh;

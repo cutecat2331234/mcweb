@@ -1,6 +1,18 @@
+@import "tailwindcss" source(none);
 @import "../shell-foundation.css";
 @import "../website.css";
 @import "../arco-admin.css";
+
+@source "../../entrypoints/website-preview.ts";
+@source "../../pages/Website/Pages/Show.vue";
+@source "../../pages/Website/Articles/Show.vue";
+@source "../../pages/WebsitePreview";
+@source "../../layouts/WebsiteLayout.vue";
+@source "../../components/AppProvider.vue";
+@source "../../components/ApplicationErrorBoundary.vue";
+@source "../../components/portal/PageHeader.vue";
+@source "../../components/portal/TemplateAssets.vue";
+@source "../../components/ui";
 
 html[data-mcweb-application="website_preview"] body {
   --mc-application-accent: #7c3aed;

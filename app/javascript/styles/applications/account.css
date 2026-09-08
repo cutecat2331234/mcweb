@@ -1,5 +1,20 @@
+@import "tailwindcss" source(none);
 @import "../shell-foundation.css";
 @import "../app-shell.css";
+
+@source "../../entrypoints/account.ts";
+@source "../../shells/account.ts";
+@source "../../pages/Account";
+@source "../../pages/Identity";
+@source "../../pages/Minecraft";
+@source "../../layouts/PortalLayout.vue";
+@source "../../layouts/account";
+@source "../../components/application-shell/ApplicationPortalShell.vue";
+@source "../../components/AppProvider.vue";
+@source "../../components/ApplicationErrorBoundary.vue";
+@source "../../components/ui";
+@source "../../components/portal";
+@source "../../components/minecraft";
 
 html[data-mcweb-application="account"] {
   scrollbar-gutter: stable both-edges;

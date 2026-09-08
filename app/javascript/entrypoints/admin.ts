@@ -25,7 +25,7 @@ void createMcWebInertiaApplication({
   applicationId: 'admin',
   pages: basePages,
   titleFallback: 'McWeb Admin',
-  provider: false,
+  providerComponent: false,
   progress: { color: '#38bdf8' },
   adapterModules: import.meta.glob(
     '../frontend-application-adapters/admin/**/*.ts',

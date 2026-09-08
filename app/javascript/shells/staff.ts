@@ -12,7 +12,11 @@ export const staffShell: ApplicationShellAdapter = {
         { labelKey: 'staffWorkspace.navigation.overview', href: routes.staff },
         { labelKey: 'staffWorkspace.navigation.queue', href: routes.staffModerationCases },
         { labelKey: 'staffWorkspace.forumApprovals.title', href: routes.staffForumApprovals },
-        { labelKey: 'staffWorkspace.navigation.reportAppeals', href: routes.staffReportAppeals },
+        {
+          labelKey: 'staffWorkspace.navigation.reportAppeals',
+          href: routes.staffReportAppeals,
+          visibilityProp: 'auth.user.can_review_report_appeals',
+        },
       ],
     },
   ],

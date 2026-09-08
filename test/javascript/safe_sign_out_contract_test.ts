@@ -8,7 +8,10 @@ const helper = readFileSync(
   'utf8',
 )
 const portalLayout = readFileSync(
-  resolve(process.cwd(), 'app/javascript/layouts/PortalLayout.vue'),
+  resolve(
+    process.cwd(),
+    'app/javascript/components/application-shell/ApplicationPortalShell.vue',
+  ),
   'utf8',
 )
 const staffLayout = readFileSync(
@@ -33,9 +36,6 @@ test('portal and staff callers use the shared loading-safe sign-out contract', (
   assert.match(portalLayout, /:disabled="signingOut"/)
   assert.match(portalLayout, /onFinish:/)
 
-  assert.match(staffLayout, /safeSignOut/)
-  assert.match(staffLayout, /if \(signingOut\.value\) return false/)
-  assert.match(staffLayout, /:ok-loading="signingOut"/)
-  assert.match(staffLayout, /onStart:/)
-  assert.match(staffLayout, /onFinish:/)
+  assert.match(staffLayout, /import ApplicationPortalShell from '@\/components\/application-shell\/ApplicationPortalShell\.vue'/)
+  assert.match(staffLayout, /<ApplicationPortalShell>/)
 })

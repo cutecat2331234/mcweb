@@ -52,6 +52,6 @@ test('account and identity self-service routes are application-level destination
   assert.match(routes, /accountNotifications: `\$\{appPrefix\}\/account\/notifications`/)
   assert.match(routes, /identityProfile: `\$\{appPrefix\}\/identity\/profile`/)
   assert.match(routes, /securityPassword: `\$\{appPrefix\}\/identity\/security\/password`/)
-  assert.equal((staffLayout.match(/visit\(routes\.app\)/g) || []).length, 2)
-  assert.doesNotMatch(staffLayout, /visit\(routes\.forum\)/)
+  assert.match(staffLayout, /<ApplicationPortalShell>/)
+  assert.doesNotMatch(staffLayout, /routes\.forum/)
 })

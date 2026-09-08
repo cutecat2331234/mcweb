@@ -3,6 +3,7 @@ import '@/styles/applications/website-preview.css'
 import type { DefineComponent } from 'vue'
 
 import { createMcWebInertiaApplication } from '@/lib/createInertiaApplication'
+import AppProvider from '@/components/AppProvider.vue'
 
 const basePages = import.meta.glob<DefineComponent>([
   '../pages/Website/Pages/Show.vue',
@@ -13,7 +14,7 @@ void createMcWebInertiaApplication({
   applicationId: 'website_preview',
   pages: basePages,
   titleFallback: 'McWeb Website Preview',
-  provider: true,
+  providerComponent: AppProvider,
   progress: false,
   adapterModules: import.meta.glob(
     '../frontend-application-adapters/website_preview/**/*.ts',

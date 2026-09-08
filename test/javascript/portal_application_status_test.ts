@@ -8,7 +8,7 @@ function source(path: string) {
 }
 
 test('portal application chrome preserves owned counters and status surfaces', () => {
-  const layout = source('app/javascript/layouts/PortalLayout.vue')
+  const layout = source('app/javascript/components/application-shell/ApplicationPortalShell.vue')
   const accountShell = source('app/javascript/shells/account.ts')
   const forumShell = source('app/javascript/shells/forum.ts')
   const storeShell = source('app/javascript/shells/store.ts')

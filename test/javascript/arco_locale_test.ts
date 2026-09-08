@@ -77,7 +77,6 @@ test('every shared Arco shell binds its provider to the vue-i18n locale', () => 
   for (const relativePath of [
     'app/javascript/components/AppProvider.vue',
     'app/javascript/layouts/ArcoAdminLayout.vue',
-    'app/javascript/layouts/StaffLayout.vue',
   ]) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
 
@@ -89,19 +88,23 @@ test('every shared Arco shell binds its provider to the vue-i18n locale', () => 
 
 test('portal layout relies on the application provider instead of nesting Arco providers', () => {
   const portalLayout = readFileSync(
-    resolve(process.cwd(), 'app/javascript/layouts/PortalLayout.vue'),
+    resolve(
+      process.cwd(),
+      'app/javascript/components/application-shell/ApplicationPortalShell.vue',
+    ),
     'utf8',
   )
 
   assert.doesNotMatch(portalLayout, /ConfigProvider|useArcoLocale|arcoLocale/)
 
-  for (const application of ['account', 'forum', 'store']) {
+  for (const application of ['account', 'forum', 'staff', 'store']) {
     const entrypoint = readFileSync(
       resolve(process.cwd(), `app/javascript/entrypoints/${application}.ts`),
       'utf8',
     )
 
-    assert.match(entrypoint, /provider:\s*true/)
+    assert.match(entrypoint, /import AppProvider from '@\/components\/AppProvider\.vue'/)
+    assert.match(entrypoint, /providerComponent:\s*AppProvider/)
   }
 
   const websiteEntrypoint = readFileSync(
@@ -109,7 +112,8 @@ test('portal layout relies on the application provider instead of nesting Arco p
     'utf8',
   )
   assert.match(websiteEntrypoint, /applicationId:\s*'website'/)
-  assert.match(websiteEntrypoint, /provider:\s*true/)
+  assert.match(websiteEntrypoint, /import AppProvider from '@\/components\/AppProvider\.vue'/)
+  assert.match(websiteEntrypoint, /providerComponent:\s*AppProvider/)
 })
 
 test('portal provider keeps Arco controls synchronized with the shared dark theme', () => {

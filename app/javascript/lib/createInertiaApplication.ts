@@ -1,8 +1,7 @@
 import { getInitialPageFromDOM } from '@inertiajs/core'
 import { createInertiaApp, router } from '@inertiajs/vue3'
-import { createApp, Fragment, h, type DefineComponent } from 'vue'
+import { createApp, Fragment, h, type Component, type DefineComponent } from 'vue'
 
-import AppProvider from '@/components/AppProvider.vue'
 import ApplicationErrorBoundary from '@/components/ApplicationErrorBoundary.vue'
 import {
   APPLICATION_SHELL_ADAPTER,
@@ -45,7 +44,7 @@ type CreateInertiaApplicationOptions = {
   pages: Record<string, FrontendPageLoader>
   titleFallback: string
   progress?: false | { color: string }
-  provider?: boolean
+  providerComponent?: Component | false
   adapterModules?: Record<string, unknown>
   shellAdapter?: ApplicationShellAdapter
   shellAdapterId: string
@@ -125,7 +124,7 @@ export async function createMcWebInertiaApplication({
   pages,
   titleFallback,
   progress = false,
-  provider = true,
+  providerComponent = false,
   adapterModules = {},
   shellAdapter,
   shellAdapterId,
@@ -297,8 +296,8 @@ export async function createMcWebInertiaApplication({
             })
           )),
         ])
-        const root = provider
-          ? { render: () => h(AppProvider, null, { default: content }) }
+        const root = providerComponent
+          ? { render: () => h(providerComponent, null, { default: content }) }
           : { render: content }
         const application = createApp(root).use(plugin).use(i18n)
         if (effectiveShellAdapter) {

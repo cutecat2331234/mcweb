@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import test from 'node:test'
 import {
@@ -160,7 +160,10 @@ test('language switchers commit shared locale state only after the cross-applica
   }
 
   const portalLayout = readFileSync(
-    resolve(process.cwd(), 'app/javascript/layouts/PortalLayout.vue'),
+    resolve(
+      process.cwd(),
+      'app/javascript/components/application-shell/ApplicationPortalShell.vue',
+    ),
     'utf8',
   )
   assert.match(portalLayout, /import LanguageSwitcher from '@\/components\/portal\/LanguageSwitcher\.vue'/)
@@ -278,4 +281,19 @@ test('runtime translation misses are reported once and never render the raw key'
   } finally {
     console.error = originalError
   }
+})
+test('production bundles exclude unused vue-i18n legacy and global component APIs', () => {
+  const viteConfig = readFileSync(resolve(process.cwd(), 'vite.config.ts'), 'utf8')
+  const javascriptRoot = resolve(process.cwd(), 'app/javascript')
+  const files = readdirSync(javascriptRoot, { recursive: true, encoding: 'utf8' })
+    .filter((path) => /\.(?:vue|[cm]?[jt]sx?)$/.test(path))
+    .map((path) => readFileSync(resolve(javascriptRoot, path), 'utf8'))
+    .join('\n')
+
+  assert.match(viteConfig, /__VUE_I18N_LEGACY_API__:\s*false/)
+  assert.match(viteConfig, /__VUE_I18N_FULL_INSTALL__:\s*false/)
+  assert.match(viteConfig, /__INTLIFY_PROD_DEVTOOLS__:\s*false/)
+  assert.doesNotMatch(files, /<i18n-[tnd]\b/)
+  assert.doesNotMatch(files, /\bv-t(?:\s|=)/)
+  assert.doesNotMatch(files, /\$t\(/)
 })

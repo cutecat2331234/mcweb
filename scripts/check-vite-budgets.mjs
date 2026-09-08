@@ -19,7 +19,7 @@ if (!existsSync(manifestPath)) {
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const outputRoot = resolve(manifestPath, '..', '..')
-const baseDescriptors = readdirSync(resolve(registryRoot, 'base'))
+const allBaseDescriptors = readdirSync(resolve(registryRoot, 'base'))
   .filter((name) => name.endsWith('.json'))
   .sort()
   .map((name) => ({
@@ -34,6 +34,19 @@ const contributionManifests = (existsSync(contributionRoot) ? readdirSync(contri
     name,
     contribution: JSON.parse(readFileSync(resolve(contributionRoot, name), 'utf8')),
   }))
+const astroRenderedApplicationIds = new Set(contributionManifests
+  .filter(({ contribution }) => (
+    contribution.exclusive_renderer === true
+      && contribution.renderer_runtime_kind === 'astro_document'
+  ))
+  .map(({ contribution }) => contribution.extends_application)
+  .filter(Boolean))
+// An exclusive renderer replaces the base application's document runtime. Its
+// own manifest and budget are checked below, so measuring the dormant Vite
+// entry as well would reject assets that production never serves.
+const baseDescriptors = allBaseDescriptors.filter(({ descriptor }) => (
+  !astroRenderedApplicationIds.has(descriptor.id)
+))
 const contributedDescriptors = contributionManifests
   .flatMap(({ name, contribution }) => {
     return contribution.creates_application
@@ -49,7 +62,7 @@ const contributedDescriptors = contributionManifests
         }]
       : []
   })
-const descriptorById = new Map([...baseDescriptors, ...contributedDescriptors]
+const descriptorById = new Map([...allBaseDescriptors, ...contributedDescriptors]
   .map((record) => [record.descriptor.id, record]))
 const extensionDescriptors = contributionManifests.flatMap(({ name, contribution }) => {
   if (!contribution.extends_application || contribution.exclusive_renderer) return []

@@ -245,3 +245,75 @@ test('Vite initial budgets continue to fail for oversized static dependencies', 
     assert.match(result.stderr, /Frontend application performance budget exceeded/)
   })
 })
+
+test('exclusive Astro renderers replace dormant base Vite budgets', () => {
+  withFixture((root) => {
+    writeFixtureJson(root, 'config/frontend_applications/base/website.json', {
+      id: 'website',
+      runtime_kind: 'inertia_document',
+      entrypoint: 'website-document',
+      budget: {
+        representative_paths: ['/'],
+        representative_components: ['Website/Home'],
+        max_initial_javascript_bytes: 1,
+      },
+    })
+    writeFixtureJson(root, 'config/frontend_applications/contributions/astro_website.json', {
+      contribution_id: 'example.website.renderer',
+      product_owner: 'downstream',
+      runtime_owner: 'downstream',
+      extends_application: 'website',
+      exclusive_renderer: true,
+      renderer_runtime_kind: 'astro_document',
+      renderer_manifest_path: 'website/dist/.vite/manifest.json',
+      budget: {
+        representative_paths: ['/'],
+        representative_entries: ['src/pages/index.astro'],
+        max_initial_javascript_bytes: 256,
+      },
+    })
+    writeFixtureJson(root, 'public/vite/.vite/manifest.json', {})
+    writeFixtureJson(root, 'website/dist/.vite/manifest.json', {
+      'src/pages/index.astro': { file: 'assets/home.js' },
+    })
+    writeFixtureFile(root, 'website/dist/assets/home.js', 'a'.repeat(96))
+
+    const result = runChecker(root)
+
+    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`)
+    assert.match(result.stdout, /src\/pages\/index\.astro/)
+    assert.doesNotMatch(result.stderr, /registry entry is absent.*website-document/)
+  })
+})
+
+test('exclusive Inertia renderers cannot remove the base Vite budget', () => {
+  withFixture((root) => {
+    writeFixtureJson(root, 'config/frontend_applications/base/website.json', {
+      id: 'website',
+      runtime_kind: 'inertia_document',
+      entrypoint: 'website-document',
+      budget: {
+        representative_paths: ['/'],
+        representative_components: ['Website/Home'],
+        max_initial_javascript_bytes: 128,
+      },
+    })
+    writeFixtureJson(root, 'config/frontend_applications/contributions/inertia_website.json', {
+      contribution_id: 'example.website.renderer',
+      extends_application: 'website',
+      exclusive_renderer: true,
+      renderer_runtime_kind: 'inertia_document',
+    })
+    writeFixtureJson(root, 'public/vite/.vite/manifest.json', {
+      'entrypoints/website-document.ts': { file: 'assets/website.js' },
+      'pages/Website/Home.vue': { file: 'assets/home.js' },
+    })
+    writeFixtureFile(root, 'public/vite/assets/website.js', 'w'.repeat(96))
+    writeFixtureFile(root, 'public/vite/assets/home.js', 'h'.repeat(96))
+
+    const result = runChecker(root)
+
+    assert.equal(result.status, 1, `${result.stderr}\n${result.stdout}`)
+    assert.match(result.stderr, /Frontend application performance budget exceeded/)
+  })
+})

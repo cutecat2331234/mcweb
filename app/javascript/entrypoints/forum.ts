@@ -4,6 +4,7 @@ import type { DefineComponent } from 'vue'
 
 import { createMcWebInertiaApplication } from '@/lib/createInertiaApplication'
 import { forumShell } from '@/shells/forum'
+import AppProvider from '@/components/AppProvider.vue'
 
 const basePages = import.meta.glob<DefineComponent>('../pages/Community/**/*.vue')
 
@@ -11,7 +12,7 @@ void createMcWebInertiaApplication({
   applicationId: 'forum',
   pages: basePages,
   titleFallback: 'McWeb Forum',
-  provider: true,
+  providerComponent: AppProvider,
   progress: false,
   adapterModules: import.meta.glob(
     '../frontend-application-adapters/forum/**/*.ts',

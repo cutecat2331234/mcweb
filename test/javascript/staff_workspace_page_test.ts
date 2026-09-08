@@ -11,23 +11,33 @@ const queue = readFileSync(
   resolve(process.cwd(), 'app/javascript/pages/Staff/ModerationCases/Index.vue'),
   'utf8',
 )
+const portalLayout = readFileSync(
+  resolve(
+    process.cwd(),
+    'app/javascript/components/application-shell/ApplicationPortalShell.vue',
+  ),
+  'utf8',
+)
+const entrypoint = readFileSync(
+  resolve(process.cwd(), 'app/javascript/entrypoints/staff.ts'),
+  'utf8',
+)
+const shell = readFileSync(
+  resolve(process.cwd(), 'app/javascript/shells/staff.ts'),
+  'utf8',
+)
 
-test('staff workspace is independent from the administrator shell and responsive', () => {
-  assert.match(layout, /from '@mcweb\/ui'/)
+test('staff workspace keeps an independent entry while reusing the application shell', () => {
+  assert.match(layout, /import ApplicationPortalShell from '@\/components\/application-shell\/ApplicationPortalShell\.vue'/)
+  assert.match(layout, /<ApplicationPortalShell>/)
   assert.doesNotMatch(layout, /AdminLayout/)
-  assert.match(layout, /window\.matchMedia\('\(max-width: 991px\)'\)/)
-  assert.match(layout, /<LayoutSider[\s\S]*?:width="248"/)
-  assert.match(layout, /marginLeft: isCompact \? '0' : 'var\(--mc-shell-sidebar-width, 248px\)'/)
-  assert.match(layout, /width: isCompact \? '100%' : 'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
-  assert.match(layout, /class="mc-page-content mc-page-surface"/)
-  assert.match(layout, /class="mc-page-container"/)
-  assert.match(layout, /boxSizing: 'border-box'/)
-  assert.match(layout, /background: 'var\(--color-bg-1\)'/)
-  assert.match(layout, /import AdminLanguageSwitcher from '@\/components\/admin\/AdminLanguageSwitcher\.vue'/)
-  assert.match(layout, /<AdminLanguageSwitcher \/>/)
-  assert.match(layout, /signOutConfirmTitle/)
-  assert.match(layout, /safeSignOut/)
-  assert.match(layout, /onFinish: \(\) =>/)
+  assert.match(entrypoint, /applicationId:\s*'staff'/)
+  assert.match(entrypoint, /providerComponent:\s*AppProvider/)
+  assert.match(portalLayout, /window\.matchMedia\('\(max-width: 991px\)'\)/)
+  assert.match(portalLayout, /<LayoutSider[\s\S]*?:width="248"/)
+  assert.match(portalLayout, /class="mc-page-content mc-page-surface"/)
+  assert.match(portalLayout, /v-accessible-form-control-names/)
+  assert.match(shell, /visibilityProp:\s*'auth\.user\.can_review_report_appeals'/)
   assert.doesNotMatch(layout, /<style\b/)
 })
 

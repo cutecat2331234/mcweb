@@ -4,6 +4,7 @@ import type { DefineComponent } from 'vue'
 
 import { createMcWebInertiaApplication } from '@/lib/createInertiaApplication'
 import { accountShell } from '@/shells/account'
+import AppProvider from '@/components/AppProvider.vue'
 
 const basePages = import.meta.glob<DefineComponent>([
   '../pages/Account/**/*.vue',
@@ -14,7 +15,7 @@ void createMcWebInertiaApplication({
   applicationId: 'account',
   pages: basePages,
   titleFallback: 'McWeb Account',
-  provider: true,
+  providerComponent: AppProvider,
   progress: false,
   adapterModules: import.meta.glob(
     '../frontend-application-adapters/account/**/*.ts',

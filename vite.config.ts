@@ -37,9 +37,11 @@ type ArcoChunkGroupPlan = {
   paths?: string
 }
 
-// Keep the public component areas readable and enumerate only the shared Arco
-// internals that would otherwise become one-request chunks. The build contract
-// below makes an Arco upgrade fail loudly when one of those internals moves.
+// Group only genuinely shared Arco internals. Public component areas and icons
+// must remain owned by their actual importers; grouping them by feature family
+// makes a route that uses one small control download every component and style
+// in that family. The build contract below still makes an Arco upgrade fail
+// loudly when one of the shared internal paths moves.
 const arcoChunkPlan: readonly ArcoChunkGroupPlan[] = [
   {
     name: 'arco-provider-runtime',
@@ -47,32 +49,13 @@ const arcoChunkPlan: readonly ArcoChunkGroupPlan[] = [
     paths: '_utils/global-config.js _utils/is.js _virtual/plugin-vue_export-helper.js',
   },
   {
-    name: 'arco-auth-shell',
-    areas: 'button card spin',
-    icons: 'icon-loading',
+    name: 'arco-control-runtime',
     paths: '_hooks/use-form-item.js _hooks/use-size.js _utils/omit.js _utils/vue-utils.js form/context.js',
   },
   {
-    name: 'arco-sign-in-form',
-    areas: 'alert checkbox divider form grid input page-header space tooltip trigger',
-    icons: 'icon-check-circle-fill icon-close icon-close-circle-fill icon-empty icon-exclamation-circle-fill icon-eye icon-eye-invisible icon-info-circle-fill icon-left icon-question-circle icon-search',
+    name: 'arco-overlay-form-runtime',
     packages: 'compute-scroll-into-view resize-observer-polyfill scroll-into-view-if-needed',
     paths: '_components/client-only.js _components/feedback-icon.js _components/icon-hover.js _components/resize-observer.js _components/resize-observer-v2.js _hooks/use-cursor.js _hooks/use-first-element.js _hooks/use-index.js _hooks/use-merge-state.js _hooks/use-overflow.js _hooks/use-pick-slots.js _hooks/use-popup-manager.js _hooks/use-resize-observer.js _hooks/use-state.js _hooks/use-teleport-container.js _utils/constant.js _utils/dom.js _utils/get-value-by-path.js _utils/keyboard.js _utils/keycode.js _utils/pick.js _utils/raf.js _utils/responsive-observe.js _utils/throttle-by-raf.js',
-  },
-  {
-    name: 'arco-data-display',
-    areas: 'avatar descriptions empty popover statistic tag typography',
-    icons: 'icon-copy icon-edit icon-image-close',
-  },
-  {
-    name: 'arco-extended-form',
-    areas: 'input-number switch tabs textarea',
-    icons: 'icon-minus icon-plus icon-up',
-  },
-  { name: 'arco-developer-tools', areas: 'back-top drawer message watermark' },
-  {
-    name: 'arco-settings-icons',
-    icons: 'icon-apps icon-book icon-experiment icon-link icon-lock icon-safe icon-storage icon-thunderbolt',
   },
 ]
 
@@ -195,6 +178,9 @@ if (runtimeProfile === 'fast_preview') {
 export default defineConfig({
   define: {
     __MCWEB_DEVELOPER_BUILD__: JSON.stringify(developerBuild),
+    __VUE_I18N_LEGACY_API__: false,
+    __VUE_I18N_FULL_INSTALL__: false,
+    __INTLIFY_PROD_DEVTOOLS__: false,
   },
   plugins: [
     RubyPlugin(),
@@ -234,6 +220,10 @@ export default defineConfig({
               name: group.name,
               test: (id: string) => isRuntimeChunkGroup(id, group),
               includeDependenciesRecursively: false,
+              // These internals may be shared inside one application, but they
+              // must not become a mandatory cross-application startup chunk.
+              entriesAware: true,
+              entriesAwareMergeThreshold: 0,
             })),
           ],
         },

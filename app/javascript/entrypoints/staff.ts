@@ -4,6 +4,7 @@ import type { DefineComponent } from 'vue'
 
 import { createMcWebInertiaApplication } from '@/lib/createInertiaApplication'
 import { staffShell } from '@/shells/staff'
+import AppProvider from '@/components/AppProvider.vue'
 
 const basePages = import.meta.glob<DefineComponent>([
   '../pages/Staff/Dashboard/**/*.vue',
@@ -15,7 +16,7 @@ void createMcWebInertiaApplication({
   applicationId: 'staff',
   pages: basePages,
   titleFallback: 'McWeb Staff',
-  provider: false,
+  providerComponent: AppProvider,
   progress: { color: '#38bdf8' },
   adapterModules: import.meta.glob(
     '../frontend-application-adapters/staff/**/*.ts',

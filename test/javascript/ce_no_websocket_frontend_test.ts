@@ -46,7 +46,9 @@ test('CE frontend contains no WebSocket, Action Cable, or event-stream client', 
 })
 
 test('notification count stays server-driven without a live subscription', () => {
-  const portalLayout = source('app/javascript/layouts/PortalLayout.vue')
+  const portalLayout = source(
+    'app/javascript/components/application-shell/ApplicationPortalShell.vue',
+  )
 
   assert.match(
     portalLayout,

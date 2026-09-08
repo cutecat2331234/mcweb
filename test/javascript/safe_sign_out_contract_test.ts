@@ -47,8 +47,12 @@ test('sign out invalidates encrypted history and restored authenticated document
   assert.match(authenticatedHistory, /window\.addEventListener\('storage'/)
   assert.match(authenticatedHistory, /window\.addEventListener\('pageshow'/)
   assert.match(authenticatedHistory, /window\.location\.replace\(destination\.href\)/)
-  assert.match(applicationFactory, /pageHasAuthenticatedUser\(domPage\)/)
-  assert.match(applicationFactory, /installAuthenticatedHistoryBoundary\(routes\.signedOut\)/)
+  assert.match(authenticatedHistory, /SESSION_ARMED_KEY/)
+  assert.match(authenticatedHistory, /invalidatePreviouslyAuthenticatedHistory/)
+  assert.match(applicationFactory, /syncAuthenticatedHistoryBoundary\(domPage\)/)
+  assert.match(applicationFactory, /syncAuthenticatedHistoryBoundary\(detail\.page\)/)
+  assert.match(applicationFactory, /document\.addEventListener\('inertia:location'/)
+  assert.match(applicationFactory, /url\.pathname === signedOut\.pathname/)
 })
 
 test('portal and staff callers use the shared loading-safe sign-out contract', () => {

@@ -1,5 +1,6 @@
 const SESSION_EPOCH_KEY = 'mcweb:authenticated-history-epoch'
 const SHARED_EPOCH_KEY = 'mcweb:authenticated-history-epoch'
+const SESSION_ARMED_KEY = 'mcweb:authenticated-history-armed'
 const INERTIA_HISTORY_KEYS = ['historyKey', 'historyIv'] as const
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -73,17 +74,29 @@ function safeDestination(value: string): URL | null {
 
 export function invalidateAuthenticatedHistory(): void {
   const epoch = newEpoch()
-  writeStorage(browserStorage('sessionStorage'), SESSION_EPOCH_KEY, epoch)
+  const sessionStorage = browserStorage('sessionStorage')
+  writeStorage(sessionStorage, SESSION_EPOCH_KEY, epoch)
+  removeStorage(sessionStorage, SESSION_ARMED_KEY)
   writeStorage(browserStorage('localStorage'), SHARED_EPOCH_KEY, epoch)
   clearInertiaHistoryEncryption()
   scrubCurrentHistoryEntry()
+}
+
+export function invalidatePreviouslyAuthenticatedHistory(): boolean {
+  const sessionStorage = browserStorage('sessionStorage')
+  if (storageValue(sessionStorage, SESSION_ARMED_KEY) !== 'true') return false
+
+  invalidateAuthenticatedHistory()
+  return true
 }
 
 export function installAuthenticatedHistoryBoundary(signedOutPath: string): VoidFunction {
   const destination = safeDestination(signedOutPath)
   if (!destination) throw new Error('Authenticated history boundary requires a same-origin URL')
 
-  const initialSessionEpoch = storageValue(browserStorage('sessionStorage'), SESSION_EPOCH_KEY)
+  const sessionStorage = browserStorage('sessionStorage')
+  writeStorage(sessionStorage, SESSION_ARMED_KEY, 'true')
+  const initialSessionEpoch = storageValue(sessionStorage, SESSION_EPOCH_KEY)
   const initialSharedEpoch = storageValue(browserStorage('localStorage'), SHARED_EPOCH_KEY)
   let invalidating = false
 

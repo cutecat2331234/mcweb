@@ -19,7 +19,11 @@ import {
   frontendApplicationRequestHeaders,
   requireFrontendApplication,
 } from '@/lib/frontendApplications'
-import { installAuthenticatedHistoryBoundary } from '@/lib/authenticatedHistory'
+import {
+  installAuthenticatedHistoryBoundary,
+  invalidateAuthenticatedHistory,
+  invalidatePreviouslyAuthenticatedHistory,
+} from '@/lib/authenticatedHistory'
 import {
   loadFrontendApplicationAdapters,
   type FrontendPageLoader,
@@ -139,8 +143,28 @@ export async function createMcWebInertiaApplication({
   errorBoundaryId,
 }: CreateInertiaApplicationOptions): Promise<void> {
   const cleanupFunctions: VoidFunction[] = []
+  let removeAuthenticatedHistoryBoundary: VoidFunction | null = null
   let cleanedUp = false
   let failed = false
+  const syncAuthenticatedHistoryBoundary = (page?: InertiaPageLike) => {
+    if (pageHasAuthenticatedUser(page)) {
+      removeAuthenticatedHistoryBoundary ??= installAuthenticatedHistoryBoundary(routes.signedOut)
+      return
+    }
+
+    if (removeAuthenticatedHistoryBoundary) {
+      invalidateAuthenticatedHistory()
+      removeAuthenticatedHistoryBoundary()
+      removeAuthenticatedHistoryBoundary = null
+      return
+    }
+
+    invalidatePreviouslyAuthenticatedHistory()
+  }
+  cleanupFunctions.push(() => {
+    removeAuthenticatedHistoryBoundary?.()
+    removeAuthenticatedHistoryBoundary = null
+  })
   const cleanup = () => {
     if (cleanedUp) return
     cleanedUp = true
@@ -190,9 +214,7 @@ export async function createMcWebInertiaApplication({
     const domPage = getInitialPageFromDOM<InertiaPageLike>('app')
     if (!domPage?.component) throw new Error(`Initial ${applicationId} page has no component`)
     assertFrontendComponent(applicationId, domPage.component)
-    if (pageHasAuthenticatedUser(domPage)) {
-      cleanupFunctions.push(installAuthenticatedHistoryBoundary(routes.signedOut))
-    }
+    syncAuthenticatedHistoryBoundary(domPage)
 
     const initialLocale = normalizeAppLocale(
       domPage.props?.locale ?? document.documentElement.lang,
@@ -238,10 +260,22 @@ export async function createMcWebInertiaApplication({
       completeSubmittedForm(
         (event as CustomEvent<{ visitId?: string }>).detail.visitId,
       )
+      syncAuthenticatedHistoryBoundary(detail.page)
       void syncLocaleFromPage(detail.page).catch(failApplication)
     }
     document.addEventListener('inertia:success', onSuccess)
     cleanupFunctions.push(() => document.removeEventListener('inertia:success', onSuccess))
+
+    const onLocation = (event: Event) => {
+      const url = (event as CustomEvent<{ url?: unknown }>).detail?.url
+      if (!removeAuthenticatedHistoryBoundary || !(url instanceof URL)) return
+      const signedOut = new URL(routes.signedOut, window.location.href)
+      if (url.origin === signedOut.origin && url.pathname === signedOut.pathname) {
+        invalidateAuthenticatedHistory()
+      }
+    }
+    document.addEventListener('inertia:location', onLocation)
+    cleanupFunctions.push(() => document.removeEventListener('inertia:location', onLocation))
 
     const removeFinish = router.on('finish', (event) => {
       releaseSubmittedForm(event.detail.visit.id)

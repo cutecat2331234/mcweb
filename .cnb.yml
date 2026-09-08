@@ -1,6 +1,8 @@
 main:
   push:
     - name: validate-security-scan-configuration
+      runner:
+        cpus: 1
       stages:
         - name: validate-code-scan-config
           image: cnbcool/code-security-config
@@ -9,7 +11,7 @@ main:
 
     - name: static-application-quality
       runner:
-        cpus: 8
+        cpus: 4
       docker:
         build:
           dockerfile: deploy/cnb/quality-dependencies.Dockerfile
@@ -70,7 +72,7 @@ main:
 
     - name: rails-full-suite-fresh-postgres
       runner:
-        cpus: 8
+        cpus: 4
       services:
         - docker
       docker:
@@ -167,7 +169,7 @@ main:
 
     - name: chromium-system-acceptance
       runner:
-        cpus: 8
+        cpus: 4
       services:
         - docker
       docker:
@@ -293,6 +295,8 @@ main:
               - "./mcweb-playwright-failure-*.txt"
 
     - name: build-rails-production-image
+      runner:
+        cpus: 4
       services:
         - docker
       stages:
@@ -353,7 +357,7 @@ main:
 
     - name: production-data-lifecycle-acceptance
       runner:
-        cpus: 8
+        cpus: 4
       services:
         - docker
       docker:
@@ -431,6 +435,8 @@ main:
           timeout: 90m
 
     - name: test-and-build-go-components
+      runner:
+        cpus: 2
       docker:
         build:
           dockerfile: deploy/cnb/go-dependencies.Dockerfile
@@ -468,6 +474,8 @@ main:
           timeout: 60m
 
     - name: test-and-build-minecraft-connectors
+      runner:
+        cpus: 4
       docker:
         build:
           dockerfile: deploy/cnb/gradle-dependencies.Dockerfile

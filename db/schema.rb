@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_08_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -382,6 +382,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["user_id", "operation", "key_digest"], name: "idx_forum_content_requests_idempotency", unique: true
     t.index ["user_id"], name: "index_forum_content_requests_on_user_id"
     t.check_constraint "operation::text = ANY (ARRAY['topic.create'::character varying::text, 'post.create'::character varying::text])", name: "chk_forum_content_requests_operation"
+  end
+
+  create_table "forum_conversation_invitations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "forum_conversation_id", null: false
+    t.bigint "invited_by_id", null: false
+    t.string "public_id", limit: 64, null: false
+    t.datetime "resolved_at"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_conversation_id", "user_id"], name: "idx_forum_conversation_invitations_one_pending", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["forum_conversation_id"], name: "idx_forum_conversation_invitations_conversation"
+    t.index ["invited_by_id"], name: "idx_forum_conversation_invitations_inviter"
+    t.index ["public_id"], name: "idx_forum_conversation_invitations_public_id", unique: true
+    t.index ["status", "expires_at"], name: "idx_forum_conversation_invitations_expiry", where: "((status)::text = 'pending'::text)"
+    t.index ["user_id", "status", "expires_at"], name: "idx_forum_conversation_invitations_inbox"
+    t.index ["user_id"], name: "idx_forum_conversation_invitations_user"
+    t.check_constraint "char_length(public_id::text) >= 12 AND char_length(public_id::text) <= 64", name: "forum_conversation_invitations_public_id_length"
+    t.check_constraint "status::text = 'pending'::text AND resolved_at IS NULL OR status::text <> 'pending'::text AND resolved_at IS NOT NULL", name: "forum_conversation_invitations_state_shape"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'declined'::character varying, 'expired'::character varying, 'revoked'::character varying]::text[])", name: "forum_conversation_invitations_status"
   end
 
   create_table "forum_conversation_participants", force: :cascade do |t|
@@ -824,9 +846,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["forum_report_appeal_id", "event_type", "idempotency_key_digest"], name: "idx_forum_report_appeal_events_idempotency", unique: true
     t.index ["forum_report_appeal_id", "occurred_at", "id"], name: "idx_forum_report_appeal_events_timeline"
     t.index ["forum_report_appeal_id"], name: "idx_forum_report_appeal_events_appeal"
-    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_appeal_events_digests"
+    t.check_constraint "(from_status IS NULL OR (from_status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text]))) AND (to_status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text]))", name: "forum_report_appeal_events_status"
     t.check_constraint "event_type::text = ANY (ARRAY['drafted'::text, 'submitted'::text, 'review_started'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])", name: "forum_report_appeal_events_type"
-    t.check_constraint "(from_status IS NULL OR from_status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])) AND to_status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])", name: "forum_report_appeal_events_status"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_appeal_events_digests"
   end
 
   create_table "forum_report_appeal_outcome_deliveries", force: :cascade do |t|
@@ -842,6 +864,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   create_table "forum_report_appeals", force: :cascade do |t|
     t.bigint "appellant_id", null: false
     t.string "appellant_role", null: false
+    t.string "cancel_idempotency_key_digest", limit: 64
+    t.string "cancel_request_fingerprint", limit: 64
     t.datetime "cancelled_at"
     t.datetime "created_at", null: false
     t.datetime "decided_at"
@@ -864,8 +888,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.string "submit_request_fingerprint", limit: 64
     t.datetime "submitted_at"
     t.datetime "updated_at", null: false
-    t.string "cancel_idempotency_key_digest", limit: 64
-    t.string "cancel_request_fingerprint", limit: 64
     t.index ["appellant_id", "draft_idempotency_key_digest"], name: "idx_forum_report_appeals_draft_idempotency", unique: true
     t.index ["appellant_id"], name: "index_forum_report_appeals_on_appellant_id"
     t.index ["forum_report_id", "appellant_id", "appellant_role"], name: "idx_forum_report_appeals_one_active", unique: true, where: "((status)::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text]))"
@@ -876,10 +898,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["status", "state_changed_at", "id"], name: "idx_forum_report_appeals_queue"
     t.check_constraint "appellant_role::text = ANY (ARRAY['reporter'::text, 'affected_subject'::text])", name: "forum_report_appeals_role"
     t.check_constraint "char_length(public_id::text) >= 12 AND char_length(public_id::text) <= 64", name: "forum_report_appeals_public_id_length"
+    t.check_constraint "draft_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND draft_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text AND (submit_idempotency_key_digest IS NULL OR submit_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (submit_request_fingerprint IS NULL OR submit_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND (cancel_idempotency_key_digest IS NULL OR cancel_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (cancel_request_fingerprint IS NULL OR cancel_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND (decision_idempotency_key_digest IS NULL OR decision_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (decision_request_fingerprint IS NULL OR decision_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND (submit_idempotency_key_digest IS NULL) = (submit_request_fingerprint IS NULL) AND (cancel_idempotency_key_digest IS NULL) = (cancel_request_fingerprint IS NULL) AND (decision_idempotency_key_digest IS NULL) = (decision_request_fingerprint IS NULL)", name: "forum_report_appeals_digest_shape"
     t.check_constraint "reason IS NULL OR char_length(btrim(reason)) >= 1 AND char_length(btrim(reason)) <= 5000", name: "forum_report_appeals_reason_length"
+    t.check_constraint "status::text = 'draft'::text AND reason IS NULL AND public_outcome_code IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND expires_at IS NOT NULL AND submitted_at IS NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = 'submitted'::text AND reason IS NOT NULL AND public_outcome_code IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = 'under_review'::text AND reason IS NOT NULL AND public_outcome_code IS NULL AND reviewer_id IS NOT NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NOT NULL AND decided_at IS NULL AND cancelled_at IS NULL OR (status::text = ANY (ARRAY['upheld'::text, 'overturned'::text])) AND reason IS NOT NULL AND public_outcome_code::text = status::text AND reviewer_id IS NOT NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NOT NULL AND decided_at IS NOT NULL AND cancelled_at IS NULL OR status::text = 'cancelled'::text AND public_outcome_code::text = 'cancelled'::text AND expires_at IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NOT NULL", name: "forum_report_appeals_state_shape"
     t.check_constraint "status::text = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'upheld'::text, 'overturned'::text, 'cancelled'::text])", name: "forum_report_appeals_status"
-    t.check_constraint "status::text = 'draft'::text AND reason IS NULL AND public_outcome_code IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND expires_at IS NOT NULL AND submitted_at IS NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = 'submitted'::text AND reason IS NOT NULL AND public_outcome_code IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = 'under_review'::text AND reason IS NOT NULL AND public_outcome_code IS NULL AND reviewer_id IS NOT NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NOT NULL AND decided_at IS NULL AND cancelled_at IS NULL OR status::text = ANY (ARRAY['upheld'::text, 'overturned'::text]) AND reason IS NOT NULL AND public_outcome_code::text = status::text AND reviewer_id IS NOT NULL AND expires_at IS NULL AND submitted_at IS NOT NULL AND review_started_at IS NOT NULL AND decided_at IS NOT NULL AND cancelled_at IS NULL OR status::text = 'cancelled'::text AND public_outcome_code::text = 'cancelled'::text AND expires_at IS NULL AND reviewer_id IS NULL AND internal_note IS NULL AND review_started_at IS NULL AND decided_at IS NULL AND cancelled_at IS NOT NULL", name: "forum_report_appeals_state_shape"
-    t.check_constraint "draft_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text AND draft_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text AND (submit_idempotency_key_digest IS NULL OR submit_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (submit_request_fingerprint IS NULL OR submit_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND (cancel_idempotency_key_digest IS NULL OR cancel_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (cancel_request_fingerprint IS NULL OR cancel_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND (decision_idempotency_key_digest IS NULL OR decision_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text) AND (decision_request_fingerprint IS NULL OR decision_request_fingerprint::text ~ '^[0-9a-f]{64}$'::text) AND ((submit_idempotency_key_digest IS NULL) = (submit_request_fingerprint IS NULL)) AND ((cancel_idempotency_key_digest IS NULL) = (cancel_request_fingerprint IS NULL)) AND ((decision_idempotency_key_digest IS NULL) = (decision_request_fingerprint IS NULL))", name: "forum_report_appeals_digest_shape"
   end
 
   create_table "forum_report_attachments", force: :cascade do |t|
@@ -891,6 +913,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["forum_report_id"], name: "index_forum_report_attachments_on_forum_report_id"
     t.index ["sealed_by_id"], name: "index_forum_report_attachments_on_sealed_by_id"
     t.index ["secure_evidence_attachment_id"], name: "idx_forum_report_attachments_evidence", unique: true
+  end
+
+  create_table "forum_report_decision_batches", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "decided_count", null: false
+    t.string "desired_status", null: false
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.jsonb "report_ids", default: [], null: false
+    t.bigint "reportable_id", null: false
+    t.string "reportable_type", null: false
+    t.string "request_fingerprint", limit: 64, null: false
+    t.bigint "reviewer_id", null: false
+    t.index ["idempotency_key_digest"], name: "idx_forum_report_decision_batches_idempotency", unique: true
+    t.index ["reportable_type", "reportable_id", "created_at"], name: "idx_forum_report_decision_batches_target"
+    t.check_constraint "desired_status::text = ANY (ARRAY['reviewed'::text, 'dismissed'::text, 'actioned'::text])", name: "forum_report_decision_batches_status"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_decision_batches_idempotency_digest"
+    t.check_constraint "jsonb_typeof(report_ids) = 'array'::text AND decided_count = jsonb_array_length(report_ids) AND decided_count >= 0", name: "forum_report_decision_batches_result_shape"
+    t.check_constraint "request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_decision_batches_request_fingerprint"
   end
 
   create_table "forum_report_evidences", force: :cascade do |t|
@@ -921,22 +961,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.check_constraint "public_outcome_code::text = ANY (ARRAY['review_complete'::text, 'not_upheld'::text, 'action_taken'::text])", name: "forum_report_outcome_deliveries_outcome"
   end
 
-  create_table "forum_report_decision_batches", force: :cascade do |t|
+  create_table "forum_report_subject_action_deliveries", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "decided_count", null: false
-    t.string "desired_status", null: false
-    t.string "idempotency_key_digest", limit: 64, null: false
-    t.bigint "reportable_id", null: false
-    t.string "reportable_type", null: false
-    t.jsonb "report_ids", default: [], null: false
-    t.string "request_fingerprint", limit: 64, null: false
-    t.bigint "reviewer_id", null: false
-    t.index ["idempotency_key_digest"], name: "idx_forum_report_decision_batches_idempotency", unique: true
-    t.index ["reportable_type", "reportable_id", "created_at"], name: "idx_forum_report_decision_batches_target"
-    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_decision_batches_idempotency_digest"
-    t.check_constraint "jsonb_typeof(report_ids) = 'array'::text AND decided_count = jsonb_array_length(report_ids) AND decided_count >= 0", name: "forum_report_decision_batches_result_shape"
-    t.check_constraint "request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_decision_batches_request_fingerprint"
-    t.check_constraint "desired_status::text = ANY (ARRAY['reviewed'::text, 'dismissed'::text, 'actioned'::text])", name: "forum_report_decision_batches_status"
+    t.bigint "forum_report_id", null: false
+    t.bigint "notification_id"
+    t.index ["forum_report_id"], name: "idx_forum_report_subject_deliveries_report", unique: true
+    t.index ["notification_id"], name: "idx_forum_report_subject_deliveries_notification", unique: true
   end
 
   create_table "forum_report_supplements", force: :cascade do |t|
@@ -972,28 +1002,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.datetime "updated_at", null: false
     t.string "withdrawal_idempotency_key_digest", limit: 64
     t.datetime "withdrawn_at"
-    t.index ["dedupe_key"], name: "idx_forum_reports_pending_dedupe", unique: true, where: "((dedupe_key IS NOT NULL) AND ((status)::text = 'pending'::text))"
     t.index ["affected_user_id"], name: "idx_forum_reports_affected_user"
+    t.index ["dedupe_key"], name: "idx_forum_reports_pending_dedupe", unique: true, where: "((dedupe_key IS NOT NULL) AND ((status)::text = 'pending'::text))"
     t.index ["public_id"], name: "idx_forum_reports_public_id", unique: true
     t.index ["reason_code"], name: "index_forum_reports_on_reason_code"
     t.index ["reportable_type", "reportable_id"], name: "index_forum_reports_on_reportable_type_and_reportable_id"
-    t.index ["reporter_id"], name: "index_forum_reports_on_reporter_id"
     t.index ["reporter_id", "created_at"], name: "idx_forum_reports_reporter_created"
+    t.index ["reporter_id"], name: "index_forum_reports_on_reporter_id"
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
     t.check_constraint "affected_user_id IS NULL OR status::text = 'actioned'::text", name: "forum_reports_affected_user_shape"
-    t.check_constraint "dedupe_key IS NULL OR dedupe_key::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_dedupe_key_format"
     t.check_constraint "char_length(public_id::text) >= 12 AND char_length(public_id::text) <= 64", name: "forum_reports_public_id_length"
+    t.check_constraint "dedupe_key IS NULL OR dedupe_key::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_dedupe_key_format"
     t.check_constraint "status::text = 'pending'::text AND public_outcome_code IS NULL AND withdrawn_at IS NULL OR status::text = 'withdrawn'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'withdrawn'::text AND withdrawn_at IS NOT NULL OR status::text = 'reviewed'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'review_complete'::text AND withdrawn_at IS NULL OR status::text = 'dismissed'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'not_upheld'::text AND withdrawn_at IS NULL OR status::text = 'actioned'::text AND public_outcome_code IS NOT NULL AND public_outcome_code::text = 'action_taken'::text AND withdrawn_at IS NULL", name: "forum_reports_public_outcome_shape"
     t.check_constraint "status::text = ANY (ARRAY['pending'::text, 'withdrawn'::text, 'reviewed'::text, 'dismissed'::text, 'actioned'::text])", name: "forum_reports_status_vocabulary"
     t.check_constraint "withdrawal_idempotency_key_digest IS NULL OR withdrawal_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_withdrawal_digest"
-  end
-
-  create_table "forum_report_subject_action_deliveries", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.bigint "forum_report_id", null: false
-    t.bigint "notification_id"
-    t.index ["forum_report_id"], name: "idx_forum_report_subject_deliveries_report", unique: true
-    t.index ["notification_id"], name: "idx_forum_report_subject_deliveries_notification", unique: true
   end
 
   create_table "forum_saved_search_webhook_deliveries", force: :cascade do |t|
@@ -1357,7 +1379,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["user_id", "status"], name: "index_forum_uploads_on_user_id_and_status"
     t.index ["user_id"], name: "index_forum_uploads_on_user_id"
     t.check_constraint "byte_size > 0", name: "forum_uploads_positive_byte_size"
-    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying, 'post_attachment'::character varying, 'secure_evidence_attachment'::character varying]::text[])", name: "forum_uploads_valid_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying::text, 'post_attachment'::character varying::text, 'secure_evidence_attachment'::character varying::text])", name: "forum_uploads_valid_kind"
     t.check_constraint "manual_review_status::text = ANY (ARRAY['none'::character varying::text, 'released'::character varying::text, 'revoked'::character varying::text])", name: "forum_uploads_valid_manual_review_status"
     t.check_constraint "manual_review_version >= 0", name: "forum_uploads_nonnegative_manual_review_version"
     t.check_constraint "scan_attempts >= 0", name: "forum_uploads_nonnegative_scan_attempts"
@@ -1494,6 +1516,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.string "version", default: "1.0.0", null: false
     t.index ["key"], name: "index_frontend_templates_on_key", unique: true
     t.index ["status"], name: "index_frontend_templates_on_status"
+  end
+
+  create_table "identity_data_export_blob_cleanup_cursors", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "cycle_max_blob_id", default: 0, null: false
+    t.bigint "last_blob_id", default: 0, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "idx_identity_export_blob_cleanup_cursor_name", unique: true
+    t.check_constraint "cycle_max_blob_id >= 0", name: "chk_identity_export_cleanup_cycle_max_blob_id"
+    t.check_constraint "last_blob_id = 0 AND cycle_max_blob_id = 0 OR cycle_max_blob_id > 0 AND last_blob_id <= cycle_max_blob_id", name: "chk_identity_export_cleanup_cursor_bounds"
+    t.check_constraint "last_blob_id >= 0", name: "chk_identity_export_cleanup_last_blob_id"
   end
 
   create_table "identity_data_exports", force: :cascade do |t|
@@ -1818,6 +1853,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["player_profile_id"], name: "index_minecraft_permission_groups_on_player_profile_id"
   end
 
+  create_table "minecraft_player_access_rules", force: :cascade do |t|
+    t.datetime "applied_at"
+    t.string "apply_idempotency_key_digest", limit: 64, null: false
+    t.bigint "apply_task_id"
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.datetime "expires_at"
+    t.datetime "failed_at"
+    t.integer "lock_version", default: 0, null: false
+    t.bigint "minecraft_server_id", null: false
+    t.uuid "player_uuid"
+    t.string "public_id", null: false
+    t.text "reason", null: false
+    t.string "revoke_idempotency_key_digest", limit: 64
+    t.text "revoke_reason"
+    t.bigint "revoke_task_id"
+    t.datetime "revoked_at"
+    t.bigint "revoked_by_id"
+    t.string "rule_type", null: false
+    t.string "status", default: "pending_apply", null: false
+    t.datetime "updated_at", null: false
+    t.string "username", limit: 16, null: false
+    t.index "minecraft_server_id, rule_type, lower((username)::text)", name: "idx_mc_access_rules_active_target", unique: true, where: "((status)::text = ANY ((ARRAY['pending_apply'::character varying, 'active'::character varying, 'pending_revoke'::character varying])::text[]))"
+    t.index ["apply_idempotency_key_digest"], name: "idx_mc_access_rules_apply_idempotency", unique: true
+    t.index ["apply_task_id"], name: "index_minecraft_player_access_rules_on_apply_task_id"
+    t.index ["created_by_id"], name: "index_minecraft_player_access_rules_on_created_by_id"
+    t.index ["minecraft_server_id"], name: "idx_mc_access_rules_server"
+    t.index ["public_id"], name: "idx_mc_access_rules_public_id", unique: true
+    t.index ["revoke_idempotency_key_digest"], name: "idx_mc_access_rules_revoke_idempotency", unique: true, where: "(revoke_idempotency_key_digest IS NOT NULL)"
+    t.index ["revoke_task_id"], name: "index_minecraft_player_access_rules_on_revoke_task_id"
+    t.index ["revoked_by_id"], name: "index_minecraft_player_access_rules_on_revoked_by_id"
+    t.index ["status", "expires_at", "id"], name: "idx_mc_access_rules_expiry"
+    t.check_constraint "char_length(btrim(reason)) >= 1 AND char_length(btrim(reason)) <= 500", name: "mc_access_rules_reason_length"
+    t.check_constraint "lock_version >= 0", name: "mc_access_rules_lock_version"
+    t.check_constraint "revoke_reason IS NULL OR char_length(btrim(revoke_reason)) >= 1 AND char_length(btrim(revoke_reason)) <= 500", name: "mc_access_rules_revoke_reason_length"
+    t.check_constraint "rule_type::text = ANY (ARRAY['whitelist'::character varying, 'ban'::character varying]::text[])", name: "mc_access_rules_type"
+    t.check_constraint "status::text = ANY (ARRAY['pending_apply'::character varying, 'active'::character varying, 'pending_revoke'::character varying, 'revoked'::character varying, 'failed'::character varying]::text[])", name: "mc_access_rules_status"
+  end
+
   create_table "minecraft_player_identities", force: :cascade do |t|
     t.string "cape_texture_sha256", limit: 64
     t.string "cape_texture_url"
@@ -2058,6 +2132,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.bigint "uncompressed_bytes"
     t.datetime "updated_at", null: false
     t.datetime "verified_at"
+    t.index ["created_by_id"], name: "index_minecraft_world_backups_on_created_by_id"
+    t.index ["minecraft_node_id"], name: "index_minecraft_world_backups_on_minecraft_node_id"
+    t.index ["minecraft_node_operation_id"], name: "idx_minecraft_world_backups_operation", unique: true, where: "(minecraft_node_operation_id IS NOT NULL)"
+    t.index ["minecraft_server_id", "status", "created_at"], name: "idx_minecraft_world_backups_server_status"
+    t.index ["minecraft_server_id"], name: "index_minecraft_world_backups_on_minecraft_server_id"
+    t.index ["public_id"], name: "index_minecraft_world_backups_on_public_id", unique: true
+    t.index ["request_id"], name: "index_minecraft_world_backups_on_request_id", unique: true
     t.check_constraint "archive_bytes IS NULL OR archive_bytes >= 0", name: "chk_minecraft_world_backups_archive_bytes"
     t.check_constraint "archive_sha256 IS NULL OR archive_sha256::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_world_backups_archive_sha256"
     t.check_constraint "entry_count IS NULL OR entry_count >= 0", name: "chk_minecraft_world_backups_entry_count"
@@ -2067,13 +2148,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_world_backups_request_id"
     t.check_constraint "status::text = ANY (ARRAY['requested'::character varying::text, 'queued'::character varying::text, 'creating'::character varying::text, 'available'::character varying::text, 'failed'::character varying::text, 'quarantined'::character varying::text])", name: "chk_minecraft_world_backups_status"
     t.check_constraint "uncompressed_bytes IS NULL OR uncompressed_bytes >= 0", name: "chk_minecraft_world_backups_uncompressed_bytes"
-    t.index ["created_by_id"], name: "index_minecraft_world_backups_on_created_by_id"
-    t.index ["minecraft_node_id"], name: "index_minecraft_world_backups_on_minecraft_node_id"
-    t.index ["minecraft_node_operation_id"], name: "idx_minecraft_world_backups_operation", unique: true, where: "(minecraft_node_operation_id IS NOT NULL)"
-    t.index ["minecraft_server_id", "status", "created_at"], name: "idx_minecraft_world_backups_server_status"
-    t.index ["minecraft_server_id"], name: "index_minecraft_world_backups_on_minecraft_server_id"
-    t.index ["public_id"], name: "index_minecraft_world_backups_on_public_id", unique: true
-    t.index ["request_id"], name: "index_minecraft_world_backups_on_request_id", unique: true
   end
 
   create_table "minecraft_world_restore_events", force: :cascade do |t|
@@ -2085,13 +2159,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.jsonb "payload_summary", default: {}, null: false
     t.string "phase", null: false
     t.integer "sequence", null: false
-    t.check_constraint "payload_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_events_digest"
-    t.check_constraint "event_type::text ~ '^minecraft\\.world_restore\\.[a-z0-9_]+$'::text", name: "chk_minecraft_restore_events_type"
-    t.check_constraint "phase::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'accepted'::character varying::text, 'process_stopped'::character varying::text, 'pre_snapshot_started'::character varying::text, 'pre_snapshot_durable'::character varying::text, 'archive_validated'::character varying::text, 'staging_started'::character varying::text, 'staging_verified'::character varying::text, 'live_preserved'::character varying::text, 'replacement_installed'::character varying::text, 'post_install_verified'::character varying::text, 'rollback_started'::character varying::text, 'rolled_back'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text])", name: "chk_minecraft_restore_events_phase"
-    t.check_constraint "sequence > 0", name: "chk_minecraft_restore_events_sequence"
     t.index ["actor_id"], name: "index_minecraft_world_restore_events_on_actor_id"
     t.index ["minecraft_world_restore_plan_id", "sequence"], name: "idx_minecraft_restore_events_sequence", unique: true
     t.index ["minecraft_world_restore_plan_id"], name: "idx_minecraft_restore_events_plan"
+    t.check_constraint "event_type::text ~ '^minecraft\\.world_restore\\.[a-z0-9_]+$'::text", name: "chk_minecraft_restore_events_type"
+    t.check_constraint "payload_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_events_digest"
+    t.check_constraint "phase::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'accepted'::character varying::text, 'process_stopped'::character varying::text, 'pre_snapshot_started'::character varying::text, 'pre_snapshot_durable'::character varying::text, 'archive_validated'::character varying::text, 'staging_started'::character varying::text, 'staging_verified'::character varying::text, 'live_preserved'::character varying::text, 'replacement_installed'::character varying::text, 'post_install_verified'::character varying::text, 'rollback_started'::character varying::text, 'rolled_back'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text])", name: "chk_minecraft_restore_events_phase"
+    t.check_constraint "sequence > 0", name: "chk_minecraft_restore_events_sequence"
   end
 
   create_table "minecraft_world_restore_plans", force: :cascade do |t|
@@ -2127,16 +2201,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.string "status", default: "planned", null: false
     t.datetime "updated_at", null: false
     t.string "world_relative_path", limit: 1024, null: false
-    t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_authorization"
-    t.check_constraint "authorization_method IS NULL OR authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text])", name: "chk_minecraft_restore_plans_auth_method"
-    t.check_constraint "backup_manifest_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_backup_manifest"
-    t.check_constraint "node_capability_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_node_capability"
-    t.check_constraint "plan_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_plan"
-    t.check_constraint "char_length(reason) >= 1 AND char_length(reason) <= 1000", name: "chk_minecraft_world_restore_plans_reason"
-    t.check_constraint "request_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_request"
-    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_world_restore_plans_request_id"
-    t.check_constraint "server_configuration_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_server_configuration"
-    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'rolled_back'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text])", name: "chk_minecraft_world_restore_plans_status"
     t.index ["actor_id"], name: "index_minecraft_world_restore_plans_on_actor_id"
     t.index ["minecraft_node_id"], name: "index_minecraft_world_restore_plans_on_minecraft_node_id"
     t.index ["minecraft_node_operation_id"], name: "idx_minecraft_restore_plans_operation", unique: true, where: "(minecraft_node_operation_id IS NOT NULL)"
@@ -2147,6 +2211,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["pre_restore_world_backup_id"], name: "idx_minecraft_restore_plans_pre_backup"
     t.index ["public_id"], name: "index_minecraft_world_restore_plans_on_public_id", unique: true
     t.index ["request_id"], name: "index_minecraft_world_restore_plans_on_request_id", unique: true
+    t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_authorization"
+    t.check_constraint "authorization_method IS NULL OR (authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text]))", name: "chk_minecraft_restore_plans_auth_method"
+    t.check_constraint "backup_manifest_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_backup_manifest"
+    t.check_constraint "char_length(reason) >= 1 AND char_length(reason) <= 1000", name: "chk_minecraft_world_restore_plans_reason"
+    t.check_constraint "node_capability_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_node_capability"
+    t.check_constraint "plan_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_plan"
+    t.check_constraint "request_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_request"
+    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_world_restore_plans_request_id"
+    t.check_constraint "server_configuration_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_plans_server_configuration"
+    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'rolled_back'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text])", name: "chk_minecraft_world_restore_plans_status"
   end
 
   create_table "minecraft_world_restore_resolutions", force: :cascade do |t|
@@ -2164,8 +2238,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.datetime "expires_at", null: false
     t.string "lifecycle_action"
     t.bigint "lifecycle_actor_id"
-    t.datetime "lifecycle_authorized_at"
     t.string "lifecycle_authorization_method"
+    t.datetime "lifecycle_authorized_at"
     t.datetime "lifecycle_completed_at"
     t.text "lifecycle_reason"
     t.string "lifecycle_request_digest", limit: 64
@@ -2188,20 +2262,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.string "status", default: "planned", null: false
     t.bigint "supersedes_resolution_id"
     t.datetime "updated_at", null: false
-    t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_authorization"
-    t.check_constraint "authorization_method IS NULL OR authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text])", name: "chk_minecraft_restore_resolutions_auth_method"
-    t.check_constraint "expected_plan_lock_version >= 0", name: "chk_minecraft_restore_resolutions_plan_lock"
-    t.check_constraint "expires_at > created_at", name: "chk_minecraft_restore_resolutions_expires"
-    t.check_constraint "status::text = ANY (ARRAY['cancelled'::character varying::text, 'taken_over'::character varying::text]) AND lifecycle_action::text = CASE status WHEN 'cancelled'::text THEN 'cancel'::text ELSE 'takeover'::text END AND lifecycle_actor_id IS NOT NULL AND char_length(lifecycle_reason) >= 1 AND char_length(lifecycle_reason) <= 1000 AND lifecycle_request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text AND lifecycle_request_digest::text ~ '^[0-9a-f]{64}$'::text AND lifecycle_authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text]) AND lifecycle_authorized_at IS NOT NULL AND lifecycle_completed_at IS NOT NULL AND expired_at IS NULL OR status::text = 'expired'::text AND expired_at IS NOT NULL AND lifecycle_action IS NULL AND lifecycle_actor_id IS NULL AND lifecycle_reason IS NULL AND lifecycle_request_id IS NULL AND lifecycle_request_digest IS NULL AND lifecycle_authorization_method IS NULL AND lifecycle_authorized_at IS NULL AND lifecycle_completed_at IS NULL OR status::text <> ALL (ARRAY['expired'::character varying::text, 'cancelled'::character varying::text, 'taken_over'::character varying::text]) AND expired_at IS NULL AND lifecycle_action IS NULL AND lifecycle_actor_id IS NULL AND lifecycle_reason IS NULL AND lifecycle_request_id IS NULL AND lifecycle_request_digest IS NULL AND lifecycle_authorization_method IS NULL AND lifecycle_authorized_at IS NULL AND lifecycle_completed_at IS NULL", name: "chk_minecraft_restore_resolutions_lifecycle"
-    t.check_constraint "node_capability_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_node_capability"
-    t.check_constraint "plan_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_plan"
-    t.check_constraint "pre_restore_manifest_digest IS NULL OR pre_restore_manifest_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_pre_manifest"
-    t.check_constraint "char_length(reason) >= 1 AND char_length(reason) <= 1000", name: "chk_minecraft_restore_resolutions_reason"
-    t.check_constraint "request_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_request"
-    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_restore_resolutions_request_id"
-    t.check_constraint "resolution_action::text = ANY (ARRAY['resume'::character varying::text, 'rollback'::character varying::text, 'reconcile'::character varying::text])", name: "chk_minecraft_restore_resolutions_action"
-    t.check_constraint "server_configuration_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_server_configuration"
-    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text, 'taken_over'::character varying::text])", name: "chk_minecraft_restore_resolutions_status"
     t.index ["actor_id"], name: "index_minecraft_world_restore_resolutions_on_actor_id"
     t.index ["expires_at"], name: "idx_minecraft_restore_resolutions_expires"
     t.index ["lifecycle_actor_id"], name: "index_minecraft_world_restore_resolutions_on_lifecycle_actor_id"
@@ -2212,6 +2272,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["public_id"], name: "index_minecraft_world_restore_resolutions_on_public_id", unique: true
     t.index ["request_id"], name: "index_minecraft_world_restore_resolutions_on_request_id", unique: true
     t.index ["supersedes_resolution_id"], name: "idx_minecraft_restore_resolutions_supersedes", unique: true, where: "(supersedes_resolution_id IS NOT NULL)"
+    t.check_constraint "(status::text = ANY (ARRAY['cancelled'::character varying::text, 'taken_over'::character varying::text])) AND lifecycle_action::text =\nCASE status\n    WHEN 'cancelled'::text THEN 'cancel'::text\n    ELSE 'takeover'::text\nEND AND lifecycle_actor_id IS NOT NULL AND char_length(lifecycle_reason) >= 1 AND char_length(lifecycle_reason) <= 1000 AND lifecycle_request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text AND lifecycle_request_digest::text ~ '^[0-9a-f]{64}$'::text AND (lifecycle_authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text])) AND lifecycle_authorized_at IS NOT NULL AND lifecycle_completed_at IS NOT NULL AND expired_at IS NULL OR status::text = 'expired'::text AND expired_at IS NOT NULL AND lifecycle_action IS NULL AND lifecycle_actor_id IS NULL AND lifecycle_reason IS NULL AND lifecycle_request_id IS NULL AND lifecycle_request_digest IS NULL AND lifecycle_authorization_method IS NULL AND lifecycle_authorized_at IS NULL AND lifecycle_completed_at IS NULL OR (status::text <> ALL (ARRAY['expired'::character varying::text, 'cancelled'::character varying::text, 'taken_over'::character varying::text])) AND expired_at IS NULL AND lifecycle_action IS NULL AND lifecycle_actor_id IS NULL AND lifecycle_reason IS NULL AND lifecycle_request_id IS NULL AND lifecycle_request_digest IS NULL AND lifecycle_authorization_method IS NULL AND lifecycle_authorized_at IS NULL AND lifecycle_completed_at IS NULL", name: "chk_minecraft_restore_resolutions_lifecycle"
+    t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_authorization"
+    t.check_constraint "authorization_method IS NULL OR (authorization_method::text = ANY (ARRAY['password'::character varying::text, 'totp'::character varying::text, 'recovery_code'::character varying::text]))", name: "chk_minecraft_restore_resolutions_auth_method"
+    t.check_constraint "char_length(reason) >= 1 AND char_length(reason) <= 1000", name: "chk_minecraft_restore_resolutions_reason"
+    t.check_constraint "expected_plan_lock_version >= 0", name: "chk_minecraft_restore_resolutions_plan_lock"
+    t.check_constraint "expires_at > created_at", name: "chk_minecraft_restore_resolutions_expires"
+    t.check_constraint "node_capability_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_node_capability"
+    t.check_constraint "plan_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_plan"
+    t.check_constraint "pre_restore_manifest_digest IS NULL OR pre_restore_manifest_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_pre_manifest"
+    t.check_constraint "request_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_request"
+    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_minecraft_restore_resolutions_request_id"
+    t.check_constraint "resolution_action::text = ANY (ARRAY['resume'::character varying::text, 'rollback'::character varying::text, 'reconcile'::character varying::text])", name: "chk_minecraft_restore_resolutions_action"
+    t.check_constraint "server_configuration_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_minecraft_restore_resolutions_server_configuration"
+    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'authorized'::character varying::text, 'queued'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'recovery_required'::character varying::text, 'expired'::character varying::text, 'cancelled'::character varying::text, 'taken_over'::character varying::text])", name: "chk_minecraft_restore_resolutions_status"
   end
 
   create_table "notification_preferences", force: :cascade do |t|
@@ -2900,31 +2974,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.check_constraint "blocked_count >= 0", name: "rate_limit_counters_blocked_count_nonnegative"
   end
 
-  create_table "sensitive_action_rate_limit_reservations", force: :cascade do |t|
-    t.string "context_digest", limit: 64, null: false
-    t.datetime "created_at", null: false
-    t.datetime "expires_at", null: false
-    t.string "ip_counter_key", null: false
-    t.integer "limit", null: false
-    t.string "public_id", null: false
-    t.string "scope", null: false
-    t.datetime "settled_at"
-    t.string "status", default: "pending", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.string "user_counter_key", null: false
-    t.integer "window_seconds", null: false
-    t.check_constraint "context_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_sensitive_action_reservations_context"
-    t.check_constraint "\"limit\" > 0 AND window_seconds > 0", name: "chk_sensitive_action_reservations_limits"
-    t.check_constraint "status::text = 'pending'::text AND settled_at IS NULL OR (status::text = ANY (ARRAY['succeeded'::character varying::text, 'failed'::character varying::text])) AND settled_at IS NOT NULL", name: "chk_sensitive_action_reservations_settlement"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'succeeded'::character varying::text, 'failed'::character varying::text])", name: "chk_sensitive_action_reservations_status"
-    t.index ["ip_counter_key", "status", "expires_at"], name: "idx_sensitive_action_reservations_ip_bucket"
-    t.index ["public_id"], name: "index_sensitive_action_rate_limit_reservations_on_public_id", unique: true
-    t.index ["status", "expires_at"], name: "idx_sensitive_action_reservations_active"
-    t.index ["user_counter_key", "status", "expires_at"], name: "idx_sensitive_action_reservations_user_bucket"
-    t.index ["user_id"], name: "index_sensitive_action_rate_limit_reservations_on_user_id"
-  end
-
   create_table "role_permissions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "permission_id", null: false
@@ -2957,7 +3006,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["idempotency_key"], name: "idx_secure_evidence_events_idempotency", unique: true
     t.index ["secure_evidence_attachment_id", "occurred_at"], name: "idx_secure_evidence_events_timeline"
     t.index ["secure_evidence_attachment_id"], name: "idx_secure_evidence_events_attachment"
-    t.check_constraint "event_type::text = ANY (ARRAY['created'::character varying, 'scan_clean'::character varying, 'scan_infected'::character varying, 'scan_error'::character varying, 'downloaded'::character varying, 'retention_extended'::character varying, 'discarded'::character varying, 'cleanup_scheduled'::character varying, 'cleanup_failed'::character varying, 'purged'::character varying]::text[])", name: "secure_evidence_events_valid_type"
+    t.check_constraint "event_type::text = ANY (ARRAY['created'::character varying, 'scan_clean'::character varying, 'scan_infected'::character varying, 'scan_error'::character varying, 'downloaded'::character varying, 'retention_extended'::character varying, 'discarded'::character varying, 'cleanup_scheduled'::character varying, 'cleanup_failed'::character varying, 'purged'::character varying, 'upload_stored'::character varying, 'upload_failed'::character varying, 'upload_retried'::character varying]::text[])", name: "secure_evidence_events_valid_type"
     t.check_constraint "idempotency_key::text ~ '^[A-Za-z0-9:._-]{8,180}$'::text", name: "secure_evidence_events_idempotency_format"
     t.check_constraint "jsonb_typeof(metadata) = 'object'::text", name: "secure_evidence_events_metadata_object"
   end
@@ -2993,9 +3042,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.check_constraint "idempotency_key::text ~ '^[A-Za-z0-9:_-]{8,100}$'::text", name: "secure_evidence_attachments_idempotency_format"
     t.check_constraint "retention_until >= (created_at + 'PT1H'::interval) AND retention_until <= (created_at + 'P10Y'::interval)", name: "secure_evidence_attachments_retention_window"
     t.check_constraint "sha256::text ~ '^[0-9a-f]{64}$'::text AND request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "secure_evidence_attachments_digest_format"
-    t.check_constraint "state::text = ANY (ARRAY['pending'::character varying, 'available'::character varying, 'quarantined'::character varying, 'purge_pending'::character varying, 'purged'::character varying]::text[])", name: "secure_evidence_attachments_valid_state"
+    t.check_constraint "state::text = ANY (ARRAY['uploading'::character varying, 'upload_failed'::character varying, 'pending'::character varying, 'available'::character varying, 'quarantined'::character varying, 'purge_pending'::character varying, 'purged'::character varying]::text[])", name: "secure_evidence_attachments_valid_state"
     t.check_constraint "subject_id > 0", name: "secure_evidence_attachments_positive_subject_id"
     t.check_constraint "subject_key::text ~ '^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$'::text", name: "secure_evidence_attachments_subject_key_format"
+  end
+
+  create_table "sensitive_action_rate_limit_reservations", force: :cascade do |t|
+    t.string "context_digest", limit: 64, null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "ip_counter_key", null: false
+    t.integer "limit", null: false
+    t.string "public_id", null: false
+    t.string "scope", null: false
+    t.datetime "settled_at"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_counter_key", null: false
+    t.bigint "user_id", null: false
+    t.integer "window_seconds", null: false
+    t.index ["ip_counter_key", "status", "expires_at"], name: "idx_sensitive_action_reservations_ip_bucket"
+    t.index ["public_id"], name: "index_sensitive_action_rate_limit_reservations_on_public_id", unique: true
+    t.index ["status", "expires_at"], name: "idx_sensitive_action_reservations_active"
+    t.index ["user_counter_key", "status", "expires_at"], name: "idx_sensitive_action_reservations_user_bucket"
+    t.index ["user_id"], name: "index_sensitive_action_rate_limit_reservations_on_user_id"
+    t.check_constraint "\"limit\" > 0 AND window_seconds > 0", name: "chk_sensitive_action_reservations_limits"
+    t.check_constraint "context_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_sensitive_action_reservations_context"
+    t.check_constraint "status::text = 'pending'::text AND settled_at IS NULL OR (status::text = ANY (ARRAY['succeeded'::character varying::text, 'failed'::character varying::text])) AND settled_at IS NOT NULL", name: "chk_sensitive_action_reservations_settlement"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'succeeded'::character varying::text, 'failed'::character varying::text])", name: "chk_sensitive_action_reservations_status"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -3093,6 +3167,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.integer "balance_after_cents"
     t.integer "balance_before_cents"
     t.datetime "created_at", null: false
+    t.integer "ledger_version", default: 2, null: false
     t.string "note"
     t.string "request_fingerprint", limit: 64
     t.string "request_id", limit: 36
@@ -3103,10 +3178,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["authorization_digest"], name: "idx_store_credit_transactions_authorization", unique: true, where: "(authorization_digest IS NOT NULL)"
     t.index ["request_id"], name: "idx_store_credit_transactions_request_id", unique: true, where: "(request_id IS NOT NULL)"
     t.index ["store_order_id"], name: "index_store_credit_transactions_on_store_order_id"
+    t.index ["user_id", "created_at", "id"], name: "idx_store_credit_transactions_user_recorded_id"
     t.index ["user_id"], name: "index_store_credit_transactions_on_user_id"
+    t.check_constraint "amount_cents <> 0", name: "chk_store_credit_transactions_nonzero_amount"
     t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_credit_transactions_authorization_digest"
+    t.check_constraint "ledger_version = 1 AND balance_before_cents IS NULL AND balance_after_cents IS NULL OR ledger_version = 2 AND balance_before_cents IS NOT NULL AND balance_after_cents IS NOT NULL AND balance_before_cents >= 0 AND balance_after_cents >= 0 AND (balance_before_cents + amount_cents) = balance_after_cents", name: "chk_store_credit_transactions_balance_snapshot"
+    t.check_constraint "ledger_version = ANY (ARRAY[1, 2])", name: "chk_store_credit_transactions_ledger_version"
     t.check_constraint "request_fingerprint IS NULL OR request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_credit_transactions_request_fingerprint"
-    t.check_constraint "request_id IS NULL AND request_fingerprint IS NULL AND authorization_digest IS NULL AND balance_before_cents IS NULL AND balance_after_cents IS NULL OR request_id IS NOT NULL AND request_fingerprint IS NOT NULL AND authorization_digest IS NOT NULL AND balance_before_cents IS NOT NULL AND balance_after_cents IS NOT NULL", name: "chk_store_credit_transactions_adjustment_metadata"
+    t.check_constraint "request_id IS NULL AND request_fingerprint IS NULL AND authorization_digest IS NULL OR request_id IS NOT NULL AND request_fingerprint IS NOT NULL AND authorization_digest IS NOT NULL", name: "chk_store_credit_transactions_request_metadata"
     t.check_constraint "request_id IS NULL OR request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_store_credit_transactions_request_id"
   end
 
@@ -3196,6 +3275,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.bigint "closed_by_id"
     t.datetime "created_at", null: false
     t.string "currency", null: false
+    t.datetime "customer_opened_at"
+    t.bigint "customer_opened_by_id"
+    t.datetime "customer_withdrawn_at"
     t.datetime "evidence_due_at"
     t.string "kind", default: "dispute", null: false
     t.datetime "latest_provider_event_at"
@@ -3223,6 +3305,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["assigned_to_id", "status"], name: "idx_store_disputes_assignee_status"
     t.index ["assigned_to_id"], name: "index_store_disputes_on_assigned_to_id"
     t.index ["closed_by_id"], name: "index_store_disputes_on_closed_by_id"
+    t.index ["customer_opened_by_id"], name: "index_store_disputes_on_customer_opened_by_id"
+    t.index ["payment_record_id"], name: "idx_store_disputes_one_customer_case_per_payment", unique: true, where: "(customer_opened_by_id IS NOT NULL)"
     t.index ["payment_record_id"], name: "index_store_disputes_on_payment_record_id"
     t.index ["provider", "provider_dispute_id"], name: "idx_store_disputes_provider_identity", unique: true
     t.index ["public_id"], name: "index_store_disputes_on_public_id", unique: true
@@ -3231,6 +3315,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["status", "evidence_due_at"], name: "idx_store_disputes_status_due"
     t.index ["store_order_id"], name: "index_store_disputes_on_store_order_id"
     t.check_constraint "amount_cents > 0 AND liability_cents >= 0 AND offset_cents >= 0 AND (liability_cents + offset_cents) = amount_cents", name: "chk_store_disputes_amount_conservation"
+    t.check_constraint "customer_opened_by_id IS NULL AND customer_opened_at IS NULL AND customer_withdrawn_at IS NULL OR customer_opened_by_id IS NOT NULL AND customer_opened_at IS NOT NULL", name: "chk_store_disputes_customer_origin_shape"
     t.check_constraint "kind::text = ANY (ARRAY['dispute'::character varying::text, 'chargeback'::character varying::text])", name: "chk_store_disputes_kind"
     t.check_constraint "resolution IS NULL OR (resolution::text = ANY (ARRAY['won'::character varying::text, 'lost'::character varying::text, 'withdrawn'::character varying::text, 'accepted_loss'::character varying::text]))", name: "chk_store_disputes_resolution"
     t.check_constraint "rights_status::text = ANY (ARRAY['unchanged'::character varying::text, 'frozen'::character varying::text, 'revoked'::character varying::text, 'restored'::character varying::text])", name: "chk_store_disputes_rights_status"
@@ -4030,6 +4115,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.boolean "forum_hide_signatures", default: false, null: false
     t.string "forum_pm_policy", default: "everyone", null: false
     t.integer "forum_posts_count", default: 0, null: false
+    t.boolean "forum_profile_activity_public", default: false, null: false
     t.integer "forum_profile_views", default: 0, null: false
     t.text "forum_signature"
     t.string "forum_title"
@@ -4042,6 +4128,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.datetime "locked_until"
     t.string "password_digest", null: false
     t.datetime "password_reset_sent_at"
+    t.text "password_reset_token_ciphertext"
     t.string "password_reset_token_digest"
     t.bigint "permission_version", default: 0, null: false
     t.string "public_id", null: false
@@ -4052,6 +4139,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.string "time_zone", default: "Asia/Shanghai", null: false
     t.boolean "totp_enabled", default: false, null: false
     t.datetime "totp_recovery_sent_at"
+    t.text "totp_recovery_token_ciphertext"
     t.string "totp_recovery_token_digest"
     t.string "totp_secret_ciphertext"
     t.datetime "updated_at", null: false
@@ -4065,6 +4153,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.index ["developer_mode_persona"], name: "idx_users_unique_developer_mode_persona", unique: true, where: "(developer_mode_persona IS NOT NULL)"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
+    t.index ["password_reset_token_digest"], name: "idx_users_password_reset_token_digest", unique: true, where: "(password_reset_token_digest IS NOT NULL)"
     t.index ["public_id"], name: "index_users_on_public_id", unique: true
     t.index ["status"], name: "index_users_on_status"
     t.index ["totp_recovery_token_digest"], name: "index_users_on_totp_recovery_token_digest", unique: true, where: "(totp_recovery_token_digest IS NOT NULL)"
@@ -4117,8 +4206,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.bigint "author_id"
     t.text "body"
     t.datetime "created_at", null: false
-    t.text "discard_reason"
     t.string "discard_idempotency_key_digest", limit: 64
+    t.text "discard_reason"
     t.datetime "discarded_at"
     t.bigint "discarded_by_id"
     t.integer "lock_version", default: 0, null: false
@@ -4203,8 +4292,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   create_table "website_pages", force: :cascade do |t|
     t.bigint "author_id"
     t.datetime "created_at", null: false
-    t.text "discard_reason"
     t.string "discard_idempotency_key_digest", limit: 64
+    t.text "discard_reason"
     t.datetime "discarded_at"
     t.bigint "discarded_by_id"
     t.integer "lock_version", default: 0, null: false
@@ -4242,13 +4331,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
     t.check_constraint "restore_idempotency_key_digest IS NULL OR restore_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_website_pages_restore_request"
   end
 
+  create_table "website_theme_revisions", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.string "operation_digest", limit: 64
+    t.text "reason"
+    t.string "request_id_digest", limit: 64
+    t.integer "revision_number", null: false
+    t.jsonb "snapshot", null: false
+    t.integer "source_lock_version", null: false
+    t.bigint "source_revision_id"
+    t.bigint "website_theme_id", null: false
+    t.index ["actor_id"], name: "index_website_theme_revisions_on_actor_id"
+    t.index ["request_id_digest"], name: "idx_website_theme_revisions_request", unique: true, where: "(request_id_digest IS NOT NULL)"
+    t.index ["source_revision_id"], name: "index_website_theme_revisions_on_source_revision_id"
+    t.index ["website_theme_id", "created_at", "id"], name: "idx_website_theme_revisions_history"
+    t.index ["website_theme_id", "revision_number"], name: "idx_website_theme_revisions_number", unique: true
+    t.index ["website_theme_id"], name: "index_website_theme_revisions_on_website_theme_id"
+    t.check_constraint "event_type::text = 'restore'::text AND source_revision_id IS NOT NULL AND reason IS NOT NULL AND char_length(reason) >= 1 AND char_length(reason) <= 1000 AND request_id_digest::text ~ '^[0-9a-f]{64}$'::text AND operation_digest::text ~ '^[0-9a-f]{64}$'::text OR event_type::text <> 'restore'::text AND source_revision_id IS NULL AND request_id_digest IS NULL AND operation_digest IS NULL AND (reason IS NULL OR char_length(reason) >= 1 AND char_length(reason) <= 1000)", name: "chk_website_theme_revisions_operation"
+    t.check_constraint "event_type::text = ANY (ARRAY['create'::character varying, 'update'::character varying, 'activate'::character varying, 'deactivate'::character varying, 'restore'::character varying, 'legacy'::character varying]::text[])", name: "chk_website_theme_revisions_event"
+    t.check_constraint "jsonb_typeof(snapshot) = 'object'::text AND snapshot ?& ARRAY['name'::text, 'key'::text, 'tokens'::text, 'active'::text] AND (snapshot - ARRAY['name'::text, 'key'::text, 'tokens'::text, 'active'::text]) = '{}'::jsonb AND jsonb_typeof(snapshot -> 'name'::text) = 'string'::text AND jsonb_typeof(snapshot -> 'key'::text) = 'string'::text AND jsonb_typeof(snapshot -> 'tokens'::text) = 'object'::text AND jsonb_typeof(snapshot -> 'active'::text) = 'boolean'::text", name: "chk_website_theme_revisions_snapshot"
+    t.check_constraint "revision_number >= 1", name: "chk_website_theme_revisions_number"
+    t.check_constraint "source_lock_version >= 0", name: "chk_website_theme_revisions_source_version"
+  end
+
   create_table "website_themes", force: :cascade do |t|
     t.boolean "active", default: false, null: false
     t.datetime "created_at", null: false
     t.string "key", null: false
+    t.integer "lock_version", default: 0, null: false
     t.string "name", null: false
     t.jsonb "tokens", default: {}, null: false
     t.datetime "updated_at", null: false
+    t.index ["active"], name: "idx_website_themes_one_active", unique: true, where: "(active = true)"
     t.index ["key"], name: "index_website_themes_on_key", unique: true
   end
 
@@ -4274,6 +4390,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   add_foreign_key "forum_content_requests", "forum_posts"
   add_foreign_key "forum_content_requests", "forum_topics"
   add_foreign_key "forum_content_requests", "users"
+  add_foreign_key "forum_conversation_invitations", "forum_conversations", on_delete: :cascade
+  add_foreign_key "forum_conversation_invitations", "users", column: "invited_by_id", on_delete: :restrict
+  add_foreign_key "forum_conversation_invitations", "users", on_delete: :restrict
   add_foreign_key "forum_conversation_participants", "forum_conversations"
   add_foreign_key "forum_conversation_participants", "users"
   add_foreign_key "forum_conversations", "users", column: "creator_id"
@@ -4336,14 +4455,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   add_foreign_key "forum_report_attachments", "forum_reports", on_delete: :restrict
   add_foreign_key "forum_report_attachments", "secure_evidence_attachments", on_delete: :restrict
   add_foreign_key "forum_report_attachments", "users", column: "sealed_by_id", on_delete: :restrict
-  add_foreign_key "forum_report_evidences", "forum_reports"
   add_foreign_key "forum_report_decision_batches", "users", column: "reviewer_id", on_delete: :restrict
+  add_foreign_key "forum_report_evidences", "forum_reports"
   add_foreign_key "forum_report_outcome_deliveries", "forum_reports", on_delete: :restrict
   add_foreign_key "forum_report_outcome_deliveries", "notifications", on_delete: :nullify
-  add_foreign_key "forum_report_supplements", "forum_reports", on_delete: :restrict
-  add_foreign_key "forum_report_supplements", "users", column: "reporter_id", on_delete: :restrict
   add_foreign_key "forum_report_subject_action_deliveries", "forum_reports", on_delete: :restrict
   add_foreign_key "forum_report_subject_action_deliveries", "notifications", on_delete: :nullify
+  add_foreign_key "forum_report_supplements", "forum_reports", on_delete: :restrict
+  add_foreign_key "forum_report_supplements", "users", column: "reporter_id", on_delete: :restrict
   add_foreign_key "forum_reports", "users", column: "affected_user_id", on_delete: :restrict
   add_foreign_key "forum_reports", "users", column: "reporter_id"
   add_foreign_key "forum_reports", "users", column: "reviewer_id"
@@ -4429,6 +4548,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   add_foreign_key "minecraft_node_tasks", "minecraft_nodes"
   add_foreign_key "minecraft_node_tasks", "minecraft_servers"
   add_foreign_key "minecraft_permission_groups", "minecraft_player_profiles", column: "player_profile_id"
+  add_foreign_key "minecraft_player_access_rules", "minecraft_connector_tasks", column: "apply_task_id"
+  add_foreign_key "minecraft_player_access_rules", "minecraft_connector_tasks", column: "revoke_task_id"
+  add_foreign_key "minecraft_player_access_rules", "minecraft_servers"
+  add_foreign_key "minecraft_player_access_rules", "users", column: "created_by_id"
+  add_foreign_key "minecraft_player_access_rules", "users", column: "revoked_by_id"
   add_foreign_key "minecraft_player_identities", "minecraft_player_profiles", column: "player_profile_id"
   add_foreign_key "minecraft_player_identities", "minecraft_servers", column: "primary_server_id"
   add_foreign_key "minecraft_player_sessions", "minecraft_player_profiles", column: "player_profile_id"
@@ -4462,8 +4586,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   add_foreign_key "minecraft_world_restore_plans", "minecraft_world_backups", column: "pre_restore_world_backup_id"
   add_foreign_key "minecraft_world_restore_plans", "users", column: "actor_id"
   add_foreign_key "minecraft_world_restore_resolutions", "minecraft_node_operations"
-  add_foreign_key "minecraft_world_restore_resolutions", "minecraft_world_restore_resolutions", column: "supersedes_resolution_id"
   add_foreign_key "minecraft_world_restore_resolutions", "minecraft_world_restore_plans"
+  add_foreign_key "minecraft_world_restore_resolutions", "minecraft_world_restore_resolutions", column: "supersedes_resolution_id"
   add_foreign_key "minecraft_world_restore_resolutions", "users", column: "actor_id"
   add_foreign_key "minecraft_world_restore_resolutions", "users", column: "lifecycle_actor_id"
   add_foreign_key "notification_preferences", "users"
@@ -4502,10 +4626,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   add_foreign_key "plugin_setting_versions", "users", column: "actor_id"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
-  add_foreign_key "sensitive_action_rate_limit_reservations", "users"
   add_foreign_key "secure_evidence_attachment_events", "secure_evidence_attachments", on_delete: :cascade
   add_foreign_key "secure_evidence_attachment_events", "users", column: "actor_id", on_delete: :nullify
   add_foreign_key "secure_evidence_attachments", "users", column: "uploader_id"
+  add_foreign_key "sensitive_action_rate_limit_reservations", "users"
   add_foreign_key "sessions", "users"
   add_foreign_key "store_cart_items", "store_carts"
   add_foreign_key "store_cart_items", "store_product_variants"
@@ -4526,6 +4650,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   add_foreign_key "store_disputes", "users", column: "accepted_loss_by_id"
   add_foreign_key "store_disputes", "users", column: "assigned_to_id"
   add_foreign_key "store_disputes", "users", column: "closed_by_id"
+  add_foreign_key "store_disputes", "users", column: "customer_opened_by_id"
   add_foreign_key "store_finance_document_events", "store_finance_documents"
   add_foreign_key "store_finance_document_events", "users", column: "actor_id"
   add_foreign_key "store_finance_documents", "store_finance_documents", column: "supersedes_id"
@@ -4625,774 +4750,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   add_foreign_key "website_pages", "users", column: "discarded_by_id"
   add_foreign_key "website_pages", "users", column: "purged_by_id"
   add_foreign_key "website_pages", "website_themes"
+  add_foreign_key "website_theme_revisions", "users", column: "actor_id"
+  add_foreign_key "website_theme_revisions", "website_theme_revisions", column: "source_revision_id"
+  add_foreign_key "website_theme_revisions", "website_themes"
 
   # User-defined PostgreSQL trigger functions and triggers.
   # These database invariants must also exist after db:schema:load.
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_events_immutable_fn()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      RAISE EXCEPTION 'minecraft world restore events are append-only';
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.minecraft_world_backups_immutable_fn()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF OLD.public_id IS DISTINCT FROM NEW.public_id
-        OR OLD.minecraft_server_id IS DISTINCT FROM NEW.minecraft_server_id
-        OR OLD.minecraft_node_id IS DISTINCT FROM NEW.minecraft_node_id
-        OR OLD.created_by_id IS DISTINCT FROM NEW.created_by_id
-        OR OLD.purpose IS DISTINCT FROM NEW.purpose
-        OR OLD.request_id IS DISTINCT FROM NEW.request_id
-        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest THEN
-        RAISE EXCEPTION 'minecraft world backup identity is immutable';
-      END IF;
-
-      IF OLD.status IN ('available', 'quarantined') AND (
-        OLD.manifest_version IS DISTINCT FROM NEW.manifest_version
-        OR OLD.safety_profile IS DISTINCT FROM NEW.safety_profile
-        OR OLD.archive_format IS DISTINCT FROM NEW.archive_format
-        OR OLD.manifest_digest IS DISTINCT FROM NEW.manifest_digest
-        OR OLD.archive_sha256 IS DISTINCT FROM NEW.archive_sha256
-        OR OLD.archive_bytes IS DISTINCT FROM NEW.archive_bytes
-        OR OLD.uncompressed_bytes IS DISTINCT FROM NEW.uncompressed_bytes
-        OR OLD.entry_count IS DISTINCT FROM NEW.entry_count
-        OR OLD.manifest_summary IS DISTINCT FROM NEW.manifest_summary
-      ) THEN
-        RAISE EXCEPTION 'verified minecraft world backup manifest is immutable';
-      END IF;
-      IF OLD.minecraft_node_operation_id IS NOT NULL
-        AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id THEN
-        RAISE EXCEPTION 'minecraft world backup operation binding is immutable';
-      END IF;
-      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
-        (OLD.status = 'requested' AND NEW.status IN ('queued', 'failed'))
-        OR (OLD.status = 'queued' AND NEW.status IN ('creating', 'available', 'failed'))
-        OR (OLD.status = 'creating' AND NEW.status IN ('available', 'failed'))
-        OR (OLD.status = 'available' AND NEW.status = 'quarantined')
-        OR (OLD.status = 'failed'
-          AND NEW.status = 'available'
-          AND OLD.purpose = 'pre_restore'
-          AND EXISTS (
-            SELECT 1
-            FROM minecraft_world_restore_plans restore_plan
-            INNER JOIN minecraft_world_restore_resolutions resolution
-              ON resolution.minecraft_world_restore_plan_id = restore_plan.id
-            WHERE restore_plan.pre_restore_world_backup_id = NEW.id
-              AND resolution.status IN ('queued', 'running')
-              AND resolution.minecraft_node_operation_id IS NOT NULL
-          ))
-      ) THEN
-        RAISE EXCEPTION 'invalid minecraft world backup state transition';
-      END IF;
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_resolutions_immutable_fn()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF OLD.public_id IS DISTINCT FROM NEW.public_id
-        OR OLD.minecraft_world_restore_plan_id IS DISTINCT FROM NEW.minecraft_world_restore_plan_id
-        OR OLD.actor_id IS DISTINCT FROM NEW.actor_id
-        OR OLD.resolution_action IS DISTINCT FROM NEW.resolution_action
-        OR OLD.reason IS DISTINCT FROM NEW.reason
-        OR OLD.request_id IS DISTINCT FROM NEW.request_id
-        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest
-        OR OLD.expected_plan_lock_version IS DISTINCT FROM NEW.expected_plan_lock_version
-        OR OLD.plan_digest IS DISTINCT FROM NEW.plan_digest
-        OR OLD.server_configuration_digest IS DISTINCT FROM NEW.server_configuration_digest
-        OR OLD.node_capability_digest IS DISTINCT FROM NEW.node_capability_digest
-        OR OLD.pre_restore_manifest_digest IS DISTINCT FROM NEW.pre_restore_manifest_digest
-        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
-        OR OLD.supersedes_resolution_id IS DISTINCT FROM NEW.supersedes_resolution_id
-        OR (OLD.expired_at IS NOT NULL AND OLD.expired_at IS DISTINCT FROM NEW.expired_at)
-        OR (OLD.lifecycle_action IS NOT NULL AND OLD.lifecycle_action IS DISTINCT FROM NEW.lifecycle_action)
-        OR (OLD.lifecycle_actor_id IS NOT NULL AND OLD.lifecycle_actor_id IS DISTINCT FROM NEW.lifecycle_actor_id)
-        OR (OLD.lifecycle_reason IS NOT NULL AND OLD.lifecycle_reason IS DISTINCT FROM NEW.lifecycle_reason)
-        OR (OLD.lifecycle_request_id IS NOT NULL AND OLD.lifecycle_request_id IS DISTINCT FROM NEW.lifecycle_request_id)
-        OR (OLD.lifecycle_request_digest IS NOT NULL AND OLD.lifecycle_request_digest IS DISTINCT FROM NEW.lifecycle_request_digest)
-        OR (OLD.lifecycle_authorization_method IS NOT NULL AND OLD.lifecycle_authorization_method IS DISTINCT FROM NEW.lifecycle_authorization_method)
-        OR (OLD.lifecycle_authorized_at IS NOT NULL AND OLD.lifecycle_authorized_at IS DISTINCT FROM NEW.lifecycle_authorized_at)
-        OR (OLD.lifecycle_completed_at IS NOT NULL AND OLD.lifecycle_completed_at IS DISTINCT FROM NEW.lifecycle_completed_at) THEN
-        RAISE EXCEPTION 'minecraft world restore resolution contract is immutable';
-      END IF;
-      IF OLD.minecraft_node_operation_id IS NOT NULL
-        AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id THEN
-        RAISE EXCEPTION 'minecraft world restore resolution operation binding is immutable';
-      END IF;
-      IF (OLD.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over')
-          OR NEW.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over'))
-        AND (OLD.authorization_digest IS DISTINCT FROM NEW.authorization_digest
-          OR OLD.authorization_method IS DISTINCT FROM NEW.authorization_method
-          OR OLD.authorization_expires_at IS DISTINCT FROM NEW.authorization_expires_at
-          OR OLD.authorized_at IS DISTINCT FROM NEW.authorized_at
-          OR OLD.authorization_consumed_at IS DISTINCT FROM NEW.authorization_consumed_at) THEN
-        RAISE EXCEPTION 'terminal recovery resolution authorization is immutable';
-      END IF;
-      IF OLD.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over')
-        AND (OLD.result_summary IS DISTINCT FROM NEW.result_summary
-          OR OLD.error_code IS DISTINCT FROM NEW.error_code
-          OR OLD.started_at IS DISTINCT FROM NEW.started_at
-          OR OLD.completed_at IS DISTINCT FROM NEW.completed_at
-          OR OLD.queued_at IS DISTINCT FROM NEW.queued_at
-          OR OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id) THEN
-        RAISE EXCEPTION 'terminal recovery resolution evidence is immutable';
-      END IF;
-      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
-        (OLD.status = 'planned' AND NEW.status IN ('authorized', 'failed'))
-        OR (OLD.status = 'authorized' AND NEW.status IN ('queued', 'failed'))
-        OR (OLD.status IN ('queued', 'running')
-          AND NEW.status IN ('running', 'completed', 'failed', 'recovery_required'))
-        OR (OLD.status IN ('planned', 'authorized')
-          AND NEW.status IN ('expired', 'cancelled', 'taken_over'))
-      ) THEN
-        RAISE EXCEPTION 'invalid minecraft world restore resolution state transition';
-      END IF;
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_plans_immutable_fn()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF OLD.public_id IS DISTINCT FROM NEW.public_id
-        OR OLD.minecraft_server_id IS DISTINCT FROM NEW.minecraft_server_id
-        OR OLD.minecraft_node_id IS DISTINCT FROM NEW.minecraft_node_id
-        OR OLD.minecraft_world_backup_id IS DISTINCT FROM NEW.minecraft_world_backup_id
-        OR OLD.actor_id IS DISTINCT FROM NEW.actor_id
-        OR OLD.reason IS DISTINCT FROM NEW.reason
-        OR OLD.request_id IS DISTINCT FROM NEW.request_id
-        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest
-        OR OLD.plan_digest IS DISTINCT FROM NEW.plan_digest
-        OR OLD.backup_manifest_digest IS DISTINCT FROM NEW.backup_manifest_digest
-        OR OLD.server_configuration_digest IS DISTINCT FROM NEW.server_configuration_digest
-        OR OLD.node_capability_digest IS DISTINCT FROM NEW.node_capability_digest
-        OR OLD.frozen_server_updated_at IS DISTINCT FROM NEW.frozen_server_updated_at
-        OR OLD.world_relative_path IS DISTINCT FROM NEW.world_relative_path
-        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at THEN
-        RAISE EXCEPTION 'minecraft world restore plan is immutable';
-      END IF;
-      IF (OLD.pre_restore_world_backup_id IS NOT NULL
-          AND OLD.pre_restore_world_backup_id IS DISTINCT FROM NEW.pre_restore_world_backup_id)
-        OR (OLD.minecraft_node_operation_id IS NOT NULL
-          AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id) THEN
-        RAISE EXCEPTION 'minecraft world restore execution binding is immutable';
-      END IF;
-      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
-        (OLD.status = 'planned' AND NEW.status IN ('authorized', 'expired', 'cancelled'))
-        OR (OLD.status = 'authorized' AND NEW.status IN ('queued', 'expired', 'cancelled'))
-        OR (OLD.status IN ('queued', 'running')
-          AND NEW.status IN ('running', 'completed', 'failed', 'rolled_back', 'recovery_required'))
-        OR (OLD.status = 'recovery_required'
-          AND NEW.status IN ('completed', 'rolled_back')
-          AND EXISTS (
-            SELECT 1
-            FROM minecraft_world_restore_resolutions resolution
-            WHERE resolution.minecraft_world_restore_plan_id = NEW.id
-              AND resolution.status = 'completed'
-              AND resolution.result_summary->>'recovery_resolution_proof' = 'true'
-              AND resolution.result_summary->>'plan_id' = NEW.public_id
-              AND resolution.result_summary->>'phase' = NEW.status
-          ))
-      ) THEN
-        RAISE EXCEPTION 'invalid minecraft world restore state transition';
-      END IF;
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.sensitive_action_rate_limit_reservations_immutable_fn()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF OLD.public_id IS DISTINCT FROM NEW.public_id
-        OR OLD.scope IS DISTINCT FROM NEW.scope
-        OR OLD.user_id IS DISTINCT FROM NEW.user_id
-        OR OLD.user_counter_key IS DISTINCT FROM NEW.user_counter_key
-        OR OLD.ip_counter_key IS DISTINCT FROM NEW.ip_counter_key
-        OR OLD.context_digest IS DISTINCT FROM NEW.context_digest
-        OR OLD."limit" IS DISTINCT FROM NEW."limit"
-        OR OLD.window_seconds IS DISTINCT FROM NEW.window_seconds
-        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
-        OR (OLD.settled_at IS NOT NULL AND OLD.settled_at IS DISTINCT FROM NEW.settled_at)
-        OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
-        RAISE EXCEPTION 'sensitive action reservation contract is immutable';
-      END IF;
-      IF OLD.status <> NEW.status AND NOT (
-        OLD.status = 'pending' AND NEW.status IN ('succeeded', 'failed')
-      ) THEN
-        RAISE EXCEPTION 'invalid sensitive action reservation transition';
-      END IF;
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.prevent_website_revision_mutation()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      RAISE EXCEPTION 'website content revisions are immutable';
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.protect_website_content_lifecycle()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF TG_OP = 'DELETE' THEN
-        RAISE EXCEPTION 'website content must use the recoverable lifecycle';
-      END IF;
-      IF OLD.purged_at IS NOT NULL THEN
-        RAISE EXCEPTION 'purged website tombstones are immutable';
-      END IF;
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_report_appeals_guard_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF NEW.public_id IS DISTINCT FROM OLD.public_id
-         OR NEW.forum_report_id IS DISTINCT FROM OLD.forum_report_id
-         OR NEW.appellant_id IS DISTINCT FROM OLD.appellant_id
-         OR NEW.appellant_role IS DISTINCT FROM OLD.appellant_role
-         OR NEW.draft_idempotency_key_digest IS DISTINCT FROM OLD.draft_idempotency_key_digest
-         OR NEW.draft_request_fingerprint IS DISTINCT FROM OLD.draft_request_fingerprint
-         OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
-        RAISE EXCEPTION 'forum report appeal identity is immutable';
-      END IF;
-
-      IF (NEW.submit_idempotency_key_digest IS DISTINCT FROM OLD.submit_idempotency_key_digest
-           OR NEW.submit_request_fingerprint IS DISTINCT FROM OLD.submit_request_fingerprint)
-         AND NOT (
-           OLD.submit_idempotency_key_digest IS NULL
-           AND OLD.submit_request_fingerprint IS NULL
-           AND NEW.submit_idempotency_key_digest IS NOT NULL
-           AND NEW.submit_request_fingerprint IS NOT NULL
-           AND OLD.status = 'draft'
-           AND NEW.status = 'submitted'
-         ) THEN
-        RAISE EXCEPTION 'forum report appeal submit identity is immutable';
-      END IF;
-
-      IF (NEW.cancel_idempotency_key_digest IS DISTINCT FROM OLD.cancel_idempotency_key_digest
-           OR NEW.cancel_request_fingerprint IS DISTINCT FROM OLD.cancel_request_fingerprint)
-         AND NOT (
-           OLD.cancel_idempotency_key_digest IS NULL
-           AND OLD.cancel_request_fingerprint IS NULL
-           AND NEW.cancel_idempotency_key_digest IS NOT NULL
-           AND NEW.cancel_request_fingerprint IS NOT NULL
-           AND OLD.status IN ('draft', 'submitted')
-           AND NEW.status = 'cancelled'
-         ) THEN
-        RAISE EXCEPTION 'forum report appeal cancel identity is immutable';
-      END IF;
-
-      IF (NEW.decision_idempotency_key_digest IS DISTINCT FROM OLD.decision_idempotency_key_digest
-           OR NEW.decision_request_fingerprint IS DISTINCT FROM OLD.decision_request_fingerprint)
-         AND NOT (
-           OLD.decision_idempotency_key_digest IS NULL
-           AND OLD.decision_request_fingerprint IS NULL
-           AND NEW.decision_idempotency_key_digest IS NOT NULL
-           AND NEW.decision_request_fingerprint IS NOT NULL
-           AND OLD.status = 'under_review'
-           AND NEW.status IN ('upheld', 'overturned')
-         ) THEN
-        RAISE EXCEPTION 'forum report appeal decision identity is immutable';
-      END IF;
-
-      IF OLD.status IN ('submitted', 'under_review', 'upheld', 'overturned', 'cancelled')
-         AND NEW.reason IS DISTINCT FROM OLD.reason THEN
-        RAISE EXCEPTION 'submitted forum report appeal reason is immutable';
-      END IF;
-
-      IF NOT (
-        (OLD.status = 'draft' AND NEW.status IN ('draft', 'submitted', 'cancelled'))
-        OR (OLD.status = 'submitted' AND NEW.status IN ('submitted', 'under_review', 'cancelled'))
-        OR (OLD.status = 'under_review' AND NEW.status IN ('under_review', 'upheld', 'overturned'))
-        OR (OLD.status IN ('upheld', 'overturned', 'cancelled') AND NEW.status = OLD.status)
-      ) THEN
-        RAISE EXCEPTION 'forum report appeal state transition is invalid';
-      END IF;
-
-      IF OLD.status IN ('upheld', 'overturned', 'cancelled') AND NEW IS DISTINCT FROM OLD THEN
-        RAISE EXCEPTION 'terminal forum report appeal is immutable';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_appeals_reject_delete()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      RAISE EXCEPTION 'forum report appeals cannot be deleted';
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_reports_guard_affected_user()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF NEW.public_id IS DISTINCT FROM OLD.public_id THEN
-        RAISE EXCEPTION 'forum report public id is immutable';
-      END IF;
-
-      IF NEW.affected_user_id IS DISTINCT FROM OLD.affected_user_id
-         AND NOT (
-           OLD.affected_user_id IS NULL
-           AND OLD.status = 'pending'
-           AND NEW.status = 'actioned'
-           AND NEW.affected_user_id IS NOT NULL
-         ) THEN
-        RAISE EXCEPTION 'forum report affected user is immutable';
-      END IF;
-
-      IF NEW.affected_user_id IS NOT NULL AND NEW.status IS DISTINCT FROM 'actioned' THEN
-        RAISE EXCEPTION 'forum report affected user does not match outcome';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_appeal_events_reject_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      RAISE EXCEPTION 'forum report appeal events are append-only';
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_case_attachments_guard_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      RAISE EXCEPTION 'forum report evidence links are immutable';
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_attachments_validate_insert()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    DECLARE
-      attachment_subject_key text;
-      attachment_subject_id bigint;
-      attachment_subject_public_id text;
-      attachment_uploader_id bigint;
-      attachment_state text;
-      upload_scan_status text;
-      report_public_id text;
-      report_owner_id bigint;
-      report_status text;
-    BEGIN
-      SELECT public_id, reporter_id, status
-      INTO report_public_id, report_owner_id, report_status
-      FROM forum_reports
-      WHERE id = NEW.forum_report_id
-      FOR UPDATE;
-
-      SELECT evidence.subject_key,
-             evidence.subject_id,
-             evidence.subject_public_id,
-             evidence.uploader_id,
-             evidence.state,
-             uploads.scan_status
-      INTO attachment_subject_key,
-           attachment_subject_id,
-           attachment_subject_public_id,
-           attachment_uploader_id,
-           attachment_state,
-           upload_scan_status
-      FROM secure_evidence_attachments evidence
-      INNER JOIN forum_uploads uploads
-        ON uploads.secure_evidence_attachment_id = evidence.id
-      WHERE evidence.id = NEW.secure_evidence_attachment_id
-      FOR UPDATE OF evidence, uploads;
-
-      IF attachment_subject_key IS DISTINCT FROM 'community.report'
-         OR attachment_subject_id IS DISTINCT FROM NEW.forum_report_id
-         OR attachment_subject_public_id IS DISTINCT FROM report_public_id
-         OR attachment_uploader_id IS DISTINCT FROM NEW.sealed_by_id
-         OR NEW.sealed_by_id IS DISTINCT FROM report_owner_id
-         OR report_status IS DISTINCT FROM 'pending'
-         OR attachment_state IS DISTINCT FROM 'available'
-         OR upload_scan_status IS DISTINCT FROM 'clean'
-         OR EXISTS (
-           SELECT 1
-           FROM forum_report_appeal_attachments
-           WHERE secure_evidence_attachment_id = NEW.secure_evidence_attachment_id
-         ) THEN
-        RAISE EXCEPTION 'forum report evidence is not clean or does not belong to this subject';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_appeal_attachments_validate_insert()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    DECLARE
-      attachment_subject_key text;
-      attachment_subject_id bigint;
-      attachment_subject_public_id text;
-      attachment_uploader_id bigint;
-      attachment_state text;
-      upload_scan_status text;
-      appeal_appellant_id bigint;
-      appeal_public_id text;
-      appeal_status text;
-    BEGIN
-      SELECT appellant_id, public_id, status
-      INTO appeal_appellant_id, appeal_public_id, appeal_status
-      FROM forum_report_appeals
-      WHERE id = NEW.forum_report_appeal_id
-      FOR UPDATE;
-
-      SELECT evidence.subject_key,
-             evidence.subject_id,
-             evidence.subject_public_id,
-             evidence.uploader_id,
-             evidence.state,
-             uploads.scan_status
-      INTO attachment_subject_key,
-           attachment_subject_id,
-           attachment_subject_public_id,
-           attachment_uploader_id,
-           attachment_state,
-           upload_scan_status
-      FROM secure_evidence_attachments evidence
-      INNER JOIN forum_uploads uploads
-        ON uploads.secure_evidence_attachment_id = evidence.id
-      WHERE evidence.id = NEW.secure_evidence_attachment_id
-      FOR UPDATE OF evidence, uploads;
-
-      IF attachment_subject_key IS DISTINCT FROM 'community.report_appeal'
-         OR attachment_subject_id IS DISTINCT FROM NEW.forum_report_appeal_id
-         OR attachment_subject_public_id IS DISTINCT FROM appeal_public_id
-         OR attachment_uploader_id IS DISTINCT FROM NEW.sealed_by_id
-         OR attachment_state IS DISTINCT FROM 'available'
-         OR upload_scan_status IS DISTINCT FROM 'clean'
-         OR NOT (
-           (NEW.audience = 'appellant'
-             AND NEW.sealed_by_id = appeal_appellant_id
-             AND appeal_status = 'submitted')
-           OR (NEW.audience = 'reviewers'
-             AND NEW.sealed_by_id <> appeal_appellant_id
-             AND appeal_status IN ('submitted', 'under_review'))
-         )
-         OR EXISTS (
-           SELECT 1
-           FROM forum_report_attachments
-           WHERE secure_evidence_attachment_id = NEW.secure_evidence_attachment_id
-         ) THEN
-        RAISE EXCEPTION 'forum report appeal evidence is not clean or does not belong to this subject';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_appeal_deliveries_guard_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF TG_OP = 'UPDATE'
-         AND OLD.notification_id IS NOT NULL
-         AND NEW.notification_id IS NULL
-         AND NEW.forum_report_appeal_id = OLD.forum_report_appeal_id
-         AND NEW.public_outcome_code = OLD.public_outcome_code
-         AND NEW.created_at = OLD.created_at THEN
-        RETURN NEW;
-      END IF;
-
-      RAISE EXCEPTION 'forum report appeal delivery receipts are immutable';
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_appeal_deliveries_validate_insert()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    DECLARE
-      appeal_status text;
-      appeal_outcome text;
-      appeal_public_id text;
-      appellant_id bigint;
-      notification_owner_id bigint;
-      notification_kind text;
-      notification_metadata jsonb;
-    BEGIN
-      SELECT appeals.status,
-             appeals.public_outcome_code,
-             appeals.public_id,
-             appeals.appellant_id,
-             notifications.user_id,
-             notifications.notification_type,
-             notifications.metadata
-      INTO appeal_status,
-           appeal_outcome,
-           appeal_public_id,
-           appellant_id,
-           notification_owner_id,
-           notification_kind,
-           notification_metadata
-      FROM forum_report_appeals appeals
-      INNER JOIN notifications ON notifications.id = NEW.notification_id
-      WHERE appeals.id = NEW.forum_report_appeal_id
-      FOR UPDATE OF appeals;
-
-      IF NEW.notification_id IS NULL
-         OR appeal_status NOT IN ('upheld', 'overturned')
-         OR appeal_outcome IS DISTINCT FROM appeal_status
-         OR NEW.public_outcome_code IS DISTINCT FROM appeal_outcome
-         OR notification_owner_id IS DISTINCT FROM appellant_id
-         OR notification_kind IS DISTINCT FROM 'forum.report_appeal_outcome'
-         OR notification_metadata ->> 'appeal_public_id' IS DISTINCT FROM appeal_public_id
-         OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM appeal_outcome
-         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/report-appeals/' || appeal_public_id THEN
-        RAISE EXCEPTION 'forum report appeal outcome delivery contract is invalid';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_subject_deliveries_guard_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF TG_OP = 'UPDATE'
-         AND OLD.notification_id IS NOT NULL
-         AND NEW.notification_id IS NULL
-         AND NEW.forum_report_id = OLD.forum_report_id
-         AND NEW.created_at = OLD.created_at THEN
-        RETURN NEW;
-      END IF;
-
-      RAISE EXCEPTION 'forum report subject action delivery receipts are immutable';
-    END;
-    $function$;
-
-    CREATE OR REPLACE FUNCTION public.forum_report_subject_deliveries_validate_insert()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    DECLARE
-      report_status text;
-      report_public_id text;
-      report_subject_id bigint;
-      notification_owner_id bigint;
-      notification_kind text;
-      notification_metadata jsonb;
-    BEGIN
-      SELECT reports.status,
-             reports.public_id,
-             reports.affected_user_id,
-             notifications.user_id,
-             notifications.notification_type,
-             notifications.metadata
-      INTO report_status,
-           report_public_id,
-           report_subject_id,
-           notification_owner_id,
-           notification_kind,
-           notification_metadata
-      FROM forum_reports reports
-      INNER JOIN notifications ON notifications.id = NEW.notification_id
-      WHERE reports.id = NEW.forum_report_id
-      FOR UPDATE OF reports;
-
-      IF NEW.notification_id IS NULL
-         OR report_status IS DISTINCT FROM 'actioned'
-         OR report_subject_id IS NULL
-         OR notification_owner_id IS DISTINCT FROM report_subject_id
-         OR notification_kind IS DISTINCT FROM 'forum.report_subject_action'
-         OR notification_metadata ->> 'report_public_id' IS DISTINCT FROM report_public_id
-         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/report-appeals' THEN
-        RAISE EXCEPTION 'forum report subject action delivery contract is invalid';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_reports_guard_state_transition()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF OLD.status <> 'pending'
-         AND NEW.status IS DISTINCT FROM OLD.status THEN
-        RAISE EXCEPTION 'terminal forum report status cannot change';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_report_decision_batches_reject_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      RAISE EXCEPTION 'forum report decision batches are immutable';
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_report_supplements_reject_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      RAISE EXCEPTION 'forum report supplements are append-only';
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_report_supplements_validate_insert()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    DECLARE
-      owner_id bigint;
-      report_status text;
-    BEGIN
-      SELECT reporter_id, status
-      INTO owner_id, report_status
-      FROM forum_reports
-      WHERE id = NEW.forum_report_id
-      FOR UPDATE;
-
-      IF owner_id IS NULL
-         OR owner_id <> NEW.reporter_id
-         OR report_status <> 'pending' THEN
-        RAISE EXCEPTION 'forum report supplement owner or state is invalid';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_report_outcome_deliveries_guard_change()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    BEGIN
-      IF TG_OP = 'UPDATE'
-         AND OLD.notification_id IS NOT NULL
-         AND NEW.notification_id IS NULL
-         AND NEW.forum_report_id = OLD.forum_report_id
-         AND NEW.public_outcome_code = OLD.public_outcome_code
-         AND NEW.idempotency_key_digest = OLD.idempotency_key_digest
-         AND NEW.created_at = OLD.created_at THEN
-        RETURN NEW;
-      END IF;
-
-      RAISE EXCEPTION 'forum report outcome delivery receipts are immutable';
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_report_outcome_deliveries_validate_insert()
-     RETURNS trigger
-     LANGUAGE plpgsql
-    AS $function$
-    DECLARE
-      report_status text;
-      report_outcome text;
-      report_owner_id bigint;
-      report_reference text;
-      notification_owner_id bigint;
-      notification_kind text;
-      notification_metadata jsonb;
-    BEGIN
-      SELECT reports.status,
-             reports.public_outcome_code,
-             reports.reporter_id,
-             reports.public_id,
-             notifications.user_id,
-             notifications.notification_type,
-             notifications.metadata
-      INTO report_status,
-           report_outcome,
-           report_owner_id,
-           report_reference,
-           notification_owner_id,
-           notification_kind,
-           notification_metadata
-      FROM forum_reports reports
-      INNER JOIN notifications ON notifications.id = NEW.notification_id
-      WHERE reports.id = NEW.forum_report_id
-      FOR UPDATE OF reports;
-
-      IF NEW.notification_id IS NULL
-         OR report_status IS NULL
-         OR report_status NOT IN ('reviewed', 'dismissed', 'actioned')
-         OR report_outcome IS NULL
-         OR NEW.public_outcome_code IS DISTINCT FROM report_outcome
-         OR notification_owner_id IS DISTINCT FROM report_owner_id
-         OR notification_kind IS DISTINCT FROM 'forum.report_outcome'
-         OR notification_metadata ->> 'report_public_id' IS DISTINCT FROM report_reference
-         OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM NEW.public_outcome_code
-         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/reports/' || report_reference THEN
-        RAISE EXCEPTION 'forum report outcome delivery contract is invalid';
-      END IF;
-
-      RETURN NEW;
-    END;
-    $function$;
-  MCWEB_SCHEMA_SQL
-
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.forum_message_revisions_dequeue_backfill()
      RETURNS trigger
@@ -5532,12 +4895,550 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_attachments_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      attachment_subject_key text;
+      attachment_subject_id bigint;
+      attachment_subject_public_id text;
+      attachment_uploader_id bigint;
+      attachment_state text;
+      upload_scan_status text;
+      appeal_appellant_id bigint;
+      appeal_public_id text;
+      appeal_status text;
+    BEGIN
+      SELECT appellant_id, public_id, status
+      INTO appeal_appellant_id, appeal_public_id, appeal_status
+      FROM forum_report_appeals
+      WHERE id = NEW.forum_report_appeal_id
+      FOR UPDATE;
+
+      SELECT evidence.subject_key,
+             evidence.subject_id,
+             evidence.subject_public_id,
+             evidence.uploader_id,
+             evidence.state,
+             uploads.scan_status
+      INTO attachment_subject_key,
+           attachment_subject_id,
+           attachment_subject_public_id,
+           attachment_uploader_id,
+           attachment_state,
+           upload_scan_status
+      FROM secure_evidence_attachments evidence
+      INNER JOIN forum_uploads uploads
+        ON uploads.secure_evidence_attachment_id = evidence.id
+      WHERE evidence.id = NEW.secure_evidence_attachment_id
+      FOR UPDATE OF evidence, uploads;
+
+      IF attachment_subject_key IS DISTINCT FROM 'community.report_appeal'
+         OR attachment_subject_id IS DISTINCT FROM NEW.forum_report_appeal_id
+         OR attachment_subject_public_id IS DISTINCT FROM appeal_public_id
+         OR attachment_uploader_id IS DISTINCT FROM NEW.sealed_by_id
+         OR attachment_state IS DISTINCT FROM 'available'
+         OR upload_scan_status IS DISTINCT FROM 'clean'
+         OR NOT (
+           (NEW.audience = 'appellant'
+             AND NEW.sealed_by_id = appeal_appellant_id
+             AND appeal_status = 'submitted')
+           OR (NEW.audience = 'reviewers'
+             AND NEW.sealed_by_id <> appeal_appellant_id
+             AND appeal_status IN ('submitted', 'under_review'))
+         )
+         OR EXISTS (
+           SELECT 1
+           FROM forum_report_attachments
+           WHERE secure_evidence_attachment_id = NEW.secure_evidence_attachment_id
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal evidence is not clean or does not belong to this subject';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_deliveries_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'UPDATE'
+         AND OLD.notification_id IS NOT NULL
+         AND NEW.notification_id IS NULL
+         AND NEW.forum_report_appeal_id = OLD.forum_report_appeal_id
+         AND NEW.public_outcome_code = OLD.public_outcome_code
+         AND NEW.created_at = OLD.created_at THEN
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION 'forum report appeal delivery receipts are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_deliveries_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      appeal_status text;
+      appeal_outcome text;
+      appeal_public_id text;
+      appellant_id bigint;
+      notification_owner_id bigint;
+      notification_kind text;
+      notification_metadata jsonb;
+    BEGIN
+      SELECT appeals.status,
+             appeals.public_outcome_code,
+             appeals.public_id,
+             appeals.appellant_id,
+             notifications.user_id,
+             notifications.notification_type,
+             notifications.metadata
+      INTO appeal_status,
+           appeal_outcome,
+           appeal_public_id,
+           appellant_id,
+           notification_owner_id,
+           notification_kind,
+           notification_metadata
+      FROM forum_report_appeals appeals
+      INNER JOIN notifications ON notifications.id = NEW.notification_id
+      WHERE appeals.id = NEW.forum_report_appeal_id
+      FOR UPDATE OF appeals;
+
+      IF NEW.notification_id IS NULL
+         OR appeal_status NOT IN ('upheld', 'overturned')
+         OR appeal_outcome IS DISTINCT FROM appeal_status
+         OR NEW.public_outcome_code IS DISTINCT FROM appeal_outcome
+         OR notification_owner_id IS DISTINCT FROM appellant_id
+         OR notification_kind IS DISTINCT FROM 'forum.report_appeal_outcome'
+         OR notification_metadata ->> 'appeal_public_id' IS DISTINCT FROM appeal_public_id
+         OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM appeal_outcome
+         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/report-appeals/' || appeal_public_id THEN
+        RAISE EXCEPTION 'forum report appeal outcome delivery contract is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_appeal_events_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report appeal events are append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_appeals_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF NEW.public_id IS DISTINCT FROM OLD.public_id
+         OR NEW.forum_report_id IS DISTINCT FROM OLD.forum_report_id
+         OR NEW.appellant_id IS DISTINCT FROM OLD.appellant_id
+         OR NEW.appellant_role IS DISTINCT FROM OLD.appellant_role
+         OR NEW.draft_idempotency_key_digest IS DISTINCT FROM OLD.draft_idempotency_key_digest
+         OR NEW.draft_request_fingerprint IS DISTINCT FROM OLD.draft_request_fingerprint
+         OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'forum report appeal identity is immutable';
+      END IF;
+
+      IF (NEW.submit_idempotency_key_digest IS DISTINCT FROM OLD.submit_idempotency_key_digest
+           OR NEW.submit_request_fingerprint IS DISTINCT FROM OLD.submit_request_fingerprint)
+         AND NOT (
+           OLD.submit_idempotency_key_digest IS NULL
+           AND OLD.submit_request_fingerprint IS NULL
+           AND NEW.submit_idempotency_key_digest IS NOT NULL
+           AND NEW.submit_request_fingerprint IS NOT NULL
+           AND OLD.status = 'draft'
+           AND NEW.status = 'submitted'
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal submit identity is immutable';
+      END IF;
+
+      IF (NEW.cancel_idempotency_key_digest IS DISTINCT FROM OLD.cancel_idempotency_key_digest
+           OR NEW.cancel_request_fingerprint IS DISTINCT FROM OLD.cancel_request_fingerprint)
+         AND NOT (
+           OLD.cancel_idempotency_key_digest IS NULL
+           AND OLD.cancel_request_fingerprint IS NULL
+           AND NEW.cancel_idempotency_key_digest IS NOT NULL
+           AND NEW.cancel_request_fingerprint IS NOT NULL
+           AND OLD.status IN ('draft', 'submitted')
+           AND NEW.status = 'cancelled'
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal cancel identity is immutable';
+      END IF;
+
+      IF (NEW.decision_idempotency_key_digest IS DISTINCT FROM OLD.decision_idempotency_key_digest
+           OR NEW.decision_request_fingerprint IS DISTINCT FROM OLD.decision_request_fingerprint)
+         AND NOT (
+           OLD.decision_idempotency_key_digest IS NULL
+           AND OLD.decision_request_fingerprint IS NULL
+           AND NEW.decision_idempotency_key_digest IS NOT NULL
+           AND NEW.decision_request_fingerprint IS NOT NULL
+           AND OLD.status = 'under_review'
+           AND NEW.status IN ('upheld', 'overturned')
+         ) THEN
+        RAISE EXCEPTION 'forum report appeal decision identity is immutable';
+      END IF;
+
+      IF OLD.status IN ('submitted', 'under_review', 'upheld', 'overturned', 'cancelled')
+         AND NEW.reason IS DISTINCT FROM OLD.reason THEN
+        RAISE EXCEPTION 'submitted forum report appeal reason is immutable';
+      END IF;
+
+      IF NOT (
+        (OLD.status = 'draft' AND NEW.status IN ('draft', 'submitted', 'cancelled'))
+        OR (OLD.status = 'submitted' AND NEW.status IN ('submitted', 'under_review', 'cancelled'))
+        OR (OLD.status = 'under_review' AND NEW.status IN ('under_review', 'upheld', 'overturned'))
+        OR (OLD.status IN ('upheld', 'overturned', 'cancelled') AND NEW.status = OLD.status)
+      ) THEN
+        RAISE EXCEPTION 'forum report appeal state transition is invalid';
+      END IF;
+
+      IF OLD.status IN ('upheld', 'overturned', 'cancelled') AND NEW IS DISTINCT FROM OLD THEN
+        RAISE EXCEPTION 'terminal forum report appeal is immutable';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_appeals_reject_delete()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report appeals cannot be deleted';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_attachments_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      attachment_subject_key text;
+      attachment_subject_id bigint;
+      attachment_subject_public_id text;
+      attachment_uploader_id bigint;
+      attachment_state text;
+      upload_scan_status text;
+      report_public_id text;
+      report_owner_id bigint;
+      report_status text;
+    BEGIN
+      SELECT public_id, reporter_id, status
+      INTO report_public_id, report_owner_id, report_status
+      FROM forum_reports
+      WHERE id = NEW.forum_report_id
+      FOR UPDATE;
+
+      SELECT evidence.subject_key,
+             evidence.subject_id,
+             evidence.subject_public_id,
+             evidence.uploader_id,
+             evidence.state,
+             uploads.scan_status
+      INTO attachment_subject_key,
+           attachment_subject_id,
+           attachment_subject_public_id,
+           attachment_uploader_id,
+           attachment_state,
+           upload_scan_status
+      FROM secure_evidence_attachments evidence
+      INNER JOIN forum_uploads uploads
+        ON uploads.secure_evidence_attachment_id = evidence.id
+      WHERE evidence.id = NEW.secure_evidence_attachment_id
+      FOR UPDATE OF evidence, uploads;
+
+      IF attachment_subject_key IS DISTINCT FROM 'community.report'
+         OR attachment_subject_id IS DISTINCT FROM NEW.forum_report_id
+         OR attachment_subject_public_id IS DISTINCT FROM report_public_id
+         OR attachment_uploader_id IS DISTINCT FROM NEW.sealed_by_id
+         OR NEW.sealed_by_id IS DISTINCT FROM report_owner_id
+         OR report_status IS DISTINCT FROM 'pending'
+         OR attachment_state IS DISTINCT FROM 'available'
+         OR upload_scan_status IS DISTINCT FROM 'clean'
+         OR EXISTS (
+           SELECT 1
+           FROM forum_report_appeal_attachments
+           WHERE secure_evidence_attachment_id = NEW.secure_evidence_attachment_id
+         ) THEN
+        RAISE EXCEPTION 'forum report evidence is not clean or does not belong to this subject';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_case_attachments_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report evidence links are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_decision_batches_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report decision batches are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.forum_report_evidences_reject_change()
      RETURNS trigger
      LANGUAGE plpgsql
     AS $function$
     BEGIN
       RAISE EXCEPTION 'forum_report_evidences is append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_outcome_deliveries_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'UPDATE'
+         AND OLD.notification_id IS NOT NULL
+         AND NEW.notification_id IS NULL
+         AND NEW.forum_report_id = OLD.forum_report_id
+         AND NEW.public_outcome_code = OLD.public_outcome_code
+         AND NEW.idempotency_key_digest = OLD.idempotency_key_digest
+         AND NEW.created_at = OLD.created_at THEN
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION 'forum report outcome delivery receipts are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_outcome_deliveries_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      report_status text;
+      report_outcome text;
+      report_owner_id bigint;
+      report_reference text;
+      notification_owner_id bigint;
+      notification_kind text;
+      notification_metadata jsonb;
+    BEGIN
+      SELECT reports.status,
+             reports.public_outcome_code,
+             reports.reporter_id,
+             reports.public_id,
+             notifications.user_id,
+             notifications.notification_type,
+             notifications.metadata
+      INTO report_status,
+           report_outcome,
+           report_owner_id,
+           report_reference,
+           notification_owner_id,
+           notification_kind,
+           notification_metadata
+      FROM forum_reports reports
+      INNER JOIN notifications ON notifications.id = NEW.notification_id
+      WHERE reports.id = NEW.forum_report_id
+      FOR UPDATE OF reports;
+
+      IF NEW.notification_id IS NULL
+         OR report_status IS NULL
+         OR report_status NOT IN ('reviewed', 'dismissed', 'actioned')
+         OR report_outcome IS NULL
+         OR NEW.public_outcome_code IS DISTINCT FROM report_outcome
+         OR notification_owner_id IS DISTINCT FROM report_owner_id
+         OR notification_kind IS DISTINCT FROM 'forum.report_outcome'
+         OR notification_metadata ->> 'report_public_id' IS DISTINCT FROM report_reference
+         OR notification_metadata ->> 'public_outcome_code' IS DISTINCT FROM NEW.public_outcome_code
+         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/reports/' || report_reference THEN
+        RAISE EXCEPTION 'forum report outcome delivery contract is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_subject_deliveries_guard_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'UPDATE'
+         AND OLD.notification_id IS NOT NULL
+         AND NEW.notification_id IS NULL
+         AND NEW.forum_report_id = OLD.forum_report_id
+         AND NEW.created_at = OLD.created_at THEN
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION 'forum report subject action delivery receipts are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_subject_deliveries_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      report_status text;
+      report_public_id text;
+      report_subject_id bigint;
+      notification_owner_id bigint;
+      notification_kind text;
+      notification_metadata jsonb;
+    BEGIN
+      SELECT reports.status,
+             reports.public_id,
+             reports.affected_user_id,
+             notifications.user_id,
+             notifications.notification_type,
+             notifications.metadata
+      INTO report_status,
+           report_public_id,
+           report_subject_id,
+           notification_owner_id,
+           notification_kind,
+           notification_metadata
+      FROM forum_reports reports
+      INNER JOIN notifications ON notifications.id = NEW.notification_id
+      WHERE reports.id = NEW.forum_report_id
+      FOR UPDATE OF reports;
+
+      IF NEW.notification_id IS NULL
+         OR report_status IS DISTINCT FROM 'actioned'
+         OR report_subject_id IS NULL
+         OR notification_owner_id IS DISTINCT FROM report_subject_id
+         OR notification_kind IS DISTINCT FROM 'forum.report_subject_action'
+         OR notification_metadata ->> 'report_public_id' IS DISTINCT FROM report_public_id
+         OR notification_metadata ->> 'path' IS DISTINCT FROM '/app/forum/report-appeals' THEN
+        RAISE EXCEPTION 'forum report subject action delivery contract is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_supplements_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum report supplements are append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_supplements_validate_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      owner_id bigint;
+      report_status text;
+    BEGIN
+      SELECT reporter_id, status
+      INTO owner_id, report_status
+      FROM forum_reports
+      WHERE id = NEW.forum_report_id
+      FOR UPDATE;
+
+      IF owner_id IS NULL
+         OR owner_id <> NEW.reporter_id
+         OR report_status <> 'pending' THEN
+        RAISE EXCEPTION 'forum report supplement owner or state is invalid';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_reports_guard_affected_user()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF NEW.public_id IS DISTINCT FROM OLD.public_id THEN
+        RAISE EXCEPTION 'forum report public id is immutable';
+      END IF;
+
+      IF NEW.affected_user_id IS DISTINCT FROM OLD.affected_user_id
+         AND NOT (
+           OLD.affected_user_id IS NULL
+           AND OLD.status = 'pending'
+           AND NEW.status = 'actioned'
+           AND NEW.affected_user_id IS NOT NULL
+         ) THEN
+        RAISE EXCEPTION 'forum report affected user is immutable';
+      END IF;
+
+      IF NEW.affected_user_id IS NOT NULL AND NEW.status IS DISTINCT FROM 'actioned' THEN
+        RAISE EXCEPTION 'forum report affected user does not match outcome';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_reports_guard_state_transition()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.status <> 'pending'
+         AND NEW.status IS DISTINCT FROM OLD.status THEN
+        RAISE EXCEPTION 'terminal forum report status cannot change';
+      END IF;
+
+      RETURN NEW;
     END;
     $function$;
   MCWEB_SCHEMA_SQL
@@ -5725,6 +5626,196 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
          WHERE affected.id IN (SELECT DISTINCT user_id FROM old_rows);
       END IF;
       RETURN NULL;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.minecraft_world_backups_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.public_id IS DISTINCT FROM NEW.public_id
+        OR OLD.minecraft_server_id IS DISTINCT FROM NEW.minecraft_server_id
+        OR OLD.minecraft_node_id IS DISTINCT FROM NEW.minecraft_node_id
+        OR OLD.created_by_id IS DISTINCT FROM NEW.created_by_id
+        OR OLD.purpose IS DISTINCT FROM NEW.purpose
+        OR OLD.request_id IS DISTINCT FROM NEW.request_id
+        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest THEN
+        RAISE EXCEPTION 'minecraft world backup identity is immutable';
+      END IF;
+
+      IF OLD.status IN ('available', 'quarantined') AND (
+        OLD.manifest_version IS DISTINCT FROM NEW.manifest_version
+        OR OLD.safety_profile IS DISTINCT FROM NEW.safety_profile
+        OR OLD.archive_format IS DISTINCT FROM NEW.archive_format
+        OR OLD.manifest_digest IS DISTINCT FROM NEW.manifest_digest
+        OR OLD.archive_sha256 IS DISTINCT FROM NEW.archive_sha256
+        OR OLD.archive_bytes IS DISTINCT FROM NEW.archive_bytes
+        OR OLD.uncompressed_bytes IS DISTINCT FROM NEW.uncompressed_bytes
+        OR OLD.entry_count IS DISTINCT FROM NEW.entry_count
+        OR OLD.manifest_summary IS DISTINCT FROM NEW.manifest_summary
+      ) THEN
+        RAISE EXCEPTION 'verified minecraft world backup manifest is immutable';
+      END IF;
+      IF OLD.minecraft_node_operation_id IS NOT NULL
+        AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id THEN
+        RAISE EXCEPTION 'minecraft world backup operation binding is immutable';
+      END IF;
+      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
+        (OLD.status = 'requested' AND NEW.status IN ('queued', 'failed'))
+        OR (OLD.status = 'queued' AND NEW.status IN ('creating', 'available', 'failed'))
+        OR (OLD.status = 'creating' AND NEW.status IN ('available', 'failed'))
+        OR (OLD.status = 'available' AND NEW.status = 'quarantined')
+        OR (OLD.status = 'failed'
+          AND NEW.status = 'available'
+          AND OLD.purpose = 'pre_restore'
+          AND EXISTS (
+            SELECT 1
+            FROM minecraft_world_restore_plans restore_plan
+            INNER JOIN minecraft_world_restore_resolutions resolution
+              ON resolution.minecraft_world_restore_plan_id = restore_plan.id
+            WHERE restore_plan.pre_restore_world_backup_id = NEW.id
+              AND resolution.status IN ('queued', 'running')
+              AND resolution.minecraft_node_operation_id IS NOT NULL
+          ))
+      ) THEN
+        RAISE EXCEPTION 'invalid minecraft world backup state transition';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_events_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'minecraft world restore events are append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_plans_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.public_id IS DISTINCT FROM NEW.public_id
+        OR OLD.minecraft_server_id IS DISTINCT FROM NEW.minecraft_server_id
+        OR OLD.minecraft_node_id IS DISTINCT FROM NEW.minecraft_node_id
+        OR OLD.minecraft_world_backup_id IS DISTINCT FROM NEW.minecraft_world_backup_id
+        OR OLD.actor_id IS DISTINCT FROM NEW.actor_id
+        OR OLD.reason IS DISTINCT FROM NEW.reason
+        OR OLD.request_id IS DISTINCT FROM NEW.request_id
+        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest
+        OR OLD.plan_digest IS DISTINCT FROM NEW.plan_digest
+        OR OLD.backup_manifest_digest IS DISTINCT FROM NEW.backup_manifest_digest
+        OR OLD.server_configuration_digest IS DISTINCT FROM NEW.server_configuration_digest
+        OR OLD.node_capability_digest IS DISTINCT FROM NEW.node_capability_digest
+        OR OLD.frozen_server_updated_at IS DISTINCT FROM NEW.frozen_server_updated_at
+        OR OLD.world_relative_path IS DISTINCT FROM NEW.world_relative_path
+        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at THEN
+        RAISE EXCEPTION 'minecraft world restore plan is immutable';
+      END IF;
+      IF (OLD.pre_restore_world_backup_id IS NOT NULL
+          AND OLD.pre_restore_world_backup_id IS DISTINCT FROM NEW.pre_restore_world_backup_id)
+        OR (OLD.minecraft_node_operation_id IS NOT NULL
+          AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id) THEN
+        RAISE EXCEPTION 'minecraft world restore execution binding is immutable';
+      END IF;
+      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
+        (OLD.status = 'planned' AND NEW.status IN ('authorized', 'expired', 'cancelled'))
+        OR (OLD.status = 'authorized' AND NEW.status IN ('queued', 'expired', 'cancelled'))
+        OR (OLD.status IN ('queued', 'running')
+          AND NEW.status IN ('running', 'completed', 'failed', 'rolled_back', 'recovery_required'))
+        OR (OLD.status = 'recovery_required'
+          AND NEW.status IN ('completed', 'rolled_back')
+          AND EXISTS (
+            SELECT 1
+            FROM minecraft_world_restore_resolutions resolution
+            WHERE resolution.minecraft_world_restore_plan_id = NEW.id
+              AND resolution.status = 'completed'
+              AND resolution.result_summary->>'recovery_resolution_proof' = 'true'
+              AND resolution.result_summary->>'plan_id' = NEW.public_id
+              AND resolution.result_summary->>'phase' = NEW.status
+          ))
+      ) THEN
+        RAISE EXCEPTION 'invalid minecraft world restore state transition';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.minecraft_world_restore_resolutions_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.public_id IS DISTINCT FROM NEW.public_id
+        OR OLD.minecraft_world_restore_plan_id IS DISTINCT FROM NEW.minecraft_world_restore_plan_id
+        OR OLD.actor_id IS DISTINCT FROM NEW.actor_id
+        OR OLD.resolution_action IS DISTINCT FROM NEW.resolution_action
+        OR OLD.reason IS DISTINCT FROM NEW.reason
+        OR OLD.request_id IS DISTINCT FROM NEW.request_id
+        OR OLD.request_digest IS DISTINCT FROM NEW.request_digest
+        OR OLD.expected_plan_lock_version IS DISTINCT FROM NEW.expected_plan_lock_version
+        OR OLD.plan_digest IS DISTINCT FROM NEW.plan_digest
+        OR OLD.server_configuration_digest IS DISTINCT FROM NEW.server_configuration_digest
+        OR OLD.node_capability_digest IS DISTINCT FROM NEW.node_capability_digest
+        OR OLD.pre_restore_manifest_digest IS DISTINCT FROM NEW.pre_restore_manifest_digest
+        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
+        OR OLD.supersedes_resolution_id IS DISTINCT FROM NEW.supersedes_resolution_id
+        OR (OLD.expired_at IS NOT NULL AND OLD.expired_at IS DISTINCT FROM NEW.expired_at)
+        OR (OLD.lifecycle_action IS NOT NULL AND OLD.lifecycle_action IS DISTINCT FROM NEW.lifecycle_action)
+        OR (OLD.lifecycle_actor_id IS NOT NULL AND OLD.lifecycle_actor_id IS DISTINCT FROM NEW.lifecycle_actor_id)
+        OR (OLD.lifecycle_reason IS NOT NULL AND OLD.lifecycle_reason IS DISTINCT FROM NEW.lifecycle_reason)
+        OR (OLD.lifecycle_request_id IS NOT NULL AND OLD.lifecycle_request_id IS DISTINCT FROM NEW.lifecycle_request_id)
+        OR (OLD.lifecycle_request_digest IS NOT NULL AND OLD.lifecycle_request_digest IS DISTINCT FROM NEW.lifecycle_request_digest)
+        OR (OLD.lifecycle_authorization_method IS NOT NULL AND OLD.lifecycle_authorization_method IS DISTINCT FROM NEW.lifecycle_authorization_method)
+        OR (OLD.lifecycle_authorized_at IS NOT NULL AND OLD.lifecycle_authorized_at IS DISTINCT FROM NEW.lifecycle_authorized_at)
+        OR (OLD.lifecycle_completed_at IS NOT NULL AND OLD.lifecycle_completed_at IS DISTINCT FROM NEW.lifecycle_completed_at) THEN
+        RAISE EXCEPTION 'minecraft world restore resolution contract is immutable';
+      END IF;
+      IF OLD.minecraft_node_operation_id IS NOT NULL
+        AND OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id THEN
+        RAISE EXCEPTION 'minecraft world restore resolution operation binding is immutable';
+      END IF;
+      IF (OLD.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over')
+          OR NEW.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over'))
+        AND (OLD.authorization_digest IS DISTINCT FROM NEW.authorization_digest
+          OR OLD.authorization_method IS DISTINCT FROM NEW.authorization_method
+          OR OLD.authorization_expires_at IS DISTINCT FROM NEW.authorization_expires_at
+          OR OLD.authorized_at IS DISTINCT FROM NEW.authorized_at
+          OR OLD.authorization_consumed_at IS DISTINCT FROM NEW.authorization_consumed_at) THEN
+        RAISE EXCEPTION 'terminal recovery resolution authorization is immutable';
+      END IF;
+      IF OLD.status IN ('completed', 'failed', 'recovery_required', 'expired', 'cancelled', 'taken_over')
+        AND (OLD.result_summary IS DISTINCT FROM NEW.result_summary
+          OR OLD.error_code IS DISTINCT FROM NEW.error_code
+          OR OLD.started_at IS DISTINCT FROM NEW.started_at
+          OR OLD.completed_at IS DISTINCT FROM NEW.completed_at
+          OR OLD.queued_at IS DISTINCT FROM NEW.queued_at
+          OR OLD.minecraft_node_operation_id IS DISTINCT FROM NEW.minecraft_node_operation_id) THEN
+        RAISE EXCEPTION 'terminal recovery resolution evidence is immutable';
+      END IF;
+      IF OLD.status IS DISTINCT FROM NEW.status AND NOT (
+        (OLD.status = 'planned' AND NEW.status IN ('authorized', 'failed'))
+        OR (OLD.status = 'authorized' AND NEW.status IN ('queued', 'failed'))
+        OR (OLD.status IN ('queued', 'running')
+          AND NEW.status IN ('running', 'completed', 'failed', 'recovery_required'))
+        OR (OLD.status IN ('planned', 'authorized')
+          AND NEW.status IN ('expired', 'cancelled', 'taken_over'))
+      ) THEN
+        RAISE EXCEPTION 'invalid minecraft world restore resolution state transition';
+      END IF;
+      RETURN NEW;
     END;
     $function$;
   MCWEB_SCHEMA_SQL
@@ -5959,6 +6050,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.prevent_website_revision_mutation()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'website content revisions are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.prevent_website_theme_revision_mutation()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'website Theme revisions are immutable';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.protect_website_content_lifecycle()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'website content must use the recoverable lifecycle';
+      END IF;
+      IF OLD.purged_at IS NOT NULL THEN
+        RAISE EXCEPTION 'purged website tombstones are immutable';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.secure_evidence_attachment_events_reject_change()
      RETURNS trigger
      LANGUAGE plpgsql
@@ -5996,6 +6126,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
       END IF;
 
       IF NOT (
+        (OLD.state = 'uploading' AND NEW.state IN ('uploading', 'pending', 'upload_failed', 'purge_pending')) OR (OLD.state = 'upload_failed' AND NEW.state IN ('upload_failed', 'uploading', 'purge_pending')) OR
         (OLD.state = 'pending' AND NEW.state IN ('pending', 'available', 'quarantined', 'purge_pending'))
         OR (OLD.state = 'available' AND NEW.state IN ('available', 'purge_pending'))
         OR (OLD.state = 'quarantined' AND NEW.state IN ('quarantined', 'purge_pending'))
@@ -6026,43 +6157,86 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER minecraft_world_restore_events_immutable BEFORE DELETE OR UPDATE ON public.minecraft_world_restore_events FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_events_immutable_fn();
+    CREATE OR REPLACE FUNCTION public.sensitive_action_rate_limit_reservations_immutable_fn()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.public_id IS DISTINCT FROM NEW.public_id
+        OR OLD.scope IS DISTINCT FROM NEW.scope
+        OR OLD.user_id IS DISTINCT FROM NEW.user_id
+        OR OLD.user_counter_key IS DISTINCT FROM NEW.user_counter_key
+        OR OLD.ip_counter_key IS DISTINCT FROM NEW.ip_counter_key
+        OR OLD.context_digest IS DISTINCT FROM NEW.context_digest
+        OR OLD."limit" IS DISTINCT FROM NEW."limit"
+        OR OLD.window_seconds IS DISTINCT FROM NEW.window_seconds
+        OR OLD.expires_at IS DISTINCT FROM NEW.expires_at
+        OR (OLD.settled_at IS NOT NULL AND OLD.settled_at IS DISTINCT FROM NEW.settled_at)
+        OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+        RAISE EXCEPTION 'sensitive action reservation contract is immutable';
+      END IF;
+      IF OLD.status <> NEW.status AND NOT (
+        OLD.status = 'pending' AND NEW.status IN ('succeeded', 'failed')
+      ) THEN
+        RAISE EXCEPTION 'invalid sensitive action reservation transition';
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER minecraft_world_backups_immutable BEFORE UPDATE ON public.minecraft_world_backups FOR EACH ROW EXECUTE FUNCTION minecraft_world_backups_immutable_fn();
-  MCWEB_SCHEMA_SQL
+    CREATE OR REPLACE FUNCTION public.store_credit_transactions_enforce_append_only()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      current_balance integer;
+    BEGIN
+      IF TG_OP = 'INSERT' THEN
+        IF NEW.balance_before_cents IS NULL AND NEW.balance_after_cents IS NULL THEN
+          SELECT store_credit_cents
+          INTO current_balance
+          FROM users
+          WHERE id = NEW.user_id
+          FOR KEY SHARE;
 
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER minecraft_world_restore_plans_immutable BEFORE UPDATE ON public.minecraft_world_restore_plans FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_plans_immutable_fn();
-  MCWEB_SCHEMA_SQL
+          IF NOT FOUND THEN
+            RAISE EXCEPTION USING
+              ERRCODE = '23503',
+              MESSAGE = 'store-credit ledger user does not exist';
+          END IF;
 
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER minecraft_world_restore_resolutions_immutable BEFORE UPDATE ON public.minecraft_world_restore_resolutions FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_resolutions_immutable_fn();
-  MCWEB_SCHEMA_SQL
+          NEW.balance_after_cents := current_balance;
+          NEW.balance_before_cents := current_balance - NEW.amount_cents;
+        ELSIF NEW.balance_before_cents IS NULL OR NEW.balance_after_cents IS NULL THEN
+          RAISE EXCEPTION USING
+            ERRCODE = '23514',
+            MESSAGE = 'store-credit balance snapshots must be complete';
+        END IF;
 
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER sensitive_action_rate_limit_reservations_immutable BEFORE UPDATE ON public.sensitive_action_rate_limit_reservations FOR EACH ROW EXECUTE FUNCTION sensitive_action_rate_limit_reservations_immutable_fn();
+        NEW.ledger_version := 2;
+        IF NEW.amount_cents = 0 OR
+            NEW.balance_before_cents < 0 OR
+            NEW.balance_after_cents < 0 OR
+            NEW.balance_before_cents + NEW.amount_cents <> NEW.balance_after_cents THEN
+          RAISE EXCEPTION USING
+            ERRCODE = '23514',
+            MESSAGE = 'new store-credit ledger entries must use the current contract';
+        END IF;
+
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION USING
+        ERRCODE = '23514',
+        MESSAGE = 'store-credit ledger entries are append-only';
+    END;
+    $function$;
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER identity_auth_group_memberships_bump_delete AFTER DELETE ON public.community_group_memberships REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_group_memberships();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER website_article_revisions_immutable BEFORE DELETE OR UPDATE ON public.website_article_revisions FOR EACH ROW EXECUTE FUNCTION prevent_website_revision_mutation();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER website_articles_lifecycle_guard BEFORE DELETE OR UPDATE ON public.website_articles FOR EACH ROW EXECUTE FUNCTION protect_website_content_lifecycle();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER website_page_revisions_immutable BEFORE DELETE OR UPDATE ON public.website_page_revisions FOR EACH ROW EXECUTE FUNCTION prevent_website_revision_mutation();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER website_pages_lifecycle_guard BEFORE DELETE OR UPDATE ON public.website_pages FOR EACH ROW EXECUTE FUNCTION protect_website_content_lifecycle();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
@@ -6106,35 +6280,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_appeals_guard_change BEFORE UPDATE ON public.forum_report_appeals FOR EACH ROW EXECUTE FUNCTION forum_report_appeals_guard_change();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_appeals_reject_delete BEFORE DELETE ON public.forum_report_appeals FOR EACH ROW EXECUTE FUNCTION forum_report_appeals_reject_delete();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_reports_affected_user_guard BEFORE UPDATE ON public.forum_reports FOR EACH ROW EXECUTE FUNCTION forum_reports_guard_affected_user();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_appeal_events_immutable BEFORE DELETE OR UPDATE ON public.forum_report_appeal_events FOR EACH ROW EXECUTE FUNCTION forum_report_appeal_events_reject_change();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_attachments_immutable BEFORE DELETE OR UPDATE ON public.forum_report_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_case_attachments_guard_change();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_attachments_insert_contract BEFORE INSERT ON public.forum_report_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_attachments_validate_insert();
-  MCWEB_SCHEMA_SQL
-
-  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER forum_report_appeal_attachments_immutable BEFORE DELETE OR UPDATE ON public.forum_report_appeal_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_case_attachments_guard_change();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER forum_report_appeal_attachments_insert_contract BEFORE INSERT ON public.forum_report_appeal_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_appeal_attachments_validate_insert();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_appeal_events_immutable BEFORE DELETE OR UPDATE ON public.forum_report_appeal_events FOR EACH ROW EXECUTE FUNCTION forum_report_appeal_events_reject_change();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
@@ -6146,11 +6300,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_subject_deliveries_immutable BEFORE DELETE OR UPDATE ON public.forum_report_subject_action_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_subject_deliveries_guard_change();
+    CREATE TRIGGER forum_report_appeals_guard_change BEFORE UPDATE ON public.forum_report_appeals FOR EACH ROW EXECUTE FUNCTION forum_report_appeals_guard_change();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_subject_deliveries_insert_contract BEFORE INSERT ON public.forum_report_subject_action_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_subject_deliveries_validate_insert();
+    CREATE TRIGGER forum_report_appeals_reject_delete BEFORE DELETE ON public.forum_report_appeals FOR EACH ROW EXECUTE FUNCTION forum_report_appeals_reject_delete();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_attachments_immutable BEFORE DELETE OR UPDATE ON public.forum_report_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_case_attachments_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_attachments_insert_contract BEFORE INSERT ON public.forum_report_attachments FOR EACH ROW EXECUTE FUNCTION forum_report_attachments_validate_insert();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_decision_batches_immutable BEFORE DELETE OR UPDATE ON public.forum_report_decision_batches FOR EACH ROW EXECUTE FUNCTION forum_report_decision_batches_reject_change();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
@@ -6162,11 +6328,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_decision_batches_immutable BEFORE DELETE OR UPDATE ON public.forum_report_decision_batches FOR EACH ROW EXECUTE FUNCTION forum_report_decision_batches_reject_change();
+    CREATE TRIGGER forum_report_outcome_deliveries_insert_contract BEFORE INSERT ON public.forum_report_outcome_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_outcome_deliveries_validate_insert();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_report_outcome_deliveries_insert_contract BEFORE INSERT ON public.forum_report_outcome_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_outcome_deliveries_validate_insert();
+    CREATE TRIGGER forum_report_subject_deliveries_immutable BEFORE DELETE OR UPDATE ON public.forum_report_subject_action_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_subject_deliveries_guard_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_subject_deliveries_insert_contract BEFORE INSERT ON public.forum_report_subject_action_deliveries FOR EACH ROW EXECUTE FUNCTION forum_report_subject_deliveries_validate_insert();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
@@ -6178,7 +6348,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_reports_affected_user_guard BEFORE UPDATE ON public.forum_reports FOR EACH ROW EXECUTE FUNCTION forum_reports_guard_affected_user();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER forum_reports_state_transition_guard BEFORE UPDATE OF status ON public.forum_reports FOR EACH ROW EXECUTE FUNCTION forum_reports_guard_state_transition();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER minecraft_world_backups_immutable BEFORE UPDATE ON public.minecraft_world_backups FOR EACH ROW EXECUTE FUNCTION minecraft_world_backups_immutable_fn();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER minecraft_world_restore_events_immutable BEFORE DELETE OR UPDATE ON public.minecraft_world_restore_events FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_events_immutable_fn();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER minecraft_world_restore_plans_immutable BEFORE UPDATE ON public.minecraft_world_restore_plans FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_plans_immutable_fn();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER minecraft_world_restore_resolutions_immutable BEFORE UPDATE ON public.minecraft_world_restore_resolutions FOR EACH ROW EXECUTE FUNCTION minecraft_world_restore_resolutions_immutable_fn();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
@@ -6230,6 +6420,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER sensitive_action_rate_limit_reservations_immutable BEFORE UPDATE ON public.sensitive_action_rate_limit_reservations FOR EACH ROW EXECUTE FUNCTION sensitive_action_rate_limit_reservations_immutable_fn();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER store_credit_transactions_append_only BEFORE INSERT OR DELETE OR UPDATE ON public.store_credit_transactions FOR EACH ROW EXECUTE FUNCTION store_credit_transactions_enforce_append_only();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER identity_auth_user_roles_bump_delete AFTER DELETE ON public.user_roles REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_user_roles();
   MCWEB_SCHEMA_SQL
 
@@ -6255,6 +6453,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_233000) do
 
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER identity_auth_users_lock_update BEFORE UPDATE OF status, account_type ON public.users FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_article_revisions_immutable BEFORE DELETE OR UPDATE ON public.website_article_revisions FOR EACH ROW EXECUTE FUNCTION prevent_website_revision_mutation();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_articles_lifecycle_guard BEFORE DELETE OR UPDATE ON public.website_articles FOR EACH ROW EXECUTE FUNCTION protect_website_content_lifecycle();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_page_revisions_immutable BEFORE DELETE OR UPDATE ON public.website_page_revisions FOR EACH ROW EXECUTE FUNCTION prevent_website_revision_mutation();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_pages_lifecycle_guard BEFORE DELETE OR UPDATE ON public.website_pages FOR EACH ROW EXECUTE FUNCTION protect_website_content_lifecycle();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER website_theme_revisions_immutable BEFORE DELETE OR UPDATE ON public.website_theme_revisions FOR EACH ROW EXECUTE FUNCTION prevent_website_theme_revision_mutation();
   MCWEB_SCHEMA_SQL
 
 

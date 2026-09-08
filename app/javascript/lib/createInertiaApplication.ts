@@ -19,6 +19,7 @@ import {
   frontendApplicationRequestHeaders,
   requireFrontendApplication,
 } from '@/lib/frontendApplications'
+import { installAuthenticatedHistoryBoundary } from '@/lib/authenticatedHistory'
 import {
   loadFrontendApplicationAdapters,
   type FrontendPageLoader,
@@ -26,6 +27,7 @@ import {
 import { applyPhraseOverrides, createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'
 import { installIntentPrefetch } from '@/lib/intentPrefetch'
 import { localeRequestHeaders } from '@/lib/localePreference'
+import { routes } from '@/lib/routes'
 import {
   claimSubmittedForm,
   completeSubmittedForm,
@@ -69,6 +71,11 @@ function normalizeFrontendPageComponent(
 function syncCsrfFromPage(page?: InertiaPageLike) {
   const token = page?.props?.csrf_token
   syncCsrfMetaTag(typeof token === 'string' && token.length > 0 ? token : undefined)
+}
+
+function pageHasAuthenticatedUser(page?: InertiaPageLike): boolean {
+  const auth = page?.props?.auth
+  return Boolean(auth && typeof auth === 'object' && (auth as { user?: unknown }).user)
 }
 
 function applicationErrorCopy() {
@@ -183,6 +190,9 @@ export async function createMcWebInertiaApplication({
     const domPage = getInitialPageFromDOM<InertiaPageLike>('app')
     if (!domPage?.component) throw new Error(`Initial ${applicationId} page has no component`)
     assertFrontendComponent(applicationId, domPage.component)
+    if (pageHasAuthenticatedUser(domPage)) {
+      cleanupFunctions.push(installAuthenticatedHistoryBoundary(routes.signedOut))
+    }
 
     const initialLocale = normalizeAppLocale(
       domPage.props?.locale ?? document.documentElement.lang,

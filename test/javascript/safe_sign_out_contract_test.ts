@@ -7,6 +7,14 @@ const helper = readFileSync(
   resolve(process.cwd(), 'app/javascript/lib/safeSignOut.ts'),
   'utf8',
 )
+const authenticatedHistory = readFileSync(
+  resolve(process.cwd(), 'app/javascript/lib/authenticatedHistory.ts'),
+  'utf8',
+)
+const applicationFactory = readFileSync(
+  resolve(process.cwd(), 'app/javascript/lib/createInertiaApplication.ts'),
+  'utf8',
+)
 const portalLayout = readFileSync(
   resolve(
     process.cwd(),
@@ -25,9 +33,22 @@ test('sign out uses the registered shared action and always reaches a safe publi
   assert.match(helper, /error instanceof SharedActionError && error\.recoveryStarted/)
   assert.match(helper, /navigateFrontendDocument\(routes\.signedOut\)/)
   assert.match(helper, /window\.location\.assign\(routes\.signedOut\)/)
+  assert.match(helper, /invalidateAuthenticatedHistory\(\)/)
   assert.match(helper, /hooks\.onStart\?\.\(\)/)
   assert.match(helper, /hooks\.onFinish\?\.\(\)/)
   assert.match(helper, /finally \{\s*finish\(\)/)
+})
+
+test('sign out invalidates encrypted history and restored authenticated documents', () => {
+  assert.match(authenticatedHistory, /\['historyKey', 'historyIv'\]/)
+  assert.match(authenticatedHistory, /browserStorage\('sessionStorage'\)/)
+  assert.match(authenticatedHistory, /browserStorage\('localStorage'\)/)
+  assert.match(authenticatedHistory, /window\.history\.replaceState/)
+  assert.match(authenticatedHistory, /window\.addEventListener\('storage'/)
+  assert.match(authenticatedHistory, /window\.addEventListener\('pageshow'/)
+  assert.match(authenticatedHistory, /window\.location\.replace\(destination\.href\)/)
+  assert.match(applicationFactory, /pageHasAuthenticatedUser\(domPage\)/)
+  assert.match(applicationFactory, /installAuthenticatedHistoryBoundary\(routes\.signedOut\)/)
 })
 
 test('portal and staff callers use the shared loading-safe sign-out contract', () => {

@@ -2,6 +2,7 @@ import { routes } from '@/lib/routes'
 import { documentFrontendApplicationId } from '@/lib/frontendApplications'
 import { performSharedAction, SharedActionError } from '@/lib/sharedAction'
 import { navigateFrontendDocument } from '@/lib/applicationNavigation'
+import { invalidateAuthenticatedHistory } from '@/lib/authenticatedHistory'
 import { confirmUnsavedNavigation } from '@/lib/unsavedForms'
 
 type SafeSignOutHooks = {
@@ -24,6 +25,7 @@ export async function safeSignOut(hooks: SafeSignOutHooks = {}) {
     if (fallbackStarted) return
 
     fallbackStarted = true
+    invalidateAuthenticatedHistory()
     finish()
     try {
       navigateFrontendDocument(routes.signedOut)

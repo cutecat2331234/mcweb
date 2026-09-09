@@ -376,7 +376,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
                       {{ auth.user.username.slice(0, 2).toUpperCase() }}
                     </Avatar>
                   </slot>
-                  <TypographyText>{{ auth.user.username }}</TypographyText>
+                  <TypographyText class="mc-shell-user-name">{{ auth.user.username }}</TypographyText>
                 </Space>
               </Button>
               <template #content>

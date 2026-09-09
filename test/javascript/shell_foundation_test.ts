@@ -87,6 +87,9 @@ test('application shells pass numeric sider widths while content consumes shared
   assert.match(portalLayout, /width: .*?'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
   assert.match(portalLayout, /name="user-avatar"/)
   assert.match(portalLayout, /name="flash-messages"/)
+  assert.match(portalLayout, /<TypographyText class="mc-shell-user-name">\{\{ auth\.user\.username \}\}<\/TypographyText>/)
+  assert.match(foundation, /\.mc-shell-user-name\s*\{[\s\S]*?max-width:\s*7rem;[\s\S]*?text-overflow:\s*ellipsis;[\s\S]*?white-space:\s*nowrap;/)
+  assert.match(foundation, /@media \(max-width: 767px\)[\s\S]*?\.mc-shell-user-name\s*\{[\s\S]*?display:\s*none;/)
 
   assert.match(staffLayout, /<ApplicationPortalShell>/)
   assert.doesNotMatch(adminLayout, /:width="260"/)

@@ -107,6 +107,14 @@ html body[data-mcweb-application] {
   padding-inline: var(--mc-shell-header-padding-inline);
 }
 
+.mc-shell-user-name {
+  display: inline-block;
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mc-page-content {
   box-sizing: border-box;
   padding: var(--mc-page-gutter);
@@ -247,6 +255,10 @@ html body[data-mcweb-application] {
 @media (max-width: 767px) {
   :root {
     --mc-page-gutter: 16px;
+  }
+
+  .mc-shell-user-name {
+    display: none;
   }
 }
 

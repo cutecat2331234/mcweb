@@ -101,7 +101,9 @@ class Round89OrderWebhookEventsTest < ActiveSupport::TestCase
     )
 
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      Commerce::NotifyOrderStatusChange.call(order: order, from_status: "processing")
+      run_after_all_transactions_commit do
+        Commerce::NotifyOrderStatusChange.call(order: order, from_status: "processing")
+      end
     end
 
     job = enqueued_jobs.find { |j| j["job_class"] == "Commerce::DispatchOrderWebhookJob" }

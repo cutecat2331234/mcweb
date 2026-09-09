@@ -25,6 +25,7 @@ require "active_job/test_helper"
 require "ostruct"
 require "uri"
 require_relative "support/stripe_test_helpers"
+require_relative "support/url_safety_test_resolver"
 
 unless ENV["LOCKBOX_MASTER_KEY"].to_s.match?(/\A\h{64}\z/i)
   ENV["LOCKBOX_MASTER_KEY"] = "a" * 64
@@ -177,6 +178,19 @@ module ActiveSupport
 
     def disable_forum_post_approval!
       SiteSetting.set("forum.require_post_approval_below_tl", "0")
+    end
+
+    # Transactional tests never commit their outer harness transaction. Capture
+    # callbacks explicitly when a test needs to observe a production
+    # after-commit side effect, including callbacks registered by callbacks.
+    def run_after_all_transactions_commit
+      callbacks = []
+      result = nil
+      ActiveRecord.stub(:after_all_transactions_commit, ->(&callback) { callbacks << callback }) do
+        result = yield
+        callbacks.shift.call until callbacks.empty?
+      end
+      result
     end
 
     # Edit tests assert revisions/notifications fire; the ninja-edit grace window is

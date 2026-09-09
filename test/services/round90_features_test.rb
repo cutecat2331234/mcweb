@@ -132,8 +132,10 @@ class Round90OrderCreatedWebhookTest < ActiveSupport::TestCase
 
   test "create order dispatches order.created webhook" do
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      result = Commerce::CreateOrder.call(cart: @cart, user: @user)
-      assert result.success?, result.error || result.errors.inspect
+      run_after_all_transactions_commit do
+        result = Commerce::CreateOrder.call(cart: @cart, user: @user)
+        assert result.success?, result.error || result.errors.inspect
+      end
     end
 
     job = enqueued_jobs.find { |j| j["job_class"] == "Commerce::DispatchOrderWebhookJob" }
@@ -160,7 +162,7 @@ class Round90OrderPaidWebhookTest < ActiveSupport::TestCase
 
   test "mark_paid dispatches order.paid webhook" do
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      @order.mark_paid!
+      run_after_all_transactions_commit { @order.mark_paid! }
     end
 
     job = enqueued_jobs.find { |j| j["job_class"] == "Commerce::DispatchOrderWebhookJob" }
@@ -189,7 +191,9 @@ class Round90ExpireOrderReasonTest < ActiveSupport::TestCase
 
   test "expire job cancels with expired reason" do
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      Commerce::ExpirePendingOrdersJob.perform_now
+      run_after_all_transactions_commit do
+        Commerce::ExpirePendingOrdersJob.perform_now
+      end
     end
 
     @order.reload
@@ -304,7 +308,9 @@ class Round90CancelOrderSingleWebhookTest < ActiveSupport::TestCase
 
   test "cancel order sends single order.cancelled webhook" do
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      Commerce::CancelOrder.call(order: @order, actor: @user, reason: "test")
+      run_after_all_transactions_commit do
+        Commerce::CancelOrder.call(order: @order, actor: @user, reason: "test")
+      end
     end
 
     job = enqueued_jobs.find { |j| j["job_class"] == "Commerce::DispatchOrderWebhookJob" }

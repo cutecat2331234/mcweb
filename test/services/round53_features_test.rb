@@ -238,7 +238,9 @@ class Commerce::WebhookItemsPayloadTest < ActiveSupport::TestCase
 
   test "webhook payload includes line items" do
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      Commerce::DispatchOrderWebhook.call(order: @order, event_type: "order.paid")
+      run_after_all_transactions_commit do
+        Commerce::DispatchOrderWebhook.call(order: @order, event_type: "order.paid")
+      end
     end
     job = enqueued_jobs.find { |j| j["job_class"] == "Commerce::DispatchOrderWebhookJob" }
     payload = job["arguments"][1]

@@ -196,7 +196,9 @@ class Commerce::DispatchOrderWebhookTest < ActiveSupport::TestCase
   test "queues webhook when url configured" do
     SiteSetting.set("store.order_webhook_url", "https://example.com/hooks/orders")
     assert_enqueued_with(job: Commerce::DispatchOrderWebhookJob) do
-      Commerce::DispatchOrderWebhook.call(order: @order, event_type: "order.status_changed", from_status: "pending", to_status: "paid")
+      run_after_all_transactions_commit do
+        Commerce::DispatchOrderWebhook.call(order: @order, event_type: "order.status_changed", from_status: "pending", to_status: "paid")
+      end
     end
   end
 

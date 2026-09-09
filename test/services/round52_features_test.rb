@@ -138,7 +138,9 @@ class Commerce::WebhookHmacTest < ActiveSupport::TestCase
 
   test "passes secret to webhook job" do
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      Commerce::DispatchOrderWebhook.call(order: @order, event_type: "order.test")
+      run_after_all_transactions_commit do
+        Commerce::DispatchOrderWebhook.call(order: @order, event_type: "order.test")
+      end
     end
     job = enqueued_jobs.find { |j| j["job_class"] == "Commerce::DispatchOrderWebhookJob" }
     assert_equal "test-secret", job["arguments"][2]
@@ -190,13 +192,15 @@ class Commerce::ShippedWebhookTest < ActiveSupport::TestCase
 
   test "mark shipped dispatches order.shipped webhook" do
     assert_enqueued_with(job: Commerce::DispatchOrderWebhookJob) do
-      Commerce::UpdateOrderShipping.call(
-        order: @order,
-        actor: @admin,
-        tracking_number: "TN123",
-        shipping_carrier: "SF",
-        mark_shipped: true
-      )
+      run_after_all_transactions_commit do
+        Commerce::UpdateOrderShipping.call(
+          order: @order,
+          actor: @admin,
+          tracking_number: "TN123",
+          shipping_carrier: "SF",
+          mark_shipped: true
+        )
+      end
     end
   end
 end

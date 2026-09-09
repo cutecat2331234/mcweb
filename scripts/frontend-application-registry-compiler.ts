@@ -346,6 +346,7 @@ function buildBudget(value: unknown, source: string): FrontendApplicationBudget 
       'representative_paths',
       'representative_components',
       'representative_entries',
+      'conditional_initial_entries',
       'max_initial_javascript_bytes',
       'max_initial_stylesheet_bytes',
     ],
@@ -386,6 +387,24 @@ function buildBudget(value: unknown, source: string): FrontendApplicationBudget 
   if (hasEntries && representativeEntries.length === 0) {
     manifestError(`${source}#budget`, 'representative_entries must not be empty')
   }
+  const hasConditionalInitialEntries = budget.conditional_initial_entries !== undefined
+  const conditionalInitialEntries = hasConditionalInitialEntries
+    ? arrayValue(
+      budget.conditional_initial_entries,
+      `${source}#budget`,
+      'conditional_initial_entries',
+    ).map((entry) => repositoryPathValue(
+      entry,
+      `${source}#budget`,
+      'conditional_initial_entries',
+    ))
+    : []
+  if (new Set(conditionalInitialEntries).size !== conditionalInitialEntries.length) {
+    manifestError(`${source}#budget`, 'conditional_initial_entries contains duplicates')
+  }
+  if (hasConditionalInitialEntries && conditionalInitialEntries.length === 0) {
+    manifestError(`${source}#budget`, 'conditional_initial_entries must not be empty')
+  }
   const representativeResources = hasComponents
     ? representativeComponents
     : representativeEntries
@@ -397,6 +416,7 @@ function buildBudget(value: unknown, source: string): FrontendApplicationBudget 
     representativePaths,
     representativeComponents,
     representativeEntries,
+    conditionalInitialEntries,
     maxInitialJavascriptBytes: positiveInteger(
       budget.max_initial_javascript_bytes,
       `${source}#budget`,
@@ -476,6 +496,10 @@ function mergeApplicationBudget(
       ...target.representativeEntries,
       ...contribution.representativeEntries,
     ],
+    conditionalInitialEntries: [...new Set([
+      ...target.conditionalInitialEntries,
+      ...contribution.conditionalInitialEntries,
+    ])],
     maxInitialJavascriptBytes: Math.max(
       target.maxInitialJavascriptBytes,
       contribution.maxInitialJavascriptBytes,
@@ -1472,6 +1496,7 @@ export function compileFrontendApplicationRegistry({
         representativePaths: Object.freeze([...budget.representativePaths]),
         representativeComponents: Object.freeze([...budget.representativeComponents]),
         representativeEntries: Object.freeze([...budget.representativeEntries]),
+        conditionalInitialEntries: Object.freeze([...budget.conditionalInitialEntries]),
       })
     )
     return Object.freeze({

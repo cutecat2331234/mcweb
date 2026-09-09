@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { Alert, Space } from '@mcweb/ui'
 
 const page = usePage()
 const dismissed = ref<Set<number>>(new Set())
 const autoHidden = ref(false)
+let autoHideTimer: number | null = null
 
 const flash = computed(() => page.props.flash as { notice?: string; alert?: string } | undefined)
 
@@ -27,14 +28,28 @@ function dismiss(index: number) {
   dismissed.value = new Set([ ...dismissed.value, index ])
 }
 
-watch(messages, (current) => {
-  dismissed.value = new Set()
-  autoHidden.value = false
-  if (!current.length) return
-  window.setTimeout(() => {
-    autoHidden.value = true
-  }, 6000)
-})
+function clearAutoHideTimer() {
+  if (autoHideTimer === null) return
+  window.clearTimeout(autoHideTimer)
+  autoHideTimer = null
+}
+
+watch(
+  messages,
+  (current) => {
+    clearAutoHideTimer()
+    dismissed.value = new Set()
+    autoHidden.value = false
+    if (!current.length) return
+    autoHideTimer = window.setTimeout(() => {
+      autoHideTimer = null
+      autoHidden.value = true
+    }, 6000)
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(clearAutoHideTimer)
 </script>
 
 <template>

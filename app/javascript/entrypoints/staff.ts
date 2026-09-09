@@ -26,4 +26,5 @@ void createMcWebInertiaApplication({
   shellAdapterId: 'staff',
   uiAdapterId: 'mcweb_ui',
   errorBoundaryId: 'staff',
+  statusSurfaceKind: 'portal',
 })

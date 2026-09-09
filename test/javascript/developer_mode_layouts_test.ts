@@ -18,11 +18,16 @@ const layoutPaths = [
 test('all CE shells expose a persistent developer mode warning', () => {
   for (const path of layoutPaths) {
     const layout = source(path)
+    const usesSharedWarning = path.endsWith('ApplicationPortalShell.vue')
+      || path.endsWith('ArcoAdminLayout.vue')
+    const warningSurface = usesSharedWarning
+      ? `${layout}\n${source('app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue')}`
+      : layout
 
     assert.match(layout, /page\.props\.developer_mode/)
-    assert.match(layout, /v-if="developerMode\.enabled"/)
-    assert.match(layout, /data-testid="developer-mode-banner"/)
-    assert.match(layout, /role="alert"/)
+    assert.match(layout, /v-if="developerMode\.enabled(?: && developerModeBanner)?"/)
+    assert.match(warningSurface, /data-testid="developer-mode-banner"/)
+    assert.match(warningSurface, /role="alert"/)
     assert.match(layout, /t\('common\.developerMode'\)/)
     assert.match(layout, /t\('common\.developerModeWarning'\)/)
     assert.match(layout, /developerMode(?:\.value)?\.production_environment/)
@@ -32,14 +37,28 @@ test('all CE shells expose a persistent developer mode warning', () => {
 
 test('each CE shell keeps its existing visual component system', () => {
   const portal = source(layoutPaths[0])
+  const portalBanner = source(
+    'app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue',
+  )
+  const statusSurfaces = source('app/javascript/lib/applicationStatusSurfaces.ts')
   const admin = source(layoutPaths[1])
   const website = source(layoutPaths[2])
   const websiteCss = source('app/javascript/styles/website.css')
 
-  assert.match(portal, /<Alert/)
-  assert.match(portal, /from '@mcweb\/ui'/)
-  assert.match(admin, /<a-alert/)
+  assert.match(
+    portal,
+    /usePortalApplicationStatusSurfaces/,
+  )
+  assert.match(
+    statusSurfaces,
+    /import\('@\/components\/application-shell\/ApplicationDeveloperModeBanner\.vue'\)/,
+  )
+  assert.doesNotMatch(portal, /import\s+\{[^}]*\bAlert\b[^}]*\}\s+from '@mcweb\/ui'/s)
+  assert.match(portalBanner, /<Alert/)
+  assert.match(portalBanner, /from '@mcweb\/ui'/)
+  assert.match(admin, /:is="developerModeBanner"/)
   assert.match(admin, /class="arco-admin-developer-alert"/)
+  assert.doesNotMatch(admin, /<a-alert/)
   assert.match(website, /class="website-developer-mode"/)
   assert.match(websiteCss, /\.website-developer-mode\s*\{/)
 })

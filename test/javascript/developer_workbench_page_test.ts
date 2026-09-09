@@ -71,6 +71,9 @@ test('Developer Mode global tools keep details in focused modal surfaces', () =>
   const portalLayout = projectSource(
     'app/javascript/components/application-shell/ApplicationPortalShell.vue',
   )
+  const portalDeveloperBanner = projectSource(
+    'app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue',
+  )
   const websiteLayout = projectSource(
     'app/javascript/layouts/WebsiteLayout.vue',
   )
@@ -114,6 +117,13 @@ test('Developer Mode global tools keep details in focused modal surfaces', () =>
   for (const source of [adminLayout, portalLayout, websiteLayout]) {
     assert.match(source, /__MCWEB_DEVELOPER_BUILD__/)
     assert.match(source, /:is="DeveloperModeTools"/)
+  }
+
+  for (const source of [
+    `${adminLayout}\n${portalDeveloperBanner}`,
+    `${portalLayout}\n${portalDeveloperBanner}`,
+    websiteLayout,
+  ]) {
     assert.equal(
       source.match(/data-testid="developer-mode-banner"/g)?.length,
       1,

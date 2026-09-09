@@ -39,7 +39,13 @@ test('public authentication layout uses a centered bounded surface', () => {
   assert.match(identityDocumentLayout, /<LayoutContent/)
   assert.match(identityDocumentLayout, /<Card/)
   assert.match(identityDocumentLayout, /padding: '24px'/)
-  assert.match(identityDocumentLayout, /<FlashMessages/)
+  assert.match(identityDocumentLayout, /:is="flashMessages"/)
+  assert.match(identityDocumentLayout, /v-if="hasFlashMessages && flashMessages"/)
+  assert.doesNotMatch(identityDocumentLayout, /import\s+FlashMessages\s+from/)
+  assert.match(
+    identityDocumentLayout,
+    /usePortalApplicationStatusSurfaces/,
+  )
   assert.match(identityDocumentLayout, /<LanguageSwitcher/)
   assert.match(identityDocumentLayout, /toggleTheme/)
   assert.match(identityDocumentLayout, /@arco-design\/web-vue\/es\/icon/)

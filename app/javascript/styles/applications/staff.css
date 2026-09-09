@@ -12,7 +12,10 @@
 @source "../../components/application-shell/ApplicationPortalShell.vue";
 @source "../../components/AppProvider.vue";
 @source "../../components/ApplicationErrorBoundary.vue";
-@source "../../components/ui";
+@source "../../components/ui/Button.vue";
+@source "../../components/ui/ConfirmDialog.vue";
+@source "../../components/ui/Input.vue";
+@source "../../components/ui/PromptDialog.vue";
 @source "../../components/admin/ModerationActionModal.vue";
 @source "../../components/community/ReportAppealReviewIndex.vue";
 @source "../../components/community/ReportAppealReviewShow.vue";

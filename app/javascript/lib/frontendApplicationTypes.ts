@@ -34,6 +34,7 @@ export type FrontendApplicationBudget = Readonly<{
   representativePaths: readonly string[]
   representativeComponents: readonly string[]
   representativeEntries: readonly string[]
+  conditionalInitialEntries: readonly string[]
   maxInitialJavascriptBytes: number
   maxInitialStylesheetBytes: number | null
 }>

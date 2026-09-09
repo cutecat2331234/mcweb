@@ -21,11 +21,10 @@ import {
   IconSun,
   IconUserGroup,
 } from '@arco-design/web-vue/es/icon'
-import AdminFlashMessages from '@/components/admin/AdminFlashMessages.vue'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
-import PluginUiSlots from '@/components/plugins/PluginUiSlots.vue'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import { adminRoutes } from '@/lib/adminRoutes'
+import { useAdminApplicationStatusSurfaces } from '@/lib/applicationStatusSurfaces'
 import { useArcoLocale } from '@/lib/i18n'
 import { useTheme } from '@/lib/useTheme'
 import {
@@ -55,6 +54,14 @@ const { t } = useI18n()
 const DeveloperModeTools = __MCWEB_DEVELOPER_BUILD__
   ? defineAsyncComponent(() => import('@/components/admin/DeveloperModeTools.vue'))
   : null
+const ApplicationMobileDrawer = defineAsyncComponent(
+  () => import('@/components/application-shell/ApplicationMobileDrawer.vue'),
+)
+const {
+  developerModeBanner,
+  flashMessages,
+  pluginUiSlots,
+} = useAdminApplicationStatusSurfaces()
 const arcoLocale = useArcoLocale()
 const applicationShell = useApplicationShell()
 const auth = computed(
@@ -87,6 +94,17 @@ const developerModeMessage = computed(() =>
       : null,
   ].filter(Boolean).join(' '),
 )
+const flash = computed(() => page.props.flash as {
+  notice?: string
+  alert?: string
+} | undefined)
+const hasFlashMessages = computed(() => Boolean(flash.value?.notice || flash.value?.alert))
+const hasPluginUiSlots = computed(() => {
+  const contributions = page.props.plugin_contributions as {
+    ui_slots?: unknown[]
+  } | undefined
+  return Array.isArray(contributions?.ui_slots) && contributions.ui_slots.length > 0
+})
 
 const COLLAPSED_STORAGE_KEY = 'mc-admin-arco-nav-collapsed'
 const collapsed = ref(readStoredCollapsedState())
@@ -883,18 +901,13 @@ watch(isDark, syncArcoTheme, { immediate: true })
         </div>
       </a-layout-header>
 
-      <a-alert
-        v-if="developerMode.enabled"
+      <component
+        :is="developerModeBanner"
+        v-if="developerMode.enabled && developerModeBanner"
         class="arco-admin-developer-alert"
-        type="warning"
         :title="t('common.developerMode')"
-        data-testid="developer-mode-banner"
-        role="alert"
-        show-icon
-        banner
-      >
-        {{ developerModeMessage }}
-      </a-alert>
+        :message="developerModeMessage"
+      />
 
       <a-layout-content
         id="admin-content"
@@ -903,22 +916,26 @@ watch(isDark, syncArcoTheme, { immediate: true })
         tabindex="-1"
       >
         <div v-accessible-form-control-names class="arco-admin-main__inner mc-page-container">
-          <AdminFlashMessages />
-          <PluginUiSlots />
+          <component
+            :is="flashMessages"
+            v-if="hasFlashMessages && flashMessages"
+          />
+          <component
+            :is="pluginUiSlots"
+            v-if="hasPluginUiSlots && pluginUiSlots"
+          />
           <slot />
         </div>
       </a-layout-content>
     </a-layout>
   </a-layout>
 
-  <a-drawer
+  <ApplicationMobileDrawer
+    v-if="mobileNavOpen"
     v-model:visible="mobileNavOpen"
-    placement="left"
     :width="'min(var(--mc-shell-drawer-width, 280px), 100vw)'"
-    :footer="false"
-    :header="false"
     :aria-label="t('common.openMenu')"
-    unmount-on-close
+    @ready="revealActiveMenuItem(drawerMenuScroll)"
   >
     <div class="arco-admin-drawer">
       <div class="arco-admin-brand arco-admin-brand--drawer">
@@ -970,7 +987,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
         </a>
       </div>
     </div>
-  </a-drawer>
+  </ApplicationMobileDrawer>
 
   <component
     :is="DeveloperModeTools"

@@ -7,6 +7,13 @@ const source = readFileSync(
   resolve(process.cwd(), 'app/javascript/layouts/ArcoAdminLayout.vue'),
   'utf8',
 )
+const mobileDrawer = readFileSync(
+  resolve(
+    process.cwd(),
+    'app/javascript/components/application-shell/ApplicationMobileDrawer.vue',
+  ),
+  'utf8',
+)
 const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
 const foundation = readFileSync(
   resolve(process.cwd(), 'app/javascript/styles/shell-foundation.css'),
@@ -46,10 +53,13 @@ test('admin shell switches to its Drawer before the sidebar can squeeze medium v
 
   assert.doesNotMatch(source, /hidden md:block/)
   assert.match(source, /class="arco-admin-mobile-menu-trigger"/)
+  assert.match(source, /<ApplicationMobileDrawer[\s\S]*?v-if="mobileNavOpen"/)
   assert.match(source, /v-model:visible="mobileNavOpen"/)
   assert.match(source, /class="arco-admin-drawer"/)
   assert.match(source, /class="arco-admin-drawer__menu"/)
   assert.match(source, /min\(var\(--mc-shell-drawer-width, 280px\), 100vw\)/)
+  assert.match(mobileDrawer, /role="dialog"/)
+  assert.match(mobileDrawer, /aria-modal="true"/)
 })
 
 test('admin shell owns one viewport and gives main content the only page scroll container', () => {
@@ -130,7 +140,8 @@ test('admin shell uses tiered padding without replacing Arco structural componen
   assert.match(source, /<a-layout-sider/)
   assert.match(source, /<a-layout-header/)
   assert.match(source, /<a-layout-content/)
-  assert.match(source, /<a-drawer/)
+  assert.match(mobileDrawer, /<Drawer/)
+  assert.match(mobileDrawer, /from '@mcweb\/ui'/)
   assert.match(source, /<a-menu/)
   assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header-main\)[\s\S]*?flex-direction:\s*column/)
   assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header\)\s*\{[\s\S]*?box-sizing:\s*border-box/)

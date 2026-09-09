@@ -19,6 +19,11 @@
   "budget": {
     "representative_paths": ["/app/forum/latest", "/app/forum/topics/example"],
     "representative_components": ["Community/Latest/Index", "Community/Topics/Show"],
+    "conditional_initial_entries": [
+      "app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue",
+      "app/javascript/components/portal/FlashMessages.vue",
+      "app/javascript/components/portal/PortalAnnouncements.vue"
+    ],
     "max_initial_javascript_bytes": 650000,
     "max_initial_stylesheet_bytes": 250000
   },

@@ -20,7 +20,12 @@ test('portal application chrome preserves owned counters and status surfaces', (
   assert.match(layout, /shell\.applicationId === 'store' && cart/)
   assert.match(layout, /<template #icon><IconGift \/><\/template>/)
   assert.doesNotMatch(layout, /IconShoppingCart/)
-  assert.match(layout, /<PortalAnnouncements/)
+  assert.match(layout, /:is="portalAnnouncements"/)
+  assert.match(layout, /shell\.applicationId === 'forum' && hasPortalAnnouncements/)
+  assert.doesNotMatch(layout, /import\s+PortalAnnouncements\s+from/)
+  assert.doesNotMatch(layout, /import\s+FlashMessages\s+from/)
+  assert.doesNotMatch(layout, /\bDrawer,/)
+  assert.match(layout, /<ApplicationPortalMobileNavigation[\s\S]*?v-if="mobileNavOpen"/)
   assert.match(layout, /<LayoutSider[\s\S]*?:width="248"/)
   assert.match(layout, /marginLeft: compact \? '0' : 'var\(--mc-shell-sidebar-width, 248px\)'/)
   assert.match(layout, /width: compact \? '100%' : 'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
@@ -78,4 +83,87 @@ test('application provider loads global dialogs only when requested and keeps th
   assert.match(provider, /catch \(error\) \{\s*resolveConfirm\(false, request\)/)
   assert.match(provider, /catch \(error\) \{\s*resolvePrompt\(null, request\)/)
   assert.match(prompt, /watch\([\s\S]*?promptState\.open[\s\S]*?immediate: true/)
+})
+
+test('shared shells keep closed and breakpoint-only surfaces out of startup chunks', () => {
+  const portal = source('app/javascript/components/application-shell/ApplicationPortalShell.vue')
+  const identity = source('app/javascript/layouts/account/IdentityDocumentLayout.vue')
+  const admin = source('app/javascript/layouts/ArcoAdminLayout.vue')
+  const bootstrap = source('app/javascript/lib/createInertiaApplication.ts')
+  const statusSurfaces = source('app/javascript/lib/applicationStatusSurfaces.ts')
+
+  for (const shell of [portal, identity, admin]) {
+    assert.doesNotMatch(shell, /import\s+(?:Admin)?FlashMessages\s+from/)
+    assert.match(shell, /:is="flashMessages"/)
+    assert.match(shell, /v-if="hasFlashMessages && flashMessages"/)
+  }
+  assert.doesNotMatch(admin, /import\s+PluginUiSlots\s+from/)
+  assert.match(admin, /:is="pluginUiSlots"/)
+  assert.match(admin, /v-if="hasPluginUiSlots && pluginUiSlots"/)
+  assert.match(admin, /<ApplicationMobileDrawer[\s\S]*?v-if="mobileNavOpen"/)
+  assert.match(portal, /<ApplicationPortalMobileNavigation[\s\S]*?v-if="mobileNavOpen"/)
+  assert.match(statusSurfaces, /\(\) => import\('@\/components\/portal\/FlashMessages\.vue'\)/)
+  assert.match(statusSurfaces, /\(\) => import\('@\/components\/admin\/AdminFlashMessages\.vue'\)/)
+  assert.match(statusSurfaces, /\(\) => import\('@\/components\/plugins\/PluginUiSlots\.vue'\)/)
+  assert.match(
+    bootstrap,
+    /createAppI18n\(initialLocale, descriptor\.locales\),\s*initialPageLoader\(\)\.then\(normalizeFrontendPageComponent\),\s*prepareApplicationStatusSurfaces\(statusSurfaceKind, applicationId, domPage\),\s*adapters\.prepare\(\)/,
+  )
+  assert.match(
+    bootstrap,
+    /pageLoad,\s*syncLocaleFromPage\(targetPage\),\s*prepareApplicationStatusSurfaces\(statusSurfaceKind, applicationId, targetPage\)/,
+  )
+})
+
+test('pre-mount status chunks are declared as conditional initial budget entries', () => {
+  const expectedEntries: Record<string, string[]> = {
+    account: [
+      'app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue',
+      'app/javascript/components/portal/FlashMessages.vue',
+    ],
+    admin: [
+      'app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue',
+      'app/javascript/components/admin/AdminFlashMessages.vue',
+      'app/javascript/components/plugins/PluginUiSlots.vue',
+    ],
+    forum: [
+      'app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue',
+      'app/javascript/components/portal/FlashMessages.vue',
+      'app/javascript/components/portal/PortalAnnouncements.vue',
+    ],
+    staff: [
+      'app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue',
+      'app/javascript/components/portal/FlashMessages.vue',
+    ],
+    store: [
+      'app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue',
+      'app/javascript/components/portal/FlashMessages.vue',
+    ],
+  }
+
+  for (const [applicationId, entries] of Object.entries(expectedEntries)) {
+    const manifest = JSON.parse(source(
+      `config/frontend_applications/base/${applicationId}.json`,
+    )) as { budget: { conditional_initial_entries?: string[] } }
+    assert.deepEqual(manifest.budget.conditional_initial_entries, entries)
+  }
+})
+
+test('conditionally mounted portal flash messages retain their auto-hide lifecycle', () => {
+  const flashMessages = source('app/javascript/components/portal/FlashMessages.vue')
+
+  assert.match(flashMessages, /watch\([\s\S]*?\{ immediate: true \},\s*\)/)
+  assert.match(flashMessages, /onBeforeUnmount\(clearAutoHideTimer\)/)
+})
+
+test('mobile navigation drawers expose native dialog semantics', () => {
+  for (const path of [
+    'app/javascript/components/application-shell/ApplicationMobileDrawer.vue',
+    'app/javascript/components/application-shell/ApplicationPortalMobileNavigation.vue',
+  ]) {
+    const drawer = source(path)
+    assert.match(drawer, /role="dialog"/)
+    assert.match(drawer, /aria-modal="true"/)
+    assert.match(drawer, /:aria-label=/)
+  }
 })

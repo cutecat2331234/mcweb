@@ -33,6 +33,11 @@
   "budget": {
     "representative_paths": ["/admin", "/admin/users", "/admin/system/settings"],
     "representative_components": ["Admin/Dashboard/Index", "Admin/Generic/Index", "Admin/System/Settings/Show"],
+    "conditional_initial_entries": [
+      "app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue",
+      "app/javascript/components/admin/AdminFlashMessages.vue",
+      "app/javascript/components/plugins/PluginUiSlots.vue"
+    ],
     "max_initial_javascript_bytes": 850000,
     "max_initial_stylesheet_bytes": 330000
   },

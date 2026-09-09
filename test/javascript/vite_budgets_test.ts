@@ -39,7 +39,11 @@ function runChecker(root: string) {
   })
 }
 
-function writeBaseForum(root: string, maxInitialJavaScriptBytes: number) {
+function writeBaseForum(
+  root: string,
+  maxInitialJavaScriptBytes: number,
+  conditionalInitialEntries: string[] = [],
+) {
   writeFixtureJson(root, 'config/frontend_applications/base/forum.json', {
     id: 'forum',
     runtime_kind: 'inertia',
@@ -47,6 +51,9 @@ function writeBaseForum(root: string, maxInitialJavaScriptBytes: number) {
     budget: {
       representative_paths: ['/app/forum/latest'],
       representative_components: ['Community/Latest/Index'],
+      ...(conditionalInitialEntries.length > 0
+        ? { conditional_initial_entries: conditionalInitialEntries }
+        : {}),
       max_initial_javascript_bytes: maxInitialJavaScriptBytes,
     },
   })
@@ -82,6 +89,33 @@ test('Vite initial budgets exclude lazy imports while retaining static imports',
 
     assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`)
     assert.match(result.stdout, /Community\/Latest\/Index/)
+  })
+})
+
+test('Vite initial budgets include dynamic entries that execute before first mount', () => {
+  withFixture((root) => {
+    const statusEntry = 'app/javascript/components/portal/FlashMessages.vue'
+    writeBaseForum(root, 256, [statusEntry])
+    writeFixtureFile(root, statusEntry, '<template><div /></template>\n')
+    writeFixtureJson(root, 'public/vite/.vite/manifest.json', {
+      'entrypoints/forum.ts': {
+        file: 'assets/forum.js',
+        dynamicImports: ['components/portal/FlashMessages.vue'],
+      },
+      'pages/Community/Latest/Index.vue': { file: 'assets/latest.js' },
+      'components/portal/FlashMessages.vue': {
+        file: 'assets/flash.js',
+        src: 'components/portal/FlashMessages.vue',
+      },
+    })
+    writeFixtureFile(root, 'public/vite/assets/forum.js', 'f'.repeat(96))
+    writeFixtureFile(root, 'public/vite/assets/latest.js', 'p'.repeat(96))
+    writeFixtureFile(root, 'public/vite/assets/flash.js', 's'.repeat(96))
+
+    const result = runChecker(root)
+
+    assert.equal(result.status, 1, `${result.stderr}\n${result.stdout}`)
+    assert.match(result.stderr, /Frontend application performance budget exceeded/)
   })
 })
 

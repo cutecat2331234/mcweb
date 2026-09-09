@@ -72,7 +72,13 @@ const extensionDescriptors = contributionManifests.flatMap(({ name, contribution
     source: `contributions/${name}`,
     descriptor: {
       ...target.descriptor,
-      budget: contribution.budget,
+      budget: {
+        ...contribution.budget,
+        conditional_initial_entries: [...new Set([
+          ...(target.descriptor.budget?.conditional_initial_entries ?? []),
+          ...(contribution.budget?.conditional_initial_entries ?? []),
+        ])],
+      },
     },
     pageRoots: contribution.page_roots ?? ['app/javascript/pages'],
     contribution,
@@ -192,6 +198,7 @@ for (const { source, descriptor, pageRoots, contribution } of descriptors) {
   const paths = descriptor.budget?.representative_paths ?? []
   const components = descriptor.budget?.representative_components ?? []
   const entries = descriptor.budget?.representative_entries ?? []
+  const conditionalInitialEntries = descriptor.budget?.conditional_initial_entries ?? []
   const resources = components.length > 0 ? components : entries
   if (paths.length === 0 || paths.length !== resources.length
     || (components.length > 0) === (entries.length > 0)) {
@@ -199,6 +206,26 @@ for (const { source, descriptor, pageRoots, contribution } of descriptors) {
     console.error(`${source}: representative paths/resources are missing or misaligned`)
     continue
   }
+
+  const conditionalInitialKeys = []
+  let conditionalInitialEntriesValid = true
+  for (const repositoryEntry of conditionalInitialEntries) {
+    if (!existsSync(resolve(repositoryEntry))) {
+      failed = true
+      conditionalInitialEntriesValid = false
+      console.error(`${source}: conditional initial entry source is missing: ${repositoryEntry}`)
+      continue
+    }
+    const entryKey = repositoryManifestKey(repositoryEntry)
+    if (!entryKey) {
+      failed = true
+      conditionalInitialEntriesValid = false
+      console.error(`${source}: conditional initial entry is absent from Vite manifest: ${repositoryEntry}`)
+      continue
+    }
+    conditionalInitialKeys.push(entryKey)
+  }
+  if (!conditionalInitialEntriesValid) continue
 
   const entrypoint = `entrypoints/${descriptor.entrypoint}.ts`
   if (!manifest[entrypoint]) {
@@ -264,12 +291,16 @@ for (const { source, descriptor, pageRoots, contribution } of descriptors) {
     collectEntry(entrypoint, keys, files)
     collectEntry(resourceKey, keys, files)
     collectEntry(routePageKey, keys, files)
+    for (const conditionalInitialKey of conditionalInitialKeys) {
+      collectEntry(conditionalInitialKey, keys, files)
+    }
     const javascript = byteMetrics(javascriptFiles(files))
     const stylesheets = byteMetrics(stylesheetFiles(files))
     const result = {
       application: descriptor.id,
       route: paths[index],
       representative: resources[index],
+      conditionalInitialEntries: conditionalInitialEntries.length,
       requests: files.size,
       javascriptKb: kb(javascript.raw),
       stylesheetKb: kb(stylesheets.raw),

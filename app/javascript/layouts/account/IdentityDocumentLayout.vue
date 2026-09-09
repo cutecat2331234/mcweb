@@ -3,7 +3,6 @@ import { computed, defineAsyncComponent } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
-  Alert,
   Button,
   Card,
   Layout,
@@ -13,9 +12,9 @@ import {
   TypographyText,
 } from '@mcweb/ui'
 import { IconMoon, IconSun } from '@arco-design/web-vue/es/icon'
-import FlashMessages from '@/components/portal/FlashMessages.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
+import { usePortalApplicationStatusSurfaces } from '@/lib/applicationStatusSurfaces'
 import { routes } from '@/lib/routes'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
@@ -26,9 +25,15 @@ const { t } = useI18n()
 const { activeTemplate, tokenStyle } = useActiveTemplate()
 const { features } = useFeatureFlags()
 const { isDark, toggleTheme } = useTheme()
+const { developerModeBanner, flashMessages } = usePortalApplicationStatusSurfaces()
 const DeveloperModeTools = __MCWEB_DEVELOPER_BUILD__
   ? defineAsyncComponent(() => import('@/components/portal/DeveloperModeTools.vue'))
   : null
+const flash = computed(() => page.props.flash as {
+  notice?: string
+  alert?: string
+} | undefined)
+const hasFlashMessages = computed(() => Boolean(flash.value?.notice || flash.value?.alert))
 const developerMode = computed(
   () =>
     (page.props.developer_mode ?? { enabled: false }) as {
@@ -93,17 +98,12 @@ const developerModeMessage = computed(() => [
       </div>
     </LayoutHeader>
 
-    <Alert
-      v-if="developerMode.enabled"
-      type="warning"
-      show-icon
-      banner
-      role="alert"
+    <component
+      :is="developerModeBanner"
+      v-if="developerMode.enabled && developerModeBanner"
       :title="t('common.developerMode')"
-      data-testid="developer-mode-banner"
-    >
-      {{ developerModeMessage }}
-    </Alert>
+      :message="developerModeMessage"
+    />
 
     <LayoutContent>
       <main class="mx-auto flex w-full max-w-6xl justify-center px-4 py-8 sm:px-6 sm:py-12">
@@ -113,7 +113,7 @@ const developerModeMessage = computed(() => [
           :body-style="{ padding: '24px' }"
           data-testid="auth-surface"
         >
-          <FlashMessages />
+          <component :is="flashMessages" v-if="hasFlashMessages && flashMessages" />
           <slot />
         </Card>
       </main>

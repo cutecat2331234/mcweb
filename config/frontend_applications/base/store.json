@@ -19,6 +19,10 @@
   "budget": {
     "representative_paths": ["/app/store/products", "/app/store/cart", "/app/payments/fake/example"],
     "representative_components": ["Commerce/Products/Index", "Commerce/Carts/Show", "Payments/Fake/Show"],
+    "conditional_initial_entries": [
+      "app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue",
+      "app/javascript/components/portal/FlashMessages.vue"
+    ],
     "max_initial_javascript_bytes": 700000,
     "max_initial_stylesheet_bytes": 260000
   },

@@ -5,10 +5,8 @@ import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
   Avatar,
-  Alert,
   Badge,
   Button,
-  Drawer,
   Dropdown,
   Doption,
   Layout,
@@ -35,14 +33,13 @@ import {
   IconUser,
 } from '@arco-design/web-vue/es/icon'
 
-import FlashMessages from '@/components/portal/FlashMessages.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
-import PortalAnnouncements from '@/components/portal/PortalAnnouncements.vue'
 import {
   isApplicationShellNavigationItemVisible,
   useApplicationShell,
   type ApplicationShellNavigationItem,
 } from '@/lib/applicationShell'
+import { usePortalApplicationStatusSurfaces } from '@/lib/applicationStatusSurfaces'
 import { routes } from '@/lib/routes'
 import { safeSignOut } from '@/lib/safeSignOut'
 import { useTheme } from '@/lib/useTheme'
@@ -62,8 +59,16 @@ const page = usePage()
 const DeveloperModeTools = __MCWEB_DEVELOPER_BUILD__
   ? defineAsyncComponent(() => import('@/components/portal/DeveloperModeTools.vue'))
   : null
+const ApplicationPortalMobileNavigation = defineAsyncComponent(
+  () => import('@/components/application-shell/ApplicationPortalMobileNavigation.vue'),
+)
 const { t } = useI18n()
 const shell = useApplicationShell()
+const {
+  developerModeBanner,
+  flashMessages,
+  portalAnnouncements,
+} = usePortalApplicationStatusSurfaces()
 const { isDark, toggleTheme } = useTheme()
 const mobileNavOpen = ref(false)
 const signingOut = ref(false)
@@ -101,6 +106,14 @@ const forumNotices = computed(() => page.props.forum_notices as Array<{
   dismissible: boolean
   dismiss_url: string
 }> | undefined)
+const flash = computed(() => page.props.flash as {
+  notice?: string
+  alert?: string
+} | undefined)
+const hasFlashMessages = computed(() => Boolean(flash.value?.notice || flash.value?.alert))
+const hasPortalAnnouncements = computed(() => (
+  (globalAnnouncements.value?.length ?? 0) > 0 || (forumNotices.value?.length ?? 0) > 0
+))
 const developerMode = computed(() => (
   page.props.developer_mode ?? { enabled: false }
 ) as { enabled: boolean; production_environment?: boolean })
@@ -125,6 +138,15 @@ const allItems = computed(() => visibleGroups.value.flatMap((group) => group.ite
 const selectedKey = computed(() => allItems.value
   .filter((item) => currentPath.value === item.href || currentPath.value.startsWith(`${item.href}/`))
   .sort((left, right) => right.href.length - left.href.length)[0]?.href)
+const mobileNavigationGroups = computed(() => visibleGroups.value.map((group) => ({
+  id: group.id,
+  label: t(group.labelKey),
+  items: group.items.map((item) => ({
+    href: item.href,
+    label: t(item.labelKey),
+    badge: navigationBadge(item),
+  })),
+})))
 
 function navigationBadge(item: ApplicationShellNavigationItem): number {
   if (!item.badgeProp) return 0
@@ -145,7 +167,9 @@ function visit(path: string) {
 }
 
 function syncCompact(event?: MediaQueryListEvent) {
-  compact.value = event?.matches ?? compactQuery?.matches ?? false
+  const nextCompact = event?.matches ?? compactQuery?.matches ?? false
+  compact.value = nextCompact
+  if (!nextCompact) mobileNavOpen.value = false
 }
 
 function syncArcoTheme() {
@@ -369,20 +393,16 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </Space>
         </LayoutHeader>
 
-        <Alert
-          v-if="developerMode.enabled"
-          type="warning"
+        <component
+          :is="developerModeBanner"
+          v-if="developerMode.enabled && developerModeBanner"
           :title="t('common.developerMode')"
-          data-testid="developer-mode-banner"
-          role="alert"
-          show-icon
-          banner
-        >
-          {{ developerModeMessage }}
-        </Alert>
+          :message="developerModeMessage"
+        />
 
-        <PortalAnnouncements
-          v-if="shell.applicationId === 'forum'"
+        <component
+          :is="portalAnnouncements"
+          v-if="shell.applicationId === 'forum' && hasPortalAnnouncements && portalAnnouncements"
           :authenticated="!!auth.user"
           :announcements="globalAnnouncements"
           :notices="forumNotices"
@@ -404,7 +424,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
             :style="{ maxWidth: 'var(--mc-page-max-width, 1440px)', margin: '0 auto' }"
           >
             <slot name="flash-messages">
-              <FlashMessages />
+              <component
+                :is="flashMessages"
+                v-if="hasFlashMessages && flashMessages"
+              />
             </slot>
             <slot />
           </div>
@@ -412,35 +435,14 @@ watch(isDark, syncArcoTheme, { immediate: true })
       </Layout>
     </Layout>
 
-    <Drawer
+    <ApplicationPortalMobileNavigation
+      v-if="mobileNavOpen"
       v-model:visible="mobileNavOpen"
-      placement="left"
-      :width="'min(var(--mc-shell-drawer-width, 280px), 100vw)'"
-      :footer="false"
-      unmount-on-close
-    >
-      <template #title>{{ t(shell.brandKey) }}</template>
-      <template v-for="group in visibleGroups" :key="`mobile-${group.id}`">
-        <TypographyText type="secondary">{{ t(group.labelKey) }}</TypographyText>
-        <Menu
-          data-mc-application-navigation
-          :data-navigation-group="group.id"
-          :selected-keys="selectedKey ? [selectedKey] : []"
-          @menu-item-click="visit"
-        >
-          <MenuItem v-for="item in group.items" :key="item.href">
-            <span :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
-              <span>{{ t(item.labelKey) }}</span>
-              <Badge
-                v-if="navigationBadge(item) > 0"
-                :count="navigationBadge(item)"
-                :max-count="99"
-              />
-            </span>
-          </MenuItem>
-        </Menu>
-      </template>
-    </Drawer>
+      :brand-label="t(shell.brandKey)"
+      :groups="mobileNavigationGroups"
+      :selected-key="selectedKey"
+      @select="visit"
+    />
 
     <component :is="shell.accessory" v-if="shell.accessory" />
 </template>

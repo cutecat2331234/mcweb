@@ -31,6 +31,25 @@ const applicationStyles = new Map([
   ]],
 ])
 
+const portalApplicationUiComponents = new Map([
+  ['account.css', [
+    'Alert', 'Badge', 'Button', 'Checkbox', 'ConfirmDialog', 'Input', 'Label',
+    'PromptDialog', 'Select', 'Table', 'TableBody', 'TableCell', 'TableHead',
+    'TableHeader', 'TableRow', 'Textarea',
+  ]],
+  ['forum.css', [
+    'Alert', 'Avatar', 'Badge', 'Button', 'Checkbox', 'ConfirmDialog',
+    'FileInput', 'Input', 'Label', 'PromptDialog', 'Select', 'Table', 'TableBody',
+    'TableCell', 'TableHead', 'TableHeader', 'TableRow', 'Textarea',
+  ]],
+  ['staff.css', ['Button', 'ConfirmDialog', 'Input', 'PromptDialog']],
+  ['store.css', [
+    'Badge', 'Button', 'Card', 'CardContent', 'Checkbox', 'ConfirmDialog',
+    'FileInput', 'Input', 'Label', 'PromptDialog', 'Radio', 'Select', 'Table',
+    'TableBody', 'TableCell', 'TableHead', 'TableHeader', 'TableRow', 'Textarea',
+  ]],
+])
+
 test('each Tailwind application root scans only its declared source surface', () => {
   for (const [name, requiredSources] of applicationStyles) {
     const stylesheetPath = resolve(
@@ -44,6 +63,20 @@ test('each Tailwind application root scans only its declared source surface', ()
     assert.doesNotMatch(stylesheet, /@source\s+["']\.\.\/\.\.\/pages["']/)
     assert.doesNotMatch(stylesheet, /@source\s+["'][^"']*\/ee\//)
     assert.doesNotMatch(stylesheet, /@source\s+["'][^"']*\/pvp\//)
+    const uiComponents = portalApplicationUiComponents.get(name)
+    if (uiComponents) {
+      assert.doesNotMatch(
+        stylesheet,
+        /@source\s+["']\.\.\/\.\.\/components\/ui["']/,
+        `${name}: scan only the UI primitives reachable through AppProvider`,
+      )
+      for (const component of uiComponents) {
+        assert.match(
+          stylesheet,
+          new RegExp(`@source ["']\\.\\.\\/\\.\\.\\/components\\/ui\\/${component}\\.vue["'];`),
+        )
+      }
+    }
     for (const path of requiredSources) {
       assert.match(stylesheet, new RegExp(`@source ["']${path.replaceAll('/', '\\/')}["'];`))
     }
@@ -64,4 +97,16 @@ test('shared style primitives never trigger repository-wide Tailwind detection',
   ]) {
     assert.doesNotMatch(source(path), /@import\s+["']tailwindcss["']/)
   }
+})
+
+test('account Tailwind sources exclude forum-only announcement content', () => {
+  const account = source('app/javascript/styles/applications/account.css')
+
+  assert.doesNotMatch(account, /components\/portal\/PortalAnnouncements\.vue/)
+})
+
+test('store Tailwind sources include the shared breadcrumb used by commerce pages', () => {
+  const store = source('app/javascript/styles/applications/store.css')
+
+  assert.match(store, /@source "\.\.\/\.\.\/components\/portal\/Breadcrumb\.vue";/)
 })

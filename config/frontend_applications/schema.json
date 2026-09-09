@@ -122,6 +122,12 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/repositoryPath" }
         },
+        "conditional_initial_entries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        },
         "max_initial_javascript_bytes": { "type": "integer", "minimum": 1 },
         "max_initial_stylesheet_bytes": { "type": "integer", "minimum": 1 }
       },

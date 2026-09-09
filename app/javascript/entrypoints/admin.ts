@@ -35,4 +35,5 @@ void createMcWebInertiaApplication({
   shellAdapterId: 'admin',
   uiAdapterId: 'mcweb_ui',
   errorBoundaryId: 'admin',
+  statusSurfaceKind: 'admin',
 })

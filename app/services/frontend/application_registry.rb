@@ -1614,6 +1614,7 @@ module Frontend
     def validate_budget!(raw, source)
       expected = %w[
         representative_paths representative_components representative_entries
+        conditional_initial_entries
         max_initial_javascript_bytes max_initial_stylesheet_bytes
       ]
       assert_required_keys!(
@@ -1653,6 +1654,17 @@ module Frontend
           "#{source}#budget: representative paths and resources must have equal length"
       end
 
+      conditional_initial_entries = if raw.key?("conditional_initial_entries")
+        validate_repository_path_list!(
+          raw.fetch("conditional_initial_entries"),
+          "#{source}#budget",
+          field: "conditional_initial_entries",
+          allow_empty: false
+        )
+      else
+        []
+      end
+
       javascript = positive_integer!(
         raw.fetch("max_initial_javascript_bytes"),
         "#{source}#budget",
@@ -1669,6 +1681,7 @@ module Frontend
         "representative_paths" => paths.freeze,
         "representative_components" => components.freeze,
         "representative_entries" => entries.freeze,
+        "conditional_initial_entries" => conditional_initial_entries.freeze,
         "max_initial_javascript_bytes" => javascript,
         "max_initial_stylesheet_bytes" => stylesheet
       }.compact
@@ -1715,6 +1728,9 @@ module Frontend
         "representative_entries" => (
           target.fetch("representative_entries") + contribution.fetch("representative_entries")
         ).freeze,
+        "conditional_initial_entries" => (
+          target.fetch("conditional_initial_entries") + contribution.fetch("conditional_initial_entries")
+        ).uniq.freeze,
         "max_initial_javascript_bytes" => [
         target.fetch("max_initial_javascript_bytes"),
         contribution.fetch("max_initial_javascript_bytes")

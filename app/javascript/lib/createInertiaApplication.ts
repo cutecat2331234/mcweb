@@ -9,6 +9,10 @@ import {
   type ApplicationShellAdapter,
 } from '@/lib/applicationShell'
 import {
+  prepareApplicationStatusSurfaces,
+  type ApplicationStatusSurfaceKind,
+} from '@/lib/applicationStatusSurfaces'
+import {
   installApplicationNavigation,
   recoverFrontendSafeLocation,
   SAFE_FRONTEND_LOCATION_HEADER,
@@ -56,6 +60,7 @@ type CreateInertiaApplicationOptions = {
   shellAdapterId: string
   uiAdapterId: string
   errorBoundaryId: string
+  statusSurfaceKind?: ApplicationStatusSurfaceKind | false
 }
 
 type FrontendPageModule = { default: DefineComponent }
@@ -141,6 +146,7 @@ export async function createMcWebInertiaApplication({
   shellAdapterId,
   uiAdapterId,
   errorBoundaryId,
+  statusSurfaceKind = false,
 }: CreateInertiaApplicationOptions): Promise<void> {
   const cleanupFunctions: VoidFunction[] = []
   let removeAuthenticatedHistoryBoundary: VoidFunction | null = null
@@ -216,12 +222,26 @@ export async function createMcWebInertiaApplication({
     assertFrontendComponent(applicationId, domPage.component)
     syncAuthenticatedHistoryBoundary(domPage)
 
+    const initialPagePath = `../pages/${domPage.component}.vue`
+    const initialPageLoader = resolvedPages[initialPagePath]
+    if (!initialPageLoader) {
+      throw new Error(
+        `Application ${applicationId} has no positive resolver for ${domPage.component}`,
+      )
+    }
+
     const initialLocale = normalizeAppLocale(
       domPage.props?.locale ?? document.documentElement.lang,
     )
-    const i18n = await createAppI18n(initialLocale, descriptor.locales)
+    // Start every pre-mount dependency together. Status rows still resolve before
+    // the first render, but they cannot create a waterfall ahead of the page chunk.
+    const [i18n, initialPageComponent] = await Promise.all([
+      createAppI18n(initialLocale, descriptor.locales),
+      initialPageLoader().then(normalizeFrontendPageComponent),
+      prepareApplicationStatusSurfaces(statusSurfaceKind, applicationId, domPage),
+      adapters.prepare(),
+    ])
     applyPhraseOverrides(i18n, initialLocale, domPage.props?.phrase_overrides)
-    await adapters.prepare()
     const removeAdapters = adapters.install()
     cleanupFunctions.push(removeAdapters)
 
@@ -358,8 +378,17 @@ export async function createMcWebInertiaApplication({
           if (!loader) {
             throw new Error(`Application ${applicationId} has no positive resolver for ${name}`)
           }
-          await syncLocaleFromPage(targetPage)
-          return normalizeFrontendPageComponent(await loader())
+          // Keep the same invariant on Inertia visits: prepare conditional chrome
+          // before the next page is committed, while loading both chunks in parallel.
+          const pageLoad = name === domPage.component
+            ? Promise.resolve(initialPageComponent)
+            : loader()
+          const [pageComponent] = await Promise.all([
+            pageLoad,
+            syncLocaleFromPage(targetPage),
+            prepareApplicationStatusSurfaces(statusSurfaceKind, applicationId, targetPage),
+          ])
+          return normalizeFrontendPageComponent(pageComponent)
         } catch (error) {
           failApplication(error)
           throw error

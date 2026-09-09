@@ -266,13 +266,16 @@ module Community
     test "relationship snapshots batch targets and kinds into one consistent read without participant locks" do
       other = create_user
       UserBlock.create!(blocker: @actor, blocked: @target)
+      UserIgnore.create!(ignorer: @actor, ignored: other)
       UserFollow.create!(follower: @actor, followed: other)
       UserRelationshipState.create!(actor: @actor, target: @target, kind: "block", revision: 4, last_desired_state: true)
       UserRelationshipState.create!(actor: @actor, target: other, kind: "follow", revision: 7, last_desired_state: true)
 
       statements = []
+      snapshot_statement = nil
       subscriber = lambda do |_name, _started, _finished, _id, payload|
         statements << payload[:sql] unless payload[:name].in?(%w[SCHEMA CACHE TRANSACTION])
+        snapshot_statement = payload if payload[:name] == "Community relationship snapshots"
       end
       snapshots = Identity::UserMutationLock.stub(:with_users, ->(**) { flunk("read snapshots must not lock users") }) do
         ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
@@ -281,10 +284,44 @@ module Community
       end
 
       assert_equal 1, statements.length
+      statement = snapshot_statement
+      assert statement
+      assert_includes statement.fetch(:sql), "jsonb_array_elements_text($2::jsonb)"
+      assert_includes statement.fetch(:sql), "jsonb_array_elements_text($3::jsonb)"
+      assert_equal(
+        %w[relationship_actor_id relationship_target_ids relationship_kinds],
+        statement.fetch(:binds).map(&:name)
+      )
+      assert_equal(
+        [ @actor.id, [ @target.id, other.id ].to_json, %w[block ignore follow].to_json ],
+        statement.fetch(:binds).map(&:value_for_database)
+      )
       assert_equal({ active: true, revision: "4" }, snapshots.fetch(@target.id).fetch(:block))
       assert_equal({ active: false, revision: "0" }, snapshots.fetch(@target.id).fetch(:ignore))
       assert_equal({ active: false, revision: "0" }, snapshots.fetch(@target.id).fetch(:follow))
+      assert_equal({ active: true, revision: "0" }, snapshots.fetch(other.id).fetch(:ignore))
       assert_equal({ active: true, revision: "7" }, snapshots.fetch(other.id).fetch(:follow))
+    end
+
+    test "relationship snapshot inputs cannot alter the fixed query" do
+      queries = []
+      subscriber = lambda do |_name, _started, _finished, _id, payload|
+        queries << payload if payload[:name] == "Community relationship snapshots"
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+        assert_raises(ArgumentError) do
+          UserRelationshipState.snapshots(actor: "1 OR TRUE", targets: [ @target ], kinds: %i[block])
+        end
+        assert_raises(ArgumentError) do
+          UserRelationshipState.snapshots(actor: @actor, targets: [ "1) UNION SELECT 1 --" ], kinds: %i[block])
+        end
+        assert_raises(KeyError) do
+          UserRelationshipState.snapshots(actor: @actor, targets: [ @target ], kinds: [ "block' UNION SELECT 'follow" ])
+        end
+      end
+
+      assert_empty queries
     end
 
     test "a ledger failure rolls back its relationship even inside an outer transaction" do

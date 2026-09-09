@@ -2,6 +2,8 @@
 
 module Community
   class BlocksController < ApplicationController
+    include Community::RelationshipStateResponse
+    include ViewerScopedNoStoreResponse
     before_action :require_login
 
     def index
@@ -9,6 +11,11 @@ module Community
         .where(blocker: current_user)
         .includes(:blocked)
         .order(created_at: :desc)
+      relationship_states = UserRelationshipState.snapshots(
+        actor: current_user,
+        targets: blocks.map(&:blocked_id),
+        kinds: %i[block]
+      )
 
       render inertia: "Community/Blocks/Index", props: {
         users: blocks.map do |block|
@@ -18,6 +25,7 @@ module Community
             display_name: user.display_name,
             profile_url: forum_user_path(user.username),
             blocked_at: l(block.created_at, format: :short),
+            relationship: relationship_states.fetch(user.id).fetch(:block),
             unblock_url: forum_block_user_path(user.username)
           }
         end
@@ -38,8 +46,10 @@ module Community
       result = Community::SetUserBlock.call(
         blocker: current_user,
         blocked_username: params[:username],
-        desired_state: desired_state
+        desired_state: desired_state,
+        expected_revision: params[:expected_revision]
       )
+      return render_relationship_state(result) if request.format.json?
 
       if result.success?
         redirect_back(

@@ -51,6 +51,7 @@ Rails.application.routes.draw do
       end
       resources :users, only: %i[index show] do
         member { match :follow, via: %i[put delete] }
+        get "follow", on: :member, action: :follow_state, as: :follow_state
         resources :profile_posts, only: %i[index create], path: "profile-posts"
       end
       namespace :staff do

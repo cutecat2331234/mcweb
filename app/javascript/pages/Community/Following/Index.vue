@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -11,11 +10,12 @@ import UserLink from '@/components/portal/UserLink.vue'
 import Button from '@/components/ui/Button.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import type { CommunityRelationshipSnapshot } from '@/lib/communityRelationshipMutation'
+import { useCommunityRelationshipList } from '@/lib/useCommunityRelationship'
 
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
-const processingUsers = reactive(new Set<string>())
 
 const props = defineProps<{
   tab: 'topics' | 'users'
@@ -26,6 +26,7 @@ const props = defineProps<{
     avatar_url: string
     profile_url: string
     unfollow_url: string
+    relationship: CommunityRelationshipSnapshot
   }>
   usersPagination: PaginationMeta
   topics: TopicListItem[]
@@ -42,15 +43,9 @@ function changeSort(value: string) {
   router.get(routes.forumFollowing, { tab: props.tab, sort: value }, { preserveState: true })
 }
 
-function unfollow(user: { username: string; unfollow_url: string }) {
-  if (processingUsers.has(user.username)) return
-
-  processingUsers.add(user.username)
-  router.delete(user.unfollow_url, {
-    preserveScroll: true,
-    onFinish: () => processingUsers.delete(user.username),
-  })
-}
+const { states, visibleUsers, remove } = useCommunityRelationshipList(
+  () => props.users, () => router.reload({ preserveScroll: true }),
+)
 </script>
 
 <template>
@@ -88,14 +83,15 @@ function unfollow(user: { username: string; unfollow_url: string }) {
   </section>
 
   <section v-else>
-    <div v-if="users.length" class="space-y-3">
-      <div v-for="user in users" :key="user.username" class="flex items-center gap-3 rounded-lg border p-4">
+    <div v-if="visibleUsers.length" class="space-y-3">
+      <div v-for="user in visibleUsers" :key="user.username" class="flex items-center gap-3 rounded-lg border p-4">
         <UserLink variant="avatar" size="lg" :user="user" />
         <div class="min-w-0 flex-1">
           <UserLink variant="name" :user="user" link-class="font-medium hover:underline" />
           <p v-if="user.forum_title" class="text-xs text-muted-foreground">{{ user.forum_title }}</p>
+          <p v-if="states.get(user.username)?.error" role="status" class="text-sm text-muted-foreground">{{ t(`components.relationship.errors.${states.get(user.username)?.error}`) }}</p>
         </div>
-        <Button type="button" size="sm" variant="outline" :disabled="processingUsers.has(user.username)" @click="unfollow(user)">{{ t('forum.following.unfollow') }}</Button>
+        <Button type="button" size="sm" variant="outline" :disabled="states.get(user.username)?.processing || !states.get(user.username)?.revision" @click="remove(user, user.unfollow_url)">{{ states.get(user.username)?.error === 'retry' ? t('components.relationship.retry') : t('forum.following.unfollow') }}</Button>
       </div>
     </div>
     <p v-else class="text-sm text-muted-foreground">{{ t('forum.following.emptyUsers') }}</p>

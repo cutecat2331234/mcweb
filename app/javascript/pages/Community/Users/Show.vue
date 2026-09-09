@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, toRef } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -23,7 +23,8 @@ import MinecraftProfileCard, { type MinecraftProfile } from '@/components/minecr
 import Badge from '@/components/ui/Badge.vue'
 import UserCustomFieldsForm, { type UserCustomField } from '@/components/portal/UserCustomFieldsForm.vue'
 import { createIdempotencyKey } from '@/lib/idempotency'
-import { beginCommunityRelationshipMutation, finishCommunityRelationshipMutation } from '@/lib/communityRelationshipMutation'
+import type { CommunityRelationshipSnapshot } from '@/lib/communityRelationshipMutation'
+import { useCommunityRelationship } from '@/lib/useCommunityRelationship'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 import { Button as ArcoButton } from '@mcweb/ui'
@@ -79,6 +80,7 @@ const props = defineProps<{
     is_muted: boolean
     can_edit: boolean
     is_following: boolean
+    relationships: { block: CommunityRelationshipSnapshot; ignore: CommunityRelationshipSnapshot; follow: CommunityRelationshipSnapshot }
     follow_url: string | null
     mute_info?: {
       section: string
@@ -237,46 +239,17 @@ const initialFieldValues = Object.fromEntries(
 const fieldsForm = useForm({ user_fields: initialFieldValues })
 const visibleCustomFields = computed(() => (props.custom_fields || []).filter((field) => field.value || field.editable))
 const hasEditableCustomFields = computed(() => (props.custom_fields || []).some((field) => field.editable))
-const relationshipProcessing = reactive({ block: false, ignore: false, follow: false })
-const blockProcessing = toRef(relationshipProcessing, 'block')
-const ignoreProcessing = toRef(relationshipProcessing, 'ignore')
-const followProcessing = toRef(relationshipProcessing, 'follow')
-
-function setBlock() {
-  if (!props.profile.block_url) return
-  const mutation = beginCommunityRelationshipMutation(blockProcessing, props.profile.is_blocked)
-  if (!mutation) return
-  const options = {
-    preserveScroll: true,
-    onFinish: () => finishCommunityRelationshipMutation(blockProcessing),
-  }
-  if (mutation.method === 'put') router.put(props.profile.block_url, {}, options)
-  else router.delete(props.profile.block_url, options)
-}
-
-function setIgnore() {
-  if (!props.profile.ignore_url) return
-  const mutation = beginCommunityRelationshipMutation(ignoreProcessing, props.profile.is_ignored === true)
-  if (!mutation) return
-  const options = {
-    preserveScroll: true,
-    onFinish: () => finishCommunityRelationshipMutation(ignoreProcessing),
-  }
-  if (mutation.method === 'put') router.put(props.profile.ignore_url, {}, options)
-  else router.delete(props.profile.ignore_url, options)
-}
-
-function setFollow() {
-  if (!props.profile.follow_url) return
-  const mutation = beginCommunityRelationshipMutation(followProcessing, props.profile.is_following)
-  if (!mutation) return
-  const options = {
-    preserveScroll: true,
-    onFinish: () => finishCommunityRelationshipMutation(followProcessing),
-  }
-  if (mutation.method === 'put') router.put(props.profile.follow_url, {}, options)
-  else router.delete(props.profile.follow_url, options)
-}
+const refreshProfile = () => router.reload({ preserveScroll: true })
+const { state: blockState, submit: setBlock } = useCommunityRelationship(
+  () => props.profile.block_url, () => props.profile.relationships?.block, refreshProfile,
+)
+const { state: ignoreState, submit: setIgnore } = useCommunityRelationship(
+  () => props.profile.ignore_url, () => props.profile.relationships?.ignore, refreshProfile,
+)
+const { state: followState, submit: setFollow } = useCommunityRelationship(
+  () => props.profile.follow_url, () => props.profile.relationships?.follow, refreshProfile,
+)
+const relationshipError = computed(() => blockState.error || ignoreState.error || followState.error)
 
 function toggleProfileEdit(panel: ProfileEditPanel) {
   profileEditPanel.value = profileEditPanel.value === panel ? null : panel
@@ -500,31 +473,31 @@ function saveWallEdit(
               v-if="profile.follow_url"
               type="button"
               size="sm"
-              :variant="profile.is_following ? 'outline' : 'default'"
-              :disabled="relationshipProcessing.follow"
+              :variant="followState.active ? 'outline' : 'default'"
+              :disabled="followState.processing || !followState.revision"
               @click="setFollow"
             >
-              {{ profile.is_following ? t('userProfile.unfollow') : t('userProfile.follow') }}
+              {{ followState.error === 'retry' ? t('components.relationship.retry') : followState.active ? t('userProfile.unfollow') : t('userProfile.follow') }}
             </Button>
             <Button
               v-if="profile.block_url"
               type="button"
               size="sm"
-              :variant="profile.is_blocked ? 'outline' : 'destructive'"
-              :disabled="relationshipProcessing.block"
+              :variant="blockState.active ? 'outline' : 'destructive'"
+              :disabled="blockState.processing || !blockState.revision"
               @click="setBlock"
             >
-              {{ profile.is_blocked ? t('userProfile.unblock') : t('userProfile.block') }}
+              {{ blockState.error === 'retry' ? t('components.relationship.retry') : blockState.active ? t('userProfile.unblock') : t('userProfile.block') }}
             </Button>
             <Button
               v-if="profile.ignore_url"
               type="button"
               size="sm"
-              :variant="profile.is_ignored ? 'outline' : 'secondary'"
-              :disabled="relationshipProcessing.ignore"
+              :variant="ignoreState.active ? 'outline' : 'secondary'"
+              :disabled="ignoreState.processing || !ignoreState.revision"
               @click="setIgnore"
             >
-              {{ profile.is_ignored ? t('userProfile.unignore') : t('userProfile.ignore') }}
+              {{ ignoreState.error === 'retry' ? t('components.relationship.retry') : ignoreState.active ? t('userProfile.unignore') : t('userProfile.ignore') }}
             </Button>
             <Button v-if="profile.report_url" as-child type="button" size="sm" variant="outline">
               <Link :href="profile.report_url">{{ t('userProfile.report') }}</Link>
@@ -550,6 +523,10 @@ function saveWallEdit(
             </template>
           </div>
         </div>
+
+        <p v-if="relationshipError" role="status" class="text-sm text-muted-foreground">
+          {{ t(`components.relationship.errors.${relationshipError}`) }}
+        </p>
 
         <div v-if="visibleCustomFields.length && profileEditPanel !== 'fields'" class="max-w-xl rounded-lg border p-4">
           <h3 class="mb-3 text-sm font-semibold">{{ t('userProfile.customFields') }}</h3>

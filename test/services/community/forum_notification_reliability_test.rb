@@ -56,7 +56,8 @@ class Community::ForumNotificationReliabilityTest < ActiveSupport::TestCase
     Community::SetUserIgnore.call(
       ignorer: @recipient,
       ignored_username: @author.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     topic, post = create_topic_and_post(body: "Hello @#{@recipient.username}")
 

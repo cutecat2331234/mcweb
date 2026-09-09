@@ -42,7 +42,8 @@ class Community::UserIgnoreTest < ActiveSupport::TestCase
     result = Community::SetUserIgnore.call(
       ignorer: @ignorer,
       ignored_username: @ignored.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     assert result.success?
     assert result.value[:ignored]
@@ -53,7 +54,8 @@ class Community::UserIgnoreTest < ActiveSupport::TestCase
     result = Community::SetUserIgnore.call(
       ignorer: @ignorer,
       ignored_username: @ignorer.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     assert result.failure?
   end

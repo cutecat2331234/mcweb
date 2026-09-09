@@ -48,7 +48,8 @@ class Community::FilterNotificationRecipientsTest < ActiveSupport::TestCase
     Community::SetUserIgnore.call(
       ignorer: @ignorer,
       ignored_username: @actor.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
   end
 
@@ -200,7 +201,8 @@ class Community::NotifyIgnoreFilterTest < ActiveSupport::TestCase
     Community::SetUserIgnore.call(
       ignorer: @ignorer,
       ignored_username: @author.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     NotificationPreference.set!(@ignorer, channel: "in_app", notification_type: "forum.topic_reply", enabled: true)
     @reply = Community::CreatePost.call(user: @author, topic: @topic, body: "Another post here", skip_interval_check: true).value

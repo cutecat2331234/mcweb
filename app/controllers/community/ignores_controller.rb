@@ -2,6 +2,8 @@
 
 module Community
   class IgnoresController < ApplicationController
+    include Community::RelationshipStateResponse
+    include ViewerScopedNoStoreResponse
     before_action :require_login
 
     def index
@@ -9,6 +11,11 @@ module Community
         .where(ignorer: current_user)
         .includes(:ignored)
         .order(created_at: :desc)
+      relationship_states = UserRelationshipState.snapshots(
+        actor: current_user,
+        targets: ignores.map(&:ignored_id),
+        kinds: %i[ignore]
+      )
 
       render inertia: "Community/Ignores/Index", props: {
         users: ignores.map do |ignore|
@@ -18,6 +25,7 @@ module Community
             display_name: user.display_name,
             profile_url: forum_user_path(user.username),
             ignored_at: l(ignore.created_at, format: :short),
+            relationship: relationship_states.fetch(user.id).fetch(:ignore),
             unignore_url: forum_ignore_user_path(user.username)
           }
         end
@@ -38,8 +46,10 @@ module Community
       result = Community::SetUserIgnore.call(
         ignorer: current_user,
         ignored_username: params[:username],
-        desired_state: desired_state
+        desired_state: desired_state,
+        expected_revision: params[:expected_revision]
       )
+      return render_relationship_state(result) if request.format.json?
 
       if result.success?
         redirect_back(

@@ -31,7 +31,8 @@ class Community::IgnoresListTest < ActiveSupport::TestCase
     Community::SetUserIgnore.call(
       ignorer: @ignorer,
       ignored_username: @ignored.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
   end
 

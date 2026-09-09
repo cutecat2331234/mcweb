@@ -2,10 +2,11 @@
 
 module Community
   class SetUserBlock < ApplicationService
-    def initialize(blocker:, blocked_username:, desired_state: nil)
+    def initialize(blocker:, blocked_username:, desired_state: nil, expected_revision: nil)
       @blocker = blocker
       @blocked = User.find_by(username: blocked_username.to_s.strip)
       @desired_state = desired_state
+      @expected_revision = expected_revision
     end
 
     def call
@@ -15,6 +16,7 @@ module Community
       mutation = Community::SetUserRelationship.call(
         relation: Community::UserBlock.where(blocker: @blocker, blocked: @blocked),
         desired_state: @desired_state,
+        expected_revision: @expected_revision,
         participants: [ @blocker, @blocked ]
       )
       return mutation if mutation.failure?
@@ -26,7 +28,7 @@ module Community
         )
       end
 
-      ServiceResult.success(blocked: mutation.value[:active], changed: mutation.value[:changed])
+      ServiceResult.success(mutation.value.merge(blocked: mutation.value[:active]))
     end
   end
 end

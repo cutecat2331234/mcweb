@@ -57,7 +57,8 @@ class ConversationInvitationNotificationAccessTest < ActiveSupport::TestCase
     Community::SetUserBlock.call(
       blocker: @invitee,
       blocked_username: @creator.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     assert_not Community::NotificationAccess.visible?(notification: second_notification, user: @invitee)
     assert second_notification.reload.read?

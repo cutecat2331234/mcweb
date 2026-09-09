@@ -345,23 +345,23 @@ module Api
         target = create_user(username: "apifollowed")
         _rec, wtoken = Administration::ApiKey.generate!(name: "fl", scopes: %w[read write], user: follower)
 
-        put "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        put "/api/v1/users/#{target.public_id}/follow", params: { expected_revision: "0" }, headers: auth_headers(wtoken)
         assert_response :success
         assert_equal true, JSON.parse(response.body)["data"]["following"]
         assert_equal true, JSON.parse(response.body)["data"]["changed"]
         assert Community::UserFollow.exists?(follower: follower, followed: target)
 
-        put "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        put "/api/v1/users/#{target.public_id}/follow", params: { expected_revision: "0" }, headers: auth_headers(wtoken)
         assert_response :success
         assert_equal true, JSON.parse(response.body)["data"]["following"]
         assert_equal false, JSON.parse(response.body)["data"]["changed"]
 
-        delete "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        delete "/api/v1/users/#{target.public_id}/follow", params: { expected_revision: "1" }, headers: auth_headers(wtoken)
         assert_response :success
         assert_equal false, JSON.parse(response.body)["data"]["following"]
         assert_equal true, JSON.parse(response.body)["data"]["changed"]
 
-        delete "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        delete "/api/v1/users/#{target.public_id}/follow", params: { expected_revision: "1" }, headers: auth_headers(wtoken)
         assert_response :success
         assert_equal false, JSON.parse(response.body)["data"]["following"]
         assert_equal false, JSON.parse(response.body)["data"]["changed"]
@@ -376,6 +376,36 @@ module Api
 
         assert_response :not_found
         assert_not Community::UserFollow.exists?(follower: follower, followed: target)
+      end
+
+      test "write-only follow clients can read their revision and cannot replay superseded deletes" do
+        follower = create_user(username: "apiorderedfollower")
+        target = create_user(username: "apiorderedfollowed")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "flordered", scopes: %w[write], user: follower)
+        path = "/api/v1/users/#{target.public_id}/follow"
+
+        get path, headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal false, response.parsed_body.dig("data", "following")
+        assert_equal "0", response.parsed_body.dig("data", "revision")
+        assert_not Community::UserRelationshipState.exists?(actor: follower, target: target, kind: "follow")
+
+        put path, headers: auth_headers(wtoken)
+        assert_response 428
+        assert_not Community::UserFollow.exists?(follower: follower, followed: target)
+
+        put path, params: { expected_revision: "0" }, headers: auth_headers(wtoken)
+        assert_response :success
+        delete path, params: { expected_revision: "1" }, headers: auth_headers(wtoken)
+        assert_response :success
+        put path, params: { expected_revision: "2" }, headers: auth_headers(wtoken)
+        assert_response :success
+
+        delete path, params: { expected_revision: "1" }, headers: auth_headers(wtoken)
+        assert_response :conflict
+        assert_equal true, response.parsed_body.dig("data", "active")
+        assert_equal "3", response.parsed_body.dig("data", "revision")
+        assert Community::UserFollow.exists?(follower: follower, followed: target)
       end
 
       test "follow write conflicts use the API conflict contract" do

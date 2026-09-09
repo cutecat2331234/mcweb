@@ -12,7 +12,8 @@ class Community::SetUserFollowTest < ActiveSupport::TestCase
     result = Community::SetUserFollow.call(
       follower: @follower,
       followed_username: @followed.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     assert result.success?
     assert result.value[:following]
@@ -21,7 +22,8 @@ class Community::SetUserFollowTest < ActiveSupport::TestCase
     result = Community::SetUserFollow.call(
       follower: @follower,
       followed_username: @followed.username,
-      desired_state: false
+      desired_state: false,
+      expected_revision: result.value[:revision]
     )
     assert result.success?
     assert_not result.value[:following]
@@ -32,7 +34,8 @@ class Community::SetUserFollowTest < ActiveSupport::TestCase
     result = Community::SetUserFollow.call(
       follower: @follower,
       followed_username: @follower.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     assert result.failure?
   end

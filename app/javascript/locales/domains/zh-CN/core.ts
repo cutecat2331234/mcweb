@@ -130,6 +130,14 @@ export default {
       "placeholder": "例如：公告,活动",
       "noGroups": "暂无标签组，请使用逗号分隔输入标签。"
     },
+    "relationship": {
+      "retry": "重试原操作",
+      "errors": {
+        "retry": "暂时无法确认结果。可以重试原操作，我们会保留你之前选择的目标状态。",
+        "conflict": "关系已在其他操作中更新。现已显示服务端当前状态，请确认后再选择。",
+        "failed": "本次更改未被接受，请刷新页面后再试。"
+      }
+    },
     "userHover": {
       "online": "· 在线",
       "posts": "{count} 帖",

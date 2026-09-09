@@ -5777,6 +5777,14 @@ export default {
       placeholder: 'e.g. news,event',
       noGroups: 'No tag groups — enter comma-separated tags.',
     },
+    relationship: {
+      retry: 'Retry the same change',
+      errors: {
+        retry: 'The result could not be confirmed. Retry the same change; your previous choice is preserved.',
+        conflict: 'The relationship changed elsewhere. The current server state is shown; review it before choosing again.',
+        failed: 'This change was not accepted. Refresh the page before trying again.',
+      },
+    },
     userHover: {
       online: '· Online',
       posts: '{count} posts',

@@ -22,7 +22,7 @@ module Community
       end
       memberships = Commerce::SerializeUserMemberships.public_for_user(user, limit: 3)
       likes_received = listed_reactions_received_by(user).count
-      following = logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user)
+      follow_state = relationship_states_for(user, kinds: %i[follow]).fetch(:follow)
       payload = {
         username: user.username,
         display_name: user.display_name,
@@ -41,7 +41,8 @@ module Community
         memberships: memberships,
         message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil,
         follow_url: (logged_in? && current_user.id != user.id) ? forum_user_follow_path(user.username) : nil,
-        following: following
+        following: follow_state[:active],
+        follow_relationship: follow_state
       }
 
       payload.merge!(activity.card)
@@ -53,6 +54,7 @@ module Community
       user = User.find_by!(username: params[:id])
       activity = user_profile_activity(user)
       visibility = activity.visibility
+      relationship_states = relationship_states_for(user)
       User.where(id: user.id).update_all("forum_profile_views = forum_profile_views + 1") if logged_in? && current_user.id != user.id
       tab = params[:tab].to_s.in?(%w[topics posts store assigned minecraft]) ? params[:tab] : "topics"
       topics_scope = Community::ForumAccess.listed_topic_scope(
@@ -146,12 +148,13 @@ module Community
           block_url: logged_in? && current_user.id != user.id ? forum_block_user_path(user.username) : nil,
           ignore_url: logged_in? && current_user.id != user.id ? forum_ignore_user_path(user.username) : nil,
           report_url: (logged_in? && current_user.id != user.id) ? new_forum_report_path(reportable_type: "User", reportable_id: user.id) : nil,
-          is_blocked: logged_in? && current_user.id != user.id && Community::UserBlock.exists?(blocker: current_user, blocked: user),
-          is_ignored: logged_in? && current_user.id != user.id && Community::UserIgnore.exists?(ignorer: current_user, ignored: user),
+          is_blocked: relationship_states[:block][:active],
+          is_ignored: relationship_states[:ignore][:active],
+          relationships: relationship_states,
           is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user),
           mute_info: mute_info_for(user),
           can_edit: logged_in? && current_user.id == user.id,
-          is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
+          is_following: relationship_states[:follow][:active],
           follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil,
           warning_points: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? Community::UserWarning.total_points_for(user) : nil,
           store_credit_label: (logged_in? && current_user.id == user.id && user.store_credit_cents.to_i.positive?) ? format_money(user.store_credit_cents.to_i, "CNY") : nil,
@@ -263,6 +266,14 @@ module Community
     end
 
     private
+
+    def relationship_states_for(user, kinds: %i[block ignore follow])
+      unless logged_in? && current_user.id != user.id
+        return kinds.index_with { { active: false, revision: "0" } }
+      end
+
+      UserRelationshipState.snapshots(actor: current_user, targets: [ user ], kinds: kinds).fetch(user.id)
+    end
 
     def listed_posts
       @listed_posts ||= Community::ForumAccess.listed_post_scope(

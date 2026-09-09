@@ -76,8 +76,9 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | POST | `/api/v1/posts/:id/react` | 切换帖子反应 `emoji=...`（需 `write`） |
 | GET | `/api/v1/users?q=<名>&sort=<posts\|username\|newest>` | 会员列表（按用户名搜索 / 排序） |
 | GET | `/api/v1/users/:id` | 公开用户资料（`:id` 为用户 `public_id`） |
-| PUT | `/api/v1/users/:id/follow` | 将用户关系设为已关注（需 `write`，重复请求不会反转状态） |
-| DELETE | `/api/v1/users/:id/follow` | 将用户关系设为未关注（需 `write`，重复请求不会反转状态） |
+| GET | `/api/v1/users/:id/follow` | 读取绑定用户自己的关注状态及 `revision`（需 `write` 和绑定用户；支持仅有 `write` 的密钥） |
+| PUT | `/api/v1/users/:id/follow` | 将用户关系设为已关注（需 `write`、绑定用户及 `expected_revision`） |
+| DELETE | `/api/v1/users/:id/follow` | 将用户关系设为未关注（需 `write`、绑定用户及 `expected_revision`） |
 | GET | `/api/v1/users/:id/profile-posts` | 用户资料墙帖子 |
 | POST | `/api/v1/users/:id/profile-posts` | 在用户资料墙发帖（需 `write`） |
 | POST | `/api/v1/topics` | 发主题（需 `write` scope + 绑定用户） |
@@ -87,6 +88,19 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | POST | `/api/v1/topics/:id/subscription` | 设置关注级别 `level=watching\|tracking\|normal\|off`（需 `write`） |
 | POST | `/api/v1/topics/:id/solve` | 标记最佳答案 `post_id=...`（需 `write`） |
 | POST | `/api/v1/topics/:id/unsolve` | 取消标记（需 `write`） |
+
+### 用户关系的版本与重试
+
+先读取 `GET /api/v1/users/:id/follow` 的 `data.revision`，再向同一路径发送 PUT（关注）或 DELETE（取消关注），JSON 请求体为 `{"expected_revision":"0"}`，其中版本必须来自该关系的实际读取结果。`revision` 是十进制字符串，请不要转换为 JavaScript `Number`。
+
+成功响应的 `data` 包含 `active`、`following`、`revision`、`changed` 和 `replayed`。同一个“版本 + 目标状态”代表同一操作：响应丢失或超时后，必须原样重试方法和版本。**不要先读取新版本，再把旧 DELETE 自动重发到新版本上。**
+
+- 重放紧邻的已完成操作时返回成功、`changed: false` 和 `replayed: true`，不会重复通知或反转状态。
+- 若已有更新的操作，返回 `409 conflict`，`data.active` 和 `data.revision` 是当前服务端状态；界面应展示该状态，并等待用户重新选择，不得自动覆盖。
+- 缺失或无效版本返回 `428 precondition_required`，不作任何更改。旧 POST 切换接口仍返回 `404`，没有兼容性 toggle 回退。
+- 并发的相反操作若使用同一版本，最多一个会被接受；另一个收到冲突。服务端不使用客户端时间猜测哪次意图更新。
+
+这也是 CE 网页 block／ignore／follow 的共享合同；关系删除后仍保留版本记录，防止“删除 → 重建 → 旧删除重试”解除新的屏蔽或忽略。部署必须先应用新增关系版本表迁移并同步更新调用方；不能把仍接受无版本 DELETE 的旧写入服务与新服务混用。EE、EE-PVP 必须通过 `CE -> EE -> EE-PVP` 的同一 Git 历史继承，不得另写下游关系实现。
 
 ## 工作人员治理接口
 

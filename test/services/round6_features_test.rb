@@ -12,7 +12,8 @@ class Community::SetUserBlockTest < ActiveSupport::TestCase
     result = Community::SetUserBlock.call(
       blocker: @blocker,
       blocked_username: @target.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     assert result.success?
     assert result.value[:blocked]
@@ -21,7 +22,8 @@ class Community::SetUserBlockTest < ActiveSupport::TestCase
     unblock = Community::SetUserBlock.call(
       blocker: @blocker,
       blocked_username: @target.username,
-      desired_state: false
+      desired_state: false,
+      expected_revision: result.value[:revision]
     )
     assert unblock.success?
     assert_not unblock.value[:blocked]
@@ -32,7 +34,8 @@ class Community::SetUserBlockTest < ActiveSupport::TestCase
     result = Community::SetUserBlock.call(
       blocker: @blocker,
       blocked_username: @blocker.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
     assert result.failure?
   end

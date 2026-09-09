@@ -2,6 +2,8 @@
 
 module Community
   class FollowsController < ApplicationController
+    include Community::RelationshipStateResponse
+    include ViewerScopedNoStoreResponse
     include BlockedUsersFilterable
     include Community::TopicListSortable
     include Community::TopicListPreloadable
@@ -17,6 +19,11 @@ module Community
 
       users = follows.reject { |follow| blocked_user_ids.include?(follow.followed_id) }
       @pagy_users, paged_users = pagy(:offset, users, limit: 20, page_key: "users_page")
+      relationship_states = UserRelationshipState.snapshots(
+        actor: current_user,
+        targets: paged_users.map(&:followed_id),
+        kinds: %i[follow]
+      )
 
       topics_scope = Community::ForumAccess.listed_topic_scope(
         relation: Community::Topic.where(user_id: followed_ids),
@@ -37,6 +44,7 @@ module Community
             forum_title: user.forum_title,
             avatar_url: user.avatar_url,
             profile_url: forum_user_path(user.username),
+            relationship: relationship_states.fetch(user.id).fetch(:follow),
             unfollow_url: forum_user_follow_path(user.username)
           }
         end,
@@ -62,8 +70,10 @@ module Community
       result = Community::SetUserFollow.call(
         follower: current_user,
         followed_username: params[:username],
-        desired_state: desired_state
+        desired_state: desired_state,
+        expected_revision: params[:expected_revision]
       )
+      return render_relationship_state(result) if request.format.json?
 
       if result.success?
         notice = result.value[:following] ? t("mcweb.flash.following_toggled_on") : t("mcweb.flash.following_toggled_off")

@@ -106,7 +106,8 @@ class ConversationInvitationLifecycleTest < ActiveSupport::TestCase
     result = Community::SetUserBlock.call(
       blocker: @invitee,
       blocked_username: @member.username,
-      desired_state: true
+      desired_state: true,
+      expected_revision: "0"
     )
 
     assert_predicate result, :success?

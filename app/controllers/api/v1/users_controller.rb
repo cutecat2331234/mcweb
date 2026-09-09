@@ -5,9 +5,20 @@ module Api
     class UsersController < BaseController
       include Serialization
       include ForumVisibility
+      include Community::RelationshipStateResponse
 
-      skip_before_action :require_read_scope!, only: :follow
-      before_action :require_writer!, only: :follow
+      skip_before_action :require_read_scope!, only: %i[follow follow_state]
+      before_action :require_writer!, only: %i[follow follow_state]
+
+      # This is the writer's own relationship state, not general member data.
+      # Allow write-only keys to obtain the precondition needed by PUT/DELETE.
+      def follow_state
+        target = User.find_by!(public_id: params[:id])
+        snapshot = Community::UserRelationshipState.snapshot(
+          relation: Community::UserFollow.where(follower: api_user, followed: target)
+        )
+        render_relationship_state(ServiceResult.success(snapshot.merge(user_id: target.public_id, following: snapshot[:active])))
+      end
 
       # PUT/DELETE /api/v1/users/:id/follow (write scope) — establishes the requested final state
       def follow
@@ -15,17 +26,12 @@ module Api
         result = Community::SetUserFollow.call(
           follower: api_user,
           followed_username: target.username,
-          desired_state: request.put?
+          desired_state: request.put?,
+          expected_revision: params[:expected_revision]
         )
-        return render_service_error(result) if result.failure?
+        return render_relationship_state(result) if result.failure?
 
-        render json: {
-          data: {
-            user_id: target.public_id,
-            following: result.value[:following],
-            changed: result.value[:changed]
-          }
-        }
+        render_relationship_state(ServiceResult.success(result.value.merge(user_id: target.public_id)))
       end
 
       # GET /api/v1/users?q=<name>&sort=<posts|newest|username>

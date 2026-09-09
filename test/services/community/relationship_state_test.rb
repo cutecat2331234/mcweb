@@ -77,6 +77,7 @@ module Community
       end
       assert_not UserFollow.exists?(follower: @actor, followed: @target)
       assert_equal 0, notification_scope.count
+      assert_not UserRelationshipState.exists?(actor: @actor, target: @target, kind: "follow")
     end
 
     test "missing desired state fails closed instead of toggling" do
@@ -110,6 +111,7 @@ module Community
         result = SetUserRelationship.call(
           relation: relation,
           desired_state: true,
+          expected_revision: "0",
           participants: [ @actor, @target ]
         )
 
@@ -126,6 +128,7 @@ module Community
         result = SetUserRelationship.call(
           relation: relation,
           desired_state: true,
+          expected_revision: "0",
           participants: [ @actor, @target ]
         )
 
@@ -143,7 +146,7 @@ module Community
       ]
 
       relationships.each do |relation|
-        result = SetUserRelationship.call(relation: relation, desired_state: true)
+        result = SetUserRelationship.call(relation: relation, desired_state: true, expected_revision: "0")
 
         assert_predicate result, :success?
         assert relation.exists?
@@ -158,6 +161,7 @@ module Community
         SetUserRelationship.call(
           relation: relation,
           desired_state: true,
+          expected_revision: "0",
           participants: [ @actor, other ]
         )
       end
@@ -170,7 +174,8 @@ module Community
       expected_indexes = {
         UserBlock => %w[blocker_id blocked_id],
         UserIgnore => %w[ignorer_id ignored_id],
-        UserFollow => %w[follower_id followed_id]
+        UserFollow => %w[follower_id followed_id],
+        UserRelationshipState => %w[actor_id target_id kind]
       }
 
       expected_indexes.each do |model, columns|
@@ -181,18 +186,134 @@ module Community
       end
     end
 
+    test "missing or malformed revisions never remove a safety relationship" do
+      assert_predicate set_block(true), :success?
+      assert_predicate set_ignore(true), :success?
+
+      [ nil, "", "-1", "01", "1.0", 1.0, true, [], {}, "9223372036854775807" ].each do |revision|
+        [ set_block(false, revision: revision), set_ignore(false, revision: revision) ].each do |result|
+          assert_predicate result, :failure?
+          assert_equal "precondition_required", result.code
+          assert result.value[:active]
+          assert_equal "1", result.value[:revision]
+        end
+      end
+      assert UserBlock.exists?(blocker: @actor, blocked: @target)
+      assert UserIgnore.exists?(ignorer: @actor, ignored: @target)
+    end
+
+    test "a timed out removal retry cannot undo a later establishment for any relationship" do
+      [ method(:set_block), method(:set_ignore), method(:set_follow) ].each do |setter|
+        assert_predicate setter.call(true, revision: "0"), :success?
+        removed = setter.call(false, revision: "1") # its HTTP response is lost
+        assert_predicate removed, :success?
+        assert_equal "2", removed.value[:revision]
+        assert_predicate setter.call(true, revision: "2"), :success?
+
+        late_retry = setter.call(false, revision: "1")
+        assert_predicate late_retry, :failure?
+        assert_equal "conflict", late_retry.code
+        assert late_retry.value[:active], "an old DELETE must not remove the newer relationship"
+        assert_equal "3", late_retry.value[:revision]
+      end
+    end
+
+    test "a timed out establishment retry cannot undo a later removal" do
+      [ method(:set_block), method(:set_ignore), method(:set_follow) ].each do |setter|
+        assert_predicate setter.call(true, revision: "0"), :success?
+        assert_predicate setter.call(false, revision: "1"), :success?
+
+        late_retry = setter.call(true, revision: "0")
+        assert_predicate late_retry, :failure?
+        assert_equal "conflict", late_retry.code
+        assert_not late_retry.value[:active]
+        assert_equal "2", late_retry.value[:revision], "the absent-state tombstone must survive DELETE"
+      end
+    end
+
+    test "a no-op intent also supersedes an older opposite intent" do
+      assert_predicate set_block(true, revision: "0"), :success?
+      confirmed_block = set_block(true, revision: "1")
+      assert_predicate confirmed_block, :success?
+      assert_not confirmed_block.value[:changed]
+      assert_equal "2", confirmed_block.value[:revision]
+
+      delayed_unblock = set_block(false, revision: "1")
+      assert_predicate delayed_unblock, :failure?
+      assert delayed_unblock.value[:active]
+      assert_predicate set_block(true, revision: "1"), :success?
+    end
+
+    test "an out of order future revision is not applied or guessed" do
+      result = set_ignore(false, revision: "2")
+
+      assert_predicate result, :failure?
+      assert_equal "conflict", result.code
+      assert_equal({ active: false, revision: "0" }, result.value)
+      assert_not UserRelationshipState.exists?(actor: @actor, target: @target, kind: "ignore")
+    end
+
+    test "an existing pre-migration relationship starts at revision zero and keeps a removal tombstone" do
+      relation = UserBlock.where(blocker: @actor, blocked: @target)
+      relation.create!
+
+      assert_equal({ active: true, revision: "0" }, UserRelationshipState.snapshot(relation: relation))
+      result = set_block(false, revision: "0")
+      assert_predicate result, :success?
+      assert_equal({ active: false, revision: "1" }, UserRelationshipState.snapshot(relation: relation))
+    end
+
+    test "relationship snapshots batch targets and kinds into one consistent read without participant locks" do
+      other = create_user
+      UserBlock.create!(blocker: @actor, blocked: @target)
+      UserFollow.create!(follower: @actor, followed: other)
+      UserRelationshipState.create!(actor: @actor, target: @target, kind: "block", revision: 4, last_desired_state: true)
+      UserRelationshipState.create!(actor: @actor, target: other, kind: "follow", revision: 7, last_desired_state: true)
+
+      statements = []
+      subscriber = lambda do |_name, _started, _finished, _id, payload|
+        statements << payload[:sql] unless payload[:name].in?(%w[SCHEMA CACHE TRANSACTION])
+      end
+      snapshots = Identity::UserMutationLock.stub(:with_users, ->(**) { flunk("read snapshots must not lock users") }) do
+        ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+          UserRelationshipState.snapshots(actor: @actor, targets: [ @target, other ], kinds: %i[block ignore follow])
+        end
+      end
+
+      assert_equal 1, statements.length
+      assert_equal({ active: true, revision: "4" }, snapshots.fetch(@target.id).fetch(:block))
+      assert_equal({ active: false, revision: "0" }, snapshots.fetch(@target.id).fetch(:ignore))
+      assert_equal({ active: false, revision: "0" }, snapshots.fetch(@target.id).fetch(:follow))
+      assert_equal({ active: true, revision: "7" }, snapshots.fetch(other.id).fetch(:follow))
+    end
+
+    test "a ledger failure rolls back its relationship even inside an outer transaction" do
+      ledger = UserRelationshipState.new(actor: @actor, target: @target, kind: "block")
+      ledger.errors.add(:base, :invalid)
+
+      UserRelationshipState.stub(:find_or_initialize_by, ledger) do
+        ledger.stub(:update!, ->(**) { raise ActiveRecord::RecordInvalid.new(ledger) }) do
+          ApplicationRecord.transaction do
+            assert_predicate set_block(true), :failure?
+          end
+        end
+      end
+      assert_not UserBlock.exists?(blocker: @actor, blocked: @target)
+      assert_not UserRelationshipState.exists?(actor: @actor, target: @target, kind: "block")
+    end
+
     private
 
-    def set_block(desired_state)
-      SetUserBlock.call(blocker: @actor, blocked_username: @target.username, desired_state: desired_state)
+    def set_block(desired_state, revision: desired_state ? "0" : "1")
+      SetUserBlock.call(blocker: @actor, blocked_username: @target.username, desired_state: desired_state, expected_revision: revision)
     end
 
-    def set_ignore(desired_state)
-      SetUserIgnore.call(ignorer: @actor, ignored_username: @target.username, desired_state: desired_state)
+    def set_ignore(desired_state, revision: desired_state ? "0" : "1")
+      SetUserIgnore.call(ignorer: @actor, ignored_username: @target.username, desired_state: desired_state, expected_revision: revision)
     end
 
-    def set_follow(desired_state)
-      SetUserFollow.call(follower: @actor, followed_username: @target.username, desired_state: desired_state)
+    def set_follow(desired_state, revision: desired_state ? "0" : "1")
+      SetUserFollow.call(follower: @actor, followed_username: @target.username, desired_state: desired_state, expected_revision: revision)
     end
   end
 
@@ -254,6 +375,45 @@ module Community
       end
     end
 
+    test "opposite concurrent intents using one revision cannot overwrite each other" do
+      NotificationPreference.stub(:enabled?, false) do
+        configurations.each do |configuration|
+          intents = Queue.new
+          intents << true << false
+          results = race(2) { configuration[:call].call(intents.pop, "0") }
+
+          results.each { |result| assert_instance_of ServiceResult, result }
+          assert_equal 1, results.count(&:success?)
+          assert_equal 1, results.count(&:failure?)
+          winner = results.find(&:success?)
+          conflict = results.find(&:failure?)
+          assert_equal "conflict", conflict.code
+          assert_equal winner.value[:active], conflict.value[:active]
+          assert_equal "1", conflict.value[:revision]
+          assert_equal winner.value[:active], configuration[:relation].call.exists?
+        end
+      end
+    end
+
+    test "concurrent old removal retries cannot reverse a newer establishment" do
+      NotificationPreference.stub(:enabled?, false) do
+        configurations.each do |configuration|
+          assert_predicate configuration[:call].call(true, "0"), :success?
+          assert_predicate configuration[:call].call(false, "1"), :success?
+          assert_predicate configuration[:call].call(true, "2"), :success?
+          intents = Queue.new
+          intents << [ false, "1" ] << [ false, "1" ] << [ true, "2" ]
+          results = race(3) { configuration[:call].call(*intents.pop) }
+
+          results.each { |result| assert_instance_of ServiceResult, result }
+          assert_equal 1, results.count(&:success?)
+          assert_equal 2, results.count(&:failure?)
+          assert results.all? { |result| result.value[:active] && result.value[:revision] == "3" }
+          assert_equal 1, configuration[:relation].call.count
+        end
+      end
+    end
+
     test "participant locks normalize order and serialize relationship writes" do
       lock_acquired = Queue.new
       release_lock = Queue.new
@@ -281,7 +441,8 @@ module Community
           writer_outcome << SetUserBlock.call(
             blocker: User.find(@actor.id),
             blocked_username: @target.username,
-            desired_state: true
+            desired_state: true,
+            expected_revision: "0"
           )
         end
       rescue StandardError => error
@@ -313,17 +474,17 @@ module Community
     def configurations
       [
         {
-          call: ->(state) { SetUserBlock.call(blocker: User.find(@actor.id), blocked_username: @target.username, desired_state: state) },
+          call: ->(state, revision = state ? "0" : "1") { SetUserBlock.call(blocker: User.find(@actor.id), blocked_username: @target.username, desired_state: state, expected_revision: revision) },
           state_key: :blocked,
           relation: -> { UserBlock.where(blocker_id: @actor.id, blocked_id: @target.id) }
         },
         {
-          call: ->(state) { SetUserIgnore.call(ignorer: User.find(@actor.id), ignored_username: @target.username, desired_state: state) },
+          call: ->(state, revision = state ? "0" : "1") { SetUserIgnore.call(ignorer: User.find(@actor.id), ignored_username: @target.username, desired_state: state, expected_revision: revision) },
           state_key: :ignored,
           relation: -> { UserIgnore.where(ignorer_id: @actor.id, ignored_id: @target.id) }
         },
         {
-          call: ->(state) { SetUserFollow.call(follower: User.find(@actor.id), followed_username: @target.username, desired_state: state) },
+          call: ->(state, revision = state ? "0" : "1") { SetUserFollow.call(follower: User.find(@actor.id), followed_username: @target.username, desired_state: state, expected_revision: revision) },
           state_key: :following,
           relation: -> { UserFollow.where(follower_id: @actor.id, followed_id: @target.id) }
         }

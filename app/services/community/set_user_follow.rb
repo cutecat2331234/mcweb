@@ -2,10 +2,11 @@
 
 module Community
   class SetUserFollow < ApplicationService
-    def initialize(follower:, followed_username:, desired_state: nil)
+    def initialize(follower:, followed_username:, desired_state: nil, expected_revision: nil)
       @follower = follower
       @followed = User.find_by(username: followed_username.to_s.strip)
       @desired_state = desired_state
+      @expected_revision = expected_revision
     end
 
     def call
@@ -16,13 +17,14 @@ module Community
         mutation = Community::SetUserRelationship.call(
           relation: Community::UserFollow.where(follower: @follower, followed: @followed),
           desired_state: @desired_state,
+          expected_revision: @expected_revision,
           participants: [ @follower, @followed ]
         )
         if mutation.failure?
           mutation
         else
           notify_followed! if mutation.value[:changed] && mutation.value[:active]
-          ServiceResult.success(following: mutation.value[:active], changed: mutation.value[:changed])
+          ServiceResult.success(mutation.value.merge(following: mutation.value[:active]))
         end
       end
     rescue ActiveRecord::RecordInvalid => error

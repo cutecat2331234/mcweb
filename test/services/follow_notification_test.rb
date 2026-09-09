@@ -11,7 +11,8 @@ class FollowNotificationTest < ActiveSupport::TestCase
       result = Community::SetUserFollow.call(
         follower: follower,
         followed_username: followed.username,
-        desired_state: true
+        desired_state: true,
+        expected_revision: "0"
       )
       assert result.success?
       assert result.value[:following]
@@ -27,7 +28,8 @@ class FollowNotificationTest < ActiveSupport::TestCase
       result = Community::SetUserFollow.call(
         follower: follower,
         followed_username: followed.username,
-        desired_state: false
+        desired_state: false,
+        expected_revision: "0"
       )
       assert result.success?
       assert_not result.value[:following]

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, nextTick, ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue'
+import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
-import { beginCommunityRelationshipMutation, finishCommunityRelationshipMutation } from '@/lib/communityRelationshipMutation'
+import type { CommunityRelationshipSnapshot } from '@/lib/communityRelationshipMutation'
+import { useCommunityRelationship } from '@/lib/useCommunityRelationship'
 
 const { t } = useI18n()
 
@@ -39,6 +40,7 @@ export interface UserCardData {
   message_url: string | null
   follow_url?: string | null
   following?: boolean
+  follow_relationship?: CommunityRelationshipSnapshot
   ingame_online?: boolean
   ingame_server?: string | null
 }
@@ -46,35 +48,44 @@ export interface UserCardData {
 const open = ref(false)
 const pinned = ref(false)
 const loading = ref(false)
-const followProcessing = ref(false)
 const card = ref<UserCardData | null>(null)
+const { state: followState, submit: toggleFollow } = useCommunityRelationship(
+  () => card.value?.follow_url, () => card.value?.follow_relationship,
+)
 const triggerRef = ref<HTMLElement | null>(null)
 const cardRef = ref<HTMLElement | null>(null)
 const cardStyle = ref<Record<string, string>>({ top: '0px', left: '0px' })
 let hoverTimer: ReturnType<typeof setTimeout> | null = null
 let closeTimer: ReturnType<typeof setTimeout> | null = null
+let cardRequest = 0
+
+watch(() => props.cardUrl, () => {
+  cardRequest += 1
+  card.value = null
+  loading.value = false
+  if (open.value) void loadCard()
+}, { flush: 'sync' })
 
 async function loadCard() {
   if (card.value || loading.value || !props.cardUrl) return
+  const request = ++cardRequest
+  const url = props.cardUrl
   loading.value = true
   try {
-    const response = await fetch(props.cardUrl, {
+    const response = await fetch(url, {
       headers: { Accept: 'application/json' },
       credentials: 'same-origin',
+      cache: 'no-store',
     })
     if (response.ok) {
-      card.value = await response.json()
+      const data = await response.json()
+      if (request === cardRequest && url === props.cardUrl) card.value = data
     }
   } catch {
-    card.value = null
+    if (request === cardRequest) card.value = null
   } finally {
-    loading.value = false
+    if (request === cardRequest) loading.value = false
   }
-}
-
-async function reloadCard() {
-  card.value = null
-  await loadCard()
 }
 
 function clearHoverTimer() {
@@ -183,22 +194,6 @@ function onScrollResize() {
   if (open.value) updatePosition()
 }
 
-function toggleFollow() {
-  if (!card.value?.follow_url) return
-
-  const mutation = beginCommunityRelationshipMutation(followProcessing, card.value.following === true)
-  if (!mutation) return
-  const url = card.value.follow_url
-  const options = {
-    preserveScroll: true,
-    preserveState: true,
-    onSuccess: () => { void reloadCard() },
-    onFinish: () => finishCommunityRelationshipMutation(followProcessing),
-  }
-  if (mutation.method === 'put') router.put(url, {}, options)
-  else router.delete(url, options)
-}
-
 onMounted(() => {
   document.addEventListener('pointerdown', onDocPointer, true)
   window.addEventListener('scroll', onScrollResize, true)
@@ -206,6 +201,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  cardRequest += 1
   clearHoverTimer()
   clearCloseTimer()
   document.removeEventListener('pointerdown', onDocPointer, true)
@@ -293,12 +289,13 @@ onBeforeUnmount(() => {
               type="button"
               variant="link"
               size="sm"
-              :disabled="followProcessing || loading"
+              :disabled="followState.processing || loading || !followState.revision"
               @click.stop="toggleFollow"
             >
-              {{ card.following ? t('components.userHover.unfollow') : t('components.userHover.follow') }}
+              {{ followState.error === 'retry' ? t('components.relationship.retry') : followState.active ? t('components.userHover.unfollow') : t('components.userHover.follow') }}
             </Button>
           </div>
+          <p v-if="followState.error" role="status" class="mt-2 text-xs text-muted-foreground">{{ t(`components.relationship.errors.${followState.error}`) }}</p>
         </template>
       </div>
     </Teleport>

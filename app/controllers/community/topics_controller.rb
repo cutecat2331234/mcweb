@@ -53,14 +53,22 @@ module Community
       else
                          {}
       end
+      post_authors = posts.map(&:user).uniq(&:id)
+      activity_author_ids = post_authors.filter_map do |user|
+        user.id if Community::UserProfileVisibility.new(user: user, viewer: current_user).activity_summary?
+      end
+      mark_viewer_scoped_no_store_response! if activity_author_ids.any?
       verified_purchaser_ids = Commerce::Order
-        .where(user_id: posts.map(&:user_id).uniq, status: %w[paid processing fulfilling fulfilled completed])
+        .where(
+          user_id: activity_author_ids,
+          status: Community::UserProfileActivitySerializer::COMPLETED_ORDER_STATUSES
+        )
         .distinct
         .pluck(:user_id)
         .to_set
       # Exact balances are private. Preload only authors this viewer may inspect;
       # serialize_post applies the same policy again at the output boundary.
-      post_author_ids = posts.map(&:user_id).uniq
+      post_author_ids = post_authors.map(&:id)
       point_author_ids = if Community::UserProfileVisibility.private_directory_visible?(viewer: current_user)
                            post_author_ids
       elsif current_user && post_author_ids.include?(current_user.id)

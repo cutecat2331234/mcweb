@@ -511,12 +511,13 @@ class CommunityUserProfilePrivacyTest < ActionDispatch::IntegrationTest
     assert staff.key?(:last_seen_at)
   end
 
-  test "topic author points are omitted for guests and ordinary members" do
+  test "topic author points and purchase status are omitted for guests and ordinary members" do
     get forum_topic_path(@topic)
 
     assert_response :success
     post = inertia.props.deep_symbolize_keys.fetch(:posts).find { |row| row.fetch(:id) == @post.id }
     refute post.key?(:author_forum_points)
+    refute post.key?(:verified_purchaser)
 
     sign_in_as(create_user)
     get forum_topic_path(@topic)
@@ -525,15 +526,17 @@ class CommunityUserProfilePrivacyTest < ActionDispatch::IntegrationTest
     assert_equal "private, no-store", response.headers["Cache-Control"]
     post = inertia.props.deep_symbolize_keys.fetch(:posts).find { |row| row.fetch(:id) == @post.id }
     refute post.key?(:author_forum_points)
+    refute post.key?(:verified_purchaser)
   end
 
-  test "topic author and explicitly authorized viewer can see author points" do
+  test "topic author and explicitly authorized viewer can see points and purchase status" do
     sign_in_as(@target)
     get forum_topic_path(@topic)
 
     assert_response :success
     post = inertia.props.deep_symbolize_keys.fetch(:posts).find { |row| row.fetch(:id) == @post.id }
     assert_equal 42, post.fetch(:author_forum_points)
+    assert_equal true, post.fetch(:verified_purchaser)
 
     viewer = create_user
     grant_permission(viewer, PRIVATE_PERMISSION)
@@ -543,6 +546,38 @@ class CommunityUserProfilePrivacyTest < ActionDispatch::IntegrationTest
     assert_response :success
     post = inertia.props.deep_symbolize_keys.fetch(:posts).find { |row| row.fetch(:id) == @post.id }
     assert_equal 42, post.fetch(:author_forum_points)
+    assert_equal true, post.fetch(:verified_purchaser)
+  end
+
+  test "public purchase opt in covers topic author badges and can be withdrawn" do
+    @target.update!(forum_profile_activity_public: true)
+
+    get forum_topic_path(@topic)
+
+    assert_response :success
+    assert_equal "private, no-store", response.headers["Cache-Control"]
+    post = inertia.props.deep_symbolize_keys.fetch(:posts).find { |row| row.fetch(:id) == @post.id }
+    assert_equal true, post.fetch(:verified_purchaser)
+    refute post.key?(:author_forum_points)
+
+    @target.update!(forum_profile_activity_public: false)
+    get forum_topic_path(@topic)
+
+    assert_response :success
+    post = inertia.props.deep_symbolize_keys.fetch(:posts).find { |row| row.fetch(:id) == @post.id }
+    refute post.key?(:verified_purchaser)
+  end
+
+  test "moderation access does not reveal topic author purchase status" do
+    moderator = create_user
+    grant_permission(moderator, "forum.users.warn")
+    sign_in_as(moderator)
+
+    get forum_topic_path(@topic)
+
+    assert_response :success
+    post = inertia.props.deep_symbolize_keys.fetch(:posts).find { |row| row.fetch(:id) == @post.id }
+    refute post.key?(:verified_purchaser)
   end
 
   private

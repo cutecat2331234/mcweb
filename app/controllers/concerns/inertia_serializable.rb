@@ -379,9 +379,8 @@ module InertiaSerializable
     edits_loaded = post.association(:edits).loaded?
     edit_count = edits_loaded ? post.edits.size : post.edits.count
     has_edits = edits_loaded ? post.edits.any? : post.edits.exists?
-    private_activity_visible = Community::UserProfileVisibility
-      .new(user: post.user, viewer: current_user)
-      .private_activity?
+    activity = Community::UserProfileActivitySerializer.new(user: post.user, viewer: current_user)
+    private_activity_visible = activity.visibility.private_activity?
     visible_author_points = if private_activity_visible
                               author_forum_points.nil? ? Community::PointAccount.find_by(user: post.user, currency: "points")&.balance.to_i : author_forum_points
     end
@@ -405,7 +404,7 @@ module InertiaSerializable
       author_card_url: card_forum_user_path(post.user.username),
       author_badges: serialize_user_badges(post.user),
       author_memberships: serialize_user_memberships(post.user, limit: 2),
-      verified_purchaser: verified_purchaser.nil? ? verified_purchaser?(post.user) : verified_purchaser,
+      **activity.post(verified_purchaser: verified_purchaser),
       avatar_url: post.user.avatar_url,
       body: post.body,
       revision: post.revision,
@@ -1314,12 +1313,6 @@ module InertiaSerializable
     return nil unless result.success?
 
     store_download_path(result.value[:token])
-  end
-
-  def verified_purchaser?(user)
-    return false unless user
-
-    Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).exists?
   end
 
   def serialize_order_item_question(question)

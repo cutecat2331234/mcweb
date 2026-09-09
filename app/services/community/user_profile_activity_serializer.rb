@@ -54,6 +54,13 @@ module Community
       presence.merge(purchases_count: purchases_count.to_i)
     end
 
+    def post(verified_purchaser: nil)
+      return {} unless visible?
+      return { verified_purchaser: verified_purchaser == true } unless verified_purchaser.nil?
+
+      { verified_purchaser: Commerce::Order.where(user: @user, status: COMPLETED_ORDER_STATUSES).exists? }
+    end
+
     def minecraft(identity:)
       return {} unless visible?
 

@@ -51,6 +51,19 @@ module Community
       assert_equal({}, serializer.minecraft(identity: Struct.new(:last_seen_ingame_at).new(Time.current)))
     end
 
+    test "hidden post activity ignores preloaded purchase status and never queries orders" do
+      viewers = [ nil, create_user ]
+
+      Commerce::Order.stub(:where, ->(*) { flunk("queried hidden purchase activity") }) do
+        viewers.each do |viewer|
+          serializer = UserProfileActivitySerializer.new(user: @user, viewer: viewer)
+          assert_equal({}, serializer.post)
+          assert_equal({}, serializer.post(verified_purchaser: true))
+          assert_equal({}, serializer.post(verified_purchaser: false))
+        end
+      end
+    end
+
     test "public opt in exposes only the bounded activity summary" do
       @user.update!(forum_profile_activity_public: true)
       serializer = UserProfileActivitySerializer.new(user: @user, viewer: nil)
@@ -73,8 +86,39 @@ module Community
 
       assert_equal %i[last_seen_at online purchases_count].sort,
                    serializer.member(purchases_count: 1).keys.sort
+      assert_equal({ verified_purchaser: true }, serializer.post)
       identity = Struct.new(:last_seen_ingame_at).new(2.minutes.ago)
       assert_equal [ :last_seen_ingame_at ], serializer.minecraft(identity: identity).keys
+    end
+
+    test "visible post activity preserves both preloaded states without querying orders" do
+      serializer = UserProfileActivitySerializer.new(user: @user, viewer: @user)
+
+      Commerce::Order.stub(:where, ->(*) { flunk("ignored preloaded purchase activity") }) do
+        assert_equal({ verified_purchaser: true }, serializer.post(verified_purchaser: true))
+        assert_equal({ verified_purchaser: false }, serializer.post(verified_purchaser: false))
+      end
+    end
+
+    test "post activity keeps completed purchase status private across viewer roles" do
+      viewer = create_user
+      grant_permission(viewer, UserProfileVisibility::PRIVATE_ACTIVITY_PERMISSION)
+      [ @user, viewer ].each do |authorized_viewer|
+        serializer = UserProfileActivitySerializer.new(user: @user, viewer: authorized_viewer)
+        assert_equal({ verified_purchaser: true }, serializer.post)
+      end
+
+      non_purchaser = create_user
+      Commerce::Order.create!(
+        user: non_purchaser,
+        status: "cancelled",
+        subtotal_cents: 100,
+        discount_cents: 0,
+        total_cents: 100,
+        currency: "CNY"
+      )
+      serializer = UserProfileActivitySerializer.new(user: non_purchaser, viewer: non_purchaser)
+      assert_equal({ verified_purchaser: false }, serializer.post)
     end
 
     test "the owner and explicitly authorized viewers retain private transaction history" do

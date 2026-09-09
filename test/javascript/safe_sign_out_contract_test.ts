@@ -39,6 +39,19 @@ test('sign out uses the registered shared action and always reaches a safe publi
   assert.match(helper, /finally \{\s*finish\(\)/)
 })
 
+test('sign out suspends drafts before the request and clears them only after success', () => {
+  assert.match(helper, /import \{ clearForumReplyDrafts, suspendForumReplyDrafts \} from '@\/lib\/forumReplyDrafts'/)
+  const confirmation = helper.indexOf('if (!confirmUnsavedNavigation()) return')
+  const draftSuspension = helper.indexOf('suspendForumReplyDrafts()')
+  const draftCleanup = helper.indexOf('clearForumReplyDrafts()')
+  const signOutRequest = helper.indexOf('await performSharedAction(')
+  assert.ok(confirmation >= 0 && confirmation < draftSuspension)
+  assert.ok(draftSuspension < signOutRequest && signOutRequest < draftCleanup)
+  assert.match(helper, /method: 'DELETE',\s+\}\)\s+clearForumReplyDrafts\(\)\s+visitSafePublicPage\(\)/)
+  assert.doesNotMatch(helper.slice(helper.lastIndexOf('} catch (error) {')), /clearForumReplyDrafts\(\)/)
+  assert.doesNotMatch(helper, /localStorage\.clear\(/)
+})
+
 test('sign out invalidates encrypted history and restored authenticated documents', () => {
   assert.match(authenticatedHistory, /\['historyKey', 'historyIv'\]/)
   assert.match(authenticatedHistory, /browserStorage\('sessionStorage'\)/)

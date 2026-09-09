@@ -22,6 +22,7 @@ module Community
       )
 
       if result.success?
+        flash[:post_create_succeeded] = client_operation_token(post_params[:idempotency_key])
         notice = result.value.status == "pending_approval" ? t("mcweb.flash.post_pending_submitted") : nil
         redirect_to forum_topic_path(@topic, anchor: "post-#{result.value.id}"), notice: notice
       else

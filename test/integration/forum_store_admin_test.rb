@@ -37,11 +37,47 @@ class ForumIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     posts_before = Community::Post.count
+    operation_token = SecureRandom.uuid
     travel 11.seconds do
-      post forum_posts_path, params: { post: { topic_id: topic.public_id, body: "First reply" } }
+      post forum_posts_path, params: {
+        post: {
+          topic_id: topic.public_id,
+          body: "First reply",
+          idempotency_key: operation_token
+        }
+      }
     end
     assert_equal posts_before + 1, Community::Post.count
     assert_redirected_to %r{/app/forum/topics/#{topic.public_id}}
+    assert_equal operation_token, flash[:post_create_succeeded]
+
+    get forum_topic_path(topic)
+    assert_equal operation_token,
+      inertia.props.deep_symbolize_keys.dig(:flash, :post_create_succeeded)
+  end
+
+  test "failed replies never publish a successful operation receipt" do
+    topic = Community::CreateTopic.call(
+      user: @user,
+      section: @section,
+      title: "Failed reply receipt",
+      body: "Opening post",
+      ip_address: "127.0.0.1"
+    ).value
+
+    assert_no_difference "Community::Post.count" do
+      post forum_posts_path, params: {
+        post: {
+          topic_id: topic.public_id,
+          body: "",
+          idempotency_key: SecureRandom.uuid
+        }
+      }
+    end
+
+    assert_redirected_to forum_topic_path(topic)
+    assert_nil flash[:post_create_succeeded]
+    assert flash[:alert].present?
   end
 
   test "forum search finds topics" do

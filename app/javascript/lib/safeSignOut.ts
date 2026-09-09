@@ -3,6 +3,7 @@ import { documentFrontendApplicationId } from '@/lib/frontendApplications'
 import { performSharedAction, SharedActionError } from '@/lib/sharedAction'
 import { navigateFrontendDocument } from '@/lib/applicationNavigation'
 import { invalidateAuthenticatedHistory } from '@/lib/authenticatedHistory'
+import { clearForumReplyDrafts, suspendForumReplyDrafts } from '@/lib/forumReplyDrafts'
 import { confirmUnsavedNavigation } from '@/lib/unsavedForms'
 
 type SafeSignOutHooks = {
@@ -35,11 +36,13 @@ export async function safeSignOut(hooks: SafeSignOutHooks = {}) {
   }
 
   hooks.onStart?.()
+  suspendForumReplyDrafts()
 
   try {
     await performSharedAction(documentFrontendApplicationId(), routes.signOut, {
       method: 'DELETE',
     })
+    clearForumReplyDrafts()
     visitSafePublicPage()
   } catch (error) {
     if (error instanceof SharedActionError && error.recoveryStarted) return

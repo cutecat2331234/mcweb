@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -36,6 +36,12 @@ import { routes } from '@/lib/routes'
 import { createIdempotencyKey } from '@/lib/idempotency'
 import { readCsrfToken } from '@/lib/csrf'
 import { commitNavigationEffect } from '@/lib/navigationReceipt'
+import type { FrontendDraftContext } from '@/lib/frontendDrafts'
+import {
+  discardLegacyForumReplyDrafts,
+  forumReplyDraftAdapter,
+  onForumReplyDraftsInvalidated,
+} from '@/lib/forumReplyDrafts'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 import { confirm } from '@/lib/useConfirm'
 import { prompt } from '@/lib/usePrompt'
@@ -470,7 +476,10 @@ const autoCloseAt = ref('')
 const autoOpenAt = ref('')
 const autoBumpAt = ref('')
 const autoArchiveAt = ref('')
-const draftKey = `forum-reply-draft-${props.topic.id}`
+const replyDraftContext = computed<FrontendDraftContext | null>(() => {
+  const userId = page.props.auth.user?.id
+  return userId ? { userId, resourceId: props.topic.id } : null
+})
 const topicSearch = ref(props.topicSearchQuery || '')
 const postSort = ref(props.postSort || 'oldest')
 const selectionQuote = ref<{ post: PostItem; text: string; top: number; left: number } | null>(null)
@@ -487,18 +496,104 @@ const assignQuery = ref('')
 const assignSuggestions = ref<Array<{ username: string; display_name: string | null; avatar_url: string }>>([])
 let assignSearchTimer: ReturnType<typeof setTimeout> | null = null
 let draftSaveTimer: ReturnType<typeof setTimeout> | null = null
+let draftSaveRequest: AbortController | null = null
+let activeReplyDraftContext: FrontendDraftContext | null = null
+let activeReplyDraftUrl: string | null = null
+let replyDraftGeneration = 0
+let replyDraftReady = false
+let replyDraftMounted = false
+let removeReplyDraftCleanup: VoidFunction | null = null
 
 let topicKeydownHandler: ((event: KeyboardEvent) => void) | null = null
 
-onMounted(() => {
-  const saved = props.replyDraft || localStorage.getItem(draftKey)
-  if (saved && !replyForm.post.body) {
+function isCurrentReplyDraft(context: FrontendDraftContext): boolean {
+  const current = replyDraftContext.value
+  return current?.userId === context.userId && current?.resourceId === context.resourceId
+}
+
+function cancelReplyDraftSave() {
+  if (draftSaveTimer) clearTimeout(draftSaveTimer)
+  draftSaveTimer = null
+  draftSaveRequest?.abort()
+  draftSaveRequest = null
+}
+
+function invalidateReplyDraft() {
+  replyDraftGeneration += 1
+  replyDraftReady = false
+  activeReplyDraftContext = null
+  activeReplyDraftUrl = null
+  cancelReplyDraftSave()
+}
+
+function resetReplyDraftForm() {
+  replyForm.post.topic_id = props.topic.id
+  replyForm.post.body = ''
+  replyForm.post.quoted_post_id = null
+  replyForm.post.parent_post_id = null
+  replyForm.post.whisper = false
+  replyForm.post.idempotency_key = createIdempotencyKey()
+  replyForm.post.attachment_ids = []
+  pendingAttachments.value = []
+  quotePreviews.value = []
+  replyPreview.value = null
+  replyForm.clearErrors()
+}
+
+async function restoreReplyDraft() {
+  const context = replyDraftContext.value
+  if (!context) return
+  const generation = replyDraftGeneration
+  activeReplyDraftContext = context
+  activeReplyDraftUrl = props.replyDraftUrl ?? null
+  const attachments = (props.replyDraftAttachments || []).map((attachment) => ({ ...attachment }))
+  const hasServerDraft = props.replyDraft != null || attachments.length > 0
+  const saved = hasServerDraft
+    ? (props.replyDraft ?? '')
+    : await forumReplyDraftAdapter.restore(context)
+  if (!replyDraftMounted || generation !== replyDraftGeneration || !isCurrentReplyDraft(context)) return
+  if (typeof saved === 'string' && !replyForm.post.body) {
     replyForm.post.body = saved
+  } else if (saved !== null && typeof saved !== 'string') {
+    void forumReplyDraftAdapter.clear(context)
   }
-  if (props.replyDraftAttachments?.length) {
-    pendingAttachments.value = props.replyDraftAttachments.map((attachment) => ({ ...attachment }))
+  if (attachments.length && pendingAttachments.value.length === 0) {
+    pendingAttachments.value = attachments
     replyForm.post.attachment_ids = pendingAttachments.value.map((item) => item.id)
   }
+  replyDraftReady = true
+  if (replyForm.post.body.trim() || pendingAttachments.value.length) scheduleReplyDraftSave()
+}
+
+watch(
+  [() => page.props.auth.user?.id, () => props.topic.id],
+  async ([userId, topicId], [previousUserId, previousTopicId]) => {
+    if (
+      replyDraftMounted
+      && userId
+      && userId === previousUserId
+      && topicId !== previousTopicId
+    ) {
+      flushReplyDraftSave(true)
+    }
+    invalidateReplyDraft()
+    resetReplyDraftForm()
+    const generation = replyDraftGeneration
+    // Wait for the matching page props before reading the new user's server draft.
+    await nextTick()
+    if (replyDraftMounted && generation === replyDraftGeneration) void restoreReplyDraft()
+  },
+  { flush: 'sync' },
+)
+
+onMounted(() => {
+  replyDraftMounted = true
+  discardLegacyForumReplyDrafts()
+  removeReplyDraftCleanup = onForumReplyDraftsInvalidated((reason) => {
+    invalidateReplyDraft()
+    if (reason === 'clear') resetReplyDraftForm()
+  })
+  void restoreReplyDraft()
   highlightCodeBlocks(document)
   document.querySelectorAll('.code-copy-btn').forEach((button) => {
     button.addEventListener('click', () => {
@@ -538,6 +633,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  flushReplyDraftSave()
+  replyDraftMounted = false
+  invalidateReplyDraft()
+  removeReplyDraftCleanup?.()
   if (slowModeTimer) clearInterval(slowModeTimer)
   if (topicKeydownHandler) document.removeEventListener('keydown', topicKeydownHandler)
 })
@@ -551,34 +650,67 @@ watch(pendingAttachments, () => {
 }, { deep: true })
 
 function scheduleReplyDraftSave() {
+  const context = activeReplyDraftContext
+  if (!replyDraftReady || !context || !isCurrentReplyDraft(context)) return
+  const generation = replyDraftGeneration
   const body = replyForm.post.body
   const attachmentIds = pendingAttachments.value.map((item) => item.id)
+  cancelReplyDraftSave()
   if (body.trim()) {
-    localStorage.setItem(draftKey, body)
+    void forumReplyDraftAdapter.persist(context, body)
   } else {
-    localStorage.removeItem(draftKey)
+    void forumReplyDraftAdapter.clear(context)
   }
-  if (!props.replyDraftUrl) return
-  if (draftSaveTimer) clearTimeout(draftSaveTimer)
+  const draftUrl = props.replyDraftUrl
+  if (!draftUrl) return
   draftSaveTimer = setTimeout(() => {
-    if (!body.trim() && attachmentIds.length === 0) {
-      fetch(props.replyDraftUrl!, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-Token': readCsrfToken() },
-        credentials: 'same-origin',
-      }).catch(() => {})
-      return
-    }
-    fetch(props.replyDraftUrl!, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': readCsrfToken(),
-      },
-      body: JSON.stringify({ body, attachment_ids: attachmentIds }),
-      credentials: 'same-origin',
-    }).catch(() => {})
+    draftSaveTimer = null
+    if (!replyDraftReady || generation !== replyDraftGeneration || !isCurrentReplyDraft(context)) return
+    const request = new AbortController()
+    draftSaveRequest = request
+    void persistReplyDraftToServer(draftUrl, body, attachmentIds, request.signal).finally(() => {
+      if (draftSaveRequest === request) draftSaveRequest = null
+    })
   }, 800)
+}
+
+function persistReplyDraftToServer(
+  draftUrl: string,
+  body: string,
+  attachmentIds: number[],
+  signal?: AbortSignal,
+  keepalive = false,
+) {
+  const empty = !body.trim() && attachmentIds.length === 0
+  return fetch(draftUrl, {
+    method: empty ? 'DELETE' : 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': readCsrfToken(),
+    },
+    body: empty ? undefined : JSON.stringify({ body, attachment_ids: attachmentIds }),
+    credentials: 'same-origin',
+    signal,
+    keepalive,
+  }).catch(() => {})
+}
+
+function flushReplyDraftSave(allowDetachedContext = false) {
+  const context = activeReplyDraftContext
+  const draftUrl = activeReplyDraftUrl
+  if (
+    !replyDraftReady
+    || !context
+    || (!allowDetachedContext && !isCurrentReplyDraft(context))
+    || !draftUrl
+  ) return
+  if (!draftSaveTimer && !draftSaveRequest) return
+  cancelReplyDraftSave()
+  // Normal navigation retains pending server attachments; sign-out and identity
+  // changes have already suspended this context and cannot flush an old draft.
+  void persistReplyDraftToServer(
+    draftUrl, replyForm.post.body, pendingAttachments.value.map((item) => item.id), undefined, true,
+  )
 }
 
 function togglePanel(panel: TopicPanel) {
@@ -590,14 +722,28 @@ function closePanel() {
 }
 
 function submitReply() {
+  const context = replyDraftContext.value
+  if (!context) return
   replyLinkError.value = ''
   if (props.warningRestrictions?.link && containsLink(replyForm.post.body)) {
     replyLinkError.value = props.warningRestrictions.link
     return
   }
+  const generation = replyDraftGeneration
+  const draftUrl = props.replyDraftUrl
+  const submissionToken = replyForm.post.idempotency_key
+  let replySubmitted = false
+  cancelReplyDraftSave()
   replyForm.post(`${routes.app}/forum/posts`, {
     preserveScroll: true,
     onSuccess: () => {
+      const flash = page.props.flash as { post_create_succeeded?: string | null } | undefined
+      if (flash?.post_create_succeeded !== submissionToken) return
+      replySubmitted = true
+      void forumReplyDraftAdapter.submitted(context)
+      if (generation !== replyDraftGeneration || !isCurrentReplyDraft(context)) return
+      cancelReplyDraftSave()
+      replyDraftReady = false
       replyForm.post.body = ''
       replyForm.post.quoted_post_id = null
       replyForm.post.parent_post_id = null
@@ -606,15 +752,23 @@ function submitReply() {
       pendingAttachments.value = []
       quotePreviews.value = []
       replyPreview.value = null
-      localStorage.removeItem(draftKey)
-      if (props.replyDraftUrl) {
-        fetch(props.replyDraftUrl, {
-          method: 'DELETE',
-          headers: {
-            'X-CSRF-Token': readCsrfToken(),
-          },
-          credentials: 'same-origin',
-        }).catch(() => {})
+      if (draftUrl) {
+        const request = new AbortController()
+        draftSaveRequest = request
+        void persistReplyDraftToServer(draftUrl, '', [], request.signal).finally(() => {
+          if (draftSaveRequest === request) draftSaveRequest = null
+        })
+      }
+      void nextTick(() => {
+        if (replyDraftMounted && generation === replyDraftGeneration && isCurrentReplyDraft(context)) {
+          replyDraftReady = true
+          if (replyForm.post.body.trim() || pendingAttachments.value.length) scheduleReplyDraftSave()
+        }
+      })
+    },
+    onFinish: () => {
+      if (!replySubmitted && generation === replyDraftGeneration && isCurrentReplyDraft(context)) {
+        scheduleReplyDraftSave()
       }
     },
   })

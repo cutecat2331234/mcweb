@@ -37,6 +37,10 @@ export type FrontendDraftPersistence<T> = Readonly<{
   remove: (key: string) => Promise<void>
 }>
 
+export type BrowserLocalStorageDraftPersistence<T> = FrontendDraftPersistence<T> & Readonly<{
+  clearNamespace: (namespace: string) => void
+}>
+
 export type FrontendDraftAdapter<T = unknown> = Readonly<{
   contract: FrontendDraftContract
   storageKey: (context: FrontendDraftContext) => string
@@ -234,8 +238,16 @@ export function frontendDraftAdapter(
   return installedDraftAdapters.get(`${applicationId}:${contributionId}`) ?? null
 }
 
-export function browserLocalStorageDraftPersistence<T>(): FrontendDraftPersistence<T> {
+export function browserLocalStorageDraftPersistence<T>(): BrowserLocalStorageDraftPersistence<T> {
   const memoryFallback = new Map<string, FrontendDraftEnvelope<T>>()
+  const remove = (key: string) => {
+    memoryFallback.delete(key)
+    try {
+      window.localStorage.removeItem(key)
+    } catch {
+      // The in-memory copy has still been cleared.
+    }
+  }
   return {
     async read(key) {
       let raw: string | null = null
@@ -265,11 +277,23 @@ export function browserLocalStorageDraftPersistence<T>(): FrontendDraftPersisten
       }
     },
     async remove(key) {
-      memoryFallback.delete(key)
+      remove(key)
+    },
+    clearNamespace(namespace) {
+      const matchesNamespace = (key: string) => (
+        canonicalFrontendDraftKeyStrategy.parse(key)?.namespace === namespace
+      )
+      for (const key of memoryFallback.keys()) {
+        if (matchesNamespace(key)) memoryFallback.delete(key)
+      }
       try {
-        window.localStorage.removeItem(key)
+        const storage = window.localStorage
+        for (let index = storage.length - 1; index >= 0; index -= 1) {
+          const key = storage.key(index)
+          if (key && matchesNamespace(key)) remove(key)
+        }
       } catch {
-        // The in-memory copy has still been cleared.
+        // Disabled browser storage must not prevent session-local draft cleanup.
       }
     },
   }

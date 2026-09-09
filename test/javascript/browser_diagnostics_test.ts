@@ -226,9 +226,64 @@ test('a registered cancellation binds one exact live request and is consumed onc
   assert.equal(
     await page.reportControlledCancellation(event),
     false,
-    'a report arriving after requestfailed cannot retroactively excuse it',
+    'a replay report arriving after requestfailed cannot excuse a reused request ID',
   )
   assert.equal(diagnostics.report().expected.length, 1)
+  assert.equal(diagnostics.report().errors.length, 1)
+})
+
+test('a cancellation report racing after requestfailed is reconciled before flush', async () => {
+  const { page, diagnostics } = monitoredPage()
+  await diagnostics.install()
+  diagnostics.registerControlledRequestCancellation({
+    application: 'account',
+    description: 'Account background refresh was cancelled after its deadline',
+    method: 'POST',
+    pathname: /^\/app\/account\/refresh$/,
+    reasons: ['deadline_exceeded'],
+  })
+  const requestId = 'v1.00000000-0000-4000-8000-000000000010'
+  const event = { requestId, reason: 'deadline_exceeded' as const }
+  const request = page.request('/app/account/refresh', {
+    method: 'POST',
+    failure: 'net::ERR_ABORTED',
+    headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
+  })
+
+  page.emit('requestfailed', request)
+  assert.equal(diagnostics.report().errors.length, 1)
+  assert.equal(await page.reportControlledCancellation(event), true)
+  await diagnostics.flush()
+
+  assert.equal(diagnostics.report().errors.length, 0)
+  assert.equal(diagnostics.report().expected.length, 1)
+  assert.match(diagnostics.report().expected[0]!.reason, /deadline_exceeded/)
+  assert.equal(await page.reportControlledCancellation(event), false, 'a late report is consumed once')
+})
+
+test('flush leaves an unmatched failed request visible and closes its correlation window', async () => {
+  const { page, diagnostics } = monitoredPage()
+  await diagnostics.install()
+  diagnostics.registerControlledRequestCancellation({
+    application: 'account',
+    description: 'Account background refresh was cancelled after its deadline',
+    method: 'POST',
+    pathname: /^\/app\/account\/refresh$/,
+    reasons: ['deadline_exceeded'],
+  })
+  const requestId = 'v1.00000000-0000-4000-8000-000000000011'
+  const event = { requestId, reason: 'deadline_exceeded' as const }
+  const request = page.request('/app/account/refresh', {
+    method: 'POST',
+    failure: 'net::ERR_ABORTED',
+    headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
+  })
+
+  page.emit('requestfailed', request)
+  await diagnostics.flush()
+
+  assert.equal(await page.reportControlledCancellation(event), false)
+  assert.equal(diagnostics.report().expected.length, 0)
   assert.equal(diagnostics.report().errors.length, 1)
 })
 
@@ -284,7 +339,10 @@ test('controlled cancellation never hides an unregistered route, reason, or real
       failure: entry.failure,
       headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
     })
-    assert.equal(await page.reportControlledCancellation({ requestId, reason: entry.reason }), true)
+    assert.equal(
+      await page.reportControlledCancellation({ requestId, reason: entry.reason }),
+      entry.id === 4,
+    )
     page.emit('requestfailed', request)
   }
 

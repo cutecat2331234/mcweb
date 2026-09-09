@@ -166,6 +166,7 @@ export function captureBrowserDiagnostics(
   const replacingNavigationAttempts = new Map<number, number>()
   const controlledCancellations = new Map<Request, ControlledRequestCancellationReason>()
   const controlledRequestsById = new Map<string, Request>()
+  const failedControlledRequests = new Map<Request, { observation: Observation; requestId: string }>()
   const seenControlledRequestIds = new Set<string>()
   const controlledCancellationRules: ControlledRequestCancellationRule[] = []
   const activeExpectedCancellations: Array<ExpectedRequestCancellationRule & {
@@ -214,6 +215,21 @@ export function captureBrowserDiagnostics(
     }
   }
 
+  function matchingControlledCancellationRule(
+    request: Request,
+    reason?: ControlledRequestCancellationReason,
+  ): ControlledRequestCancellationRule | undefined {
+    const origin = requestContext(request)
+    const pathname = requestPathname(request.url())
+    if (!pathname) return undefined
+    return controlledCancellationRules.find((rule) => (
+      rule.application === origin.application
+      && rule.method === request.method().toUpperCase()
+      && matchesPath(rule.pathname, pathname)
+      && (!reason || rule.reasons.includes(reason))
+    ))
+  }
+
   const onRequest = (request: Request) => {
     inFlightRequests.add(request)
     requests.set(request, {
@@ -225,7 +241,10 @@ export function captureBrowserDiagnostics(
     if (requestId && controlledRequestId.test(requestId)) {
       if (seenControlledRequestIds.has(requestId)) {
         const originalRequest = controlledRequestsById.get(requestId)
-        if (originalRequest) controlledCancellations.delete(originalRequest)
+        if (originalRequest) {
+          controlledCancellations.delete(originalRequest)
+          failedControlledRequests.delete(originalRequest)
+        }
         controlledRequestsById.delete(requestId)
       } else {
         seenControlledRequestIds.add(requestId)
@@ -273,16 +292,8 @@ export function captureBrowserDiagnostics(
     const controlledCancellation = controlledCancellations.get(request)
     controlledCancellations.delete(request)
     const requestId = requestHeader(request.headers(), controlledRequestIdHeader)
-    if (requestId && controlledRequestsById.get(requestId) === request) {
-      controlledRequestsById.delete(requestId)
-    }
-    const controlledRule = cancelledRequest.test(error) && controlledCancellation && pathname
-      ? controlledCancellationRules.find((rule) => (
-        rule.application === origin.application
-        && rule.method === request.method().toUpperCase()
-        && matchesPath(rule.pathname, pathname)
-        && rule.reasons.includes(controlledCancellation)
-      ))
+    const controlledRule = cancelledRequest.test(error) && controlledCancellation
+      ? matchingControlledCancellationRule(request, controlledCancellation)
       : undefined
     const expectedCancellation = cancelledRequest.test(error) && pathname && mainFrameRequest(request)
       ? activeExpectedCancellations.find((rule) => (
@@ -303,13 +314,25 @@ export function captureBrowserDiagnostics(
     const navigationAttempt = origin.document < documentVersion
       ? replacingNavigationAttempts.get(origin.document)
       : activeNavigationAttempt
-    observations.push({
+    const observation: Observation = {
       document: origin.document,
       expectedCancellationReason,
       navigationAbort: cancelledRequest.test(error) && origin.frameInDocument,
       navigationAttempt,
       diagnostic: { ...requestSummary(request), kind: 'requestfailed', message: diagnosticText(error) },
-    })
+    }
+    observations.push(observation)
+    if (requestId
+      && controlledRequestsById.get(requestId) === request
+      && !controlledCancellation
+      && !expectedCancellation
+      && cancelledRequest.test(error)
+      && mainFrameRequest(request)
+      && matchingControlledCancellationRule(request)) {
+      failedControlledRequests.set(request, { observation, requestId })
+    } else if (requestId && controlledRequestsById.get(requestId) === request) {
+      controlledRequestsById.delete(requestId)
+    }
   }
 
   const onResponse = (response: Response) => {
@@ -355,6 +378,7 @@ export function captureBrowserDiagnostics(
   const onRequestFinished = (request: Request) => {
     inFlightRequests.delete(request)
     controlledCancellations.delete(request)
+    failedControlledRequests.delete(request)
     const requestId = requestHeader(request.headers(), controlledRequestIdHeader)
     if (requestId && controlledRequestsById.get(requestId) === request) {
       controlledRequestsById.delete(requestId)
@@ -391,8 +415,21 @@ export function captureBrowserDiagnostics(
       (source, value: unknown) => {
         if (stopped || source.frame !== page.mainFrame() || !controlledCancellationEvent(value)) return false
         const request = controlledRequestsById.get(value.requestId)
-        if (!request || !inFlightRequests.has(request) || !mainFrameRequest(request)
-          || controlledCancellations.has(request)) return false
+        if (!request || controlledCancellations.has(request)) return false
+        const controlledRule = matchingControlledCancellationRule(request, value.reason)
+        if (!controlledRule) return false
+        const failedRequest = failedControlledRequests.get(request)
+        if (failedRequest) {
+          if (failedRequest.requestId !== value.requestId
+            || failedRequest.observation.expectedCancellationReason) return false
+          failedRequest.observation.expectedCancellationReason = (
+            `${diagnosticText(controlledRule.description)} (${value.reason})`
+          )
+          failedControlledRequests.delete(request)
+          controlledRequestsById.delete(value.requestId)
+          return true
+        }
+        if (!inFlightRequests.has(request) || !mainFrameRequest(request)) return false
         controlledCancellations.set(request, value.reason)
         return true
       },
@@ -414,6 +451,14 @@ export function captureBrowserDiagnostics(
     if (acknowledgement !== false) {
       throw new Error('Controlled cancellation binding flush was not acknowledged')
     }
+    // Reports issued before the sentinel have now been processed. Keep every
+    // unmatched failed request as an error and reject any later report.
+    for (const [request, pending] of failedControlledRequests) {
+      if (controlledRequestsById.get(pending.requestId) === request) {
+        controlledRequestsById.delete(pending.requestId)
+      }
+    }
+    failedControlledRequests.clear()
   }
 
   function registerControlledRequestCancellation(rule: ControlledRequestCancellationRule) {
@@ -515,6 +560,7 @@ export function captureBrowserDiagnostics(
       inFlightRequests.clear()
       controlledCancellations.clear()
       controlledRequestsById.clear()
+      failedControlledRequests.clear()
       seenControlledRequestIds.clear()
       controlledCancellationRules.length = 0
       for (const rule of activeExpectedCancellations) rule.requests.clear()

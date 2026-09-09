@@ -10,7 +10,11 @@ config/local*.yml
 *.pem
 *.key
 log/*
-node_modules
+**/node_modules
+docs/dist
+docs/.astro
+public/docs
+development-targets
 storage/*
 tmp/*
 vendor/bundle

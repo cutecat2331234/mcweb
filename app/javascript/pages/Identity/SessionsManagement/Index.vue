@@ -32,7 +32,7 @@ function revokeSession(id: number) {
 </script>
 
 <template>
-  <PageHeader :title="t('identity.sessions.title')" :subtitle="t('identity.sessions.subtitle')" />
+  <PageHeader :title="t('identity.sessions.title')" />
 
   <div class="rounded-lg border">
     <Table>

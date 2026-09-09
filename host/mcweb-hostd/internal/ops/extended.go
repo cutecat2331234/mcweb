@@ -29,7 +29,7 @@ func (e *ExtendedOps) Backup() *Job {
 		paths := mcweb.ResolvePaths(e.Cfg.McwebRoot, e.Cfg.McwebEnvFile)
 		backupBin := filepath.Join(paths.Root, "bin", "backup")
 		if _, err := os.Stat(backupBin); err != nil {
-			j.Append("bin/backup not found; see docs/HOSTD.md for manual backup")
+			j.Append("bin/backup not found; see docs/src/content/docs/operations/host-console.md for manual backup")
 			return nil
 		}
 		cmd := exec.Command(backupBin)

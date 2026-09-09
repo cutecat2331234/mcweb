@@ -4,12 +4,12 @@ McWeb 支持两种安装路径：
 
 | 路径 | 说明 |
 |------|------|
-| **宿主机控制台（推荐）** | 安装 [`mcweb-hostd`](docs/HOSTD.md)，在控制台内完成部署、数据库、站点与管理员配置，**无需**访问 `/setup`。 |
+| **宿主机控制台（推荐）** | 安装 [`mcweb-hostd`](docs/src/content/docs/operations/host-console.md)，在控制台内完成部署、数据库、站点与管理员配置，**无需**访问 `/setup`。 |
 | **手动安装** | 按下方脚本部署后，浏览器打开 **`/setup`** 完成网页向导。 |
 
 ## 宿主机控制台（mcweb-hostd）
 
-详见 [docs/HOSTD.md](docs/HOSTD.md)。简要步骤：
+详见 [Host Console](docs/src/content/docs/operations/host-console.md)。简要步骤：
 
 ```bash
 sudo install -m 755 mcweb-hostd /usr/local/bin/
@@ -91,7 +91,7 @@ sudo /opt/mcweb/releases/<version>/bin/update \
 脚本会在修改 `current` 前完成候选检查、备份、迁移和旧版本回滚检查。回滚默认
 `--check`，实际切换还需 `--apply --confirm ROLLBACK:<version>`。数据库 schema
 不会自动向下迁移。完整步骤、OpenPGP/secret-manager 示例及真实演练清单见
-[`docs/PRODUCTION_BACKUP_AND_RELEASE.md`](docs/PRODUCTION_BACKUP_AND_RELEASE.md)。
+[生产备份、恢复、更新与回滚](docs/src/content/docs/operations/backup-release-rollback.md)。
 
 ## 初始化向导
 
@@ -299,7 +299,7 @@ curl -fsS https://community.your-domain.tld/health/ready
 
 ## Minecraft 资源包贴图
 
-商城可引用本机资源包/Mod 材质目录展示自定义物品图标，详见 [`docs/minecraft-resource-packs.md`](docs/minecraft-resource-packs.md)。复制 `config/image_packs.yml.example` 为 `config/image_packs.yml` 并配置各 pack 的 `root` 路径。
+商城可引用本机资源包/Mod 材质目录展示自定义物品图标，详见 [Minecraft 资源包与商城贴图](docs/src/content/docs/operations/minecraft-resource-packs.md)。复制 `config/image_packs.yml.example` 为 `config/image_packs.yml` 并配置各 pack 的 `root` 路径。
 
 ## 后台任务（Sidekiq + Redis）
 

@@ -1,0 +1,20 @@
+{
+  "name": "@mcweb/documentation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 127.0.0.1",
+    "check": "node scripts/validate-content.mjs && astro check",
+    "build": "npm run check && astro build && node scripts/check-generated.mjs",
+    "publish": "npm run build && node scripts/publish.mjs",
+    "test": "node --test test/*.test.mjs",
+    "preview": "astro preview --host 127.0.0.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/starlight": "^0.41.7",
+    "astro": "^7.2.0",
+    "typescript": "^6.0.3"
+  }
+}

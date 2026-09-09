@@ -178,30 +178,9 @@
       "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
     },
     {
-      "file": "app/javascript/pages/Admin/DashboardProDemo.vue",
-      "kind": "vue-text",
-      "text": "This compatibility demo now uses the same Arco Design shell and components as every admin page. It contains static data and does not read or write the database.",
-      "category": "development-demo",
-      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
-    },
-    {
-      "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
-      "kind": "vue-attribute:description",
-      "text": "服务端分页、URL 筛选、批量动作、列设置、密度切换与状态徽章均保持可用。",
-      "category": "development-demo",
-      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
-    },
-    {
       "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
       "kind": "vue-attribute:placeholder",
       "text": "搜索订单号",
-      "category": "development-demo",
-      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
-    },
-    {
-      "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
-      "kind": "vue-attribute:title",
-      "text": "Arco Design 后台样板页",
       "category": "development-demo",
       "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
     },

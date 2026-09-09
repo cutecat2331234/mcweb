@@ -368,7 +368,6 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
   <a-space direction="vertical" :size="16" fill data-testid="admin-jobs-page">
     <a-page-header
       :title="t('admin.jobsPage.title')"
-      :subtitle="t('admin.jobsPage.subtitle')"
       :show-back="false"
       data-testid="admin-jobs-header"
     />

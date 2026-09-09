@@ -41,7 +41,7 @@ function unignore(user: { username: string; unignore_url: string }) {
     { label: t('forum.ignores.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.ignores.title')" :subtitle="t('forum.ignores.subtitle')" />
+  <PageHeader :title="t('forum.ignores.title')" />
 
   <div v-if="users.length" class="divide-y rounded-lg border">
     <div v-for="user in users" :key="user.username" class="flex items-center justify-between gap-4 p-4">

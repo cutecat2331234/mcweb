@@ -25,6 +25,8 @@ main:
             - Gemfile.lock
             - package.json
             - package-lock.json
+            - docs/package.json
+            - docs/package-lock.json
           versionBy:
             - deploy/cnb/quality-dependencies.Dockerfile
             - deploy/cnb/empty-node-package/package.json
@@ -33,15 +35,20 @@ main:
             - Gemfile.lock
             - package.json
             - package-lock.json
+            - docs/package.json
+            - docs/package-lock.json
           sync: true
       stages:
         - name: attach-locked-dependencies
           script: |
             set -eu
             test ! -e node_modules
+            test ! -e docs/node_modules
             ln -s /opt/mcweb-quality/root/node_modules node_modules
+            ln -s /opt/mcweb-quality/docs/node_modules docs/node_modules
             bundle check
             test -x node_modules/.bin/tsc
+            test -x docs/node_modules/.bin/astro
 
         - name: lint-and-static-security
           script: |
@@ -69,6 +76,13 @@ main:
             npm run check:vite-budgets
           timeout: 60m
 
+        - name: verify-documentation
+          script: |
+            set -eu
+            npm run docs:test
+            npm run docs:build
+          timeout: 30m
+
     - name: rails-full-suite-fresh-postgres
       runner:
         cpus: 4
@@ -87,6 +101,8 @@ main:
             - Gemfile.lock
             - package.json
             - package-lock.json
+            - docs/package.json
+            - docs/package-lock.json
           versionBy:
             - deploy/cnb/quality-dependencies.Dockerfile
             - deploy/cnb/empty-node-package/package.json
@@ -95,6 +111,8 @@ main:
             - Gemfile.lock
             - package.json
             - package-lock.json
+            - docs/package.json
+            - docs/package-lock.json
           sync: true
       env:
         CI: "1"
@@ -184,6 +202,8 @@ main:
             - Gemfile.lock
             - package.json
             - package-lock.json
+            - docs/package.json
+            - docs/package-lock.json
           versionBy:
             - deploy/cnb/quality-dependencies.Dockerfile
             - deploy/cnb/empty-node-package/package.json
@@ -192,6 +212,8 @@ main:
             - Gemfile.lock
             - package.json
             - package-lock.json
+            - docs/package.json
+            - docs/package-lock.json
           sync: true
       env:
         CI: "1"
@@ -312,12 +334,16 @@ main:
               - Gemfile.lock
               - package.json
               - package-lock.json
+              - docs/package.json
+              - docs/package-lock.json
             versionBy:
               - deploy/docker/Dockerfile
               - Gemfile
               - Gemfile.lock
               - package.json
               - package-lock.json
+              - docs/package.json
+              - docs/package-lock.json
             sync: true
           exports:
             name: MCWEB_PRODUCTION_DEPENDENCY_IMAGE

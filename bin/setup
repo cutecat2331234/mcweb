@@ -20,11 +20,13 @@ fi
 
 if command -v npm >/dev/null 2>&1 && [[ -f package-lock.json ]]; then
   npm ci
+  npm ci --prefix docs
 fi
 
 bundle exec rails db:prepare
 bundle exec rails tailwindcss:build
 bin/vite build
+npm run docs:publish
 bundle exec rails assets:precompile
 bundle exec sidekiq --version >/dev/null 2>&1 || true
 

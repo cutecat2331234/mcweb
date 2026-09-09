@@ -7,6 +7,12 @@ const page = readFileSync(
   'utf8',
 )
 
+test('Minecraft link page keeps the in-game command visible beside the verification form', () => {
+  assert.match(page, /t\('minecraft\.link\.subtitle'\)/)
+  assert.match(page, /field="code"/)
+  assert.match(page, /t\('minecraft\.link\.submit'\)/)
+})
+
 test('Minecraft link page gates unlink behind a target-specific danger modal', () => {
   assert.match(page, /unlinkAccount = ref<Account \| null>/)
   assert.match(page, /unlinkConfirmation\.value === unlinkAccount\.value\?\.unlinkConfirmation/)

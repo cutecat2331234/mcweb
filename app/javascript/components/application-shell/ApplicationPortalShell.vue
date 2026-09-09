@@ -30,6 +30,7 @@ import {
   IconNotification,
   IconPoweroff,
   IconGift,
+  IconQuestionCircle,
   IconSun,
   IconUser,
 } from '@arco-design/web-vue/es/icon'
@@ -278,6 +279,15 @@ watch(isDark, syncArcoTheme, { immediate: true })
           <Space align="center" :size="4">
             <a :href="routes.home" :aria-label="t('common.backToSite')"><IconHome /></a>
             <a :href="routes.app" :aria-label="t('common.navigation')"><IconApps /></a>
+            <Button
+              type="text"
+              shape="circle"
+              href="/docs/"
+              data-portal-hard-navigation
+              :aria-label="t('common.documentation')"
+            >
+              <template #icon><IconQuestionCircle /></template>
+            </Button>
             <LanguageSwitcher />
             <Button type="text" shape="circle" :aria-label="t('common.toggleTheme')" @click="toggleTheme">
               <template #icon><IconSun v-if="isDark" /><IconMoon v-else /></template>
@@ -325,7 +335,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
               </Button>
             </Badge>
             <Dropdown v-if="auth.user" trigger="click" position="br">
-              <Button type="text" shape="round" data-mc-application-user-menu-trigger>
+              <Button
+                type="text"
+                shape="round"
+                :aria-label="t('common.accountMenu', { username: auth.user.username })"
+                data-mc-application-user-menu-trigger
+              >
                 <Space align="center" :size="8">
                   <slot
                     name="user-avatar"

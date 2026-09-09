@@ -42,7 +42,7 @@ const rows = computed(() => [
     { label: t('commerce.compare.publicBreadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('commerce.compare.publicTitle', { owner })" :subtitle="t('commerce.compare.publicSubtitle')" />
+  <PageHeader :title="t('commerce.compare.publicTitle', { owner })" />
 
   <div v-if="products.length" class="overflow-x-auto">
     <table class="w-full min-w-[640px] border text-sm">

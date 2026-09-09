@@ -19,7 +19,7 @@ job_concurrency: 5
 
 # Developer Mode 默认关闭。unrestricted preset 可按 security、integrations、
 # runtime 分组收窄；production 还要求独立的精确确认环境变量，否则启动失败。
-# 完整开关、确认短语和风险说明见 docs/DEVELOPER_MODE.md。
+# 完整开关、确认短语和风险说明见 docs/src/content/docs/plugin-development/developer-mode.md。
 developer_mode:
   enabled: false
   preset: unrestricted

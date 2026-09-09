@@ -279,7 +279,6 @@ function submitReplay() {
   <section>
     <PageHeader
       :title="t('admin.paymentOperations.title')"
-      :subtitle="t('admin.paymentOperations.subtitle')"
       :show-back="false"
       class="mb-4 !px-0"
     />

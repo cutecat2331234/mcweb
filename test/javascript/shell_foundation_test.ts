@@ -163,6 +163,11 @@ test('portal shell exposes stable application acceptance hooks on shared structu
   ]) {
     assert.match(portalLayout, new RegExp(hook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
+
+  assert.match(
+    portalLayout,
+    /:aria-label="t\('common\.accountMenu', \{ username: auth\.user\.username \}\)"[\s\S]*?data-mc-application-user-menu-trigger/,
+  )
 })
 
 test('compound Arco detail views retain one token-backed content surface', () => {

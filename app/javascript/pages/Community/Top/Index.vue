@@ -52,7 +52,7 @@ function removeFilter() {
     { label: t('forum.top.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.top.title')" :subtitle="t('forum.top.subtitle')" />
+  <PageHeader :title="t('forum.top.title')" />
 
   <ListFilterBar :active-filters="activeFilters ?? []" @remove-filter="removeFilter">
     <template #period>

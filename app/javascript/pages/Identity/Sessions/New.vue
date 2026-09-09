@@ -67,7 +67,6 @@ function submit() {
     <PageHeader
       :show-back="false"
       :title="t('auth.signIn.title')"
-      :subtitle="t('auth.signIn.subtitle')"
     />
 
     <div v-if="loginError" ref="errorSummary" tabindex="-1">

@@ -29,7 +29,7 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader density="compact" :title="t('identity.resendVerification.title')" :subtitle="t('identity.resendVerification.subtitle')" />
+  <PageHeader density="compact" :title="t('identity.resendVerification.title')" />
 
   <Alert class="mb-4 max-w-md">
     {{ t('identity.resendVerification.hint') }}

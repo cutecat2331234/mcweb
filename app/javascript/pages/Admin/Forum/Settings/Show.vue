@@ -144,7 +144,6 @@ async function sendTestAllEventWebhooks() {
 <template>
   <a-page-header
     :title="t('admin.forumSettings.title')"
-    :subtitle="t('admin.forumSettings.subtitle')"
     :show-back="false"
     class="mb-4 !px-0"
   />

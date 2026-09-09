@@ -390,7 +390,6 @@ function rightsColor(status: string) {
 <template>
   <PageHeader
     :title="t('admin.disputes.title')"
-    :subtitle="t('admin.disputes.subtitle')"
   />
 
   <Space direction="vertical" size="large" fill>

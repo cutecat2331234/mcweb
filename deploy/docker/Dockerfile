@@ -19,13 +19,15 @@ ENV RAILS_ENV=production \
     BUNDLE_PATH=/app/vendor/bundle
 
 COPY Gemfile Gemfile.lock package.json package-lock.json ./
-RUN bundle install && npm ci
+COPY docs/package.json docs/package-lock.json ./docs/
+RUN bundle install && npm ci && npm ci --prefix docs
 
 ENV npm_config_offline=true
 
 FROM dependencies AS build
 
 COPY . .
+RUN npm run docs:publish
 RUN SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')" \
     LOCKBOX_MASTER_KEY="$(ruby -rsecurerandom -e 'print SecureRandom.hex(32)')" \
     RAILS_INBOUND_EMAIL_PASSWORD="$(ruby -rsecurerandom -e 'print SecureRandom.hex(32)')" \
@@ -37,7 +39,7 @@ RUN SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')" \
     MCWEB_S3_BUCKET=mcweb-build-private \
     MCWEB_S3_REGION=us-east-1 \
     bundle exec rails assets:precompile && \
-    rm -rf node_modules tmp/cache
+    rm -rf node_modules docs/node_modules docs/dist docs/.astro tmp/cache
 
 FROM ruby:4.0.6-slim-bookworm@sha256:c5650da02325ecb3e7dd96e7074772c3ae2ecd093a9acf2cdbcf1a2fdc680726 AS runtime-base
 

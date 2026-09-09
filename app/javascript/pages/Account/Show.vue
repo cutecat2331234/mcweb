@@ -150,7 +150,6 @@ function formatJoinedAt(value: string) {
     <PageHeader
       :show-back="false"
       :title="t('accountCenter.title')"
-      :subtitle="t('accountCenter.subtitle')"
     />
 
     <Grid :cols="{ xs: 1, lg: 3 }" :col-gap="16" :row-gap="16">
@@ -267,7 +266,6 @@ function formatJoinedAt(value: string) {
           </Descriptions>
         </Card>
       </GridItem>
-
       <GridItem>
         <Card :title="t('accountCenter.groups.account')" :bordered="true">
           <Space direction="vertical" fill size="large">
@@ -281,12 +279,7 @@ function formatJoinedAt(value: string) {
             >
               <Space align="center">
                 <component :is="action.icon" />
-                <Space direction="vertical" :size="0">
-                  <TypographyText>{{ t(`accountCenter.items.${action.key}.title`) }}</TypographyText>
-                  <TypographyText type="secondary">
-                    {{ t(`accountCenter.items.${action.key}.description`) }}
-                  </TypographyText>
-                </Space>
+                <TypographyText>{{ t(`accountCenter.items.${action.key}.title`) }}</TypographyText>
               </Space>
               <Button
                 type="text"

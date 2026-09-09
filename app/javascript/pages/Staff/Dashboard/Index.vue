@@ -76,7 +76,6 @@ function openCase(id: number) {
     <PageHeader
       :show-back="false"
       :title="t('staffWorkspace.dashboard.title')"
-      :subtitle="t('staffWorkspace.dashboard.subtitle')"
     >
       <template #extra>
         <Button type="primary" shape="round" @click="router.visit(links.queue)">

@@ -57,7 +57,7 @@ function changeSort(value: string) {
   <div v-if="tag.color_hex" class="mb-4 h-1 w-full max-w-xl rounded-full" :style="{ backgroundColor: tag.color_hex }" />
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-    <PageHeader :title="`#${tag.name}`" :subtitle="t('forum.tags.browseSubtitle')" />
+    <PageHeader :title="`#${tag.name}`" />
     <SubscriptionLevelSelect
       v-if="loggedIn && tag.subscription_url && subscriptionLevels?.length"
       :options="subscriptionLevels"

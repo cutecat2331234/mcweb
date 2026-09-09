@@ -176,7 +176,6 @@ function dateLabel(value?: string | null) {
   <a-space direction="vertical" size="large" fill>
     <a-page-header
       :title="t('minecraft.link.title')"
-      :subtitle="t('minecraft.link.subtitle')"
       :show-back="false"
     />
 
@@ -311,6 +310,9 @@ function dateLabel(value?: string | null) {
       <a-col :xs="24" :sm="22" :md="18" :lg="12" :xl="10">
         <a-card :title="t('minecraft.link.addAccountTitle')">
           <a-space direction="vertical" size="large" fill>
+            <a-typography-text type="secondary">
+              {{ t('minecraft.link.subtitle') }}
+            </a-typography-text>
             <a-alert v-if="formError" type="error" show-icon>
               {{ formError }}
             </a-alert>

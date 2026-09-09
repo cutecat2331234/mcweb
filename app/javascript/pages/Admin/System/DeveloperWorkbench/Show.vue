@@ -293,7 +293,6 @@ async function copyDiagnostics() {
   <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="t('admin.developerWorkbench.title')"
-      :subtitle="t('admin.developerWorkbench.subtitle')"
       :show-back="false"
     >
       <template #extra>

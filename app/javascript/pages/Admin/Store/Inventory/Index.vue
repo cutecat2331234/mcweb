@@ -267,7 +267,6 @@ async function executeAdjustment() {
   <Space direction="vertical" :size="24" fill>
     <PageHeader
       :title="t('admin.inventory.title')"
-      :subtitle="t('admin.inventory.subtitle')"
       :show-back="false"
     />
 

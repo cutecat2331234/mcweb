@@ -27,7 +27,6 @@ function submit() {
 <template>
   <a-page-header
     :title="t('admin.censoredWords.title')"
-    :subtitle="t('admin.censoredWords.subtitle')"
     :show-back="false"
     class="mb-4 !px-0"
   />

@@ -20,6 +20,7 @@ rsync -a \
   --exclude='tmp' \
   --exclude='log' \
   --exclude='node_modules' \
+  --exclude='development-targets' \
   --exclude='dist' \
   --exclude='storage' \
   --exclude='coverage' \
@@ -44,8 +45,10 @@ bundle install --jobs 4 --retry 3
 
 echo "==> Installing Node dependencies & building frontend…"
 npm ci --no-audit --no-fund
+npm ci --prefix docs --no-audit --no-fund
 bundle exec rails tailwindcss:build
 bin/vite build
+npm run docs:publish
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
   echo "==> Preparing database for asset pipeline…"
@@ -56,7 +59,7 @@ echo "==> Precompiling assets…"
 bundle exec rails assets:precompile
 
 echo "==> Cleaning build-only files…"
-rm -rf node_modules tmp/cache spec .github
+rm -rf node_modules docs/node_modules docs/dist docs/.astro tmp/cache spec .github
 
 install -m 755 packaging/quick-install.sh "${STAGE}/quick-install.sh"
 echo "${VERSION}" > VERSION

@@ -148,7 +148,7 @@ function dismissRecoveryCodes() {
 </script>
 
 <template>
-  <PageHeader :title="t('identity.security.title')" :subtitle="t('identity.security.subtitle')" />
+  <PageHeader :title="t('identity.security.title')" />
 
   <div class="max-w-3xl space-y-6">
     <Alert

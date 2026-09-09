@@ -34,7 +34,6 @@ function submit() {
 <template>
   <a-page-header
     :title="t('admin.forum.points.settingsTitle')"
-    :subtitle="t('admin.forum.points.settingsSubtitle')"
     :show-back="false"
     class="mb-4 !px-0"
   >

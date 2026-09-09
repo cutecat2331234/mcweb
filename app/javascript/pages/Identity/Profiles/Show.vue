@@ -114,7 +114,6 @@ async function submit() {
   <Space direction="vertical" fill size="large">
     <PageHeader
       :title="t('identity.profile.title')"
-      :subtitle="t('identity.profile.subtitle')"
       @back="router.visit(routes.account)"
     />
 

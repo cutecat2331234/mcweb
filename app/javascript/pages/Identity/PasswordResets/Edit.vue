@@ -45,7 +45,7 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader density="compact" :title="t('auth.passwordReset.editTitle')" :subtitle="t('auth.passwordReset.editSubtitle')" />
+  <PageHeader density="compact" :title="t('auth.passwordReset.editTitle')" />
 
   <Alert v-if="formError" variant="destructive" :title="t('auth.passwordReset.updateFailed')" class="mb-4 max-w-md">
     {{ formError }}

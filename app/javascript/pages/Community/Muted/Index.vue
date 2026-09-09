@@ -41,7 +41,7 @@ function unmute(url: string) {
     { label: t('forum.muted.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.muted.title')" :subtitle="t('forum.muted.subtitle')" />
+  <PageHeader :title="t('forum.muted.title')" />
 
   <section v-if="topicMutes.length" class="mb-8">
     <h2 class="mb-3 text-sm font-semibold">{{ t('forum.muted.topicMutes') }}</h2>

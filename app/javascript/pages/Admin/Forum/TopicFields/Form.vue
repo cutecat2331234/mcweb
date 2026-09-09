@@ -126,7 +126,6 @@ function cancel() {
   <div class="topic-fields-form">
     <a-page-header
       :title="title"
-      :subtitle="t('adminForum.topicFields.subtitle')"
       :show-back="false"
       class="mb-4 !px-0"
     />

@@ -2,7 +2,7 @@
 
 ## 模块边界
 
-McWeb 采用 **平台内核 + 大应用 + 插件扩展** 三层模型，详见 [`docs/APPS_AND_PLUGINS.md`](docs/APPS_AND_PLUGINS.md)。代码注册表：`Mcweb::ApplicationRegistry`。
+McWeb 采用 **平台内核 + 大应用 + 插件扩展** 三层模型，详见 [应用与插件](docs/src/content/docs/admin/apps-and-plugins.md)。代码注册表：`Mcweb::ApplicationRegistry`。
 
 ```
 app/
@@ -74,20 +74,24 @@ app/
 | `config/local.yml` | 实例数据库与密钥（Git 忽略）；`Mcweb::ResolveLocalConfig` + `bin/setup-local-config` 可从 `server/config/database.yml` 或 example 引导生成 |
 | `config/image_packs.yml` | 可选资源包/Mod 材质根路径；`Mcweb::ImagePackRegistry` 解析商城物品贴图，缺失配置不阻塞启动 |
 
-详见 [`INSTALL.md`](INSTALL.md) 与 [`docs/minecraft-resource-packs.md`](docs/minecraft-resource-packs.md)。
+详见 [`INSTALL.md`](INSTALL.md) 与 [Minecraft 资源包与商城贴图](docs/src/content/docs/operations/minecraft-resource-packs.md)。
 
-## 前端架构（官网 vs 业务 Portal vs 管理后台）
+## 前端应用边界
 
-同一 Rails 应用内采用 **三套 Vue 布局**，通过 Inertia.js + Vue 3 渲染：
+CE 将面向用户的区域作为独立前端应用启动。每个应用都有自己的 Vite 入口、页面解析白名单、应用壳和样式入口；同一应用内可使用 Inertia 导航，跨应用导航必须创建新的文档请求。
 
-| 区域 | 布局 | 风格 |
+| 应用 | 入口 | 页面范围 |
 |------|------|------|
-| 官网首页 / 博客 | `WebsiteLayout.vue` | 营销风渐变与动效 |
-| 论坛 / 商城 / 账户 | `PortalLayout.vue` | shadcn-vue 功能界面 |
-| 管理后台 | `AdminLayout.vue` | shadcn-vue 侧边栏运维界面 |
-| 安装向导 | ERB（`setup`） | 一次性初始化 |
+| 官网 | `website-document.ts` | Website 页面；允许站点主题提供独立展示层 |
+| 账户 | `account.ts` | Account、Identity、Minecraft 账号和受控支付身份页面 |
+| 论坛 | `forum.ts` | Community 页面 |
+| 商城 | `store.ts` | Commerce 页面 |
+| 工作人员工作台 | `staff.ts` | Staff 页面 |
+| 管理后台 | `admin.ts` | Admin 页面 |
 
-安装向导与 API（Webhook、Minecraft Connector）保留服务端接口，不迁移 Vue。
+官网预览使用受限的 `website-preview.ts`，不共享管理后台的可变运行时状态。EE 和具体产品可以通过声明式适配器追加自己的应用，但不能把外部应用页面导入 CE 入口。认证、语言、主题和必要草稿通过服务端会话或持久存储跨文档恢复。
+
+安装向导与 API（Webhook、Minecraft Connector）保留服务端接口，不进入任一 Inertia 页面解析器。
 
 技术栈指纹：`inertia.ts` 设置 `window._rails_loaded`，布局保留 `meta generator` / `X-Powered-By` 响应头供 Wappalyzer 识别 Ruby on Rails。
 

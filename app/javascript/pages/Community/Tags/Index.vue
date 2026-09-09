@@ -49,7 +49,7 @@ function tagStyle(tag: TagItem) {
     { label: t('forum.tags.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.tags.title')" :subtitle="t('forum.tags.subtitle')" />
+  <PageHeader :title="t('forum.tags.title')" />
 
   <div v-if="tagGroups?.length" class="mb-8 space-y-6">
     <section v-for="group in tagGroups" :key="group.slug">

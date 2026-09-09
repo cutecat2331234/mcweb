@@ -164,6 +164,7 @@ function leavePreview(path: string) {
         </nav>
 
         <div class="flex items-center gap-3 text-sm">
+          <a href="/docs/" class="website-nav-link hidden sm:inline">{{ t('common.documentation') }}</a>
           <Link v-if="features.forum" :href="routes.forum" class="website-nav-link hidden sm:inline">{{ t('website.layout.forum') }}</Link>
           <Link v-if="features.store" :href="routes.store" class="website-nav-link hidden sm:inline">{{ t('website.layout.store') }}</Link>
           <Link
@@ -208,6 +209,7 @@ function leavePreview(path: string) {
             <div class="flex flex-col gap-2 text-sm">
               <Link v-if="features.forum" :href="routes.forum" class="website-nav-link w-fit">{{ t('website.layout.forum') }}</Link>
               <Link v-if="features.store" :href="routes.store" class="website-nav-link w-fit">{{ t('website.layout.store') }}</Link>
+              <a href="/docs/" class="website-nav-link w-fit">{{ t('common.documentation') }}</a>
               <Link :href="routes.signIn" class="website-nav-link w-fit">{{ t('website.layout.signIn') }}</Link>
             </div>
           </div>

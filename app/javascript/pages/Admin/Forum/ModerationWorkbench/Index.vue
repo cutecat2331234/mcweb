@@ -530,7 +530,6 @@ function noteAuthor(note: Note) {
   <Space direction="vertical" :size="16" fill>
     <PageHeader
       :title="t('admin.moderationWorkbench.title')"
-      :subtitle="t('admin.moderationWorkbench.subtitle')"
       :show-back="false"
     />
 

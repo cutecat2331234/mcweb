@@ -15,7 +15,7 @@ Rails.application.routes.draw do
     as: :minecraft_cached_skin,
     constraints: { id: /\d+/, variant: /avatar|bust|full|skin|cape/ }
 
-  # Public REST API (v1). Key-authenticated, JSON only. See docs/API.md.
+  # Public REST API (v1). Key-authenticated, JSON only. See docs/src/content/docs/plugin-development/rest-api.md.
   namespace :api do
     namespace :v1 do
       root "root#index"

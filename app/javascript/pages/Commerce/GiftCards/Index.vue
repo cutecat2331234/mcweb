@@ -30,7 +30,7 @@ defineProps<{
     { label: t('commerce.giftCards.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('commerce.giftCards.title')" :subtitle="t('commerce.giftCards.subtitle')" />
+  <PageHeader :title="t('commerce.giftCards.title')" />
 
   <div v-if="gift_cards.length" class="divide-y rounded-lg border">
     <Link

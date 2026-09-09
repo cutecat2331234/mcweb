@@ -79,7 +79,7 @@ function markAllRead() {
   ]" />
 
   <div class="mb-4 flex items-center justify-between gap-2">
-    <PageHeader :title="t('forum.sectionsIndex.title')" :subtitle="t('forum.sectionsIndex.subtitle')" />
+  <PageHeader :title="t('forum.sectionsIndex.title')" />
     <Button v-if="markAllReadUrl" variant="outline" size="sm" @click="markAllRead">{{ t('forum.sectionsIndex.markAllRead') }}</Button>
   </div>
 

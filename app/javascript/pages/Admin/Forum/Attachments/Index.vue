@@ -407,7 +407,6 @@ async function prune() {
   <section>
     <PageHeader
       :title="t('admin.attachments.title')"
-      :subtitle="t('admin.attachments.subtitle')"
       :show-back="false"
       class="mb-5 !px-0"
     >

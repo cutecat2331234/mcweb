@@ -123,7 +123,7 @@ async function removeAddress(url: string) {
     { label: t('commerce.shippingAddresses.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('commerce.shippingAddresses.title')" :subtitle="t('commerce.shippingAddresses.subtitle')" />
+  <PageHeader :title="t('commerce.shippingAddresses.title')" />
 
   <div v-if="addresses.length" class="mb-8 space-y-3">
     <div

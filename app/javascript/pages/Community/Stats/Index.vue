@@ -27,7 +27,7 @@ defineProps<{
     { label: t('forum.stats.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.stats.title')" :subtitle="t('forum.stats.subtitle')" />
+  <PageHeader :title="t('forum.stats.title')" />
 
   <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <div v-for="m in metrics" :key="m.label" class="rounded-lg border p-4">

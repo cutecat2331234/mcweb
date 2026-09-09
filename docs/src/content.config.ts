@@ -1,0 +1,23 @@
+import { defineCollection } from 'astro:content'
+import { z } from 'astro/zod'
+import { docsLoader } from '@astrojs/starlight/loaders'
+import { docsSchema } from '@astrojs/starlight/schema'
+
+export const collections = {
+  docs: defineCollection({
+    loader: docsLoader(),
+    schema: docsSchema({
+      extend: z.object({
+        description: z.string().min(12),
+        edition: z.enum(['ce', 'ee', 'pvp']),
+        audience: z.array(z.enum([
+          'user',
+          'staff',
+          'administrator',
+          'operator',
+          'plugin-developer',
+        ])).min(1),
+      }),
+    }),
+  }),
+}

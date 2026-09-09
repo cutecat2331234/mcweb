@@ -14,9 +14,11 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
   test "production image is multi-stage and runs as an unprivileged user" do
     dockerfile = ROOT.join("deploy/docker/Dockerfile").read
 
-    assert_match(/^FROM node:26-bookworm-slim AS node$/, dockerfile)
-    assert_match(/^FROM ruby:4\.0\.6-slim-bookworm AS build$/, dockerfile)
-    assert_match(/^FROM ruby:4\.0\.6-slim-bookworm AS runtime$/, dockerfile)
+    assert_match(/^FROM node:26-bookworm-slim@sha256:[0-9a-f]{64} AS node$/, dockerfile)
+    assert_match(/^FROM ruby:4\.0\.6-slim-bookworm@sha256:[0-9a-f]{64} AS dependencies$/, dockerfile)
+    assert_match(/^FROM dependencies AS build$/, dockerfile)
+    assert_match(/^FROM ruby:4\.0\.6-slim-bookworm@sha256:[0-9a-f]{64} AS runtime-base$/, dockerfile)
+    assert_match(/^FROM runtime-base AS runtime$/, dockerfile)
     assert_match(/^COPY --from=build --chown=mcweb:mcweb \/app \/app$/, dockerfile)
     assert_match(/^USER mcweb$/, dockerfile)
     assert_equal 1, dockerfile.scan("COPY --from=node /usr/local/bin/node /usr/local/bin/node").length
@@ -190,8 +192,30 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
       storage/*
       tmp/*
       vendor/bundle
+      **/node_modules
+      docs/.astro
+      docs/dist
+      public/docs
+      development-targets
     ].each do |entry|
       assert_includes ignored, entry
     end
+  end
+
+  test "documentation is built for source, release, and container installs without shipping build dependencies" do
+    dockerfile = ROOT.join("deploy/docker/Dockerfile").read
+    setup = ROOT.join("bin/setup").read
+    release_builder = ROOT.join("bin/build-release").read
+
+    assert_includes dockerfile, "COPY docs/package.json docs/package-lock.json ./docs/"
+    assert_includes dockerfile, "npm ci --prefix docs"
+    assert_includes dockerfile, "RUN npm run docs:publish"
+    assert_includes dockerfile, "rm -rf node_modules docs/node_modules docs/dist docs/.astro tmp/cache"
+    assert_includes setup, "npm ci --prefix docs"
+    assert_includes setup, "npm run docs:publish"
+    assert_includes release_builder, "npm ci --prefix docs"
+    assert_includes release_builder, "npm run docs:publish"
+    assert_includes release_builder, "--exclude='development-targets'"
+    assert_includes release_builder, "rm -rf node_modules docs/node_modules docs/dist docs/.astro"
   end
 end

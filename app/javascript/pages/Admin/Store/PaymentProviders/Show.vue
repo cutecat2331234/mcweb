@@ -201,7 +201,6 @@ function submitConnectionTest() {
   <section class="min-w-0">
     <PageHeader
       :title="t('admin.paymentProviders.title')"
-      :subtitle="t('admin.paymentProviders.subtitle')"
       :show-back="false"
       class="mb-4 !px-0"
     />

@@ -116,7 +116,6 @@ function sourceLabel(source: Source) {
   <Space direction="vertical" :size="16" fill>
     <PageHeader
       :title="t('admin.permissionExplanation.title')"
-      :subtitle="t('admin.permissionExplanation.subtitle')"
       :show-back="false"
     >
       <template #extra>

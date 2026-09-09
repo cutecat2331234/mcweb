@@ -100,7 +100,6 @@ function submit() {
   <section class="admin-rate-limits">
     <PageHeader
       :title="t('admin.rateLimits.title')"
-      :subtitle="t('admin.rateLimits.subtitle')"
       :show-back="false"
       class="mb-5 !px-0"
     />
@@ -303,12 +302,6 @@ function submit() {
 
   .admin-rate-limits :deep(.arco-page-header-divider) {
     display: none;
-  }
-
-  .admin-rate-limits :deep(.arco-page-header-subtitle) {
-    max-width: 100%;
-    white-space: normal;
-    line-height: 1.6;
   }
 
   .rate-limit-scroll-hint {

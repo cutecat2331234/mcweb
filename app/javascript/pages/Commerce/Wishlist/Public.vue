@@ -45,7 +45,7 @@ const hasActiveFilters = () =>
     { label: t('commerce.wishlistPublic.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('commerce.wishlistPublic.title', { owner })" :subtitle="t('commerce.wishlistPublic.subtitle')" />
+  <PageHeader :title="t('commerce.wishlistPublic.title', { owner })" />
 
   <div v-if="hasActiveFilters()" class="mb-4 flex flex-wrap items-center gap-2 text-xs">
     <span class="text-muted-foreground">{{ t('commerce.wishlistPublic.activeFilters') }}</span>

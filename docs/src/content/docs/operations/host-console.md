@@ -1,0 +1,156 @@
+---
+title: Host Console（mcweb-hostd）
+description: 安装并使用主机控制台管理 McWeb 生命周期、CLI 与 Docker Compose 栈。
+edition: ce
+audience:
+  - operator
+---
+
+`mcweb-hostd` is a standalone Go binary that provides a server-rendered web panel and CLI for installing and operating McWeb on the host. It is fully separate from the Rails application.
+
+## Two installation paths
+
+| Path | Description |
+|------|-------------|
+| **With hostd** | Install hostd first, then complete the 7-step wizard in the panel or CLI. Site and admin setup run via `bin/hostd-finalize`. You do **not** need `/setup`. |
+| **Without hostd** | Deploy McWeb manually (`bin/install`, release tarball, etc.), start services, then open **`/setup`** in the browser for the Rails wizard. |
+
+## Quick start
+
+```bash
+# Install binary (example)
+sudo install -m 755 mcweb-hostd /usr/local/bin/
+sudo mkdir -p /etc/mcweb /var/log/mcweb/hostd/jobs
+sudo cp host/mcweb-hostd/config/hostd.example.yml /etc/mcweb/hostd.yml
+sudo cp config/templates/mcweb-hostd.service /etc/systemd/system/
+sudo mcweb-hostd init
+sudo systemctl enable --now mcweb-hostd
+```
+
+Open `http://your-server:8787`, sign in, and go to **Install**.
+
+Default listen address: `:8787`. Put nginx in front for TLS on a separate hostname (recommended).
+
+## Web pages
+
+| Path | Purpose |
+|------|---------|
+| `/init` | First-time hostd admin setup |
+| `/login` | Sign in |
+| `/` | Dashboard (status, health, version) |
+| `/install` | 7-step McWeb installation wizard |
+| `/operations` | Start, stop, restart, check, update |
+| `/settings` | Paths, deploy mode, release URL |
+
+## CLI reference
+
+```bash
+mcweb-hostd serve [--listen :8787]
+mcweb-hostd init
+mcweb-hostd status
+mcweb-hostd check
+mcweb-hostd start [--web] [--worker] [--all] [--docker]
+mcweb-hostd stop  [--web] [--worker] [--all] [--docker]
+mcweb-hostd restart ...
+mcweb-hostd update --version vX
+mcweb-hostd logs [--web] [--worker] [-f]
+mcweb-hostd install wizard
+mcweb-hostd install native [--fresh] [--version vX]
+mcweb-hostd install docker [--pull]
+```
+
+## Lifecycle operations
+
+| Action | Native (systemd) | Docker |
+|--------|------------------|--------|
+| Start | `systemctl start mcweb-web mcweb-worker` | `docker compose start` |
+| Stop | `systemctl stop …` | `compose stop` |
+| Restart | `systemctl restart …` | `compose restart` |
+| Check | `bin/doctor` + `/health/live` + `/health/ready` | same + `compose ps` |
+| Update | staged release + explicit `bin/update --release … --confirm …` | `compose pull && up -d` |
+
+## `bin/hostd-finalize`
+
+Called by hostd after deployment to configure the database, create the owner account, and lock installation:
+
+```bash
+sudo -u mcweb /opt/mcweb/current/bin/hostd-finalize --input /path/to/payload.json
+```
+
+JSON shape:
+
+```json
+{
+  "database": { "host": "127.0.0.1", "port": 5432, "username": "mcweb", "password": "…" },
+  "site": { "name": "My Site", "url": "https://example.com" },
+  "admin": { "email": "admin@example.com", "username": "admin", "password": "secret" }
+}
+```
+
+## Docker Compose stack
+
+Files live in the repository's `deploy/docker/` directory. The stack bundles `nginx` +
+`certbot` services that terminate TLS and auto-renew Let's Encrypt certificates
+(replacing the former Caddy service), plus a private `clamav` service for
+fail-closed attachment scanning. Copy to `/opt/mcweb/docker` on the server:
+
+```bash
+sudo cp -r deploy/docker /opt/mcweb/docker
+cd /opt/mcweb/docker && cp .env.example .env
+# Edit .env: set POSTGRES_PASSWORD, MCWEB_DOMAIN (real domain), MCWEB_ACME_EMAIL
+./nginx/init-letsencrypt.sh    # one-time: obtain the first certificate
+docker compose up -d
+```
+
+`init-letsencrypt.sh` bootstraps the first certificate (it needs `MCWEB_DOMAIN`
+resolving to this host and ports 80/443 reachable); afterwards the `certbot`
+service renews automatically and `nginx` reloads periodically to pick up renewals.
+Set `CERTBOT_STAGING=1` in `.env` to test against Let's Encrypt staging first.
+The clamd port is not published to the host. Budget at least the 4 GiB configured
+by `MCWEB_CLAMAV_MEMORY_LIMIT` so signature reloads do not kill the scanner.
+
+Then use hostd **Install** wizard steps 4–7 (database defaults match compose `.env`).
+
+## Paths
+
+| Path | Use |
+|------|-----|
+| `/etc/mcweb/hostd.yml` | Hostd configuration |
+| `/etc/mcweb/mcweb.env` | McWeb Rails environment |
+| `/etc/mcweb/installed_via_hostd` | Marker when installed through hostd |
+| `/opt/mcweb/current` | McWeb application |
+| `/var/lib/mcweb/plugins` | Trusted Ruby plugin packages |
+
+## Backup, node and plugin paths
+
+- **Backup / restore**: `bin/backup` requires an external OpenPGP recipient or
+  immutable secret-manager reference; `bin/restore` is verify-only by default.
+  See [Production backup, recovery, update and rollback](/docs/operations/backup-release-rollback/).
+- **mcweb-node**: documents installing the node agent binary and `mcweb-node.service`
+- **Plugins**: stores reviewed trusted Ruby plugin packages under `/var/lib/mcweb/plugins`
+
+For native deployments, configure `release_url` as the release download base
+(for example `https://github.com/your-org/mcweb/releases/download`) and run the
+Update action with an explicit version. Hostd downloads
+`<release_url>/<version>/mcweb-<version>.tar.gz` and its `.sha256`, verifies and
+safely unpacks the archive into a new `/opt/mcweb/releases/<version>` candidate,
+then calls that candidate's hardened contract exactly as:
+
+```bash
+/opt/mcweb/releases/<version>/bin/update \
+  --release /opt/mcweb/releases/<version> \
+  --confirm UPDATE:<version>
+```
+
+Hostd never changes `current` itself. A download, checksum, extraction, ownership
+or candidate validation failure stops before the update script runs. If the
+script fails, it is responsible for restoring the pre-update `current` pointer;
+hostd verifies that pointer and retains the staged candidate for investigation.
+Database migrations are not automatically reversed, so follow the production
+runbook before retrying a failure that reached the migration phase.
+
+## Security
+
+- Hostd runs as **root** so it can manage systemd and Docker.
+- Restrict port `:8787` with firewall rules; use TLS via reverse proxy.
+- Hostd credentials are independent of McWeb admin accounts.

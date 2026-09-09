@@ -40,6 +40,10 @@ RUN bundle install --jobs 8 --retry 3
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev --no-audit --no-fund
 
+WORKDIR /opt/mcweb-quality/docs
+COPY docs/package.json docs/package-lock.json ./
+RUN npm ci --include=dev --no-audit --no-fund
+
 WORKDIR /opt/mcweb-quality/downstream-node
 COPY ${MCWEB_DOWNSTREAM_NODE_PACKAGE_DIR}/package.json \
   ${MCWEB_DOWNSTREAM_NODE_PACKAGE_DIR}/package-lock.json ./
@@ -49,6 +53,7 @@ WORKDIR /opt/mcweb-quality/root
 RUN ./node_modules/.bin/playwright install --with-deps chromium && \
     rm -rf /var/lib/apt/lists/* && \
     test -x ./node_modules/.bin/tsc && \
+    test -x /opt/mcweb-quality/docs/node_modules/.bin/astro && \
     test -d "${MCWEB_DOWNSTREAM_NODE_MODULES}" && \
     find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -print -quit | grep -q .
 

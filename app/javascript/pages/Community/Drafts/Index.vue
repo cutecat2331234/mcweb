@@ -53,7 +53,7 @@ async function deleteDraft(id: string) {
     { label: t('forum.drafts.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.drafts.title')" :subtitle="t('forum.drafts.subtitle')" />
+  <PageHeader :title="t('forum.drafts.title')" />
 
   <div v-if="drafts.length" class="rounded-lg border">
     <Table>

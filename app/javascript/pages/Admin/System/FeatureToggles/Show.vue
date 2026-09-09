@@ -41,7 +41,6 @@ function submit() {
   <section class="admin-system-feature-toggles">
     <a-page-header
       :title="t('admin.featureToggles.title')"
-      :subtitle="t('admin.featureToggles.subtitle')"
       :show-back="false"
       class="mb-4 !px-0"
     />

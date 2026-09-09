@@ -16,6 +16,7 @@ import {
   IconMenuUnfold,
   IconMessage,
   IconMoon,
+  IconQuestionCircle,
   IconSettings,
   IconSun,
   IconUserGroup,
@@ -868,6 +869,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </a-breadcrumb>
         </div>
         <div class="arco-admin-header__right">
+          <a-button type="text" href="/docs/" data-admin-hard-navigation>
+            <template #icon><icon-question-circle /></template>
+            {{ t('common.documentation') }}
+          </a-button>
           <AdminLanguageSwitcher />
           <a-button type="text" :aria-label="t('common.toggleTheme')" @click="onToggleTheme">
             <template #icon>

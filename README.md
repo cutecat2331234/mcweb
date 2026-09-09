@@ -99,7 +99,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 - **主题**：官网主题令牌；与 ZIP 前台模板（Portal/商城皮肤）相互独立
 - **Sitemap**：定时任务生成 `public/sitemap.xml`
 
-详见 [docs/WEBSITE_CMS.md](docs/WEBSITE_CMS.md)。
+详见 [官网 CMS 使用说明](docs/src/content/docs/admin/website-cms.md)。
 
 ### 论坛社区（Community）
 
@@ -259,7 +259,7 @@ McWeb 通过配置、协议与模板与外部系统衔接，主要方式如下�
 | **Minecraft 集成规则** | 按事件与条件触发预置动作（写资料、通知、徽章、反向任务等） |
 | **支付 Provider** | Payments 适配器接口，对接各支付渠道 |
 
-三层模型说明：[docs/APPS_AND_PLUGINS.md](docs/APPS_AND_PLUGINS.md)。
+三层模型说明：[应用与插件](docs/src/content/docs/admin/apps-and-plugins.md)。
 
 ---
 
@@ -292,7 +292,7 @@ sudo ./quick-install.sh
 
 ### 方式二：宿主机控制台（mcweb-hostd）
 
-安装 `mcweb-hostd` 后，在 Web 面板完成七步安装向导，无需访问 `/setup`。详见 [docs/HOSTD.md](docs/HOSTD.md)。
+安装 `mcweb-hostd` 后，在 Web 面板完成七步安装向导，无需访问 `/setup`。详见 [Host Console](docs/src/content/docs/operations/host-console.md)。
 
 ### 方式三：从源码安装
 
@@ -350,14 +350,14 @@ bin/dev
 | [SECURITY.md](SECURITY.md) | 密钥、认证、Web 安全、依赖审计 |
 | [CONNECTOR_PROTOCOL.md](CONNECTOR_PROTOCOL.md) | Minecraft 插件通信协议 |
 | [NODE_PROTOCOL.md](NODE_PROTOCOL.md) | 宿主机节点协议 |
-| [docs/APPS_AND_PLUGINS.md](docs/APPS_AND_PLUGINS.md) | 大应用与插件扩展模型（含事件总线钩子） |
-| [docs/API.md](docs/API.md) | 公开 REST API（v1）与密钥认证 |
+| [应用与插件](docs/src/content/docs/admin/apps-and-plugins.md) | 大应用与插件扩展模型（含事件总线钩子） |
+| [REST API](docs/src/content/docs/plugin-development/rest-api.md) | 公开 REST API（v1）与密钥认证 |
 | [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) | 商业版许可证说明（预留） |
-| [docs/WEBSITE_CMS.md](docs/WEBSITE_CMS.md) | 官网 CMS 使用说明 |
-| [docs/HOSTD.md](docs/HOSTD.md) | 宿主机控制台 |
+| [官网 CMS](docs/src/content/docs/admin/website-cms.md) | 官网 CMS 使用说明 |
+| [Host Console](docs/src/content/docs/operations/host-console.md) | 宿主机控制台 |
 | [TEMPLATE_SPEC.md](TEMPLATE_SPEC.md) / [THEME_GUIDE.md](THEME_GUIDE.md) | 前台 ZIP 模板规范 |
 | [PAYMENT_PROVIDER_GUIDE.md](PAYMENT_PROVIDER_GUIDE.md) | 支付适配器扩展 |
-| [docs/minecraft-resource-packs.md](docs/minecraft-resource-packs.md) | 商城物品贴图与资源包 |
+| [Minecraft 资源包](docs/src/content/docs/operations/minecraft-resource-packs.md) | 商城物品贴图与资源包 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本变更记录 |
 
 ---

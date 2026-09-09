@@ -47,7 +47,7 @@ const groupedBadges = computed(() => {
     { label: t('forum.badges.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.badges.title')" :subtitle="t('forum.badges.subtitle')" />
+  <PageHeader :title="t('forum.badges.title')" />
 
   <div v-if="badges.length" class="space-y-8">
     <section v-for="group in groupedBadges" :key="group.grouping">

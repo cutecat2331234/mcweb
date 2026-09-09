@@ -50,7 +50,6 @@ type Density = 'large' | 'medium' | 'small'
 
 const props = defineProps<{
   title: string
-  subtitle?: string
   columns: OrderColumn[]
   rows: OrderRow[]
   pagination: OrderPagination
@@ -70,9 +69,6 @@ const selectedRowKeys = ref<Array<string | number>>([])
 
 const visibleColumns = computed(() =>
   props.columns.filter((column) => visibleKeys.value.includes(column.key)),
-)
-const displaySubtitle = computed(() =>
-  props.subtitle?.replace('Element Plus ProTable', 'Arco Design Table'),
 )
 
 const densityOptions: Array<{ label: string; value: Density }> = [
@@ -183,18 +179,8 @@ function bulkButtonStatus(type: OrderBulkAction['type']) {
   <section class="admin-store-orders-arco-demo">
     <a-page-header
       :title="title"
-      :subtitle="displaySubtitle"
       :show-back="false"
       class="mb-4 !px-0"
-    />
-
-    <a-alert
-      class="mb-5"
-      type="info"
-      show-icon
-      :closable="false"
-      title="Arco Design 后台样板页"
-      description="服务端分页、URL 筛选、批量动作、列设置、密度切换与状态徽章均保持可用。"
     />
 
     <a-card :bordered="true">

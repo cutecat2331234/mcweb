@@ -65,7 +65,6 @@ function submit() {
   <Space direction="vertical" fill size="large">
     <PageHeader
       :title="t('identity.password.title')"
-      :subtitle="t('identity.password.subtitle')"
       @back="router.visit(routes.security)"
     />
 

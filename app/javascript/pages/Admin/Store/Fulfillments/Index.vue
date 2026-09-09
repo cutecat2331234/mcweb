@@ -101,7 +101,6 @@ function changePage(page: number) {
 <template>
   <PageHeader
     :title="t('admin.fulfillments.indexTitle')"
-    :subtitle="t('admin.fulfillments.indexSubtitle')"
   />
 
   <Space direction="vertical" size="large" fill>

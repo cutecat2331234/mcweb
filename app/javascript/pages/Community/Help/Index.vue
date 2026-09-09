@@ -22,7 +22,7 @@ defineProps<{
     { label: t('forum.help.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.help.title')" :subtitle="t('forum.help.subtitle')" />
+  <PageHeader :title="t('forum.help.title')" />
 
   <div v-if="categories.length" class="space-y-6">
     <section v-for="group in categories" :key="group.category" class="rounded-lg border p-4">

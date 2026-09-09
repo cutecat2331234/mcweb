@@ -30,7 +30,6 @@ function metricPrecision(value: number | string) {
 <template>
   <a-page-header
     :title="t('admin.forumStatsPage.title')"
-    :subtitle="t('admin.forumStatsPage.subtitle')"
     :show-back="false"
     class="mb-4 !px-0"
   />

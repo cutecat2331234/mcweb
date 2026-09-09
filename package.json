@@ -2,6 +2,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:check": "npm --prefix docs run check",
+    "docs:build": "npm --prefix docs run build",
+    "docs:publish": "npm --prefix docs run publish",
+    "docs:test": "npm --prefix docs run test",
     "check:vite-budgets": "node scripts/check-vite-budgets.mjs",
     "check:frontend-boundaries": "node scripts/check-frontend-application-boundaries.mjs",
     "report:vite-bundles": "node scripts/check-vite-budgets.mjs --report-only",

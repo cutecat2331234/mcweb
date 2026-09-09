@@ -49,7 +49,7 @@ function changeSort(value: string) {
     { label: t('forum.activity.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="t('forum.activity.title')" :subtitle="t('forum.activity.subtitle')" />
+  <PageHeader :title="t('forum.activity.title')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-3">
     <div class="flex gap-2">

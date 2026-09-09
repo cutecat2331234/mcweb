@@ -122,7 +122,6 @@ function historyPageUrl(cursor: string) {
 <template>
   <PageHeader
     :title="t('identity.dataExports.title')"
-    :subtitle="t('identity.dataExports.subtitle')"
   >
     <template #actions>
       <Button type="button" :disabled="Boolean(activeExport)" @click="requestExport">

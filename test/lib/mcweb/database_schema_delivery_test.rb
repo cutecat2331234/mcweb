@@ -165,6 +165,22 @@ module Mcweb
       assert_includes schema, "secure_evidence_attachment_events_immutable"
     end
 
+    test "fresh database schema defines theme revision immutability before its trigger" do
+      schema = Rails.root.join("db/schema.rb").read
+      function = "CREATE OR REPLACE FUNCTION public.prevent_website_theme_revision_mutation()"
+      trigger = "CREATE TRIGGER website_theme_revisions_immutable"
+
+      assert_includes schema, 'create_table "website_theme_revisions"'
+      assert_includes schema, function
+      assert_includes schema, trigger
+      assert_operator schema.index(function), :<, schema.index(trigger),
+        "fresh schema must define the theme revision guard before installing its trigger"
+      assert_match(
+        /#{Regexp.escape(trigger)}[^\n]*EXECUTE FUNCTION (?:public\.)?prevent_website_theme_revision_mutation\(\);/,
+        schema
+      )
+    end
+
     test "fresh database schema preserves the append-only store-credit ledger contract" do
       schema = Rails.root.join("db/schema.rb").read
 

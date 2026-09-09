@@ -20,7 +20,7 @@ class RepairMinecraftWorldRestorePlanIndexName < ActiveRecord::Migration[8.1]
     return unless table_exists?(TABLE_NAME)
 
     matching_index = connection.indexes(TABLE_NAME).find do |index|
-      index.columns == [COLUMN_NAME]
+      index.columns == [ COLUMN_NAME ]
     end
     return if matching_index.nil? || matching_index.name == target_name
 

@@ -3,7 +3,7 @@
 module Community
   module AllowedAttachmentTypes
     DEFAULT_EXTENSIONS = %w[
-      pdf txt md json csv zip 7z rar doc docx xls xlsx ppt pptx
+      pdf txt md json csv zip 7z rar doc docx xls xlsx ppt pptx png jpg jpeg log
     ].freeze
 
     DEFAULT_CONTENT_TYPES = {
@@ -20,7 +20,11 @@ module Community
       "xls" => "application/vnd.ms-excel",
       "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "ppt" => "application/vnd.ms-powerpoint",
-      "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "png" => "image/png",
+      "jpg" => "image/jpeg",
+      "jpeg" => "image/jpeg",
+      "log" => "text/plain"
     }.freeze
 
     module_function

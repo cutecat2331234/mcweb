@@ -14,6 +14,8 @@ module Community
     MAX_ZIP_COMPRESSION_RATIO = 200
     MAX_OFFICE_XML_BYTES = 2.megabytes
     MAX_RAR_HEADER_BYTES = 2.megabytes
+    IMAGE_EXTENSIONS = %w[png jpg jpeg].freeze
+    LOG_DECLARED_CONTENT_TYPES = [ "", "text/plain", "application/octet-stream" ].freeze
 
     ZIP_SIGNATURES = [
       "PK\x03\x04".b,
@@ -79,6 +81,13 @@ module Community
       return result(:too_large, byte_size: payload.bytesize) if payload.bytesize > max_bytes
       return result(:unsupported, byte_size: payload.bytesize) if payload.empty?
       return result(:unsupported, byte_size: payload.bytesize) if executable_payload?(payload)
+      unless compatible_declared_content_type?(extension, io, content_type)
+        return result(:unsupported, byte_size: payload.bytesize)
+      end
+      if IMAGE_EXTENSIONS.include?(extension)
+        return inspect_image(payload, extension:, max_bytes:, content_type:)
+      end
+      return inspect_log(payload, max_bytes:) if extension == "log"
       return result(:unsupported, byte_size: payload.bytesize) unless valid_for_extension?(extension, payload)
 
       result(
@@ -90,6 +99,55 @@ module Community
     rescue StandardError
       result(:unreadable)
     end
+
+    def compatible_declared_content_type?(extension, io, expected)
+      # Raw internal streams have no request MIME. Uploaded files do, and a
+      # conflicting declaration must not turn a different format into media.
+      return true unless io.respond_to?(:content_type)
+
+      declared = io.content_type.to_s.split(";", 2).first.to_s.strip.downcase
+      if IMAGE_EXTENSIONS.include?(extension)
+        declared == expected
+      elsif extension == "log"
+        # Browsers commonly leave File.type empty for .log. Neither an absent
+        # hint nor octet-stream bypasses the bounded UTF/content inspection.
+        LOG_DECLARED_CONTENT_TYPES.include?(declared)
+      else
+        true
+      end
+    end
+    private_class_method :compatible_declared_content_type?
+
+    def inspect_image(payload, extension:, max_bytes:, content_type:)
+      inspected = Community::ImageUploadInspector.call(io: StringIO.new(payload), max_bytes:)
+      return result(inspected.status, byte_size: payload.bytesize) unless inspected.success?
+
+      expected_extension = extension == "jpeg" ? "jpg" : extension
+      unless inspected.extension == expected_extension && inspected.content_type == content_type
+        return result(:unsupported, byte_size: payload.bytesize)
+      end
+
+      result(
+        :ok,
+        content_type: inspected.content_type,
+        byte_size: inspected.payload.bytesize,
+        payload: inspected.payload
+      )
+    end
+    private_class_method :inspect_image
+
+    def inspect_log(payload, max_bytes:)
+      text = decoded_text(payload)
+      unless text.present? && !dangerous_markup?(text) && !executable_payload?(text.b)
+        return result(:unsupported, byte_size: payload.bytesize)
+      end
+
+      normalized = text.b
+      return result(:too_large, byte_size: normalized.bytesize) if normalized.bytesize > max_bytes
+
+      result(:ok, content_type: "text/plain", byte_size: normalized.bytesize, payload: normalized.freeze)
+    end
+    private_class_method :inspect_log
 
     def read_bounded(io, max_bytes)
       source_io = io.respond_to?(:tempfile) ? io.tempfile : io

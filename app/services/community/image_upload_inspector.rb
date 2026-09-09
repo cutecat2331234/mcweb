@@ -3,6 +3,7 @@
 require "chunky_png"
 require "stringio"
 require "vips"
+require "zlib"
 
 module Community
   module ImageUploadInspector
@@ -10,6 +11,21 @@ module Community
     MAX_DIMENSION = 8_192
     MAX_PIXELS = 8_000_000
     PNG_SIGNATURE = "\x89PNG\r\n\x1A\n".b
+    MAX_PNG_CHUNKS = 10_000
+    PNG_COLOR_CHANNELS = { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4 }.freeze
+    PNG_COLOR_DEPTHS = {
+      0 => [ 1, 2, 4, 8, 16 ].freeze,
+      2 => [ 8, 16 ].freeze,
+      3 => [ 1, 2, 4, 8 ].freeze,
+      4 => [ 8, 16 ].freeze,
+      6 => [ 8, 16 ].freeze
+    }.freeze
+    PNG_ADAM7_PASSES = [
+      [ 0, 0, 8, 8 ].freeze, [ 4, 0, 8, 8 ].freeze,
+      [ 0, 4, 4, 8 ].freeze, [ 2, 0, 4, 4 ].freeze,
+      [ 0, 2, 2, 4 ].freeze, [ 1, 0, 2, 2 ].freeze,
+      [ 0, 1, 1, 2 ].freeze
+    ].freeze
     JPEG_START = "\xFF\xD8".b
     JPEG_END = "\xFF\xD9".b
     JPEG_QUALITY = 85
@@ -70,7 +86,12 @@ module Community
       width, height = png_dimensions(payload)
       return result(:unsupported) unless dimensions_allowed?(width, height)
 
-      image = ChunkyPNG::Image.from_blob(payload)
+      render_payload = inspected_png_container(payload)
+      return result(:unsupported) unless render_payload
+
+      # Image.from_blob also parses textual metadata (including compressed
+      # text). Decode only checked rendering chunks and emit pixels alone.
+      image = ChunkyPNG::Canvas.from_blob(render_payload)
       return result(:unsupported) unless image.width == width && image.height == height
 
       result(
@@ -83,6 +104,138 @@ module Community
       )
     end
     private_class_method :inspect_png
+
+    def inspected_png_container(payload)
+      offset = PNG_SIGNATURE.bytesize
+      chunks = 0
+      render_payload = PNG_SIGNATURE.dup
+      compressed_pixels = +"".b
+      expected_pixel_bytes = nil
+      color = nil
+      depth = nil
+      palette_entries = nil
+      transparency_seen = false
+      data_seen = false
+      data_ended = false
+
+      while offset + 12 <= payload.bytesize
+        chunks += 1
+        return nil if chunks > MAX_PNG_CHUNKS
+
+        length = payload.byteslice(offset, 4).unpack1("N")
+        type = payload.byteslice(offset + 4, 4)
+        chunk_end = offset + length + 12
+        return nil if chunk_end > payload.bytesize
+        return nil unless type.match?(/\A[A-Za-z]{2}[A-Z][A-Za-z]\z/)
+
+        content = payload.byteslice(offset + 8, length)
+        crc = payload.byteslice(offset + length + 8, 4).unpack1("N")
+        return nil unless crc == Zlib.crc32(content, Zlib.crc32(type))
+        return nil if chunks == 1 && type != "IHDR"
+
+        case type
+        when "IHDR"
+          return nil unless chunks == 1 && length == 13
+
+          expected_pixel_bytes = png_pixelstream_bytes(content)
+          return nil unless expected_pixel_bytes
+
+          depth = content.getbyte(8)
+          color = content.getbyte(9)
+        when "PLTE"
+          return nil if data_seen || palette_entries || transparency_seen || [ 0, 4 ].include?(color)
+          return nil unless length.positive? && length <= 768 && (length % 3).zero?
+
+          palette_entries = length / 3
+          return nil if color == 3 && palette_entries > (1 << depth)
+        when "tRNS"
+          return nil if data_seen || transparency_seen
+          return nil unless png_transparency_allowed?(color, length, palette_entries)
+
+          transparency_seen = true
+        when "IDAT"
+          return nil if data_ended || (color == 3 && !palette_entries)
+
+          data_seen = true
+          compressed_pixels << content
+        when "IEND"
+          return nil unless length.zero? && data_seen && chunk_end == payload.bytesize
+          return nil unless bounded_png_pixelstream?(compressed_pixels, expected_pixel_bytes)
+
+          return render_payload << payload.byteslice(offset, length + 12)
+        else
+          # Unknown critical chunks and animated images require a different
+          # decoder contract. Other ancillary metadata is dropped before it
+          # reaches ChunkyPNG, so compressed text cannot expand in the parser.
+          return nil unless type.getbyte(0).between?(97, 122)
+          return nil if %w[acTL fcTL fdAT].include?(type)
+
+          data_ended = true if data_seen
+          offset = chunk_end
+          next
+        end
+
+        render_payload << payload.byteslice(offset, length + 12)
+        offset = chunk_end
+      end
+
+      nil
+    end
+    private_class_method :inspected_png_container
+
+    def png_transparency_allowed?(color, length, palette_entries)
+      case color
+      when 0 then length == 2
+      when 2 then length == 6
+      when 3 then palette_entries && length.positive? && length <= palette_entries
+      else false
+      end
+    end
+    private_class_method :png_transparency_allowed?
+
+    def png_pixelstream_bytes(header)
+      width, height = header.byteslice(0, 8).unpack("NN")
+      depth, color, compression, filter, interlace = header.byteslice(8, 5).bytes
+      return nil unless dimensions_allowed?(width, height)
+      return nil unless PNG_COLOR_DEPTHS.fetch(color, []).include?(depth)
+      return nil unless compression.zero? && filter.zero? && [ 0, 1 ].include?(interlace)
+
+      bits_per_pixel = PNG_COLOR_CHANNELS.fetch(color) * depth
+      return height * (1 + ((width * bits_per_pixel + 7) / 8)) if interlace.zero?
+
+      PNG_ADAM7_PASSES.sum do |x, y, dx, dy|
+        pass_width = [ (width - x + dx - 1) / dx, 0 ].max
+        pass_height = [ (height - y + dy - 1) / dy, 0 ].max
+        next 0 if pass_width.zero? || pass_height.zero?
+
+        pass_height * (1 + ((pass_width * bits_per_pixel + 7) / 8))
+      end
+    end
+    private_class_method :png_pixelstream_bytes
+
+    def bounded_png_pixelstream?(compressed, expected_bytes)
+      inflater = Zlib::Inflate.new
+      decoded_bytes = 0
+      offset = 0
+
+      while offset < compressed.bytesize
+        return false if inflater.finished?
+
+        chunk = compressed.byteslice(offset, READ_CHUNK_BYTES)
+        offset += chunk.bytesize
+        inflater.inflate(chunk) do |decoded|
+          decoded_bytes += decoded.bytesize
+          return false if decoded_bytes > expected_bytes
+        end
+      end
+
+      inflater.finished? && inflater.total_in == compressed.bytesize && decoded_bytes == expected_bytes
+    rescue Zlib::Error
+      false
+    ensure
+      inflater&.close
+    end
+    private_class_method :bounded_png_pixelstream?
 
     def png_dimensions(payload)
       return [ nil, nil ] unless payload.bytesize >= 33

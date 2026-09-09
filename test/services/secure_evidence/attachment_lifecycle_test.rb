@@ -44,6 +44,101 @@ module SecureEvidence
       assert AuditLog.exists?(action: "secure_evidence.created", resource_public_id: attachment.public_id)
     end
 
+    test "screenshots and logs keep sanitized hashes quota idempotency and the scan authorization gate" do
+      registry = build_registry(allowed_extensions: %w[png jpg jpeg log])
+      png = ChunkyPNG::Image.new(2, 2, ChunkyPNG::Color::WHITE)
+      png.metadata["Comment"] = "private image annotation"
+      jpeg = Vips::Image.black(3, 2).new_from_image([ 40, 110, 200 ])
+        .jpegsave_buffer(Q: 94, strip: true, interlace: false)
+      log = "\xEF\xBB\xBF".b + "[12:00] 玩家 joined\n".b
+      cases = [
+        [ "evidence.png", "image/png", png.to_blob ],
+        [ "evidence.jpg", "image/jpeg", jpeg ],
+        [ "evidence.jpeg", "image/jpeg", jpeg ],
+        [ "evidence.log", nil, log ]
+      ]
+
+      cases.each_with_index do |(filename, content_type, payload), index|
+        key = "media-evidence-#{index}"
+        first = create_attachment(file: uploaded_file(payload, filename:, content_type:), registry:, key:)
+        replay = create_attachment(file: uploaded_file(payload, filename:, content_type:), registry:, key:)
+
+        assert_predicate first, :success?, filename
+        assert_predicate replay, :success?, filename
+        attachment = first.value.fetch(:attachment)
+        assert_equal attachment.id, replay.value.fetch(:attachment).id
+        assert_equal true, replay.value.fetch(:idempotent)
+        assert_equal filename, attachment.filename
+        assert_equal "pending", attachment.state
+        assert_equal "pending", attachment.upload_record.scan_status
+        assert_equal Community::AllowedAttachmentTypes.download_content_type(filename), attachment.content_type
+        stored_payload = attachment.blob.download
+        assert_equal Digest::SHA256.hexdigest(stored_payload), attachment.sha256
+        assert_equal stored_payload.bytesize, attachment.byte_size
+        assert_equal attachment.byte_size, attachment.upload_record.byte_size
+        refute_equal payload, stored_payload
+        refute_includes stored_payload, "private image annotation"
+        assert_equal 1, attachment.events.where(event_type: "created").count
+        assert_enqueued_with(
+          job: Community::ScanPostAttachmentJob,
+          args: [ { upload_id: attachment.upload_record.id } ]
+        )
+        refute AttachmentAccess.download_allowed?(attachment, actor: @actor, catalog: registry)
+
+        scanned = Community::ScanPostAttachment.call(upload: attachment.upload_record, scanner: clean_scanner)
+        assert_predicate scanned, :success?
+        assert_equal "available", attachment.reload.state
+        assert AttachmentAccess.download_allowed?(attachment, actor: @actor, catalog: registry)
+        @download_allowed = false
+        refute AttachmentAccess.download_allowed?(attachment, actor: @actor, catalog: registry)
+        @download_allowed = true
+      end
+
+      assert_equal cases.length, Attachment.where(uploader: @actor).count
+      assert_equal cases.length, Community::Upload.where(user: @actor, kind: "secure_evidence_attachment").count
+    end
+
+    test "invalid media is rejected before creating attachment upload or blob reservations" do
+      registry = build_registry(allowed_extensions: %w[png jpg jpeg log])
+      png = ChunkyPNG::Image.new(2, 2, ChunkyPNG::Color::WHITE).to_blob
+      [
+        [ "forged.jpg", "image/jpeg", png ],
+        [ "forged.png", "text/html", png ],
+        [ "broken.png", "image/png", Community::ImageUploadInspector::PNG_SIGNATURE + "broken" ],
+        [ "executable.log", "application/octet-stream", "MZ executable" ],
+        [ "binary.log", nil, "log\x00binary" ],
+        [ "video.mp4", "video/mp4", "video bytes" ]
+      ].each_with_index do |(filename, content_type, payload), index|
+        assert_no_difference [ -> { Attachment.count }, -> { Community::Upload.count }, -> { ActiveStorage::Blob.count } ] do
+          result = create_attachment(
+            file: uploaded_file(payload, filename:, content_type:),
+            registry:,
+            key: "invalid-media-#{index}"
+          )
+
+          assert_predicate result, :failure?, filename
+          assert_equal "unsupported_attachment_type", result.code
+        end
+      end
+    end
+
+    test "normalized log size cannot bypass a subject byte limit" do
+      text = "日志" * 10
+      encoded = "\xFF\xFE".b + text.encode(Encoding::UTF_16LE).b
+      registry = build_registry(allowed_extensions: %w[log], max_file_bytes: 50, max_total_bytes: 50)
+      assert_operator encoded.bytesize, :<, 50
+
+      assert_no_difference -> { Attachment.count } do
+        result = create_attachment(
+          file: uploaded_file(encoded, filename: "server.log", content_type: "application/octet-stream"),
+          registry:
+        )
+
+        assert_predicate result, :failure?
+        assert_equal "attachment_too_large", result.code
+      end
+    end
+
     test "failed storage is tracked cleaned and retried on the same attachment" do
       registry = build_registry(max_files: 1)
       SiteSetting.set("forum.upload_quota.account.hourly_count", "1")
@@ -860,6 +955,7 @@ module SecureEvidence
       max_files: 4,
       max_file_bytes: 1.megabyte,
       max_total_bytes: 4.megabytes,
+      allowed_extensions: %w[txt],
       discard_authorizer: :default,
       purge_guard: nil
     )
@@ -885,7 +981,7 @@ module SecureEvidence
         max_files:,
         max_file_bytes:,
         max_total_bytes:,
-        allowed_extensions: %w[txt]
+        allowed_extensions:
       )
       registry.freeze!
     end
@@ -902,8 +998,8 @@ module SecureEvidence
       )
     end
 
-    def uploaded_file(content, filename: "expired evidence.txt")
-      tempfile = Tempfile.new([ "evidence", ".txt" ])
+    def uploaded_file(content, filename: "expired evidence.txt", content_type: "text/plain")
+      tempfile = Tempfile.new([ "evidence", File.extname(filename) ])
       tempfile.binmode
       tempfile.write(content)
       tempfile.rewind
@@ -911,7 +1007,7 @@ module SecureEvidence
       ActionDispatch::Http::UploadedFile.new(
         tempfile:,
         filename:,
-        type: "text/plain"
+        type: content_type
       )
     end
 

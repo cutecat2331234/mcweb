@@ -56,6 +56,19 @@ module SecureEvidence
       )
     end
 
+    test "permits inspected screenshot and log types but never uninspected video or active images" do
+      entry = SubjectRegistry.new.register(
+        **valid_registration.merge(allowed_extensions: %w[png jpg jpeg log])
+      )
+      assert_equal %w[jpeg jpg log png], entry.allowed_extensions
+
+      %w[mp4 webm mov svg gif].each do |extension|
+        assert_raises(ArgumentError) do
+          SubjectRegistry.new.register(**valid_registration.merge(allowed_extensions: [ extension ]))
+        end
+      end
+    end
+
     test "optional purge guard must explicitly run the protected operation" do
       permitted = SubjectRegistry.new.register(
         **valid_registration.merge(

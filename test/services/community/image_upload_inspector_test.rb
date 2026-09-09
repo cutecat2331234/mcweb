@@ -35,6 +35,81 @@ module Community
       end
     end
 
+    test "strips PNG text and compressed metadata before decoding pixel data" do
+      source = ChunkyPNG::Image.new(2, 2, ChunkyPNG::Color::WHITE)
+      source.metadata["Comment"] = "PRIVATE-PNG-METADATA"
+      source.metadata["Description"] = "compressed private metadata " * 100
+      payload = source.to_blob
+      international_text = "Comment\x00\x01\x00\x00\x00".b + Zlib::Deflate.deflate("private text " * 100)
+      payload = insert_png_chunk(payload, type: "iTXt", content: international_text)
+      unexpected_decode = ->(*) { flunk "ancillary text must not be decompressed" }
+      result = nil
+
+      ChunkyPNG::Chunk::CompressedText.stub(:read, unexpected_decode) do
+        ChunkyPNG::Chunk::InternationalText.stub(:read, unexpected_decode) do
+          result = Community::ImageUploadInspector.call(io: StringIO.new(payload), max_bytes: 1.megabyte)
+        end
+      end
+
+      assert_predicate result, :success?
+      refute_includes result.payload, "PRIVATE-PNG-METADATA"
+      decoded = ChunkyPNG::Image.from_blob(result.payload)
+      assert_empty decoded.metadata
+      assert_equal source.pixels, decoded.pixels
+    end
+
+    test "rejects duplicate PNG headers unknown critical chunks and trailing payloads" do
+      png = ChunkyPNG::Image.new(2, 2, ChunkyPNG::Color::WHITE).to_blob
+      large_header = [ 9_000, 9_000, 8, 6, 0, 0, 0 ].pack("NNCCCCC")
+      [
+        insert_png_chunk(png, type: "IHDR", content: large_header),
+        insert_png_chunk(png, type: "ABCD", content: "unknown critical chunk"),
+        insert_png_chunk(png, type: "acTL", content: [ 1, 0 ].pack("NN")),
+        png + png,
+        png + "<script>alert(1)</script>"
+      ].each do |payload|
+        result = Community::ImageUploadInspector.call(io: StringIO.new(payload), max_bytes: 1.megabyte)
+
+        refute_predicate result, :success?
+      end
+    end
+
+    test "rejects PNG pixel streams that overflow underflow or contain another compressed stream" do
+      header = [ 2, 2, 8, 6, 0, 0, 0 ].pack("NNCCCCC")
+      exact_pixels = "\x00".b * 18
+      [
+        Zlib::Deflate.deflate("\x00".b * 100_000),
+        Zlib::Deflate.deflate(exact_pixels.byteslice(0...-1)),
+        Zlib::Deflate.deflate(exact_pixels) + Zlib::Deflate.deflate("extra"),
+        Zlib::Deflate.deflate(exact_pixels) + "trailing"
+      ].each do |compressed|
+        payload = Community::ImageUploadInspector::PNG_SIGNATURE +
+          png_chunk("IHDR", header) + png_chunk("IDAT", compressed) + png_chunk("IEND", "".b)
+        result = nil
+        ChunkyPNG::Canvas.stub(:from_blob, ->(*) { flunk "unbounded PNG must not reach the pixel decoder" }) do
+          result = Community::ImageUploadInspector.call(io: StringIO.new(payload), max_bytes: 1.megabyte)
+        end
+
+        refute_predicate result, :success?
+      end
+    end
+
+    test "accepts valid indexed grayscale RGBA and interlaced PNG pixel streams" do
+      [
+        { color_mode: ChunkyPNG::COLOR_INDEXED, bit_depth: 1 },
+        { color_mode: ChunkyPNG::COLOR_GRAYSCALE, bit_depth: 1 },
+        { color_mode: ChunkyPNG::COLOR_TRUECOLOR_ALPHA },
+        { color_mode: ChunkyPNG::COLOR_TRUECOLOR_ALPHA, interlace: true }
+      ].each do |options|
+        source = ChunkyPNG::Image.new(9, 9, ChunkyPNG::Color::WHITE)
+        payload = source.to_blob(options)
+        result = Community::ImageUploadInspector.call(io: StringIO.new(payload), max_bytes: 1.megabyte)
+
+        assert_predicate result, :success?, options.inspect
+        assert_equal source.pixels, ChunkyPNG::Image.from_blob(result.payload).pixels
+      end
+    end
+
     test "rejects an image whose declared dimensions exceed the decompression budget" do
       header = Community::ImageUploadInspector::PNG_SIGNATURE +
         [ 13 ].pack("N") +
@@ -197,6 +272,14 @@ module Community
     end
 
     private
+
+    def png_chunk(type, content)
+      [ content.bytesize ].pack("N") + type.b + content.b + [ Zlib.crc32(content, Zlib.crc32(type)) ].pack("N")
+    end
+
+    def insert_png_chunk(png, type:, content:)
+      png.byteslice(0, 33) + png_chunk(type, content) + png.byteslice(33..)
+    end
 
     def valid_jpeg(width: 2, height: 2, interlace: false)
       Vips::Image

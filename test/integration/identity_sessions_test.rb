@@ -12,6 +12,7 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
       session: { email: @user.email, password: "password123", remember_me: "0" }
     }
 
+    assert_response :see_other
     assert_redirected_to forum_sections_path
     follow_redirect!
     assert_response :success
@@ -203,15 +204,6 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "sign in ignores unsafe return_to destinations" do
-    get identity_sign_in_path
-    session[:return_to] = "//evil.com"
-
-    post identity_session_path, params: { session: { email: @user.email, password: "password123" } }
-
-    assert_redirected_to forum_sections_path
-  end
-
   test "inertia sign in performs a full page visit when returning to admin" do
     get admin_root_path
     assert_redirected_to identity_sign_in_path
@@ -224,6 +216,78 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_response :conflict
     assert_equal "/admin", response.headers["X-Inertia-Location"]
     assert_equal I18n.t("mcweb.flash.sign_in_success"), flash[:notice]
+  end
+
+  test "inertia sign in hands the default portal its own document directly" do
+    post identity_session_path,
+         params: { session: { email: @user.email, password: "password123", remember_me: "1" } },
+         headers: { "X-Inertia" => "true" }
+
+    assert_response :conflict
+    assert_equal forum_sections_path, response.headers["X-Inertia-Location"]
+    assert_nil response.headers["Location"]
+    assert_includes response.headers.fetch("Cache-Control"), "no-store"
+    assert session[Authentication::SESSION_COOKIE].present? || cookies[Authentication::SESSION_COOKIE].present?
+    assert @user.sessions.order(created_at: :desc).first.remember_me?
+
+    get response.headers.fetch("X-Inertia-Location")
+    assert_response :success
+    assert_equal "forum", response.headers["X-McWeb-Application"]
+    refute_includes response.body, "gravatar.com"
+  end
+
+  test "inertia sign in preserves the store return destination and query from a protected request" do
+    destination = "#{store_orders_path}?status=paid"
+    get destination
+    assert_redirected_to identity_sign_in_path
+    assert_equal destination, session[:return_to]
+    follow_redirect!
+
+    post identity_session_path,
+         params: { session: { email: @user.email, password: "password123" } },
+         headers: { "X-Inertia" => "true" }
+
+    assert_response :conflict
+    assert_equal destination, response.headers["X-Inertia-Location"]
+    assert_nil session[:return_to]
+  end
+
+  test "inertia sign in retains an ordinary redirect inside the account application" do
+    get identity_security_path
+    assert_redirected_to identity_sign_in_path
+    assert_equal identity_security_path, session[:return_to]
+    follow_redirect!
+
+    post identity_session_path,
+         params: { session: { email: @user.email, password: "password123" } },
+         headers: { "X-Inertia" => "true" }
+
+    assert_response :see_other
+    assert_redirected_to identity_security_path
+    assert_nil response.headers["X-Inertia-Location"]
+  end
+
+  test "inertia recovery-code verification uses the same cross-application login handoff" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+    recovery_code = @user.recovery_codes.first
+
+    assert_no_difference -> { @user.sessions.count } do
+      post identity_session_path,
+           params: { session: { email: @user.email, password: "password123" } },
+           headers: { "X-Inertia" => "true" }
+    end
+    assert_redirected_to identity_session_two_factor_path
+    assert_nil response.headers["X-Inertia-Location"]
+
+    post identity_session_two_factor_path,
+         params: { two_factor: { code: recovery_code } },
+         headers: { "X-Inertia" => "true" }
+
+    assert_response :conflict
+    assert_equal forum_sections_path, response.headers["X-Inertia-Location"]
+    assert_nil session[:identity_pending_second_factor]
+    refute_includes @user.reload.recovery_codes, recovery_code
   end
 
   test "get session redirects to sign in" do

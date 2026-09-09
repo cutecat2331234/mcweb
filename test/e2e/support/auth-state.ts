@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import type { Browser, BrowserContext } from '@playwright/test'
 
 import { withBrowserDiagnostics, type DiagnosticAttachment } from './browser-diagnostics.ts'
+import { submitAcceptanceSignIn } from './sign-in-navigation.ts'
 
 type AcceptanceCredentials = {
   email: string
@@ -101,18 +102,7 @@ async function captureAcceptanceAuthState(
       await page.getByRole('textbox', { name: 'Password', exact: true }).fill(credentials.password)
 
       diagnostics.setStep(`Submit sign-in for acceptance identity ${identityKey}`)
-      const [response] = await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.request().method() === 'POST' &&
-            new URL(response.url()).pathname === '/app/identity/session',
-        ),
-        page.getByRole('button', { name: 'Sign in', exact: true }).click(),
-      ])
-      if (response.status() >= 400) {
-        throw new Error(`${identityKey} acceptance sign-in returned HTTP ${response.status()}`)
-      }
-      await page.waitForURL((url) => !url.pathname.endsWith('/identity/sign-in'))
+      await submitAcceptanceSignIn(page, identityKey)
       diagnostics.setStep(`Render the authenticated landing page for ${identityKey}`)
       await page.locator('[data-mc-application-shell], .arco-admin-layout').first().waitFor({ state: 'visible' })
 

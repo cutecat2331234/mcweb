@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "uri"
+
 module Authentication
   extend ActiveSupport::Concern
   include SafeRedirect
@@ -200,16 +202,27 @@ module Authentication
     stored = session.delete(:return_to)
     destination = safe_local_redirect_path(stored, fallback: default)
 
-    # The public portal and admin are separate Inertia applications with
-    # different component resolvers and style bundles. An Inertia redirect
-    # from the portal login form to an admin page would otherwise ask the
-    # portal resolver to load an Admin/* component.
-    if request.inertia? && destination.start_with?("/admin")
+    # Authentication belongs to the account application. A destination in
+    # another application (including a downstream contribution) must load its
+    # own document, component resolver, and style bundle. Do not redirect an
+    # account XHR into that application's boundary and rely on its rejection.
+    if request.inertia? && login_destination_requires_document?(destination)
       flash[:notice] = notice if notice.present?
+      response.cache_control[:no_store] = true
       inertia_location(destination)
       return
     end
 
-    redirect_to destination, notice: notice
+    redirect_to destination, notice: notice, status: :see_other
+  end
+
+  def login_destination_requires_document?(destination)
+    match = frontend_application_registry.resolve(
+      path: URI.parse(destination).path,
+      method: "GET"
+    )
+    match&.kind != "inertia_page" || match.application_id != frontend_application_id
+  rescue URI::InvalidURIError, Frontend::ApplicationRegistry::InvalidRequestPath
+    true
   end
 end

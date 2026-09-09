@@ -246,6 +246,34 @@ test('Vite initial budgets continue to fail for oversized static dependencies', 
   })
 })
 
+test('failed Vite budgets flush every route and the largest-files report', () => {
+  withFixture((root) => {
+    writeBaseForum(root, 1)
+    const paths = Array.from({ length: 512 }, (_, index) => `/app/forum/latest-${index}`)
+    writeFixtureJson(root, 'config/frontend_applications/base/forum.json', {
+      id: 'forum',
+      runtime_kind: 'inertia',
+      entrypoint: 'forum',
+      budget: {
+        representative_paths: paths,
+        representative_components: paths.map(() => 'Community/Latest/Index'),
+        max_initial_javascript_bytes: 1,
+      },
+    })
+    writeFixtureJson(root, 'public/vite/.vite/manifest.json', {
+      'entrypoints/forum.ts': { file: 'assets/forum.js' },
+      'pages/Community/Latest/Index.vue': { file: 'assets/latest.js' },
+    })
+
+    const result = runChecker(root)
+
+    assert.equal(result.status, 1, result.stderr)
+    assert.match(result.stdout, /\/app\/forum\/latest-511/)
+    assert.match(result.stdout, /Largest generated files \(gzip KB\)/)
+    assert.match(result.stderr, /Frontend application performance budget exceeded/)
+  })
+})
+
 test('exclusive Astro renderers replace dormant base Vite budgets', () => {
   withFixture((root) => {
     writeFixtureJson(root, 'config/frontend_applications/base/website.json', {

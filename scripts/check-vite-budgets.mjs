@@ -362,5 +362,7 @@ console.table(largest)
 
 if (failed && !reportOnly) {
   console.error('Frontend application performance budget exceeded.')
-  process.exit(1)
+  // CNB captures stdout through a pipe. Let the event loop flush the full
+  // route table before failing; an immediate exit can truncate it mid-row.
+  process.exitCode = 1
 }

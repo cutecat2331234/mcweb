@@ -40,6 +40,13 @@ RUN bundle install --jobs 8 --retry 3
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev --no-audit --no-fund
 
+# Chromium is owned by the root Playwright lock. Keep this layer ahead of the
+# independently changing docs and downstream manifests so their dependency
+# updates do not download the same browser and system packages again.
+RUN ./node_modules/.bin/playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/* && \
+    find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -print -quit | grep -q .
+
 WORKDIR /opt/mcweb-quality/docs
 COPY docs/package.json docs/package-lock.json ./
 RUN npm ci --include=dev --no-audit --no-fund
@@ -50,12 +57,9 @@ COPY ${MCWEB_DOWNSTREAM_NODE_PACKAGE_DIR}/package.json \
 RUN npm ci --include=dev --no-audit --no-fund && mkdir -p node_modules
 
 WORKDIR /opt/mcweb-quality/root
-RUN ./node_modules/.bin/playwright install --with-deps chromium && \
-    rm -rf /var/lib/apt/lists/* && \
-    test -x ./node_modules/.bin/tsc && \
+RUN test -x ./node_modules/.bin/tsc && \
     test -x /opt/mcweb-quality/docs/node_modules/.bin/astro && \
-    test -d "${MCWEB_DOWNSTREAM_NODE_MODULES}" && \
-    find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -print -quit | grep -q .
+    test -d "${MCWEB_DOWNSTREAM_NODE_MODULES}"
 
 # Dependency installation and browser provisioning happen only while CNB builds
 # this cache image. Checked-out source must fail instead of downloading later.

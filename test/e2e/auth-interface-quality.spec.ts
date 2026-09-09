@@ -1,14 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './support/fixtures'
 
 import { expectNoAccessibilityViolations } from './support/accessibility'
 
-test.describe('public sign-in interface', () => {
-  test('keeps Chinese field rhythm and responsive actions geometrically stable', async ({ page }) => {
-    const consoleErrors: string[] = []
-    page.on('console', (message) => {
-      if (message.type() === 'error') consoleErrors.push(message.text())
-    })
+test.use({ diagnosticApplication: 'account' })
 
+test.describe('public sign-in interface', () => {
+  test('keeps Chinese field rhythm and responsive actions geometrically stable', async ({ page, browserDiagnostics }) => {
+    browserDiagnostics.setStep('Open the Chinese public sign-in form')
     const response = await page.goto('/app/identity/sign-in?locale=zh-CN', {
       waitUntil: 'domcontentloaded',
     })
@@ -56,7 +54,7 @@ test.describe('public sign-in interface', () => {
       expect(Math.abs(surfaceCenter - (viewport!.width / 2))).toBeLessThanOrEqual(1)
     }
 
+    browserDiagnostics.setStep('Check sign-in accessibility after the form rendered')
     await expectNoAccessibilityViolations(page)
-    expect(consoleErrors).toEqual([])
   })
 })

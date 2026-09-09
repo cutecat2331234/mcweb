@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './support/fixtures'
 import {
   expectKeyboardFocusIndicator,
   expectNoAccessibilityViolations,
@@ -11,9 +11,10 @@ const screenshotMasks = [
   '.arco-spin-icon',
 ]
 
-test.use({ storageState: acceptanceAuthStatePath('owner') })
+test.use({ storageState: acceptanceAuthStatePath('owner'), diagnosticApplication: 'admin' })
 
-test('admin metrics filtering preserves the mounted document', async ({ page }) => {
+test('admin metrics filtering preserves the mounted document', async ({ page, browserDiagnostics }) => {
+  browserDiagnostics.setStep('Open Admin background jobs')
   await page.goto('/admin/system/jobs?locale=en')
   await expect(page.getByTestId('admin-jobs-page')).toBeVisible()
   await page.evaluate(() => {
@@ -24,16 +25,19 @@ test('admin metrics filtering preserves the mounted document', async ({ page }) 
       .__mcwebAcceptanceMountMarker,
   )
 
-  const metricsRequest = page.waitForResponse((response) => {
-    const url = new URL(response.url())
-    return (
-      response.request().method() === 'GET' &&
-      url.pathname === '/admin/system/jobs' &&
-      url.searchParams.get('range') === '7d'
-    )
-  })
-  await page.getByTestId('metrics-range').getByText('7 days', { exact: true }).click()
-  expect((await metricsRequest).status()).toBeLessThan(400)
+  browserDiagnostics.setStep('Filter Admin metrics to seven days')
+  const [metricsResponse] = await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/admin/system/jobs' &&
+        url.searchParams.get('range') === '7d'
+      )
+    }),
+    page.getByTestId('metrics-range').getByText('7 days', { exact: true }).click(),
+  ])
+  expect(metricsResponse.status()).toBeLessThan(400)
   await expect(page.getByTestId('metrics-range').locator('input[value="7d"]')).toBeChecked()
   expect(
     await page.evaluate(
@@ -44,9 +48,10 @@ test('admin metrics filtering preserves the mounted document', async ({ page }) 
   ).toBe(marker)
 })
 
-test('admin navigation preserves the mounted shell and sidebar state', async ({ page }, testInfo) => {
+test('admin navigation preserves the mounted shell and sidebar state', async ({ page, browserDiagnostics }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile-chromium', 'desktop sidebar state contract')
 
+  browserDiagnostics.setStep('Open Admin jobs and collapse the sidebar')
   await page.goto('/admin/system/jobs?locale=en')
   const shell = page.locator('.arco-admin-layout')
   const sider = page.locator('.arco-admin-sider')
@@ -59,13 +64,15 @@ test('admin navigation preserves the mounted shell and sidebar state', async ({ 
   await page.locator('.arco-admin-collapse-trigger').click()
   await expect(sider).toHaveClass(/arco-layout-sider-collapsed/)
 
+  browserDiagnostics.setStep('Navigate from jobs to the Admin dashboard')
   await page.locator('.arco-admin-brand__link').click()
   await expect(page).toHaveURL(/\/admin(?:\?.*)?$/)
   await expect(sider).toHaveClass(/arco-layout-sider-collapsed/)
   await expect(shell).toHaveAttribute('data-acceptance-shell-marker', marker)
 })
 
-test('key admin page is bilingual on desktop and mobile', async ({ page }) => {
+test('key admin page is bilingual on desktop and mobile', async ({ page, browserDiagnostics }) => {
+  browserDiagnostics.setStep('Render Admin jobs in English')
   await page.goto('/admin/system/jobs?locale=en')
   await expect(
     page.getByTestId('admin-jobs-header').locator('.arco-page-header-title'),
@@ -74,6 +81,7 @@ test('key admin page is bilingual on desktop and mobile', async ({ page }) => {
     mask: screenshotMasks.map((selector) => page.locator(selector)),
   })
 
+  browserDiagnostics.setStep('Render Admin jobs in Chinese')
   await page.goto('/admin/system/jobs?locale=zh-CN')
   await expect(
     page.getByTestId('admin-jobs-header').locator('.arco-page-header-title'),

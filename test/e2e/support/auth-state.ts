@@ -3,6 +3,8 @@ import { dirname, resolve } from 'node:path'
 
 import type { Browser, BrowserContext } from '@playwright/test'
 
+import { withBrowserDiagnostics, type DiagnosticAttachment } from './browser-diagnostics.ts'
+
 type AcceptanceCredentials = {
   email: string
   password: string
@@ -33,6 +35,7 @@ export async function captureAcceptanceAuthStates(
   browser: Browser,
   baseURL: string,
   identities: AcceptanceIdentity[],
+  diagnosticsAttachment?: DiagnosticAttachment,
 ) {
   if (identities.length === 0) {
     throw new Error('At least one acceptance identity is required')
@@ -49,7 +52,7 @@ export async function captureAcceptanceAuthStates(
 
   await clearAcceptanceAuthStates()
   for (const { key, ...credentials } of identities) {
-    await captureAcceptanceAuthState(browser, baseURL, key, credentials)
+    await captureAcceptanceAuthState(browser, baseURL, key, credentials, diagnosticsAttachment)
   }
 }
 
@@ -77,6 +80,7 @@ async function captureAcceptanceAuthState(
   baseURL: string,
   identityKey: string,
   credentials: AcceptanceCredentials,
+  diagnosticsAttachment?: DiagnosticAttachment,
 ) {
   const statePath = acceptanceAuthStatePath(identityKey)
   const context = await browser.newContext({
@@ -88,25 +92,35 @@ async function captureAcceptanceAuthState(
 
   try {
     const page = await context.newPage()
-    await page.goto('/app/identity/sign-in?locale=en')
-    await page.getByRole('textbox', { name: 'Email', exact: true }).fill(credentials.email)
-    await page.getByRole('textbox', { name: 'Password', exact: true }).fill(credentials.password)
+    const isolatedState = await withBrowserDiagnostics(page, {
+      application: 'account',
+      step: `Open sign-in for acceptance identity ${identityKey}`,
+    }, async (diagnostics) => {
+      await page.goto('/app/identity/sign-in?locale=en')
+      await page.getByRole('textbox', { name: 'Email', exact: true }).fill(credentials.email)
+      await page.getByRole('textbox', { name: 'Password', exact: true }).fill(credentials.password)
 
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        new URL(response.url()).pathname === '/app/identity/session',
-    )
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    const response = await responsePromise
-    if (response.status() >= 400) {
-      throw new Error(`${identityKey} acceptance sign-in returned HTTP ${response.status()}`)
-    }
-    await page.waitForURL((url) => !url.pathname.endsWith('/identity/sign-in'))
+      diagnostics.setStep(`Submit sign-in for acceptance identity ${identityKey}`)
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === 'POST' &&
+            new URL(response.url()).pathname === '/app/identity/session',
+        ),
+        page.getByRole('button', { name: 'Sign in', exact: true }).click(),
+      ])
+      if (response.status() >= 400) {
+        throw new Error(`${identityKey} acceptance sign-in returned HTTP ${response.status()}`)
+      }
+      await page.waitForURL((url) => !url.pathname.endsWith('/identity/sign-in'))
+      diagnostics.setStep(`Render the authenticated landing page for ${identityKey}`)
+      await page.locator('[data-mc-application-shell], .arco-admin-layout').first().waitFor({ state: 'visible' })
 
-    const capturedState = await context.storageState()
-    const isolatedState = isolateAcceptanceAuthState(capturedState, identityKey)
+      const capturedState = await context.storageState()
+      return isolateAcceptanceAuthState(capturedState, identityKey)
+    }, diagnosticsAttachment, `browser-diagnostics-sign-in-${identityKey}`)
 
+    // A session from a page with browser errors must not become a shared baseline.
     await mkdir(dirname(statePath), { recursive: true })
     await writeFile(
       statePath,

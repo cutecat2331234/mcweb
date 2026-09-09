@@ -9,10 +9,10 @@ import { acceptanceOwner } from './support/session'
 // room to finish its real UI sign-in.
 setup.setTimeout(120_000)
 
-setup('capture acceptance owner session', async ({ browser, baseURL }) => {
+setup('capture acceptance owner session', async ({ browser, baseURL }, testInfo) => {
   if (!baseURL) throw new Error('Playwright baseURL is required for acceptance authentication')
 
   await captureAcceptanceAuthStates(browser, baseURL, [
     { key: 'owner', ...acceptanceOwner },
-  ])
+  ], testInfo)
 })

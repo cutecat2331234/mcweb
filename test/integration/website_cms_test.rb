@@ -161,8 +161,20 @@ class WebsiteCmsBugfixTest < ActionDispatch::IntegrationTest
     get preview_admin_website_page_path(page)
     assert_response :success
     assert_includes response.body, "Draft only"
-    assert_match(%r{(?:entrypoints|assets)/website-preview}, response.body)
-    refute_match(%r{(?:entrypoints|assets)/admin}, response.body)
+    document = Nokogiri::HTML(response.body)
+    assert_equal "website_preview", document.at_css("html")["data-mcweb-application"]
+
+    module_sources = document.css('script[type="module"][src]').filter_map do |script|
+      script["src"]
+    end
+    preview_entrypoint_loaded = module_sources.any? do |source|
+      source.match?(%r{/(?:entrypoints/)?website-preview})
+    end
+    assert preview_entrypoint_loaded
+    admin_entrypoint_loaded = module_sources.any? do |source|
+      source.match?(%r{/(?:entrypoints/admin(?:\.ts)?|assets/admin-[^/?#]+\.js)(?:[?#]|$)})
+    end
+    refute admin_entrypoint_loaded
   end
 
   test "article slug is globally unique" do

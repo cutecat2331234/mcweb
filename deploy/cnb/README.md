@@ -48,6 +48,16 @@ work uses Gradle `--offline`; npm enters offline mode after dependency and
 browser provisioning. Missing cached artifacts therefore fail rather than
 silently downloading during a gate.
 
+Astro consumers must attach cached Node dependencies as a real workspace
+directory, not a top-level `node_modules` symlink into `/opt`. Astro's component
+and virtual CSS requests can otherwise disagree on the real path used for
+compile metadata. From the repository root, documentation gates use
+`bash scripts/attach-cnb-cached-node-modules.sh /opt/mcweb-quality/docs docs`.
+The shared helper checks both package manifests against the cached image,
+refuses to replace any existing dependency path, and copies the cached tree
+with optional reflinks. It retains package/bin links and permissions, performs
+no dependency installation, and does not change the image cache inputs.
+
 Git LFS remains reserved for reviewed, versioned binary assets. Do not store
 `node_modules`, `vendor/bundle`, browser downloads, JDK archives, Gradle caches,
 Go module caches, database images, or generated build output in Git or Git LFS.

@@ -43,9 +43,8 @@ main:
           script: |
             set -eu
             test ! -e node_modules
-            test ! -e docs/node_modules
             ln -s /opt/mcweb-quality/root/node_modules node_modules
-            ln -s /opt/mcweb-quality/docs/node_modules docs/node_modules
+            bash scripts/attach-cnb-cached-node-modules.sh /opt/mcweb-quality/docs docs
             bundle check
             test -x node_modules/.bin/tsc
             test -x docs/node_modules/.bin/astro

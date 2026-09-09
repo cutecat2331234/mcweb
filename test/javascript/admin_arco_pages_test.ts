@@ -647,7 +647,7 @@ test('admin-only shared components use Arco instead of legacy and native control
 test('admin language switcher keeps the locale menu clear of overlapping tooltips', () => {
   const source = adminComponentSource('AdminLanguageSwitcher.vue')
 
-  assert.match(source, /import \{ Button, Doption, Dropdown \} from '@mcweb\/ui'/)
+  assert.match(source, /import \{ Button, Doption, Dropdown, Message \} from '@mcweb\/ui'/)
   assert.match(source, /<Dropdown trigger="click" @select="switchLocale">/)
   assert.match(source, /<Button type="text" shape="circle" :aria-label="t\('locale\.label'\)">/)
   assert.doesNotMatch(source, /<a-tooltip/)

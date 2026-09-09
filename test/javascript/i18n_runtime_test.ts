@@ -218,13 +218,16 @@ test('explicit Inertia visit headers override shared locale and csrf defaults', 
   }
 })
 
-test('Inertia resolves the target page locale before loading its component', () => {
+test('Inertia resolves the target page locale in parallel and before committing its component', () => {
   for (const relativePath of [
     'app/javascript/lib/createInertiaApplication.ts',
   ]) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
     assert.match(source, /resolve: async \(name, targetPage\?: InertiaPageLike\)/)
-    assert.match(source, /await syncLocaleFromPage\(targetPage\)[\s\S]*?return normalizeFrontendPageComponent\(await loader\(\)\)/)
+    assert.match(
+      source,
+      /const \[pageComponent\] = await Promise\.all\(\[[\s\S]*?pageLoad,[\s\S]*?syncLocaleFromPage\(targetPage\),[\s\S]*?prepareApplicationStatusSurfaces\([\s\S]*?\)[\s\S]*?return normalizeFrontendPageComponent\(pageComponent\)/,
+    )
     assert.match(source, /typeof locale !== 'string' \|\| locale\.trim\(\)\.length === 0/)
     assert.match(source, /const onSuccess = \(event: Event\) => \{[\s\S]*?void syncLocaleFromPage\(detail\.page\)/)
     assert.match(source, /document\.addEventListener\('inertia:success', onSuccess\)/)

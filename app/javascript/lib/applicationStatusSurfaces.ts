@@ -11,6 +11,13 @@ type StatusSurface = {
   load: () => Promise<void>
 }
 
+function assignStatusSurfaceComponent(
+  target: ShallowRef<Component | null>,
+  value: Component,
+) {
+  target.value = value
+}
+
 function createStatusSurface(
   loader: () => Promise<{ default: Component }>,
 ): StatusSurface {
@@ -23,7 +30,7 @@ function createStatusSurface(
       if (component.value) return
       const loading = pending ??= loader()
         .then((module) => {
-          component.value = module.default
+          assignStatusSurfaceComponent(component, module.default)
         })
         .finally(() => {
           pending = null

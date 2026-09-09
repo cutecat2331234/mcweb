@@ -224,7 +224,10 @@ test('adapter error boundaries accept Vue components with declared props', () =>
   assert.match(adapters, /import type \{ Component, DefineComponent \} from 'vue'/)
   assert.match(adapters, /component: Component/)
   assert.match(adapters, /errorBoundaries: readonly Component\[\]/)
-  assert.match(bootstrap, /normalizeFrontendPageComponent\(await loader\(\)\)/)
+  assert.match(
+    bootstrap,
+    /const \[pageComponent\] = await Promise\.all\(\[[\s\S]*?pageLoad,[\s\S]*?syncLocaleFromPage\(targetPage\),[\s\S]*?prepareApplicationStatusSurfaces\([\s\S]*?\)[\s\S]*?return normalizeFrontendPageComponent\(pageComponent\)/,
+  )
   assert.match(bootstrap, /if \(!el\) throw new Error/)
 })
 

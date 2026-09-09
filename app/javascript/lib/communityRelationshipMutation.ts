@@ -62,7 +62,10 @@ export async function submitCommunityRelationshipMutation(
   desiredState: boolean = !state.active,
 ): Promise<'busy' | 'confirmed' | 'rejected' | 'uncertain'> {
   if (state.processing) return 'busy'
-  if (!isCommunityRelationshipSnapshot(state)) {
+  if (!isCommunityRelationshipSnapshot({
+    active: state.active,
+    revision: state.revision,
+  })) {
     state.error = 'failed'
     return 'rejected'
   }

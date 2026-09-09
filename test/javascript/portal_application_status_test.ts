@@ -52,3 +52,30 @@ test('mounted application errors use the core locale while pre-i18n bootstrap ke
     assert.match(locale, /reloadApplication:/)
   }
 })
+
+test('application error fallback does not add the UI kit to every entrypoint', () => {
+  const boundary = source('app/javascript/components/ApplicationErrorBoundary.vue')
+
+  assert.doesNotMatch(boundary, /@mcweb\/ui|@arco-design|@\/components\/ui\//)
+  assert.match(boundary, /<section[^>]*role="alert"[^>]*aria-live="assertive"/)
+  assert.match(boundary, /<button type="button" @click="reload">/)
+  assert.match(boundary, /window\.location\.reload\(\)/)
+})
+
+test('application provider loads global dialogs only when requested and keeps their closing lifecycle', () => {
+  const provider = source('app/javascript/components/AppProvider.vue')
+  const prompt = source('app/javascript/components/ui/PromptDialog.vue')
+
+  for (const kind of ['Confirm', 'Prompt']) {
+    const state = `${kind.toLowerCase()}State`
+    assert.doesNotMatch(provider, new RegExp(`import ${kind}Dialog from`))
+    assert.match(provider, new RegExp(`\\(\\) => ${state}\\.resolve`))
+    assert.match(provider, new RegExp(`if \\(!request \\|\\| ${kind}Dialog\\.value\\) return`))
+    assert.match(provider, new RegExp(`await import\\('@/components/ui/${kind}Dialog\\.vue'\\)`))
+    assert.match(provider, new RegExp(`<component :is="${kind}Dialog" v-if="${kind}Dialog" />`))
+    assert.doesNotMatch(provider, new RegExp(`${kind}Dialog\\.value = (?:null|undefined)`))
+  }
+  assert.match(provider, /catch \(error\) \{\s*resolveConfirm\(false, request\)/)
+  assert.match(provider, /catch \(error\) \{\s*resolvePrompt\(null, request\)/)
+  assert.match(prompt, /watch\([\s\S]*?promptState\.open[\s\S]*?immediate: true/)
+})

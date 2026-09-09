@@ -47,7 +47,9 @@ const arcoChunkPlan: readonly ArcoChunkGroupPlan[] = [
   {
     name: 'arco-provider-runtime',
     areas: 'config-provider',
-    paths: '_utils/global-config.js _utils/is.js _virtual/plugin-vue_export-helper.js',
+    // Locale state is a provider primitive, not a reason to load whichever
+    // public control happens to share its automatic chunk (for example Tooltip).
+    paths: '_utils/global-config.js _utils/is.js _virtual/plugin-vue_export-helper.js locale/index.js locale/lang/zh-cn.js',
   },
   {
     name: 'arco-control-runtime',
@@ -56,7 +58,10 @@ const arcoChunkPlan: readonly ArcoChunkGroupPlan[] = [
   {
     name: 'arco-overlay-form-runtime',
     packages: 'compute-scroll-into-view resize-observer-polyfill scroll-into-view-if-needed',
-    paths: '_components/client-only.js _components/feedback-icon.js _components/icon-hover.js _components/resize-observer.js _components/resize-observer-v2.js _hooks/use-cursor.js _hooks/use-first-element.js _hooks/use-index.js _hooks/use-merge-state.js _hooks/use-overflow.js _hooks/use-pick-slots.js _hooks/use-popup-manager.js _hooks/use-resize-observer.js _hooks/use-state.js _hooks/use-teleport-container.js _utils/constant.js _utils/dom.js _utils/get-value-by-path.js _utils/keyboard.js _utils/keycode.js _utils/pick.js _utils/raf.js _utils/responsive-observe.js _utils/throttle-by-raf.js',
+    // FeedbackIcon imports public icons. Keep it with its actual importers:
+    // forcing it into this lower layer creates overlay -> icons/Tooltip ->
+    // Trigger -> overlay cycles when those public modules share a chunk.
+    paths: '_components/client-only.js _components/icon-hover.js _components/resize-observer.js _components/resize-observer-v2.js _hooks/use-cursor.js _hooks/use-first-element.js _hooks/use-index.js _hooks/use-merge-state.js _hooks/use-overflow.js _hooks/use-pick-slots.js _hooks/use-popup-manager.js _hooks/use-resize-observer.js _hooks/use-state.js _hooks/use-teleport-container.js _utils/constant.js _utils/dom.js _utils/get-value-by-path.js _utils/keyboard.js _utils/keycode.js _utils/pick.js _utils/raf.js _utils/responsive-observe.js _utils/throttle-by-raf.js',
   },
 ]
 

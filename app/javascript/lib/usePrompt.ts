@@ -24,6 +24,10 @@ export const promptState = reactive<PromptState>({
 })
 
 export function prompt(options: PromptOptions): Promise<string | null> {
+  // Keep the active request and its draft intact while its lazy dialog loads.
+  // An overlapping request is cancelled, not attached to the first answer.
+  if (promptState.resolve) return Promise.resolve(null)
+
   return new Promise((resolve) => {
     promptState.options = options
     promptState.value = options.defaultValue || ''
@@ -32,8 +36,11 @@ export function prompt(options: PromptOptions): Promise<string | null> {
   })
 }
 
-export function resolvePrompt(value: string | null) {
-  promptState.resolve?.(value)
+export function resolvePrompt(value: string | null, expectedResolver = promptState.resolve) {
+  if (promptState.resolve !== expectedResolver) return
+
+  const resolve = promptState.resolve
   promptState.open = false
   promptState.resolve = null
+  resolve?.(value)
 }

@@ -22,6 +22,7 @@ watch(
     inputRef.value?.focus()
     inputRef.value?.select()
   },
+  { immediate: true },
 )
 
 function cancel() {

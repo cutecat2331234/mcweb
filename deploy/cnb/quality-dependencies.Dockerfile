@@ -17,6 +17,7 @@ RUN apt-get update -qq && \
       libatomic1 \
       libpq-dev \
       libvips-dev \
+      openssh-server \
       pkg-config && \
     rm -rf /var/lib/apt/lists/*
 

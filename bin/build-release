@@ -20,7 +20,7 @@ rsync -a \
   --exclude='tmp' \
   --exclude='log' \
   --exclude='node_modules' \
-  --exclude='development-targets' \
+  --exclude='internal-development-notes' \
   --exclude='dist' \
   --exclude='storage' \
   --exclude='coverage' \

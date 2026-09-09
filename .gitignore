@@ -54,8 +54,8 @@ node_modules
 
 dist/
 
-# Locally retained implementation targets are not product documentation.
-/development-targets/
+# Locally retained engineering notes are not product documentation.
+/internal-development-notes/
 
 # Generated documentation-site state and deploy output.
 /docs/.astro/

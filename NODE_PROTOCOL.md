@@ -77,7 +77,7 @@ Go 节点必须先把活动批次及逐目标结果写入本地账本。`complet
 心跳通过 `metadata.node_protocol_versions`、`metadata.operation_types` 与结构化的
 `metadata.operation_capabilities` 上报能力。世界操作只有在节点初始化托管存储和恢复账本成功后才声明；Rails 对协议版本、清单版本、归档格式、安全配置、功能标志及节点硬上限执行精确匹配。初始化失败时节点不声明世界能力并保持启动/重启 fail-closed；账本存在未决恢复时继续声明精确协议能力，同时上报 `world_restore_recovery_required`，拒绝新世界操作及启动/重启，直到返回既有持久结果或完成恢复处理。
 
-世界归档由节点使用 Go 标准库写入和读取，不调用 shell `tar`。调用方只能提交托管备份 ID 和冻结摘要，不能提交归档路径、目标路径或自定义解压限额。完整安全契约见 `development-targets/minecraft-world-restore-safety.md`。
+世界归档由节点使用 Go 标准库写入和读取，不调用 shell `tar`。调用方只能提交托管备份 ID 和冻结摘要，不能提交归档路径、目标路径或自定义解压限额。管理员操作和安全前置条件见 `docs/src/content/docs/operations/minecraft-world-recovery.md`。
 
 ## Connector 透明代理（Go 本地）
 

@@ -196,7 +196,7 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
       docs/.astro
       docs/dist
       public/docs
-      development-targets
+      internal-development-notes
     ].each do |entry|
       assert_includes ignored, entry
     end
@@ -215,7 +215,7 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
     assert_includes setup, "npm run docs:publish"
     assert_includes release_builder, "npm ci --prefix docs"
     assert_includes release_builder, "npm run docs:publish"
-    assert_includes release_builder, "--exclude='development-targets'"
+    assert_includes release_builder, "--exclude='internal-development-notes'"
     assert_includes release_builder, "rm -rf node_modules docs/node_modules docs/dist docs/.astro"
   end
 end

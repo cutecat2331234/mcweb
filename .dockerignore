@@ -14,7 +14,7 @@ log/*
 docs/dist
 docs/.astro
 public/docs
-development-targets
+internal-development-notes
 storage/*
 tmp/*
 vendor/bundle

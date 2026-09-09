@@ -287,6 +287,32 @@ test('flush leaves an unmatched failed request visible and closes its correlatio
   assert.equal(diagnostics.report().errors.length, 1)
 })
 
+test('flush closes correlation for a request that is still in flight', async () => {
+  const { page, diagnostics } = monitoredPage()
+  await diagnostics.install()
+  diagnostics.registerControlledRequestCancellation({
+    application: 'account',
+    description: 'Account background refresh was cancelled after its deadline',
+    method: 'POST',
+    pathname: /^\/app\/account\/refresh$/,
+    reasons: ['deadline_exceeded'],
+  })
+  const requestId = 'v1.00000000-0000-4000-8000-000000000012'
+  const event = { requestId, reason: 'deadline_exceeded' as const }
+  const request = page.request('/app/account/refresh', {
+    method: 'POST',
+    failure: 'net::ERR_ABORTED',
+    headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
+  })
+
+  await diagnostics.flush()
+  assert.equal(await page.reportControlledCancellation(event), false)
+  page.emit('requestfailed', request)
+
+  assert.equal(diagnostics.report().expected.length, 0)
+  assert.equal(diagnostics.report().errors.length, 1)
+})
+
 test('a cancellation report cannot choose between duplicate in-flight request IDs', async () => {
   const { page, diagnostics } = monitoredPage()
   await diagnostics.install()

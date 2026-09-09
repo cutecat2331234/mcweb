@@ -155,6 +155,7 @@ export function captureBrowserDiagnostics(
   let navigationSequence = 0
   let activeNavigationAttempt: number | undefined
   let stopped = false
+  let controlledCancellationCorrelationClosed = false
   const requests = new WeakMap<Request, RequestContext>()
   const inFlightRequests = new Set<Request>()
   const navigationAttempts = new WeakMap<Request, number>()
@@ -238,7 +239,7 @@ export function captureBrowserDiagnostics(
       frameInDocument: documentFrameRequest(request),
     })
     const requestId = requestHeader(request.headers(), controlledRequestIdHeader)
-    if (requestId && controlledRequestId.test(requestId)) {
+    if (!controlledCancellationCorrelationClosed && requestId && controlledRequestId.test(requestId)) {
       if (seenControlledRequestIds.has(requestId)) {
         const originalRequest = controlledRequestsById.get(requestId)
         if (originalRequest) {
@@ -413,7 +414,8 @@ export function captureBrowserDiagnostics(
     installPromise ??= page.exposeBinding(
       CONTROLLED_REQUEST_CANCELLATION_BINDING,
       (source, value: unknown) => {
-        if (stopped || source.frame !== page.mainFrame() || !controlledCancellationEvent(value)) return false
+        if (stopped || controlledCancellationCorrelationClosed
+          || source.frame !== page.mainFrame() || !controlledCancellationEvent(value)) return false
         const request = controlledRequestsById.get(value.requestId)
         if (!request || controlledCancellations.has(request)) return false
         const controlledRule = matchingControlledCancellationRule(request, value.reason)
@@ -453,12 +455,14 @@ export function captureBrowserDiagnostics(
     }
     // Reports issued before the sentinel have now been processed. Keep every
     // unmatched failed request as an error and reject any later report.
+    controlledCancellationCorrelationClosed = true
     for (const [request, pending] of failedControlledRequests) {
       if (controlledRequestsById.get(pending.requestId) === request) {
         controlledRequestsById.delete(pending.requestId)
       }
     }
     failedControlledRequests.clear()
+    controlledRequestsById.clear()
   }
 
   function registerControlledRequestCancellation(rule: ControlledRequestCancellationRule) {

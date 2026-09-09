@@ -6,6 +6,11 @@ import test from 'node:test'
 import type { Page, Request, Response } from '@playwright/test'
 
 import {
+  CONTROLLED_REQUEST_CANCELLATION_BINDING,
+  CONTROLLED_REQUEST_ID_HEADER,
+  type ControlledRequestCancellationEvent,
+} from '../../app/javascript/lib/controlledRequestCancellation.ts'
+import {
   captureBrowserDiagnostics,
   diagnosticText,
   diagnosticUrl,
@@ -18,9 +23,31 @@ const origin = 'https://mcweb.test'
 class DiagnosticPage extends EventEmitter {
   currentUrl = `${origin}/app/account`
   frame = { url: () => this.currentUrl, parentFrame: () => null }
+  bindings = new Map<string, (source: { frame: typeof this.frame }, value: unknown) => unknown>()
+  bindingFlushes = 0
   url() { return this.currentUrl }
   mainFrame() { return this.frame }
   asPage() { return this as unknown as Page }
+
+  async exposeBinding(
+    name: string,
+    callback: (source: { frame: typeof this.frame }, value: unknown) => unknown,
+  ) {
+    this.bindings.set(name, callback)
+  }
+
+  async evaluate(_callback: unknown, bindingName: string) {
+    const binding = this.bindings.get(bindingName)
+    assert.ok(binding, 'browser diagnostics binding must be installed before it is flushed')
+    this.bindingFlushes += 1
+    return binding({ frame: this.frame }, null)
+  }
+
+  async reportControlledCancellation(event: ControlledRequestCancellationEvent) {
+    const binding = this.bindings.get(CONTROLLED_REQUEST_CANCELLATION_BINDING)
+    assert.ok(binding, 'browser diagnostics binding must be installed')
+    return binding({ frame: this.frame }, event)
+  }
 
   console(type: string, text: string, url = `${origin}/assets/account.js`) {
     this.emit('console', { type: () => type, text: () => text, location: () => ({ url }) })
@@ -50,11 +77,17 @@ class DiagnosticPage extends EventEmitter {
     return request
   }
 
-  response(request: Request, status: number, headers: Record<string, string> = {}) {
+  response(
+    request: Request,
+    status: number,
+    headers: Record<string, string> = {},
+    finished = true,
+  ) {
     this.emit('response', {
       url: () => request.url(), request: () => request,
       status: () => status, headers: () => headers,
     } as Response)
+    if (finished) this.emit('requestfinished', request)
   }
 
   navigate(path: string, {
@@ -150,6 +183,161 @@ test('same-document cancellation is not globally ignored as net::ERR_ABORTED', (
   page.emit('framenavigated', page.frame)
   assert.equal(diagnostics.report().errors.length, 1)
   assert.equal(diagnostics.report().expected.length, 0)
+})
+
+test('a registered cancellation binds one exact live request and is consumed once', async () => {
+  const { page, diagnostics } = monitoredPage()
+  await diagnostics.install()
+  diagnostics.registerControlledRequestCancellation({
+    application: 'account',
+    description: 'Account background refresh was cancelled after its deadline',
+    method: 'POST',
+    pathname: /^\/app\/account\/refresh$/,
+    reasons: ['deadline_exceeded'],
+  })
+  const requestId = 'v1.00000000-0000-4000-8000-000000000001'
+  const event = { requestId, reason: 'deadline_exceeded' as const }
+  assert.equal(await page.reportControlledCancellation(event), false, 'a report cannot precede its request')
+
+  const request = page.request('/app/account/refresh', {
+    method: 'POST',
+    failure: 'net::ERR_ABORTED',
+    headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
+  })
+  assert.equal(await page.reportControlledCancellation(event), true)
+  assert.equal(await page.reportControlledCancellation(event), false, 'one request accepts one report')
+  page.emit('requestfailed', request)
+
+  assert.equal(diagnostics.report().errors.length, 0)
+  assert.equal(diagnostics.report().expected.length, 1)
+  assert.match(diagnostics.report().expected[0]!.reason, /deadline_exceeded/)
+
+  const replay = page.request('/app/account/refresh', {
+    method: 'POST',
+    failure: 'net::ERR_ABORTED',
+    headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
+  })
+  assert.equal(
+    await page.reportControlledCancellation(event),
+    false,
+    'a consumed request ID cannot be replayed onto another live request',
+  )
+  page.emit('requestfailed', replay)
+  assert.equal(
+    await page.reportControlledCancellation(event),
+    false,
+    'a report arriving after requestfailed cannot retroactively excuse it',
+  )
+  assert.equal(diagnostics.report().expected.length, 1)
+  assert.equal(diagnostics.report().errors.length, 1)
+})
+
+test('a cancellation report cannot choose between duplicate in-flight request IDs', async () => {
+  const { page, diagnostics } = monitoredPage()
+  await diagnostics.install()
+  diagnostics.registerControlledRequestCancellation({
+    application: 'account',
+    description: 'Account background refresh was cancelled after its deadline',
+    method: 'POST',
+    pathname: /^\/app\/account\/refresh$/,
+    reasons: ['deadline_exceeded'],
+  })
+  const requestId = 'v1.00000000-0000-4000-8000-000000000009'
+  const options = {
+    method: 'POST',
+    failure: 'net::ERR_ABORTED',
+    headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
+  }
+  const first = page.request('/app/account/refresh', options)
+  const second = page.request('/app/account/refresh', options)
+
+  assert.equal(
+    await page.reportControlledCancellation({ requestId, reason: 'deadline_exceeded' }),
+    false,
+  )
+  page.emit('requestfailed', first)
+  page.emit('requestfailed', second)
+  assert.equal(diagnostics.report().expected.length, 0)
+  assert.equal(diagnostics.report().errors.length, 2)
+})
+
+test('controlled cancellation never hides an unregistered route, reason, or real network failure', async () => {
+  const { page, diagnostics } = monitoredPage()
+  await diagnostics.install()
+  diagnostics.registerControlledRequestCancellation({
+    application: 'account',
+    description: 'Registered account refresh',
+    method: 'POST',
+    pathname: /^\/app\/account\/refresh$/,
+    reasons: ['component_unmounted'],
+  })
+
+  const cases = [
+    { id: 2, path: '/app/account/other', reason: 'component_unmounted' as const, failure: 'net::ERR_ABORTED' },
+    { id: 3, path: '/app/account/refresh', reason: 'deadline_exceeded' as const, failure: 'net::ERR_ABORTED' },
+    { id: 4, path: '/app/account/refresh', reason: 'component_unmounted' as const, failure: 'net::ERR_CONNECTION_REFUSED' },
+  ]
+  for (const entry of cases) {
+    const requestId = `v1.00000000-0000-4000-8000-${String(entry.id).padStart(12, '0')}`
+    const request = page.request(entry.path, {
+      method: 'POST',
+      failure: entry.failure,
+      headers: { [CONTROLLED_REQUEST_ID_HEADER.toLowerCase()]: requestId },
+    })
+    assert.equal(await page.reportControlledCancellation({ requestId, reason: entry.reason }), true)
+    page.emit('requestfailed', request)
+  }
+
+  assert.equal(diagnostics.report().expected.length, 0)
+  assert.equal(diagnostics.report().errors.length, cases.length)
+  assert.throws(() => diagnostics.assertClean(), /ERR_CONNECTION_REFUSED/)
+})
+
+test('a test-owned cancellation scope keeps a response-body request exact and one-shot', async () => {
+  const { page, diagnostics } = monitoredPage()
+  const pendingRequest = page.request('/app/account', { failure: 'net::ERR_ABORTED' })
+  page.response(pendingRequest, 200, {}, false)
+  await diagnostics.withExpectedRequestCancellation({
+    application: 'account',
+    description: 'Acceptance replaced one pending account read with a document navigation',
+    method: 'GET',
+    pathname: /^\/app\/account$/,
+  }, async () => {
+    page.emit('requestfailed', page.request('/app/account', {
+      failure: 'net::ERR_CONNECTION_REFUSED',
+    }))
+    page.emit('requestfailed', page.request('/app/account', {
+      failure: 'net::ERR_ABORTED',
+      childFrame: true,
+    }))
+    page.emit('requestfailed', page.request('/app/account', { failure: 'net::ERR_ABORTED' }))
+    page.emit('requestfailed', pendingRequest)
+    page.emit('requestfailed', page.request('/app/account', { failure: 'net::ERR_ABORTED' }))
+    page.emit('requestfailed', page.request('/app/other', { failure: 'net::ERR_ABORTED' }))
+  })
+  page.emit('requestfailed', page.request('/app/account', { failure: 'net::ERR_ABORTED' }))
+
+  assert.equal(diagnostics.report().expected.length, 1)
+  assert.equal(diagnostics.report().errors.length, 6)
+})
+
+test('a test-owned cancellation scope fails closed when multiple live requests match', async () => {
+  const { page, diagnostics } = monitoredPage()
+  const first = page.request('/app/account', { failure: 'net::ERR_ABORTED' })
+  const second = page.request('/app/account', { failure: 'net::ERR_ABORTED' })
+
+  await diagnostics.withExpectedRequestCancellation({
+    application: 'account',
+    description: 'Acceptance replaced one pending account read with a document navigation',
+    method: 'GET',
+    pathname: /^\/app\/account$/,
+  }, async () => {
+    page.emit('requestfailed', first)
+    page.emit('requestfailed', second)
+  })
+
+  assert.equal(diagnostics.report().expected.length, 0)
+  assert.equal(diagnostics.report().errors.length, 2)
 })
 
 test('cancelled old document resources become expected only after a confirmed successful document navigation', () => {
@@ -298,6 +486,7 @@ test('teardown attaches errors even when the action fails and preserves both fai
   })
   assert.equal(attachments.length, 1)
   assert.match(attachments[0], /CMS component failed/)
+  assert.equal(page.bindingFlushes, 1)
   assert.equal(page.eventNames().length, 0)
 })
 
@@ -317,6 +506,7 @@ test('CE app, Admin, CMS, sign-in interface, and manual auth setup use the share
   }
   const fixture = readFileSync(new URL('../e2e/support/fixtures.ts', import.meta.url), 'utf8')
   assert.match(fixture, /auto: true/)
+  assert.match(fixture, /await diagnostics\.install\(\)/)
   assert.match(fixture, /finally\s*\{[\s\S]*finishBrowserDiagnostics/)
   const auth = readFileSync(new URL('../e2e/support/auth-state.ts', import.meta.url), 'utf8')
   assert.match(auth, /await withBrowserDiagnostics\(page,/)

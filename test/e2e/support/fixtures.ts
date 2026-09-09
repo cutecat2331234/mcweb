@@ -18,6 +18,7 @@ export const test = base.extend<DiagnosticFixtures>({
       application: diagnosticApplication,
       step: testInfo.title,
     })
+    await diagnostics.install()
     try {
       await use(diagnostics)
     } finally {

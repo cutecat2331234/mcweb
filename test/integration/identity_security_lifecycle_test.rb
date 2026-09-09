@@ -70,7 +70,7 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
           remember_me: "0"
         }
       }
-      assert_equal 302, browser.response.status
+      browser.assert_response :see_other
     end
 
     browser_a.post identity_security_totp_setup_path

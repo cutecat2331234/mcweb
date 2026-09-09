@@ -125,9 +125,9 @@ test('navigation and prefetch resolve route kind instead of treating all app pat
   assert.doesNotMatch(prefetch, /PREFETCHABLE_PREFIXES/)
 })
 
-test('the client registry matches the server exact-root and descendant API contract', () => {
+test('the registry compiler matches the server exact-root and descendant API contract', () => {
   const clientRegistry = readFileSync(
-    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    resolve(root, 'scripts/frontend-application-registry-compiler.ts'),
     'utf8',
   )
   assert.match(clientRegistry, /function exactParentAndDescendantGlob/)
@@ -144,7 +144,7 @@ test('downstream navigation visibility is a shared fail-closed authorization con
     'utf8',
   )
   const clientRegistry = readFileSync(
-    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    resolve(root, 'scripts/frontend-application-registry-compiler.ts'),
     'utf8',
   )
   const adapters = readFileSync(
@@ -196,7 +196,7 @@ test('downstream page loaders are confined to declared repository page roots', (
     'utf8',
   )
   const clientRegistry = readFileSync(
-    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    resolve(root, 'scripts/frontend-application-registry-compiler.ts'),
     'utf8',
   )
   const adapters = readFileSync(
@@ -238,7 +238,7 @@ test('runtime accessories are manifest-owned siblings in the shared Inertia root
     'utf8',
   )
   const clientRegistry = readFileSync(
-    resolve(root, 'app/javascript/lib/frontendApplications.ts'),
+    resolve(root, 'scripts/frontend-application-registry-compiler.ts'),
     'utf8',
   )
   const adapters = readFileSync(

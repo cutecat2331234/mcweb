@@ -5,6 +5,7 @@ import { vitePluginForArco } from '@arco-plugins/vite-vue'
 import RubyPlugin from 'vite-plugin-ruby'
 import { existsSync } from 'node:fs'
 import path from 'path'
+import { frontendApplicationRegistryPlugin } from './scripts/frontend-application-registry-plugin.ts'
 
 function developerBuildBoolean(name: string) {
   if (process.env.MCWEB_DEVELOPER_VITE !== '1') return undefined
@@ -184,6 +185,7 @@ export default defineConfig({
   },
   plugins: [
     RubyPlugin(),
+    frontendApplicationRegistryPlugin(__dirname),
     mcwebUiArcoStyleBridge(),
     mcwebArcoEnglishLocaleBridge(),
     vue(),

@@ -1,7 +1,11 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
+import { readFrontendApplicationRegistry } from './frontend-application-registry.ts'
 
 const root = resolve('.')
+// Run the same complete manifest compiler used by Vite before checking source
+// resolvers. Compiler failures must not be hidden by the raw-file checks below.
+readFrontendApplicationRegistry(root)
 const registryRoot = resolve(root, 'config/frontend_applications')
 const pageRoot = resolve(root, 'app/javascript/pages')
 const entryRoot = resolve(root, 'app/javascript/entrypoints')

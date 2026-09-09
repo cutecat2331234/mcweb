@@ -9,6 +9,7 @@ import {
 import {
   clearLocaleCookie,
   readLocaleCookie,
+  writeExplicitLocaleCookie,
   writeLocaleCookie,
 } from './localeBridge'
 
@@ -55,6 +56,13 @@ export function writeSharedAppLocale(locale: unknown): AppLocale {
     // Storage can be unavailable in hardened or private browser contexts.
   }
   writeLocaleCookie(normalized)
+  return normalized
+}
+
+/** Persist a locale chosen by a user in a non-Rails same-origin renderer. */
+export function writeExplicitSharedAppLocale(locale: unknown): AppLocale {
+  const normalized = writeSharedAppLocale(locale)
+  if (typeof window !== 'undefined') writeExplicitLocaleCookie(normalized)
   return normalized
 }
 

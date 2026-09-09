@@ -88,7 +88,18 @@ test('locale preference supplies a stable shared key and partitions Inertia cach
   assert.match(source, /SHARED_LOCALE_STORAGE_KEY = 'mcweb-locale'/)
   assert.match(source, /INERTIA_LOCALE_HEADER = 'X-McWeb-Locale'/)
   assert.match(source, /window\.localStorage\.setItem\(SHARED_LOCALE_STORAGE_KEY, normalized\)/)
+  assert.match(source, /export function writeExplicitSharedAppLocale\(locale: unknown\)/)
+  assert.match(source, /writeExplicitLocaleCookie\(normalized\)/)
   assert.match(source, /\[INERTIA_LOCALE_HEADER\]: normalizeAppLocale\(candidate\)/)
+
+  const bridge = readFileSync(
+    resolve(process.cwd(), 'app/javascript/lib/localeBridge.ts'),
+    'utf8',
+  )
+  assert.match(bridge, /LOCALE_EXPLICIT_COOKIE_NAME = 'mcweb_locale_explicit'/)
+  assert.match(bridge, /export function writeExplicitLocaleCookie\(locale: AppLocale\)/)
+  assert.match(bridge, /LOCALE_EXPLICIT_COOKIE_NAME\}=\$\{encodeURIComponent\(locale\)\}/)
+  assert.match(bridge, /SameSite=Lax/)
 })
 
 test('locale preference transactions roll storage back unless the visit succeeds', () => {

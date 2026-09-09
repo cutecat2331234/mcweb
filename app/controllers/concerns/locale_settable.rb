@@ -16,7 +16,7 @@ module LocaleSettable
 
   def with_locale(&block)
     locale = resolved_locale
-    mark_locale_bridge_explicit! if request_locale_explicit?
+    mark_locale_bridge_explicit!(locale) if request_locale_explicit?
     synchronize_locale_bridge(locale)
     I18n.with_locale(locale, &block)
   end
@@ -31,7 +31,16 @@ module LocaleSettable
   end
 
   def locale_bridge
-    normalize_locale(session[:locale]) || normalize_locale(cookies[LOCALE_COOKIE])
+    session_locale = normalize_locale(session[:locale])
+    cookie_locale = normalize_locale(cookies[LOCALE_COOKIE])
+    # Static same-origin renderers can deliberately replace a stale session by
+    # setting both shared cookies. An implicit cookie remains a fallback so an
+    # unexplained client value cannot silently outrank established session state.
+    return cookie_locale if cookie_locale && locale_bridge_explicit?(cookie_locale)
+    return session_locale if session_locale
+    return nil if respond_to?(:logged_in?, true) && logged_in?
+
+    cookie_locale
   end
 
   def account_locale
@@ -51,7 +60,8 @@ module LocaleSettable
   end
 
   def adopt_account_locale_after_sign_in!(user)
-    return normalize_locale(session[:locale]) if locale_bridge_explicit?
+    bridge_locale = normalize_locale(session[:locale]) || normalize_locale(cookies[LOCALE_COOKIE])
+    return bridge_locale if bridge_locale && locale_bridge_explicit?(bridge_locale)
 
     normalized = normalize_locale(user&.locale)
     return unless normalized
@@ -69,14 +79,30 @@ module LocaleSettable
     explicit_locale_param.present?
   end
 
-  def locale_bridge_explicit?
-    session[LOCALE_EXPLICIT_SESSION_KEY] == true ||
-      cookies[LOCALE_EXPLICIT_COOKIE].to_s == "1"
+  def locale_bridge_explicit?(locale)
+    normalized = normalize_locale(locale)
+    return false unless normalized
+
+    session_marker = session[LOCALE_EXPLICIT_SESSION_KEY]
+    session_explicit_locale = if session_marker == true
+      # Backward-compatible only while the legacy marker is still bound to the
+      # same server-side locale. It cannot promote a later cookie rewrite.
+      normalize_locale(session[:locale])
+    else
+      normalize_locale(session_marker)
+    end
+    cookie_explicit_locale = normalize_locale(cookies[LOCALE_EXPLICIT_COOKIE])
+    session_locale = normalize_locale(session[:locale])
+    (session_explicit_locale == normalized && session_locale == normalized) ||
+      cookie_explicit_locale == normalized
   end
 
-  def mark_locale_bridge_explicit!
-    session[LOCALE_EXPLICIT_SESSION_KEY] = true
-    write_locale_cookie(LOCALE_EXPLICIT_COOKIE, "1")
+  def mark_locale_bridge_explicit!(locale)
+    normalized = normalize_locale(locale)
+    return unless normalized
+
+    session[LOCALE_EXPLICIT_SESSION_KEY] = normalized
+    write_locale_cookie(LOCALE_EXPLICIT_COOKIE, normalized)
   end
 
   def write_locale_cookie(name, value)
@@ -97,7 +123,7 @@ module LocaleSettable
     normalized = normalize_locale(locale)
     return unless normalized
 
-    mark_locale_bridge_explicit!
+    mark_locale_bridge_explicit!(normalized)
     session[:locale] = normalized
     current_user.update!(locale: normalized) if logged_in? && current_user.locale != normalized.to_s
     synchronize_locale_bridge(normalized)

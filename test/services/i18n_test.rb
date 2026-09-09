@@ -110,6 +110,8 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
     patch locale_path, params: { locale: "en" }
     assert_redirected_to root_path
     assert_equal "en", session[:locale]
+    assert_equal "en", session[LocaleSettable::LOCALE_EXPLICIT_SESSION_KEY]
+    assert_equal "en", cookies[LocaleSettable::LOCALE_EXPLICIT_COOKIE]
     assert_equal "en", user.reload.locale
   end
 
@@ -121,6 +123,8 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
     patch locale_path, params: { locale: "fr" }
     assert_redirected_to root_path
     assert_equal "en", session[:locale]
+    assert_equal "en", session[LocaleSettable::LOCALE_EXPLICIT_SESSION_KEY]
+    assert_equal "en", cookies[LocaleSettable::LOCALE_EXPLICIT_COOKIE]
   end
 
   test "locale switch removes a conflicting locale from the return URL" do
@@ -210,6 +214,20 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
     assert_equal "zh-CN", user.reload.locale
   end
 
+  test "an explicit static-renderer cookie survives sign in and converges the session" do
+    user = create_user(locale: "zh-CN")
+    cookies[LocaleSettable::LOCALE_COOKIE] = "en"
+    cookies[LocaleSettable::LOCALE_EXPLICIT_COOKIE] = "en"
+
+    sign_in_as(user)
+    get account_path
+
+    assert_response :success
+    assert_equal "en", inertia.props.deep_symbolize_keys[:locale]
+    assert_equal "en", session[:locale]
+    assert_equal "zh-CN", user.reload.locale
+  end
+
   private
 
   def inertia_headers
@@ -258,21 +276,74 @@ class I18nLocaleResolutionPriorityTest < ActiveSupport::TestCase
     assert_equal "en", resolver.resolved_locale
   end
 
-  test "session and cookie bridges take precedence over the signed-in account locale" do
+  test "only an explicit shared cookie supersedes a stale session and both precede the account locale" do
     user = Struct.new(:locale).new("en")
 
-    session_resolver = LocaleResolutionHarness.new(
+    implicit_resolver = LocaleResolutionHarness.new(
       session: { locale: "zh-CN" },
       cookies: { LocaleSettable::LOCALE_COOKIE => "en" },
       user: user
     )
-    cookie_resolver = LocaleResolutionHarness.new(
+    explicit_resolver = LocaleResolutionHarness.new(
+      session: { locale: "zh-CN" },
+      cookies: {
+        LocaleSettable::LOCALE_COOKIE => "en",
+        LocaleSettable::LOCALE_EXPLICIT_COOKIE => "en"
+      },
+      user: user
+    )
+    signed_in_cookie_resolver = LocaleResolutionHarness.new(
       cookies: { LocaleSettable::LOCALE_COOKIE => "zh-CN" },
       user: user
     )
+    anonymous_cookie_resolver = LocaleResolutionHarness.new(
+      cookies: { LocaleSettable::LOCALE_COOKIE => "zh-CN" }
+    )
 
-    assert_equal "zh-CN", session_resolver.resolved_locale
-    assert_equal "zh-CN", cookie_resolver.resolved_locale
+    assert_equal "zh-CN", implicit_resolver.resolved_locale
+    assert_equal "en", explicit_resolver.resolved_locale
+    assert_equal "en", signed_in_cookie_resolver.resolved_locale
+    assert_equal "zh-CN", anonymous_cookie_resolver.resolved_locale
+  end
+
+  test "an old explicit marker cannot promote a later implicit cookie rewrite" do
+    user = Struct.new(:locale).new("en")
+    resolver = LocaleResolutionHarness.new(
+      session: {
+        locale: "en",
+        LocaleSettable::LOCALE_EXPLICIT_SESSION_KEY => "en"
+      },
+      cookies: {
+        LocaleSettable::LOCALE_COOKIE => "zh-CN",
+        LocaleSettable::LOCALE_EXPLICIT_COOKIE => "en"
+      },
+      user: user
+    )
+    orphaned_cookie_marker = LocaleResolutionHarness.new(
+      cookies: {
+        LocaleSettable::LOCALE_COOKIE => "zh-CN",
+        LocaleSettable::LOCALE_EXPLICIT_COOKIE => "1"
+      },
+      user: user
+    )
+
+    assert_equal "en", resolver.resolved_locale
+    assert_equal "en", orphaned_cookie_marker.resolved_locale
+  end
+
+  test "an earlier session marker cannot promote an implicit cookie after a newer static choice" do
+    resolver = LocaleResolutionHarness.new(
+      session: {
+        locale: "zh-CN",
+        LocaleSettable::LOCALE_EXPLICIT_SESSION_KEY => "en"
+      },
+      cookies: {
+        LocaleSettable::LOCALE_COOKIE => "en",
+        LocaleSettable::LOCALE_EXPLICIT_COOKIE => "zh-CN"
+      }
+    )
+
+    assert_equal "zh-CN", resolver.resolved_locale
   end
 
   test "explicit locale and genuine Inertia headers precede the current bridge" do

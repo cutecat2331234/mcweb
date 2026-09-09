@@ -4,6 +4,7 @@ import {
 } from '@/lib/i18nRuntime'
 
 export const LOCALE_COOKIE_NAME = 'mcweb_locale'
+export const LOCALE_EXPLICIT_COOKIE_NAME = 'mcweb_locale_explicit'
 const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 export function validatedLocale(value: unknown): AppLocale | null {
@@ -33,6 +34,15 @@ export function writeLocaleCookie(locale: AppLocale): void {
   if (typeof document === 'undefined') return
   const secure = window.location.protocol === 'https:' ? '; Secure' : ''
   document.cookie = `${LOCALE_COOKIE_NAME}=${encodeURIComponent(locale)}; Path=/; `
+    + `Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
+}
+
+/** Mark a same-origin static-renderer selection as deliberate for sign-in. */
+export function writeExplicitLocaleCookie(locale: AppLocale): void {
+  writeLocaleCookie(locale)
+  if (typeof document === 'undefined') return
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${LOCALE_EXPLICIT_COOKIE_NAME}=${encodeURIComponent(locale)}; Path=/; `
     + `Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
 }
 

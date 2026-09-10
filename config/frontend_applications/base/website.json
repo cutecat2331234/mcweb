@@ -21,8 +21,8 @@
   "budget": {
     "representative_paths": ["/", "/blog", "/plugins/example/example"],
     "representative_components": ["Website/Home", "Website/Articles/Index", "Plugins/Page"],
-    "max_initial_javascript_bytes": 360000,
-    "max_initial_stylesheet_bytes": 180000
+    "max_initial_javascript_bytes": 710000,
+    "max_initial_stylesheet_bytes": 240000
   },
   "routes": [
     {

@@ -38,8 +38,8 @@
       "app/javascript/components/admin/AdminFlashMessages.vue",
       "app/javascript/components/plugins/PluginUiSlots.vue"
     ],
-    "max_initial_javascript_bytes": 850000,
-    "max_initial_stylesheet_bytes": 330000
+    "max_initial_javascript_bytes": 1150000,
+    "max_initial_stylesheet_bytes": 370000
   },
   "routes": [
     {

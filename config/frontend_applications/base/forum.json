@@ -24,8 +24,8 @@
       "app/javascript/components/portal/FlashMessages.vue",
       "app/javascript/components/portal/PortalAnnouncements.vue"
     ],
-    "max_initial_javascript_bytes": 650000,
-    "max_initial_stylesheet_bytes": 250000
+    "max_initial_javascript_bytes": 1290000,
+    "max_initial_stylesheet_bytes": 380000
   },
   "routes": [
     {

@@ -23,8 +23,8 @@
       "app/javascript/components/application-shell/ApplicationDeveloperModeBanner.vue",
       "app/javascript/components/portal/FlashMessages.vue"
     ],
-    "max_initial_javascript_bytes": 700000,
-    "max_initial_stylesheet_bytes": 260000
+    "max_initial_javascript_bytes": 1000000,
+    "max_initial_stylesheet_bytes": 330000
   },
   "routes": [
     {

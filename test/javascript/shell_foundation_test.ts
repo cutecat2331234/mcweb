@@ -30,6 +30,10 @@ const portalLayout = readFileSync(
   ),
   'utf8',
 )
+const portalNavigation = readFileSync(
+  resolve(process.cwd(), 'app/javascript/components/application-shell/ApplicationPortalNavigation.vue'),
+  'utf8',
+)
 
 function relativeLuminance(hex: string) {
   const channels = hex.match(/[a-f\d]{2}/gi)?.map((value) => Number.parseInt(value, 16) / 255)
@@ -71,9 +75,11 @@ test('admin and application style roots load one shared shell geometry contract'
 
 test('application shells pass numeric sider widths while content consumes shared geometry', () => {
   for (const layout of [adminLayout, portalLayout]) {
-    assert.match(layout, /:width="248"/)
     assert.doesNotMatch(layout, /:width="'var\(--mc-shell-sidebar-width/)
   }
+  assert.match(adminLayout, /:width="248"/)
+  assert.match(portalLayout, /:width="256"/)
+  assert.match(portalLayout, /:collapsed-width="64"/)
 
   for (const layout of [adminLayout, portalLayout]) {
     assert.match(layout, /mc-shell-header/)
@@ -83,8 +89,9 @@ test('application shells pass numeric sider widths while content consumes shared
     assert.match(layout, /var\(--mc-page-max-width, 1440px\)/)
   }
 
-  assert.match(portalLayout, /marginLeft: .*?'var\(--mc-shell-sidebar-width, 248px\)'/)
-  assert.match(portalLayout, /width: .*?'calc\(100% - var\(--mc-shell-sidebar-width, 248px\)\)'/)
+  assert.doesNotMatch(portalLayout, /marginLeft:/)
+  assert.match(portalLayout, /width: .*?`calc\(100% - \$\{sidebarWidth\}px\)`/)
+  assert.match(portalLayout, /data-mc-application-content\s+scroll-region/)
   assert.match(portalLayout, /name="user-avatar"/)
   assert.match(portalLayout, /name="flash-messages"/)
   assert.match(portalLayout, /<TypographyText class="mc-shell-user-name">\{\{ auth\.user\.username \}\}<\/TypographyText>/)
@@ -161,11 +168,11 @@ test('portal shell exposes stable application acceptance hooks on shared structu
     'data-mc-application-content',
     'data-mc-application-user-menu-trigger',
     'data-mc-application-sidebar',
-    'data-mc-application-navigation',
-    ':data-navigation-group="group.id"',
   ]) {
     assert.match(portalLayout, new RegExp(hook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
+  assert.match(portalNavigation, /data-mc-application-navigation/)
+  assert.match(portalNavigation, /:data-navigation-group="group.id"/)
 
   assert.match(
     portalLayout,

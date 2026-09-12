@@ -258,7 +258,7 @@ function formatJoinedAt(value: string) {
               {{ identity.username }}
             </DescriptionsItem>
             <DescriptionsItem :label="t('accountCenter.identity.language')">
-              {{ t(`locale.${identity.locale}`) }}
+              {{ t(`locale.${locale}`) }}
             </DescriptionsItem>
             <DescriptionsItem :label="t('accountCenter.identity.joinedAt')">
               {{ formatJoinedAt(identity.joined_at) }}

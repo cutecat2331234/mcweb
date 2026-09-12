@@ -13,15 +13,11 @@ import {
   LayoutContent,
   LayoutHeader,
   LayoutSider,
-  Menu,
-  MenuItem,
   Space,
   TypographyText,
 } from '@mcweb/ui'
 import {
   IconApps,
-  IconCommand,
-  IconHome,
   IconMenu,
   IconMessage,
   IconMoon,
@@ -29,11 +25,17 @@ import {
   IconPoweroff,
   IconGift,
   IconQuestionCircle,
+  IconSearch,
+  IconSettings,
   IconSun,
   IconUser,
 } from '@arco-design/web-vue/es/icon'
 
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
+import ApplicationPortalNavigation from './ApplicationPortalNavigation.vue'
+import { portalNavigationContributions } from '@/lib/portalNavigationContributions'
+import { useFeatureFlags } from '@/lib/useFeatureFlags'
+import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import {
   isApplicationShellNavigationItemVisible,
   useApplicationShell,
@@ -64,6 +66,8 @@ const ApplicationPortalMobileNavigation = defineAsyncComponent(
 )
 const { t } = useI18n()
 const shell = useApplicationShell()
+const { features } = useFeatureFlags()
+const { activeTemplate, tokenStyle } = useActiveTemplate()
 const {
   developerModeBanner,
   flashMessages,
@@ -73,12 +77,15 @@ const { isDark, toggleTheme } = useTheme()
 const mobileNavOpen = ref(false)
 const signingOut = ref(false)
 const compact = ref(false)
+const navigationCollapsed = ref(false)
+const navigationStorageKey = 'mcweb-portal-navigation-collapsed'
+const sidebarWidth = computed(() => navigationCollapsed.value ? 64 : 256)
 let compactQuery: MediaQueryList | null = null
 
 const auth = computed(() => (
   page.props.auth ?? { user: null }
 ) as {
-  user: { username: string; avatar_url?: string | null } | null
+  user: { username: string; avatar_url?: string | null; can_access_admin?: boolean } | null
 })
 const notifications = computed(() => page.props.notifications as {
   unread_count: number
@@ -124,6 +131,23 @@ const developerModeMessage = computed(() => [
     : null,
 ].filter(Boolean).join(' '))
 const currentPath = computed(() => page.url.split('?')[0])
+const applicationLabel = computed(() => t(shell.labelKey ?? shell.brandKey))
+const staffWorkspace = computed(() => page.props.staff_workspace as { count: number; url: string } | undefined)
+const destinations = computed(() => {
+  const items = [
+    ...(features.value.forum ? [{ id: 'forum', label: t('common.applications.forum'), href: routes.forum, icon: 'book' }] : []),
+    ...(features.value.store ? [{ id: 'store', label: t('common.applications.store'), href: routes.store, icon: 'gift' }] : []),
+    ...portalNavigationContributions
+      .filter((item) => !item.requiresAuthentication || Boolean(auth.value.user))
+      .map((item) => ({ ...item, label: t(item.labelKey) })),
+    ...(auth.value.user ? [{ id: 'account', label: t('common.personal'), href: routes.account, icon: 'user' }] : []),
+    ...(staffWorkspace.value ? [{ id: 'staff', label: t('common.applications.staff'), href: staffWorkspace.value.url, icon: 'safe', badge: staffWorkspace.value.count }] : []),
+  ]
+  if (!items.some((item) => item.id === shell.applicationId)) {
+    items.push({ id: shell.applicationId, label: applicationLabel.value, href: allItems.value[0]?.href ?? currentPath.value, icon: 'apps' })
+  }
+  return items
+})
 const visibleGroups = computed(() => shell.navigation
   .map((group) => ({
     ...group,
@@ -145,6 +169,7 @@ const mobileNavigationGroups = computed(() => visibleGroups.value.map((group) =>
     href: item.href,
     label: t(item.labelKey),
     badge: navigationBadge(item),
+    icon: item.icon,
   })),
 })))
 
@@ -172,6 +197,19 @@ function syncCompact(event?: MediaQueryListEvent) {
   if (!nextCompact) mobileNavOpen.value = false
 }
 
+function toggleNavigation() {
+  navigationCollapsed.value = !navigationCollapsed.value
+  try { localStorage.setItem(navigationStorageKey, String(navigationCollapsed.value)) } catch { /* Optional preference. */ }
+}
+
+function onSearchShortcut(event: KeyboardEvent) {
+  if (event.defaultPrevented || event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || !features.value.forum) return
+  const target = event.target
+  if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [role="dialog"]'))) return
+  event.preventDefault()
+  visit(routes.forumSearch)
+}
+
 function syncArcoTheme() {
   document.body.toggleAttribute('arco-theme', isDark.value)
   if (isDark.value) document.body.setAttribute('arco-theme', 'dark')
@@ -188,12 +226,17 @@ function signOut() {
 }
 
 onMounted(() => {
+  try { navigationCollapsed.value = localStorage.getItem(navigationStorageKey) === 'true' } catch { /* Optional preference. */ }
   compactQuery = window.matchMedia('(max-width: 991px)')
   syncCompact()
   compactQuery.addEventListener('change', syncCompact)
+  document.addEventListener('keydown', onSearchShortcut)
 })
 
-onBeforeUnmount(() => compactQuery?.removeEventListener('change', syncCompact))
+onBeforeUnmount(() => {
+  compactQuery?.removeEventListener('change', syncCompact)
+  document.removeEventListener('keydown', onSearchShortcut)
+})
 watch(isDark, syncArcoTheme, { immediate: true })
 </script>
 
@@ -209,64 +252,36 @@ watch(isDark, syncArcoTheme, { immediate: true })
       class="mc-shell-layout"
       data-mc-application-shell
       :data-mc-application="shell.applicationId"
-      :style="{ minHeight: '100dvh' }"
+      :style="tokenStyle"
     >
       <LayoutSider
         v-if="!compact"
         class="mc-shell-sidebar"
         data-mc-application-sidebar
-        :width="248"
-        :style="{
-          position: 'fixed',
-          inset: '0 auto 0 0',
-          zIndex: 30,
-          borderRight: '1px solid var(--color-border-2)',
-          background: 'var(--color-bg-2)',
-        }"
+        :width="256"
+        :collapsed="navigationCollapsed"
+        :collapsed-width="64"
+        hide-trigger
       >
-        <Space
-          align="center"
-          :size="10"
-          :style="{
-            height: 'var(--mc-shell-topbar-height, 60px)',
-            padding: '0 var(--mc-shell-header-padding-inline, 20px)',
-          }"
-        >
-          <IconCommand :size="22" />
-          <TypographyText bold>{{ t(shell.brandKey) }}</TypographyText>
-        </Space>
-        <template v-for="group in visibleGroups" :key="group.id">
-          <TypographyText
-            type="secondary"
-            :style="{ display: 'block', padding: '14px 18px 6px', fontSize: '12px' }"
-          >
-            {{ t(group.labelKey) }}
-          </TypographyText>
-          <Menu
-            data-mc-application-navigation
-            :data-navigation-group="group.id"
-            :selected-keys="selectedKey ? [selectedKey] : []"
-            :style="{ borderRight: 0 }"
-            @menu-item-click="visit"
-          >
-            <MenuItem v-for="item in group.items" :key="item.href">
-              <span :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
-                <span>{{ t(item.labelKey) }}</span>
-                <Badge
-                  v-if="navigationBadge(item) > 0"
-                  :count="navigationBadge(item)"
-                  :max-count="99"
-                />
-              </span>
-            </MenuItem>
-          </Menu>
-        </template>
+        <ApplicationPortalNavigation
+          :brand="t('common.siteBrand')"
+          :logo-url="activeTemplate?.logoUrl"
+          :application-id="shell.applicationId"
+          :application-label="applicationLabel"
+          :destinations="destinations"
+          :groups="mobileNavigationGroups"
+          :selected-key="selectedKey"
+          :collapsed="navigationCollapsed"
+          collapsible
+          @select="visit"
+          @toggle-collapsed="toggleNavigation"
+        />
       </LayoutSider>
 
       <Layout
+        class="mc-portal-main"
         :style="{
-          marginLeft: compact ? '0' : 'var(--mc-shell-sidebar-width, 248px)',
-          width: compact ? '100%' : 'calc(100% - var(--mc-shell-sidebar-width, 248px))',
+          width: compact ? '100%' : `calc(100% - ${sidebarWidth}px)`,
           minWidth: 0,
         }"
       >
@@ -297,12 +312,15 @@ watch(isDark, syncArcoTheme, { immediate: true })
             >
               <template #icon><IconMenu /></template>
             </Button>
-            <TypographyText bold>{{ t(shell.brandKey) }}</TypographyText>
+            <TypographyText class="mc-portal-header-label" bold :ellipsis="{ showTooltip: true }">{{ applicationLabel }}</TypographyText>
           </Space>
 
           <Space align="center" :size="4">
-            <a :href="routes.home" :aria-label="t('common.backToSite')"><IconHome /></a>
-            <a :href="routes.app" :aria-label="t('common.navigation')"><IconApps /></a>
+            <Button v-if="features.forum" type="secondary" class="mc-portal-search" :aria-label="t('common.search')" @click="visit(routes.forumSearch)">
+              <template #icon><IconSearch /></template>
+              <span class="mc-portal-search-label">{{ t('common.search') }}</span>
+              <kbd class="mc-portal-search-label">/</kbd>
+            </Button>
             <Button
               type="text"
               shape="circle"
@@ -382,6 +400,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               <template #content>
                 <Doption disabled><IconUser /> {{ auth.user.username }}</Doption>
                 <Doption @click="visit(routes.account)"><IconApps /> {{ t('common.personal') }}</Doption>
+                <Doption v-if="auth.user.can_access_admin" @click="visit('/admin')"><IconSettings /> {{ t('common.adminPanel') }}</Doption>
                 <Doption :disabled="signingOut" @click="signOut">
                   <IconPoweroff /> {{ t('common.signOut') }}
                 </Doption>
@@ -410,12 +429,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
         <LayoutContent
           id="application-content"
-          class="mc-page-content mc-page-surface"
+          class="mc-page-content mc-page-surface mc-portal-content"
           data-mc-application-content
+          scroll-region
           tabindex="-1"
           :style="{
             padding: 'var(--mc-page-gutter, 24px)',
-            minHeight: 'calc(100dvh - var(--mc-shell-topbar-height, 60px))',
           }"
         >
           <div
@@ -439,6 +458,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
       v-if="mobileNavOpen"
       v-model:visible="mobileNavOpen"
       :brand-label="t(shell.brandKey)"
+      :application-id="shell.applicationId"
+      :application-label="applicationLabel"
+      :logo-url="activeTemplate?.logoUrl"
+      :destinations="destinations"
       :groups="mobileNavigationGroups"
       :selected-key="selectedKey"
       @select="visit"

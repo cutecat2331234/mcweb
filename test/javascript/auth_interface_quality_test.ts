@@ -61,7 +61,7 @@ test('public authentication layout uses a centered bounded surface', () => {
   assert.doesNotMatch(identityDocumentLayout, /components\/ui\/Button/)
   assert.match(
     accountApplicationCss,
-    /html\[data-mcweb-application="account"\]\s*\{[\s\S]*?scrollbar-gutter:\s*stable both-edges/,
+    /html\[data-mcweb-application="account"\]:not\(:has\(\[data-mc-application-shell\]\)\)\s*\{[\s\S]*?scrollbar-gutter:\s*stable both-edges/,
   )
 })
 

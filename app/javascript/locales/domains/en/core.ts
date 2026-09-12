@@ -25,6 +25,15 @@ export default {
     "closeAnnouncement": "Dismiss announcements",
     "openMenu": "Open menu",
     "navigation": "Primary navigation",
+    "expandNavigation": "Expand navigation",
+    "collapseNavigation": "Collapse navigation",
+    "search": "Search",
+    "siteBrand": "McWeb",
+    "applications": {
+      "forum": "Forum",
+      "store": "Store",
+      "staff": "Staff workspace"
+    },
     "skipToContent": "Skip to content",
     "toggleTheme": "Toggle theme",
     "notifications": "Notifications",

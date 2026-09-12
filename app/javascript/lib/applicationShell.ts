@@ -7,6 +7,7 @@ import {
 export type ApplicationShellNavigationItem = Readonly<{
   href: string
   labelKey: string
+  icon?: string
   badgeProp?: string
   visibilityProp?: string
   moduleKey?: string
@@ -25,6 +26,7 @@ export type ApplicationShellNavigationGroup = Readonly<{
 export type ApplicationShellAdapter = Readonly<{
   applicationId: string
   brandKey: string
+  labelKey?: string
   navigation: readonly ApplicationShellNavigationGroup[]
   accessory?: Component
 }>

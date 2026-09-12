@@ -25,6 +25,15 @@ export default {
     "closeAnnouncement": "关闭公告",
     "openMenu": "打开菜单",
     "navigation": "主导航",
+    "expandNavigation": "展开导航",
+    "collapseNavigation": "收起导航",
+    "search": "搜索",
+    "siteBrand": "McWeb",
+    "applications": {
+      "forum": "论坛",
+      "store": "商城",
+      "staff": "站务工作台"
+    },
     "skipToContent": "跳到主要内容",
     "toggleTheme": "切换主题",
     "notifications": "通知",

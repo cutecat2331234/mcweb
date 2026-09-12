@@ -36,7 +36,7 @@
 @source "../../components/portal/UserCustomFieldsForm.vue";
 @source "../../components/minecraft";
 
-html[data-mcweb-application="account"] {
+html[data-mcweb-application="account"]:not(:has([data-mc-application-shell])) {
   scrollbar-gutter: stable both-edges;
 }
 

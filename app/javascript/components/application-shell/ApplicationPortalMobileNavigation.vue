@@ -1,27 +1,15 @@
 <script setup lang="ts">
-import {
-  Badge,
-  Drawer,
-  Menu,
-  MenuItem,
-  TypographyText,
-} from '@mcweb/ui'
-
-type MobileNavigationItem = {
-  href: string
-  label: string
-  badge: number
-}
-
-type MobileNavigationGroup = {
-  id: string
-  label: string
-  items: MobileNavigationItem[]
-}
+import { Drawer } from '@mcweb/ui'
+import ApplicationPortalNavigation from './ApplicationPortalNavigation.vue'
+import type { PortalNavigationDestination, PortalNavigationGroup } from '@/lib/portalNavigationContributions'
 
 defineProps<{
   brandLabel: string
-  groups: MobileNavigationGroup[]
+  applicationId: string
+  applicationLabel: string
+  logoUrl?: string | null
+  destinations: PortalNavigationDestination[]
+  groups: PortalNavigationGroup[]
   selectedKey?: string
 }>()
 
@@ -44,23 +32,18 @@ function select(path: string) {
     aria-modal="true"
     role="dialog"
     unmount-on-close
+    class="mc-portal-mobile-navigation"
   >
     <template #title>{{ brandLabel }}</template>
-    <template v-for="group in groups" :key="group.id">
-      <TypographyText type="secondary">{{ group.label }}</TypographyText>
-      <Menu
-        data-mc-application-navigation
-        :data-navigation-group="group.id"
-        :selected-keys="selectedKey ? [selectedKey] : []"
-        @menu-item-click="select"
-      >
-        <MenuItem v-for="item in group.items" :key="item.href">
-          <span :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
-            <span>{{ item.label }}</span>
-            <Badge v-if="item.badge > 0" :count="item.badge" :max-count="99" />
-          </span>
-        </MenuItem>
-      </Menu>
-    </template>
+    <ApplicationPortalNavigation
+      :brand="brandLabel"
+      :logo-url="logoUrl"
+      :application-id="applicationId"
+      :application-label="applicationLabel"
+      :destinations="destinations"
+      :groups="groups"
+      :selected-key="selectedKey"
+      @select="select"
+    />
   </Drawer>
 </template>

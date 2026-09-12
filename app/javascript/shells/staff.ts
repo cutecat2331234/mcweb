@@ -4,6 +4,7 @@ import { routes } from '@/lib/routes'
 export const staffShell: ApplicationShellAdapter = {
   applicationId: 'staff',
   brandKey: 'staffWorkspace.brand',
+  labelKey: 'nav.staffWorkspace',
   navigation: [
     {
       id: 'staff-workspace',

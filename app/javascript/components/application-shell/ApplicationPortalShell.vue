@@ -20,6 +20,7 @@ import {
   IconApps,
   IconMenu,
   IconMessage,
+  IconMore,
   IconMoon,
   IconNotification,
   IconPoweroff,
@@ -316,12 +317,13 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </Space>
 
           <Space align="center" :size="4">
-            <Button v-if="features.forum" type="secondary" class="mc-portal-search" :aria-label="t('common.search')" @click="visit(routes.forumSearch)">
+            <Button v-if="features.forum && !compact" type="secondary" class="mc-portal-search" :aria-label="t('common.search')" @click="visit(routes.forumSearch)">
               <template #icon><IconSearch /></template>
               <span class="mc-portal-search-label">{{ t('common.search') }}</span>
               <kbd class="mc-portal-search-label">/</kbd>
             </Button>
             <Button
+              v-if="!compact"
               type="text"
               shape="circle"
               href="/docs/"
@@ -349,7 +351,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               </Button>
             </Badge>
             <Badge
-              v-if="shell.applicationId === 'forum' && auth.user && messagesUnread"
+              v-if="!compact && shell.applicationId === 'forum' && auth.user && messagesUnread"
               :count="messagesUnread.count"
               :max-count="99"
             >
@@ -363,7 +365,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               </Button>
             </Badge>
             <Badge
-              v-if="shell.applicationId === 'store' && cart"
+              v-if="!compact && shell.applicationId === 'store' && cart"
               :count="cart.count"
               :max-count="99"
             >
@@ -376,6 +378,21 @@ watch(isDark, syncArcoTheme, { immediate: true })
                 <template #icon><IconGift /></template>
               </Button>
             </Badge>
+            <Dropdown v-if="compact" trigger="click" position="br">
+              <Button type="text" shape="circle" :aria-label="t('common.moreActions')" data-mc-application-overflow-trigger>
+                <template #icon><IconMore /></template>
+              </Button>
+              <template #content>
+                <Doption v-if="features.forum" @click="visit(routes.forumSearch)"><IconSearch /> {{ t('common.search') }}</Doption>
+                <Doption @click="visit('/docs/')"><IconQuestionCircle /> {{ t('common.documentation') }}</Doption>
+                <Doption v-if="shell.applicationId === 'forum' && auth.user && messagesUnread" @click="visit(messagesUnread.url)">
+                  <IconMessage /> {{ t('common.messages') }} <Badge :count="messagesUnread.count" :max-count="99" />
+                </Doption>
+                <Doption v-if="shell.applicationId === 'store' && cart" @click="visit(cart.url)">
+                  <IconGift /> {{ t('common.cart') }} <Badge :count="cart.count" :max-count="99" />
+                </Doption>
+              </template>
+            </Dropdown>
             <Dropdown v-if="auth.user" trigger="click" position="br">
               <Button
                 type="text"

@@ -23,6 +23,7 @@ export default {
     announcement: '公告',
     closeAnnouncement: '关闭公告',
     openMenu: '打开菜单',
+    moreActions: '更多操作',
     navigation: '主导航',
     expandNavigation: '展开导航',
     collapseNavigation: '收起导航',

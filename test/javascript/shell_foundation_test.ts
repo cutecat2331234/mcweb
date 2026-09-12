@@ -111,6 +111,20 @@ test('shared PageHeader typography and actions wrap without changing page rhythm
   assert.match(foundation, /@media \(max-width: 1099px\)[\s\S]*?\.arco-page-header-extra[\s\S]*?flex:\s*1 1 100%/)
 })
 
+test('compact header moves secondary actions into an accessible Arco menu', () => {
+  assert.match(portalLayout, /v-if="features\.forum && !compact"/)
+  assert.match(portalLayout, /<Dropdown v-if="compact" trigger="click" position="br">/)
+  assert.match(portalLayout, /aria-label="t\('common\.moreActions'\)" data-mc-application-overflow-trigger/)
+  const overflowMenu = portalLayout.match(/<Dropdown v-if="compact"[\s\S]*?<\/Dropdown>/)?.[0]
+  assert.ok(overflowMenu)
+  for (const label of ['search', 'documentation', 'messages', 'cart']) {
+    assert.match(overflowMenu, new RegExp(`t\\('common\\.${label}'\\)`))
+  }
+  assert.match(portalLayout, /<LanguageSwitcher \/>/)
+  assert.match(portalLayout, /aria-label="t\('common\.toggleTheme'\)"/)
+  assert.match(portalLayout, /aria-label="t\('common\.notifications'\)"/)
+})
+
 test('shared filled primary buttons retain readable labels in every interactive state', () => {
   const colors = {
     foreground: '#ffffff',

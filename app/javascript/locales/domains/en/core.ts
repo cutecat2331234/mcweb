@@ -24,6 +24,7 @@ export default {
     "announcement": "Announcement",
     "closeAnnouncement": "Dismiss announcements",
     "openMenu": "Open menu",
+    "moreActions": "More actions",
     "navigation": "Primary navigation",
     "expandNavigation": "Expand navigation",
     "collapseNavigation": "Collapse navigation",
